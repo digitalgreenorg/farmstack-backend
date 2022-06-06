@@ -42,6 +42,11 @@ class UserManager(BaseUserManager):
         return self._create_user(email, **extra_fields)
 
 
+class UserRole(models.Model):
+    id = models.UUIDField(primary_key=True)
+    role_name = models.CharField(max_length=255)
+
+
 class User(AbstractBaseUser, PermissionsMixin):
     id = models.UUIDField(primary_key=True)
     email = models.EmailField(max_length=255, unique=True)
@@ -52,7 +57,7 @@ class User(AbstractBaseUser, PermissionsMixin):
     is_staff = models.BooleanField(default=False)
     is_admin = models.BooleanField(default=False)
     phone_number = models.CharField(max_length=50)
-    role = models.UUIDField()
+    role = models.ForeignKey(UserRole, max_length=255, on_delete=models.PROTECT)
     profile_picture = models.CharField(max_length=500)
     status = models.CharField(max_length=50)
     subscription = models.CharField(max_length=50)
@@ -78,6 +83,4 @@ class User(AbstractBaseUser, PermissionsMixin):
         return self.email
 
 
-class UserRole(models.Model):
-    id = models.UUIDField(primary_key=True)
-    role_name = models.CharField(User, max_length=255)
+

@@ -25,6 +25,5 @@ class Organization(models.Model):
 class UserOrganizationMap(models.Model):
     """ UserOrganizationMap model """
     id = models.UUIDField(primary_key=True)
-    user_id = models.UUIDField(settings.AUTH_USER_MODEL)
-    organization_id = models.UUIDField(Organization)
-
+    user_id = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    organization_id = models.ForeignKey(Organization, on_delete=models.CASCADE)
