@@ -1,0 +1,21 @@
+[tool.poetry]
+name = "datahub-api"
+version = "0.1.0"
+description = "API for datahub"
+authors = ["Your Name <you@example.com>"]
+
+[tool.poetry.dependencies]
+python = "^3.8"
+Django = "^4.0.5"
+djangorestframework = "^3.13.1"
+djangorestframework-simplejwt = "^5.2.0"
+pyotp = "^2.6.0"
+
+[tool.poetry.dev-dependencies]
+black = "^22.3.0"
+pylint = "^2.14.0"
+pytest = "^7.1.2"
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
