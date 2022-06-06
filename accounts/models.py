@@ -43,7 +43,7 @@ class UserManager(BaseUserManager):
 
 
 class User(AbstractBaseUser, PermissionsMixin):
-    id = models.UUIDField()
+    id = models.UUIDField(primary_key=True)
     email = models.EmailField(max_length=255, unique=True)
     # username = models.CharField(max_length=255, unique=True)
     first_name = models.CharField(max_length=255)
@@ -53,9 +53,9 @@ class User(AbstractBaseUser, PermissionsMixin):
     is_admin = models.BooleanField(default=False)
     phone_number = models.CharField(max_length=50)
     role = models.UUIDField()
-    profile_picture = models.CharField(500)
+    profile_picture = models.CharField(max_length=500)
     status = models.CharField(max_length=50)
-    subscription = models.CharField(50)
+    subscription = models.CharField(max_length=50)
 
     objects = UserManager()
 
@@ -79,5 +79,5 @@ class User(AbstractBaseUser, PermissionsMixin):
 
 
 class UserRole(models.Model):
-    id = models.UUIDField()
+    id = models.UUIDField(primary_key=True)
     role_name = models.CharField(User, max_length=255)

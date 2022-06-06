@@ -9,11 +9,11 @@ class Organization(models.Model):
             (IS_INACTIVE, 'is_inactive')
         ]
 
-    id = models.UUIDField()
+    id = models.UUIDField(primary_key=True)
     name = models.CharField(max_length=255)
     email = models.CharField(max_length=255, unique=True)
     address = models.JSONField()
-    phone_number = models.CharField()
+    phone_number = models.CharField(max_length=50)
     logo = models.CharField(max_length=500, null=True, blank=True)
     hero_image = models.CharField(max_length=500, null=True, blank=True)
     website = models.CharField(max_length=255)
@@ -24,7 +24,7 @@ class Organization(models.Model):
 
 class UserOrganizationMap(models.Model):
     """ UserOrganizationMap model """
-    id = models.UUIDField()
+    id = models.UUIDField(primary_key=True)
     user_id = models.UUIDField(settings.AUTH_USER_MODEL)
     organization_id = models.UUIDField(Organization)
 
