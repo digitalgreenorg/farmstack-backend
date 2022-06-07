@@ -25,7 +25,7 @@ class TeamMemberViewSet(GenericViewSet):
         """POST method: create action to save an object by sending a POST request"""
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-
+        
         serializer.save()
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 

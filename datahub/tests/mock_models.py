@@ -7,7 +7,7 @@ from django.contrib.auth.models import (
 )
 from django.conf import settings
 
-class UserManager(BaseUserManager):
+class MockUserManager(BaseUserManager):
     use_in_migrations = True
 
     def _create_user(self, email, **extra_fields):
@@ -55,7 +55,7 @@ class UserManager(BaseUserManager):
         return self._create_user(email, **extra_fields)
 
 
-class UserRole(models.Model):
+class MockUserRole(models.Model):
     ROLES = (
             ('datahub_admin', 'datahub_admin'),
             ('datahub_team_member', 'datahub_team_member'),
@@ -71,7 +71,7 @@ class UserRole(models.Model):
     role_name = models.CharField(max_length=255, null=True, blank=True,
             choices=ROLES)
 
-    objects = UserManager()
+    objects = MockUserManager()
 
     USERNAME_FIELD = "email"
     REQUIRED_FIELDS = ["first_name", "last_name"]
@@ -88,7 +88,7 @@ class UserRole(models.Model):
     def __str__(self):
         return self.email
         
-class User(AbstractBaseUser, PermissionsMixin):
+class MockUser(AbstractBaseUser, PermissionsMixin):
     id = models.UUIDField(
             primary_key=True,
             default=uuid.uuid4,
@@ -101,7 +101,7 @@ class User(AbstractBaseUser, PermissionsMixin):
     # is_staff = models.BooleanField(default=False)
     # is_admin = models.BooleanField(default=False)
     phone_number = models.CharField(max_length=50)
-    role = models.ForeignKey(UserRole, max_length=255, on_delete=models.CASCADE)
+    role = models.ForeignKey(MockUserRole, max_length=255, on_delete=models.CASCADE)
     profile_picture = models.CharField(max_length=500)
     status = models.BooleanField(default=False, null=True)
     subscription = models.CharField(max_length=50)

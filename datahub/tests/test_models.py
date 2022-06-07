@@ -1,9 +1,14 @@
+    """_summary_
+
+    Returns:
+        _type_: _description_
+    """
 import os
 import pytest
 import uuid
 from datahub.models import Organization
 
-@pytest.fixture(scope="session", autouse="true")
+@pytest.fixture(scope="session", autouse=True)
 def docker_compose_file(pytestconfig):
     return os.path.join(str(pytestconfig.rootdir), "mycustomdir", "docker-compose.yml")
 
