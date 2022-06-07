@@ -126,6 +126,19 @@ argon2 = ["argon2-cffi (>=19.1.0)"]
 bcrypt = ["bcrypt"]
 
 [[package]]
+name = "django-environ"
+version = "0.8.1"
+description = "A package that allows you to utilize 12factor inspired environment variables to configure your Django application."
+category = "main"
+optional = false
+python-versions = ">=3.4,<4"
+
+[package.extras]
+develop = ["coverage[toml] (>=5.0a4)", "pytest (>=4.6.11)", "furo (>=2021.8.17b43,<2021.9.0)", "sphinx (>=3.5.0)", "sphinx-notfound-page"]
+docs = ["furo (>=2021.8.17b43,<2021.9.0)", "sphinx (>=3.5.0)", "sphinx-notfound-page"]
+testing = ["coverage[toml] (>=5.0a4)", "pytest (>=4.6.11)"]
+
+[[package]]
 name = "djangorestframework"
 version = "3.13.1"
 description = "Web APIs for Django, made easy."
@@ -332,6 +345,14 @@ tomli = ">=1.0.0"
 testing = ["argcomplete", "hypothesis (>=3.56)", "mock", "nose", "pygments (>=2.7.2)", "requests", "xmlschema"]
 
 [[package]]
+name = "python-http-client"
+version = "3.3.7"
+description = "HTTP REST client, simplified for Python"
+category = "main"
+optional = false
+python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*"
+
+[[package]]
 name = "pytz"
 version = "2022.1"
 description = "World timezone definitions, modern and historical"
@@ -340,12 +361,32 @@ optional = false
 python-versions = "*"
 
 [[package]]
+name = "sendgrid"
+version = "6.9.7"
+description = "Twilio SendGrid library for Python"
+category = "main"
+optional = false
+python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*, !=3.4.*"
+
+[package.dependencies]
+python-http-client = ">=3.2.1"
+starkbank-ecdsa = ">=2.0.1"
+
+[[package]]
 name = "sqlparse"
 version = "0.4.2"
 description = "A non-validating SQL parser."
 category = "main"
 optional = false
 python-versions = ">=3.5"
+
+[[package]]
+name = "starkbank-ecdsa"
+version = "2.0.3"
+description = "A lightweight and fast pure python ECDSA library"
+category = "main"
+optional = false
+python-versions = "*"
 
 [[package]]
 name = "tomli"
@@ -390,7 +431,7 @@ python-versions = "!=3.0.*,!=3.1.*,!=3.2.*,!=3.3.*,!=3.4.*,>=2.7"
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.8"
-content-hash = "813c4b474bff10f103f6bf3d3eae852d7f6624a8180713135f8cb44bbbae0543"
+content-hash = "50a045c4333b9c4f1f80e44bd7b920897d409cfd7f58ea8f8d2e74e3fb7e4761"
 
 [metadata.files]
 asgiref = [
@@ -467,6 +508,10 @@ dill = [
 django = [
     {file = "Django-4.0.5-py3-none-any.whl", hash = "sha256:502ae42b6ab1b612c933fb50d5ff850facf858a4c212f76946ecd8ea5b3bf2d9"},
     {file = "Django-4.0.5.tar.gz", hash = "sha256:f7431a5de7277966f3785557c3928433347d998c1e6459324501378a291e5aab"},
+]
+django-environ = [
+    {file = "django-environ-0.8.1.tar.gz", hash = "sha256:6f0bc902b43891656b20486938cba0861dc62892784a44919170719572a534cb"},
+    {file = "django_environ-0.8.1-py2.py3-none-any.whl", hash = "sha256:42593bee519a527602a467c7b682aee1a051c2597f98c45f4f4f44169ecdb6e5"},
 ]
 djangorestframework = [
     {file = "djangorestframework-3.13.1-py3-none-any.whl", hash = "sha256:24c4bf58ed7e85d1fe4ba250ab2da926d263cd57d64b03e8dcef0ac683f8b1aa"},
@@ -571,13 +616,24 @@ pytest = [
     {file = "pytest-7.1.2-py3-none-any.whl", hash = "sha256:13d0e3ccfc2b6e26be000cb6568c832ba67ba32e719443bfe725814d3c42433c"},
     {file = "pytest-7.1.2.tar.gz", hash = "sha256:a06a0425453864a270bc45e71f783330a7428defb4230fb5e6a731fde06ecd45"},
 ]
+python-http-client = [
+    {file = "python_http_client-3.3.7-py3-none-any.whl", hash = "sha256:ad371d2bbedc6ea15c26179c6222a78bc9308d272435ddf1d5c84f068f249a36"},
+    {file = "python_http_client-3.3.7.tar.gz", hash = "sha256:bf841ee45262747e00dec7ee9971dfb8c7d83083f5713596488d67739170cea0"},
+]
 pytz = [
     {file = "pytz-2022.1-py2.py3-none-any.whl", hash = "sha256:e68985985296d9a66a881eb3193b0906246245294a881e7c8afe623866ac6a5c"},
     {file = "pytz-2022.1.tar.gz", hash = "sha256:1e760e2fe6a8163bc0b3d9a19c4f84342afa0a2affebfaa84b01b978a02ecaa7"},
 ]
+sendgrid = [
+    {file = "sendgrid-6.9.7-py3-none-any.whl", hash = "sha256:ba8d3d39e1f392b9434365d53983b2fc6a458ae0496d2d9e103c15e1743ab66b"},
+    {file = "sendgrid-6.9.7.tar.gz", hash = "sha256:fa30411c627690fecd0ef6b1d4e1783f2d0272aa14b5fffb133ebd1e31114f16"},
+]
 sqlparse = [
     {file = "sqlparse-0.4.2-py3-none-any.whl", hash = "sha256:48719e356bb8b42991bdbb1e8b83223757b93789c00910a616a071910ca4a64d"},
     {file = "sqlparse-0.4.2.tar.gz", hash = "sha256:0c00730c74263a94e5a9919ade150dfc3b19c574389985446148402998287dae"},
+]
+starkbank-ecdsa = [
+    {file = "starkbank-ecdsa-2.0.3.tar.gz", hash = "sha256:73b62b1b3de54bbaa05dedb1a2d951c033432bb074de899e19d4a96a36b21df6"},
 ]
 tomli = [
     {file = "tomli-2.0.1-py3-none-any.whl", hash = "sha256:939de3e7a6161af0c887ef91b7d41a53e7c5a1ca976325f429cb46ea9bc30ecc"},
