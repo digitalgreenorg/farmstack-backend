@@ -1,3 +1,4 @@
+import uuid
 from django.db import models
 from django.conf import settings
 
@@ -9,7 +10,8 @@ class Organization(models.Model):
             (IS_INACTIVE, 'is_inactive')
         ]
 
-    id = models.UUIDField(primary_key=True)
+    id = models.UUIDField(primary_key=True,
+            default=uuid.uuid4,)
     name = models.CharField(max_length=255)
     email = models.CharField(max_length=255, unique=True)
     address = models.JSONField()
@@ -21,9 +23,13 @@ class Organization(models.Model):
                             choices=STATUSES,
                             default=IS_ACTIVE)
 
+    def __str__(self):
+        return self.name
+
 
 class UserOrganizationMap(models.Model):
     """ UserOrganizationMap model """
-    id = models.UUIDField(primary_key=True)
+    id = models.UUIDField(primary_key=True,
+            default=uuid.uuid4)
     user_id = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     organization_id = models.ForeignKey(Organization, on_delete=models.CASCADE)
