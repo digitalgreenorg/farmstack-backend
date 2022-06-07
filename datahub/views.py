@@ -1,58 +1,9 @@
-Skip
-to
-content
-Search or jump
-to…
-Pull
-requests
-Issues
-Marketplace
-Explore
-
-
-@ugeshdg
-
-
-digitalgreenorg
-/
-datahub - api
-Private
-Code
-Issues
-Pull
-requests
-1
-Actions
-Projects
-Wiki
-Security
-Insights
-Settings
-datahub - api / datahub / views.py
-
-waseem
-DHUBFS - 12 < CRUD
-operations
-for TeamMembers>
-Latest
-commit
-cf4af45
-15
-minutes
-ago
-History
-1
-contributor
-60
-lines(47
-sloc)  2.23
-KB
-
-from accounts.models import User
-from accounts.serializers import UserSerializer
 from rest_framework import pagination, status
 from rest_framework.response import Response
 from rest_framework.viewsets import GenericViewSet
+from accounts.models import User
+from accounts.serializers import UserSerializer
+
 
 
 class DefaultPagination(pagination.PageNumberPagination):
