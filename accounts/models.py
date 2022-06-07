@@ -1,21 +1,27 @@
-from django.db import models
+import uuid
+
+from django.conf import settings
 from django.contrib.auth.models import (
     AbstractBaseUser,
-    PermissionsMixin,
     BaseUserManager,
+    PermissionsMixin,
 )
-from django.conf import settings
+from django.db import models
+
 
 class UserManager(BaseUserManager):
+    """
+    User Manager to create custom user.
+    """
+
     use_in_migrations = True
 
     def _create_user(self, email, **extra_fields):
-        """ Create and save a user with the given email, and password. """
+        """Create and save a user with the given email, and password."""
         email = self.normalize_email(email)
         user = self.model(email=email, **extra_fields)
         user.save()
         return user
-
 
     def create_user(self, email, username, **extra_fields):
         if not email:
@@ -26,28 +32,36 @@ class UserManager(BaseUserManager):
         return user
 
     def create_superuser(self, email, **extra_fields):
-        extra_fields.setdefault('is_active', True)
-        extra_fields.setdefault('is_staff', True)
-        extra_fields.setdefault('is_superuser', True)
-        extra_fields.setdefault('is_admin', True)
+        extra_fields.setdefault("is_active", True)
+        extra_fields.setdefault("is_staff", True)
+        extra_fields.setdefault("is_superuser", True)
+        extra_fields.setdefault("is_admin", True)
 
-        if extra_fields.get('is_staff') is not True:
-            raise ValueError('Staff user must have is_staff=True')
-        if extra_fields.get('is_superuser') is not True:
-            raise ValueError('Super user must have is_superuser=True')
-        if extra_fields.get('is_admin') is not True:
-            raise ValueError('Super user must have is_admin=True')
+        if extra_fields.get("is_staff") is not True:
+            raise ValueError("Staff user must have is_staff=True")
+        if extra_fields.get("is_superuser") is not True:
+            raise ValueError("Super user must have is_superuser=True")
+        if extra_fields.get("is_admin") is not True:
+            raise ValueError("Super user must have is_admin=True")
         print("SUPERUSER")
         print(extra_fields)
         return self._create_user(email, **extra_fields)
 
 
 class UserRole(models.Model):
-    id = models.UUIDField(primary_key=True)
+    """
+    User Role
+    """
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4)
     role_name = models.CharField(max_length=255)
 
 
 class User(AbstractBaseUser, PermissionsMixin):
+    """
+    Custom User Model
+    """
+
     id = models.UUIDField(primary_key=True)
     email = models.EmailField(max_length=255, unique=True)
     # username = models.CharField(max_length=255, unique=True)
@@ -68,6 +82,9 @@ class User(AbstractBaseUser, PermissionsMixin):
     REQUIRED_FIELDS = ["first_name", "last_name"]
 
     def get_full_name(self):
+        """
+        Helper Functions
+        """
         return f"{self.first_name} - {self.last_name}"
 
     # def get_username(self):
@@ -80,7 +97,7 @@ class User(AbstractBaseUser, PermissionsMixin):
         return True
 
     def __str__(self):
-        return self.email
-
-
-
+        """
+        Helper Functions
+        """
+        return str(self.email)
