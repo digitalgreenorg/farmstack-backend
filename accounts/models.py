@@ -76,6 +76,7 @@ class User(AbstractBaseUser, TimeStampMixin):
     )
     status = models.BooleanField(default=False)
     subscription = models.CharField(max_length=50, null=True, blank=True)
+    otp = models.IntegerField(null=True, blank=True)
 
     objects = UserManager()
 

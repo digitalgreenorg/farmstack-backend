@@ -8,22 +8,27 @@ from .utils import generateKey
 
 def send_otp_via_email(to_email):
     """send otp via email"""
+    gen_key = generateKey()
+    otp = gen_key.returnValue()["OTP"]
+    user_obj = User.objects.get(email=to_email)
+    user_obj.otp = otp
+    user_obj.save()
     sg = sendgrid.SendGridAPIClient(settings.SENDGRID_API_KEY)
     from_email = Email(settings.EMAIL_HOST_USER)
     subject = f"Your account verification OTP"
-    gen_key = generateKey()
-    otp = gen_key.returnValue()["OTP"]
     content = Content("text/plain", f"Your OTP is {otp}")
     mail = Mail(from_email, to_email, subject, content)
     sg.client.mail.send.post(request_body=mail.get())
 
 
-def send_verification_email(email):
+def send_verification_email(to_email):
     """send account verification acknowledgement"""
+    sg = sendgrid.SendGridAPIClient(settings.SENDGRID_API_KEY)
+    from_email = Email(settings.EMAIL_HOST_USER)
     subject = f"Your account verification success"
-    message = f"Your account is successfully verified"
-    email_from = settings.EMAIL_HOST
-    send_mail(subject, message, email_from, [email])
+    content = Content("text/plain", f"Your account is successfully verified")
+    mail = Mail(from_email, to_email, subject, content)
+    sg.client.mail.send.post(request_body=mail.get())
 
 
 def send_recovery_otp(email):
