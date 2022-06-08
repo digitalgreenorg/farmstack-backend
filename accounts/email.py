@@ -1,3 +1,5 @@
+from django.core.cache import cache
+import datetime
 from django.core.mail import send_mail
 from django.conf import settings
 from .models import User
@@ -10,9 +12,8 @@ def send_otp_via_email(to_email):
     """send otp via email"""
     gen_key = generateKey()
     otp = gen_key.returnValue()["OTP"]
-    user_obj = User.objects.get(email=to_email)
-    user_obj.otp = otp
-    user_obj.save()
+    # user_obj = User.objects.get(email=to_email)
+    cache.set_many({'user_obj': otp, 'creation_time': datetime.datetime.now()}, 30)
     sg = sendgrid.SendGridAPIClient(settings.SENDGRID_API_KEY)
     from_email = Email(settings.EMAIL_HOST_USER)
     subject = f"Your account verification OTP"
