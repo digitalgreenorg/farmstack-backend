@@ -3,53 +3,53 @@ import uuid
 from datahub.base_models import TimeStampMixin
 from django.contrib.auth.models import AbstractBaseUser, BaseUserManager
 from django.db import models
+from django.conf import settings
 
 
 class UserManager(BaseUserManager):
-    """ UserManager to manage creation of users """
+    """UserManager to manage creation of users"""
+
     use_in_migrations = True
 
     def _create_user(self, email, **extra_fields):
-        """ Save an admin or super user """
-        email = self.normalize_email(email)
-        user = self.model(email=email, **extra_fields)
-        user.save()
-        return user
-
-    def create_user(self, email, **extra_fields):
-        """ Save a user with the given email and other fields """
-        if not email:
-            raise ValueError("User must have an email")
+        """Save an admin or super user"""
         email = self.normalize_email(email)
         user = self.model(email=email, **extra_fields)
         user.save()
         return user
 
     def create_superuser(self, email, **extra_fields):
-        """ Save an admin or super user with role_id set to admin datahub user """
-        extra_fields.setdefault('status', True)
+        """Save an admin or super user with role_id set to admin datahub user"""
+        extra_fields.setdefault("status", True)
         # extra_fields.setdefault('role', "f1b55b3e-c5c7-453d-87e6-0e388c9d1fc3")
-        extra_fields.setdefault('role_id', int(1))
+        extra_fields.setdefault("role_id", int(1))
         return self._create_user(email, **extra_fields)
 
 
 class UserRole(models.Model):
-    """ UserRole model for user roles of the datahub users """
+    """UserRole model for user roles of the datahub users
+    User role mapping with id:
+        datahub_admin: 1
+        datahub_team_member: 2
+        datahub_participant_root: 3
+        datahub_participant_team: 4
+        datahub_guest_user: 5
+    """
+
     ROLES = (
-            ('datahub_admin', 'datahub_admin'),
-            ('datahub_team_member', 'datahub_team_member'),
-            ('datahub_guest_user', 'datahub_guest_user'),
-            ('datahub_participant_root', 'datahub_participant_root'),
-            ('datahub_participant_team', 'datahub_participant_team')
-            )
+        ("datahub_admin", "datahub_admin"),
+        ("datahub_participant_root", "datahub_participant_root"),
+        ("datahub_participant_team", "datahub_participant_team"),
+        ("datahub_team_member", "datahub_team_member"),
+        ("datahub_guest_user", "datahub_guest_user"),
+    )
 
     # id = models.UUIDField(
     #         primary_key=True,
     #         default=uuid.uuid4,
     #         editable=False)
     id = models.IntegerField(primary_key=True)
-    role_name = models.CharField(max_length=255, null=True, blank=True,
-            choices=ROLES)
+    role_name = models.CharField(max_length=255, null=True, blank=True, choices=ROLES)
 
     objects = UserManager()
 
@@ -60,22 +60,27 @@ class UserRole(models.Model):
         return f"{self.first_name} - {self.last_name}"
 
 class User(AbstractBaseUser, TimeStampMixin):
-    """ User model for of all the datahub users """
-    id = models.UUIDField(
-            primary_key=True,
-            default=uuid.uuid4,
-            editable=False)
+    """User model for of all the datahub users
+
+    status:
+        active = 1
+        inactive = 0
+    """
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     password = None
     last_login = None
     is_superuser = None
     email = models.EmailField(max_length=255, unique=True)
     first_name = models.CharField(max_length=255)
-    last_name = models.CharField(max_length=255, null=True)
-    phone_number = models.CharField(max_length=50)
+    last_name = models.CharField(max_length=255, null=True, blank=True)
+    phone_number = models.CharField(max_length=50, null=True, blank=True)
     role = models.ForeignKey(UserRole, max_length=255, on_delete=models.PROTECT)
-    profile_picture = models.CharField(max_length=500)
-    status = models.BooleanField(default=False, null=True)
-    subscription = models.CharField(max_length=50)
+    profile_picture = models.FileField(
+        upload_to=settings.PROFILE_PICTURES_URL, null=True, blank=True
+    )
+    status = models.BooleanField(default=False)
+    subscription = models.CharField(max_length=50, null=True, blank=True)
 
     objects = UserManager()
 
