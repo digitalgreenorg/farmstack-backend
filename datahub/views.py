@@ -1,12 +1,12 @@
 from accounts.models import User
 from accounts.serializers import UserSerializer
+from drf_braces.mixins import MultipleSerializersViewMixin
 from rest_framework import pagination, status
 from rest_framework.response import Response
 from rest_framework.viewsets import GenericViewSet, ViewSet
-from drf_braces.mixins import MultipleSerializersViewMixin
 
-from datahub.models import Organization
-from datahub.serializers import OrganizationSerializer
+from datahub.models import Organization, UserOrganizationMap
+from datahub.serializers import OrganizationSerializer, UserOrganizationMapSerializer
 
 
 class DefaultPagination(pagination.PageNumberPagination):
@@ -76,15 +76,23 @@ class ParticipantViewSet(GenericViewSet):
 
     def create(self, request, *args, **kwargs):
         """POST method: create action to save an object by sending a POST request"""
-        # serializer = self.get_serializer(data=request.data)
-        # serializer.is_valid(raise_exception=True)
-        # saved = self.perform_create(serializer)
-        # print(saved)
+        # self.retrieve(request, request.data.get("email", ""))
+        # filter email from the queryset
+        org_queryset = Organization.objects.filter(org_email=self.request.data['org_email']).values()
+        if not org_queryset:
+            serializer = self.get_serializer(data=request.data)
+            serializer.is_valid(raise_exception=True)
+            org_queryset = self.perform_create(serializer)
+            org_id = org_queryset.id
+        else:
+            org_id = org_queryset[0].get("id")
         serializer = UserSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-
         user_saved = self.perform_create(serializer)
-        print(user_saved)
+
+        user_org_serializer = UserOrganizationMapSerializer(data={"user_id": user_saved.id, "organization_id": org_id})
+        user_org_serializer.is_valid(raise_exception=True)
+        self.perform_create(user_org_serializer)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
     def list(self, request, *args, **kwargs):

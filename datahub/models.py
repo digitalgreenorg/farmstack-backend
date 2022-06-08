@@ -14,7 +14,7 @@ class Organization(TimeStampMixin):
     id = models.UUIDField(primary_key=True,  default=uuid.uuid4,
             editable=False)
     name = models.CharField(max_length=255)
-    email = models.CharField(max_length=255, unique=True)
+    org_email = models.CharField(max_length=255, unique=True)
     address = models.JSONField()
     phone_number = models.CharField(max_length=50)
     logo = models.CharField(max_length=500, null=True, blank=True)
@@ -30,6 +30,7 @@ class Organization(TimeStampMixin):
 
 class UserOrganizationMap(models.Model):
     """ UserOrganizationMap model for mapping User and Organization model """
-    id = models.UUIDField(primary_key=True)
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4,
+            editable=False)
     user_id = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     organization_id = models.ForeignKey(Organization, on_delete=models.CASCADE)
