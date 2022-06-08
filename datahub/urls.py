@@ -1,10 +1,14 @@
-from django.urls import path, include
-from datahub import views
-from datahub.views import TeamMemberViewSet
+from posixpath import basename
 from accounts.serializers import UserSerializer
+from django.urls import include, path
+from rest_framework.routers import DefaultRouter
 
-team_member = TeamMemberViewSet()
+from datahub import views
+from datahub.views import ParticipantViewSet
+
+router = DefaultRouter()
+router.register(r"participant", ParticipantViewSet, basename="participant")
 
 urlpatterns = [
-    path('participant', views.TeamMemberViewSet.create, name="add"),
+    path("", include(router.urls)),
 ]

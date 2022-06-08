@@ -1,7 +1,18 @@
 from accounts import models
 from rest_framework import serializers
 
-class AccountSerializer(serializers.ModelSerializer):
+from datahub.models import Organization
+
+
+class OrganizationSerializer(serializers.ModelSerializer):
+    """_summary_
+
+    Args:
+        serializers (_type_): _description_
+    """
     class Meta:
-        model = models.User
-        fields = ['id', 'account_name', 'users', 'created']
+        """_summary_
+        """
+        model = Organization
+        fields = ["email", "name", "hero_image", "address", "logo", "phone_number", "website"]
+        

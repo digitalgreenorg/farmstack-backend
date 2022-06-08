@@ -1,8 +1,9 @@
 import uuid
 from django.db import models
 from django.conf import settings
+from datahub.base_models import TimeStampMixin
 
-class Organization(models.Model):
+class Organization(TimeStampMixin):
     """ Organization model """
     IS_ACTIVE = 1
     IS_INACTIVE = 0
@@ -10,8 +11,8 @@ class Organization(models.Model):
             (IS_INACTIVE, 'is_inactive')
         ]
 
-    id = models.UUIDField(primary_key=True,
-            default=uuid.uuid4,)
+    id = models.UUIDField(primary_key=True,  default=uuid.uuid4,
+            editable=False)
     name = models.CharField(max_length=255)
     email = models.CharField(max_length=255, unique=True)
     address = models.JSONField()
@@ -28,8 +29,7 @@ class Organization(models.Model):
 
 
 class UserOrganizationMap(models.Model):
-    """ UserOrganizationMap model """
-    id = models.UUIDField(primary_key=True,
-            default=uuid.uuid4)
+    """ UserOrganizationMap model for mapping User and Organization model """
+    id = models.UUIDField(primary_key=True)
     user_id = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     organization_id = models.ForeignKey(Organization, on_delete=models.CASCADE)

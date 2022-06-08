@@ -1,13 +1,13 @@
+import uuid
+from urllib import response
+
 import pytest
-from sys import set_asyncgen_hooks
+from accounts.models import User, UserManager, UserRole
+from datahub.views import ParticipantViewSet
+from django.test import Client, TestCase
+from django.urls import reverse
 from requests import request
-from rest_framework.viewsets import GenericViewSet
-from django.db import models
-from django.db.models import fields
 from rest_framework import serializers
-from accounts.models import User
-from tests.test_datahub.mock_models import MockUser, MockUserManager, MockUserRole
-from datahub.views import TeamMemberViewSet
 
 
 class MockUserSerializer(serializers.ModelSerializer):
@@ -24,18 +24,42 @@ class MockUserSerializer(serializers.ModelSerializer):
          "status", "subscription"]
 
 class MockRequest:
-    data = {}
+    data = ''
 
-@pytest.mark.parametrize("test_input, expected",
-                        [({"email": "email", "first_name": "first_name", "last_name": "last_name",
-                         "phone_number": "phone_number", "role": "role",
-                          "profile_picture": "profile_picture", "status": "status",
-                           "subscription": "subscription"}, "sucess")])
-def test_create_with_serializer(monkeypatch, test_input, expected):
+
+class TestViews(TestCase):
     """_summary_
+
+    Args:
+        TestCase (_type_): _description_
     """
-    monkeypatch.setattr("datahub.views.UserSerializer", MockUserSerializer)
-    monkeypatch.setattr("accounts.models.User", MockUser)
-    request.data = test_input
-    result = TeamMemberViewSet().create(request)
-    assert result == expected
+    def setUp(self) -> None:
+        self.client = Client()
+        self.create_url = reverse("participant-list")
+
+    def test_team_member_post_add_user_invalid_email(self):
+        """_summary_
+        """
+        # monkeypatch.setattr("datahub.views.UserSerializer", MockUserSerializer)
+        response = self.client.post(self.create_url, {"email": "email", "first_name": "first_name", "last_name": "last_name",
+                            "phone_number": "phone_number", "role": "222",
+                            "profile_picture": "profile_picture", "status": True,
+                            "subscription": "subscription" })
+        # response = team_member.create(MockRequest)
+        assert response.status_code == 400
+        assert response.json().get("email") == ['Enter a valid email address.']
+        assert response.json().get("role") == ['Invalid pk "222" - object does not exist.']
+
+    def test_team_member_post_add_user_valid_email(self):
+        """_summary_
+        """
+        # monkeypatch.setattr("datahub.views.UserSerializer", MockUserSerializer)
+        response = self.client.post(self.create_url, {"email": "test.user@gmail.com", "first_name": "first_name", "last_name": "last_name",
+                            "phone_number": "phone_number", "role": int(2),
+                            "profile_picture": "profile_picture", "status": True,
+                            "subscription": "subscription" })
+        # response = team_member.create(MockRequest)
+        print(response.json())
+        assert response.status_code == 400
+        assert response.json().get("email") == None
+        assert response.json().get("role") == ['Invalid pk "2" - object does not exist.']
