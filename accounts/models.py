@@ -1,10 +1,8 @@
 import uuid
-from django.db import models
-from django.contrib.auth.models import (
-    AbstractBaseUser,
-    BaseUserManager,
-)
+
 from datahub.base_models import TimeStampMixin
+from django.contrib.auth.models import AbstractBaseUser, BaseUserManager
+from django.db import models
 from django.conf import settings
 
 
@@ -53,6 +51,13 @@ class UserRole(models.Model):
     id = models.IntegerField(primary_key=True)
     role_name = models.CharField(max_length=255, null=True, blank=True, choices=ROLES)
 
+    objects = UserManager()
+
+    USERNAME_FIELD = "email"
+    REQUIRED_FIELDS = ["first_name", "last_name"]
+
+    def get_full_name(self):
+        return f"{self.first_name} - {self.last_name}"
 
 class User(AbstractBaseUser, TimeStampMixin):
     """User model for of all the datahub users

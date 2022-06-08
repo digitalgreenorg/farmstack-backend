@@ -1,6 +1,9 @@
+from django.db import models
+from django.db.models import fields
 from rest_framework import serializers
 from accounts.models import User
 
+from accounts.models import User 
 
 class UserCreateSerializer(serializers.ModelSerializer):
     class Meta:
