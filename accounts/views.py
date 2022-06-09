@@ -1,12 +1,12 @@
 from django.core.cache import cache
 from django.shortcuts import render
-from rest_framework import status
+from rest_framework import status, serializers
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework.viewsets import GenericViewSet
 from rest_framework_simplejwt.tokens import RefreshToken
 from accounts.models import User
-from accounts.serializers import UserCreateSerializer, VerifyAccountSerializer
+from accounts.serializers import UserCreateSerializer, VerifyAccountSerializer, UserUpdateSerializer
 from accounts.email import send_otp_via_email, send_verification_email
 
 
@@ -66,7 +66,7 @@ class VerifyOTPViewset(GenericViewSet):
         user.save()
         cache.delete_many(['user_obj', 'creation_time'])
 
-        # send_otp_via_email(email)
+        send_otp_via_email(email)
         return Response({
             'status': status.HTTP_201_CREATED,
             'payload': serializer.data,
