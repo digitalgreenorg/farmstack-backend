@@ -38,7 +38,6 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    'rest_framework',
     # third-party apps
     "rest_framework",
     "rest_framework_simplejwt",
@@ -152,3 +151,8 @@ SENDGRID_API_KEY = os.environ.get('EMAIL_HOST_USER','email_host_user')
 
 # OTP DURATION IN SECONDS
 OTP_DURATION = 120
+
+# Fixtures
+FIXTURE_DIRS = [
+  'fixtures',
+]

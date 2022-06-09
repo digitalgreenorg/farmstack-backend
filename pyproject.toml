@@ -16,6 +16,7 @@ sendgrid = "^6.9.7"
 python-http-client = "^3.3.7"
 starkbank-ecdsa = "^2.0.3"
 django-environ = "^0.8.1"
+pyaml = "^21.10.1"
 
 [tool.poetry.dev-dependencies]
 black = "^22.3.0"
