@@ -6,6 +6,7 @@ from accounts.models import User
 from accounts.models import User 
 
 class UserCreateSerializer(serializers.ModelSerializer):
+    """UserCreateSerializer"""
     class Meta:
         model = User
         fields = (
@@ -15,8 +16,15 @@ class UserCreateSerializer(serializers.ModelSerializer):
             "phone_number",
             "role",
             "status",
-            "subscription",
-        )
+            "subscription"
+            )
+
+
+class UserUpdateSerializer(serializers.ModelSerializer):
+    """UserUpdateSerializer"""
+    class Meta:
+        model = User
+        fields = '__all__'
 
 
 class VerifyAccountSerializer(serializers.Serializer):

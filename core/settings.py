@@ -13,10 +13,6 @@ https://docs.djangoproject.com/en/4.0/ref/settings/
 from pathlib import Path
 import os, environ
 
-# Initialize environment variables
-env = environ.Env()
-environ.Env.read_env()
-
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -145,9 +141,14 @@ AUTH_USER_MODEL = "accounts.User"
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": (
         "rest_framework_simplejwt.authentication.JWTAuthentication",
-    )
+    ),
+    'DEFAULT_PERMISSION_CLASSES': [
+    ]
 }
 
 # Email configuration
-SENDGRID_API_KEY = env("SENDGRID_API_KEY")
-EMAIL_HOST_USER = env("EMAIL_HOST_USER")
+SENDGRID_API_KEY = os.environ.get('SENDGRID_API_KEY','send_grid_key')
+SENDGRID_API_KEY = os.environ.get('EMAIL_HOST_USER','email_host_user')
+
+# OTP DURATION IN SECONDS
+OTP_DURATION = 120

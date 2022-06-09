@@ -1,29 +1,61 @@
+from django.core.cache import cache
+import datetime
 from django.core.mail import send_mail
 from django.conf import settings
 from .models import User
 import sendgrid
 from sendgrid.helpers.mail import *
 from .utils import generateKey
+from django.conf import settings
 
 
 def send_otp_via_email(to_email):
-    """send otp via email"""
-    sg = sendgrid.SendGridAPIClient(settings.SENDGRID_API_KEY)
-    from_email = Email(settings.EMAIL_HOST_USER)
-    subject = f"Your account verification OTP"
-    gen_key = generateKey()
-    otp = gen_key.returnValue()["OTP"]
-    content = Content("text/plain", f"Your OTP is {otp}")
-    mail = Mail(from_email, to_email, subject, content)
-    sg.client.mail.send.post(request_body=mail.get())
+    """send otp via email using django cache
+
+        # Example: creating cache
+        cache.set_many({'a': 1, 'b': 2, 'c': 3})
+        cache.get_many(['a', 'b', 'c'])
+
+        # Check for expiry of cache
+        sentinel = object()
+        cache.get('my_key', sentinel) is sentinel
+        False
+
+        # Wait 30 seconds for 'my_key' to expire...
+        cache.get('my_key', sentinel) is sentinel
+        True
+
+        # Delete cache
+        cache.delete_many(['a', 'b', 'c'])
+    """
+    try:
+        gen_key = generateKey()
+        otp = gen_key.returnValue()["OTP"]
+        user_obj = User.objects.get(email=to_email)
+        cache.set_many({'user_obj': otp, 'creation_time': datetime.datetime.now()}, settings.OTP_DURATION)
+        sg = sendgrid.SendGridAPIClient(settings.SENDGRID_API_KEY)
+        from_email = Email(settings.EMAIL_HOST_USER)
+        subject = f"Your account verification OTP"
+        content = Content("text/plain", f"Your OTP is {otp}")
+        mail = Mail(from_email, to_email, subject, content)
+        sg.client.mail.send.post(request_body=mail.get())
+
+    except Exception as e:
+        print(e)
 
 
-def send_verification_email(email):
+def send_verification_email(to_email):
     """send account verification acknowledgement"""
-    subject = f"Your account verification success"
-    message = f"Your account is successfully verified"
-    email_from = settings.EMAIL_HOST
-    send_mail(subject, message, email_from, [email])
+    try:
+        sg = sendgrid.SendGridAPIClient(settings.SENDGRID_API_KEY)
+        from_email = Email(settings.EMAIL_HOST_USER)
+        subject = f"Your account verification success"
+        content = Content("text/plain", f"Your account is successfully verified")
+        mail = Mail(from_email, to_email, subject, content)
+        sg.client.mail.send.post(request_body=mail.get())
+
+    except Exception as e:
+        print(e)
 
 
 def send_recovery_otp(email):

@@ -1,79 +1,75 @@
+from django.core.cache import cache
 from django.shortcuts import render
+from rest_framework import status, serializers
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from rest_framework.viewsets import GenericViewSet
 from rest_framework_simplejwt.tokens import RefreshToken
 from accounts.models import User
-from accounts.serializers import UserCreateSerializer, VerifyAccountSerializer
+from accounts.serializers import UserCreateSerializer, VerifyAccountSerializer, UserUpdateSerializer
 from accounts.email import send_otp_via_email, send_verification_email
 
 
-class SignupAPIView(APIView):
-    """SignupAPI view to regiter new users"""
+class LoginViewset(GenericViewSet):
+    """ Registration viewset for users to register """
+    serializer_class = UserCreateSerializer
+    # queryset = User.objects.all()
 
-    def post(self, request):
-        data = request.data
-        serializer = UserCreateSerializer(data=data)
-
-        if serializer.is_valid(raise_exception=True):
-            serializer.save()
-            email = serializer.data["email"]
-            send_otp_via_email(email)
-            return Response(
-                {
-                    "status": 200,
-                    "messsage": "registration successful! Check email for verification",
-                    "data": serializer.data,
-                }
-            )
-
-        else:
-            return Response(
-                {
-                    "status": 400,
-                    "message": "something went wrong",
-                    "data": serializer.errors,
-                }
-            )
+    def create(self, request, *args, **kwargs):
+        """POST method: to save a newly registered user"""
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        email = request.data['email']
+        send_otp_via_email(email)
+        return Response({
+            'status': status.HTTP_201_CREATED,
+            'payload': serializer.data,
+            'message': 'Please verify your account using OTP'
+            })
 
 
-class VerifyOTPView(APIView):
-    """Verify OTP for Signup"""
+class VerifyOTPViewset(GenericViewSet):
+    """ Verification for OTP  """
+    serializer_class = VerifyAccountSerializer
 
-    def post(self, request):
-        data = request.data
-        serializer = VerifyAccountSerializer(data=data)
+    def create(self, request, *args, **kwargs):
+        """POST method: to verify registered users"""
+        email = self.request.data['email']
+        user_obj = User.objects.filter(email=self.request.data['email']).values()
+        otp = self.request.data['otp']
+        sentinel = object()     # to check otp expiration
 
-        if serializer.is_valid(raise_exception=True):
-            email = serializer.data["email"]
-            otp = serializer.data["otp"]
-            user = User.objects.filter(email=email)
+        if not user_obj:
+            return Response({
+                    'status': status.HTTP_401_UNAUTHORIZED,
+                    'message': 'User not registered'
+                })
 
-            if not user.exists():
-                return Response(
-                    {
-                        "status": 400,
-                        "message": "invalid email",
-                        "data": serializer.errors,
-                    }
-                )
+        elif cache.get('user_obj') != otp and cache.get('user_obj') is not None:
+            return Response({
+                    'status': status.HTTP_401_UNAUTHORIZED,
+                    'message': 'Invalid OTP'
+                })
 
-            elif user[0].otp != otp:
-                return Response(
-                    {"status": 400, "message": "wrong OTP!", "data": serializer._errors}
-                )
+        elif cache.get('user_obj', sentinel) is sentinel:
+            return Response({
+                    'status': status.HTTP_401_UNAUTHORIZED,
+                    'message': 'OTP expired, verify again'
+                })
 
-            user = user.first()
-            # user.is_active = True
-            user.status = True
-            user.save()
-            send_verification_email(email)
-            refresh = RefreshToken.for_user(user)
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        user = User.objects.filter(email=email)
+        user = user.first()
+        user.status = True
+        user.save()
+        cache.delete_many(['user_obj', 'creation_time'])
 
-            return Response(
-                {
-                    "status": 200,
-                    "message": "Account verified!",
-                    "refresh": str(refresh),
-                    "access": str(refresh.access_token),
-                }
-            )
+        send_otp_via_email(email)
+        return Response({
+            'status': status.HTTP_201_CREATED,
+            'payload': serializer.data,
+            'message': 'created user'
+            })
+
