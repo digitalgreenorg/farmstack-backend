@@ -31,8 +31,7 @@ def send_otp_via_email(to_email):
     try:
         gen_key = generateKey()
         otp = gen_key.returnValue()["OTP"]
-        user_obj = User.objects.get(email=to_email)
-        cache.set_many({'user_obj': otp, 'creation_time': datetime.datetime.now()}, settings.OTP_DURATION)
+        cache.set_many({'user_otp': otp, 'creation_time': datetime.datetime.now(), 'otp_count': settings.OTP_MIN}, settings.OTP_DURATION)
         sg = sendgrid.SendGridAPIClient(settings.SENDGRID_API_KEY)
         from_email = Email(settings.EMAIL_HOST_USER)
         subject = f"Your account verification OTP"

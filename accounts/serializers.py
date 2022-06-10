@@ -9,15 +9,16 @@ class UserCreateSerializer(serializers.ModelSerializer):
     """UserCreateSerializer"""
     class Meta:
         model = User
-        fields = (
-            "email",
-            "first_name",
-            "last_name",
-            "phone_number",
-            "role",
-            "status",
-            "subscription"
-            )
+        # fields = (
+        #     "email",
+        #     "first_name",
+        #     "last_name",
+        #     "phone_number",
+        #     "role",
+        #     "status",
+        #     "subscription"
+        #     )
+        fields = '__all__'
 
 
 class UserUpdateSerializer(serializers.ModelSerializer):
@@ -26,7 +27,3 @@ class UserUpdateSerializer(serializers.ModelSerializer):
         model = User
         fields = '__all__'
 
-
-class VerifyAccountSerializer(serializers.Serializer):
-    email = serializers.EmailField()
-    otp = serializers.IntegerField()
