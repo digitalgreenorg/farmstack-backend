@@ -1,5 +1,4 @@
 from posixpath import basename
-from accounts.serializers import UserSerializer
 from django.urls import include, path
 from rest_framework.routers import DefaultRouter
 

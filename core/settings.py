@@ -38,7 +38,6 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    'rest_framework',
     # third-party apps
     "rest_framework",
     "rest_framework_simplejwt",
@@ -125,11 +124,14 @@ USE_TZ = True
 
 STATIC_URL = "static/"
 
-PROFILE_PICTURES_ROOT = os.path.join(STATIC_URL, "users")
-PROFILE_PICTURES_URL = "users/"
+MEDIA_ROOT = os.path.join(BASE_DIR, 'media') 
+MEDIA_URL = '/media/'
 
-ORGANIZATION_IMAGES_ROOT = os.path.join(STATIC_URL, "organizations")
-ORGANIZATION_IMAGES_URL = "organizations/"
+PROFILE_PICTURES_ROOT = os.path.join(MEDIA_URL, "users")
+PROFILE_PICTURES_URL = "users/profile_pictures/"
+
+ORGANIZATION_IMAGES_ROOT = os.path.join(MEDIA_URL, "organizations")
+ORGANIZATION_IMAGES_URL = "organizations/logos/"
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/4.0/ref/settings/#default-auto-field
@@ -143,12 +145,23 @@ REST_FRAMEWORK = {
         "rest_framework_simplejwt.authentication.JWTAuthentication",
     ),
     'DEFAULT_PERMISSION_CLASSES': [
-    ]
+    ],
+    'DEFAULT_THROTTLE_CLASSES': [
+        # 'rest_framework.throttling.AnonRateThrottle',
+        # 'rest_framework.throttling.ScopedRateThrottle'
+    ],
 }
 
 # Email configuration
 SENDGRID_API_KEY = os.environ.get('SENDGRID_API_KEY','send_grid_key')
 SENDGRID_API_KEY = os.environ.get('EMAIL_HOST_USER','email_host_user')
 
-# OTP DURATION IN SECONDS
+# User OTP config
 OTP_DURATION = 120
+OTP_MAX = 3
+OTP_MIN = 1
+
+# Fixtures
+FIXTURE_DIRS = [
+  'fixtures',
+]

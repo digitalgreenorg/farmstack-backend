@@ -1,5 +1,5 @@
 from accounts.models import User
-from accounts.serializers import UserSerializer
+from accounts.serializers import UserCreateSerializer
 from drf_braces.mixins import MultipleSerializersViewMixin
 from rest_framework import pagination, status
 from rest_framework.response import Response
@@ -20,7 +20,7 @@ class DefaultPagination(pagination.PageNumberPagination):
 class TeamMemberViewSet(GenericViewSet):
     """Viewset for Product model"""
 
-    serializer_class = UserSerializer
+    serializer_class = UserCreateSerializer
     queryset = User.objects.all()
     pagination_class = DefaultPagination
 
@@ -86,7 +86,7 @@ class ParticipantViewSet(GenericViewSet):
             org_id = org_queryset.id
         else:
             org_id = org_queryset[0].get("id")
-        serializer = UserSerializer(data=request.data)
+        serializer = UserCreateSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         user_saved = self.perform_create(serializer)
 
