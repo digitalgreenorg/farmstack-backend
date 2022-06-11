@@ -10,131 +10,114 @@ from accounts.serializers import UserCreateSerializer, UserUpdateSerializer
 from accounts.email import send_otp_via_email, send_verification_email
 from django.conf import settings
 from .email import send_otp_via_email
+import datetime
+from .utils import OTPManager
 
 
 class RegisterViewset(GenericViewSet):
-    """ RegisterViewset for users to register """
+    """RegisterViewset for users to register"""
+
     serializer_class = UserCreateSerializer
-    queryset = User.objects.all()
 
     def create(self, request, *args, **kwargs):
         """POST method: to save a newly registered user
-            creates a new user with status False
-            User uses OTP to verify account
+        creates a new user with status False
+        User uses OTP to verify account
         """
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         serializer.save()
-        email = request.data['email']
+        email = request.data["email"]
         send_otp_via_email(email)
-        return Response({
-            'status': status.HTTP_201_CREATED,
-            'payload': serializer.data,
-            'message': 'Please verify your account using OTP'
-            })
+        return Response(
+            {"message": "Please verify your account using OTP"},
+            status=status.HTTP_201_CREATED,
+        )
 
 
 class LoginViewset(GenericViewSet):
-    """ LoginViewset for users to register """
+    """LoginViewset for users to register"""
 
     def create(self, request, *args, **kwargs):
         """POST method: to save a newly registered user"""
-        email = request.data['email']
-        user_obj = User.objects.filter(email=self.request.data['email']).values()
-        send_otp_via_email(email)
+        email = request.data["email"]
+        user_obj = User.objects.filter(email=self.request.data["email"]).values()
 
         if not user_obj:
-            return Response({
-                    'status': status.HTTP_401_UNAUTHORIZED,
-                    'message': 'User not registered'
-                })
+            return Response(
+                {"message": "User not registered"}, status=status.HTTP_401_UNAUTHORIZED
+            )
 
-        elif user_obj[0]['status'] is False:
-            return Response({
-                    'status': status.HTTP_401_UNAUTHORIZED,
-                    'message': 'User not verified, please verify using OTP.'
-                })
+        elif user_obj[0]["status"] is False:
+            return Response(
+                {"message": "User not verified, please verify using OTP"},
+                status=status.HTTP_401_UNAUTHORIZED,
+            )
 
-        return Response({
-            'status': status.HTTP_201_CREATED,
-            'message': 'Enter the OTP to login'
-            })
+        send_otp_via_email(email)
+        return Response(
+            {"message": "Enter the OTP to login"}, status=status.HTTP_201_CREATED
+        )
 
 
-class VerifyOTPViewset(GenericViewSet):
-    """ User verification with OTP  """
+class VerifyLoginOTPViewset(GenericViewSet):
+    """User verification with OTP"""
 
     def create(self, request, *args, **kwargs):
         """POST method: to verify registered users"""
-        email = self.request.data['email']
-        user_obj = User.objects.filter(email=self.request.data['email']).values()
-        otp = self.request.data['otp']
-        sentinel = object()     # to check otp expiration
+        email = self.request.data["email"]
+        otp_entered = self.request.data["otp"]
+        user = User.objects.filter(email=email)
 
-        if not user_obj:
-            return Response({
-                    'status': status.HTTP_401_UNAUTHORIZED,
-                    'message': 'User not registered'
-                })
+        try:
+            # get current user otp object's data
+            otp_manager = OTPManager()
+            correct_otp = int(cache.get(email)["user_otp"])
+            otp_created = cache.get(email)["updation_time"]
+            otp_count = (
+                int(cache.get(email)["otp_count"]) + 1
+            )  # increment the otp counter
+            new_duration = settings.OTP_DURATION - (
+                datetime.datetime.now().second - otp_created.second
+            )  # reduce expiry duration of otp
 
-        elif cache.get('user_otp') != otp and cache.get('user_otp') is not None:
-            try:
-                if int(cache.get('otp_count')) <= int(settings.OTP_MAX):
-                    cache.set('otp_count',int(cache.get('otp_count')) + 1)
+            if correct_otp == int(otp_entered) and cache.get(email)["email"] == email:
+                cache.delete(email)
+                return Response(
+                    {"message": "Successfully logged in!"}, status=status.HTTP_200_OK
+                )
+
+            elif correct_otp != int(otp_entered) or cache.get(email)["email"] != email:
+                # check for otp limit
+                if cache.get(email)["otp_count"] <= int(settings.OTP_LIMIT):
+                    # update the user otp data
+                    otp_manager.create_user_otp(
+                        email, correct_otp, new_duration, otp_count
+                    )
+                    return Response(
+                        {"message": "Invalid OTP, please enter valid credentials"},
+                        status=status.HTTP_401_UNAUTHORIZED,
+                    )
                 else:
-                    user = User.objects.filter(email=email)
+                    # when reached otp limit set user status = False
                     user = user.first()
                     user.status = False
                     user.save()
 
-                    return Response({
-                            'status': status.HTTP_401_UNAUTHORIZED,
-                            'message': 'Please try after sometime'
-                        })
+                    return Response(
+                        {
+                            "message": "Maximum attempts taken, please retry after some time"
+                        },
+                        status=status.HTTP_401_UNAUTHORIZED,
+                    )
+            # check otp expiration
+            elif cache.get(email) is None:
+                return Response(
+                    {"message": "OTP expired Verify again!"},
+                    status=status.HTTP_401_UNAUTHORIZED,
+                )
 
-            except Exception as e:
-                print(e)
+        except Exception as e:
+            print(e)
 
-            return Response({
-                    'status': status.HTTP_401_UNAUTHORIZED,
-                    'message': 'Invalid OTP'
-                })
-
-        elif cache.get('user_otp', sentinel) is sentinel:
-            return Response({
-                    'status': status.HTTP_401_UNAUTHORIZED,
-                    'message': 'OTP expired, verify again'
-                })
-
-        # elif cache.get('user_otp') == otp and cache.get('user_otp') is not None:
-        #     return Response({
-        #             'status': status.HTTP_401_UNAUTHORIZED,
-        #             'message': 'User already validated!'
-        #         })
-
-        user = User.objects.filter(email=email)
-        user = user.first()
-        user.status = True
-        user.save()
-        cache.delete_many(['user_otp', 'creation_time'])
-
-        send_otp_via_email(email)
-        return Response({
-            'status': status.HTTP_201_CREATED,
-            'message': 'User Successfully verified!'
-            })
-
-
-class ResendOTP(GenericViewSet):
-    """ Resend OTP for users """
-
-    def create(self, request, *args, **kwargs):
-        """POST method: to resend the otp for account verification"""
-        email = request.data['email']
-
-        send_otp_via_email(email)
-        return Response({
-            'status': status.HTTP_201_CREATED,
-            'message': 'Please verify your account using OTP'
-            })
-
+        return Response({"message": "Not allowed"}, status=status.HTTP_403_FORBIDDEN)

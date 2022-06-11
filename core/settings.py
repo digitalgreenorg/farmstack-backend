@@ -31,13 +31,13 @@ ALLOWED_HOSTS = []
 # Application definition
 
 INSTALLED_APPS = [
-    'django_extensions',
-    'django.contrib.admin',
-    'django.contrib.auth',
-    'django.contrib.contenttypes',
-    'django.contrib.sessions',
-    'django.contrib.messages',
-    'django.contrib.staticfiles',
+    "django_extensions",
+    "django.contrib.admin",
+    "django.contrib.auth",
+    "django.contrib.contenttypes",
+    "django.contrib.sessions",
+    "django.contrib.messages",
+    "django.contrib.staticfiles",
     # third-party apps
     "rest_framework",
     "rest_framework_simplejwt",
@@ -124,8 +124,8 @@ USE_TZ = True
 
 STATIC_URL = "static/"
 
-MEDIA_ROOT = os.path.join(BASE_DIR, 'media') 
-MEDIA_URL = '/media/'
+MEDIA_ROOT = os.path.join(BASE_DIR, "media")
+MEDIA_URL = "/media/"
 
 PROFILE_PICTURES_ROOT = os.path.join(MEDIA_URL, "users")
 PROFILE_PICTURES_URL = "users/profile_pictures/"
@@ -144,24 +144,18 @@ REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": (
         "rest_framework_simplejwt.authentication.JWTAuthentication",
     ),
-    'DEFAULT_PERMISSION_CLASSES': [
-    ],
-    'DEFAULT_THROTTLE_CLASSES': [
-        # 'rest_framework.throttling.AnonRateThrottle',
-        # 'rest_framework.throttling.ScopedRateThrottle'
-    ],
+    "DEFAULT_PERMISSION_CLASSES": [],
 }
 
 # Email configuration
-SENDGRID_API_KEY = os.environ.get('SENDGRID_API_KEY','send_grid_key')
-SENDGRID_API_KEY = os.environ.get('EMAIL_HOST_USER','email_host_user')
+SENDGRID_API_KEY = os.environ.get("SENDGRID_API_KEY", "send_grid_key")
+SENDGRID_API_KEY = os.environ.get("EMAIL_HOST_USER", "email_host_user")
 
 # User OTP config
 OTP_DURATION = 120
-OTP_MAX = 3
-OTP_MIN = 1
+OTP_LIMIT = 3
 
 # Fixtures
 FIXTURE_DIRS = [
-  'fixtures',
+    "fixtures",
 ]

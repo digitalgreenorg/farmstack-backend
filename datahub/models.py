@@ -34,5 +34,6 @@ class Organization(TimeStampMixin):
 
 class UserOrganizationMap(TimeStampMixin):
     """UserOrganizationMap model for mapping User and Organization model"""
+
     user_id = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     organization_id = models.ForeignKey(Organization, on_delete=models.CASCADE)

@@ -1,8 +1,7 @@
 # utils module for accounts app
 from django.core.cache import cache
 from rest_framework.throttling import BaseThrottle, UserRateThrottle
-import pyotp
-import random
+import pyotp, random, datetime
 
 
 class generateKey:
@@ -16,21 +15,43 @@ class generateKey:
         return {"totp": secret, "OTP": OTP}
 
 
-class UserOTPThrottle(BaseThrottle):
-    """Throttling or rate limiting requests for user OTP"""
+class OTPManager:
+    """Manages user OTPs in django cache
 
-    def allow_request(self, request, view):
-        """Return `True` if the request should be allowed, `False` otherwise. """
-        return random.randint(1, 10) != 1
+    # Example: creating cache
+    cache.set_many({'a': 1, 'b': 2, 'c': 3})
+    cache.get_many(['a', 'b', 'c'])
 
-    def wait(self):
-        """
-        Optionally, return a recommended number of seconds to wait before
-        the next request.
-        """
-        cu_second = 600
-        return cu_second
+    # Check for expiry of cache
+    sentinel = object()
+    cache.get('my_key', sentinel) is sentinel
+    False
 
-class UserSecThrottle(UserOTPThrottle, UserRateThrottle):   # or AnonRateThrottle
-    scope = 'user_sec'
+    # Wait 30 seconds for 'my_key' to expire...
+    cache.get('my_key', sentinel) is sentinel
+    True
 
+    # Delete cache
+    cache.delete_many(['a', 'b', 'c'])
+
+    """
+
+    def create_user_otp(
+        self,
+        email,
+        otp,
+        otp_duration,
+        otp_count=1,
+        updation_time=datetime.datetime.now(),
+    ):
+        """Creates a user OTP for login or account verification"""
+        return cache.set(
+            email,
+            {
+                "email": email,
+                "user_otp": otp,
+                "otp_count": otp_count,
+                "updation_time": updation_time,
+            },
+            otp_duration,
+        )

@@ -3,10 +3,12 @@ from django.db.models import fields
 from rest_framework import serializers
 from accounts.models import User
 
-from accounts.models import User 
+from accounts.models import User
+
 
 class UserCreateSerializer(serializers.ModelSerializer):
     """UserCreateSerializer"""
+
     class Meta:
         model = User
         # fields = (
@@ -18,12 +20,12 @@ class UserCreateSerializer(serializers.ModelSerializer):
         #     "status",
         #     "subscription"
         #     )
-        fields = '__all__'
+        fields = "__all__"
 
 
 class UserUpdateSerializer(serializers.ModelSerializer):
     """UserUpdateSerializer"""
+
     class Meta:
         model = User
-        fields = '__all__'
-
+        fields = "__all__"

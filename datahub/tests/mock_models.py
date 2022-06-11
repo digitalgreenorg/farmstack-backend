@@ -7,12 +7,13 @@ from django.contrib.auth.models import (
 )
 from django.conf import settings
 
+
 class MockUserManager(BaseUserManager):
     use_in_migrations = True
 
     def _create_user(self, email, **extra_fields):
         """
-        Create and save a user with the given email, and password. 
+        Create and save a user with the given email, and password.
 
         Args:
             email (_type_): _description_
@@ -24,7 +25,6 @@ class MockUserManager(BaseUserManager):
         user = self.model(email=email, **extra_fields)
         user.save()
         return user
-
 
     def create_user(self, id, email, username, **extra_fields):
         if not email:
@@ -40,11 +40,10 @@ class MockUserManager(BaseUserManager):
         # extra_fields.setdefault('id', models.UUIDField(default=uuid.uuid4))
         # extra_fields.setdefault('is_active', True)
         # extra_fields.setdefault('is_staff', True)
-        extra_fields.setdefault('is_superuser', True)
+        extra_fields.setdefault("is_superuser", True)
         # extra_fields.setdefault('is_admin', True)
-        extra_fields.setdefault('status', True)
-        extra_fields.setdefault('role', 1)
-
+        extra_fields.setdefault("status", True)
+        extra_fields.setdefault("role", 1)
 
         # if extra_fields.get('is_staff') is not True:
         #     raise ValueError('Staff user must have is_staff=True')
@@ -57,19 +56,15 @@ class MockUserManager(BaseUserManager):
 
 class MockUserRole(models.Model):
     ROLES = (
-            ('datahub_admin', 'datahub_admin'),
-            ('datahub_team_member', 'datahub_team_member'),
-            ('datahub_guest_user', 'datahub_guest_user'),
-            ('datahub_participant_root', 'datahub_participant_root'),
-            ('datahub_participant_team', 'datahub_participant_team')
-            )
+        ("datahub_admin", "datahub_admin"),
+        ("datahub_team_member", "datahub_team_member"),
+        ("datahub_guest_user", "datahub_guest_user"),
+        ("datahub_participant_root", "datahub_participant_root"),
+        ("datahub_participant_team", "datahub_participant_team"),
+    )
 
-    id = models.UUIDField(
-            primary_key=True,
-            default=uuid.uuid4,
-            editable=False)
-    role_name = models.CharField(max_length=255, null=True, blank=True,
-            choices=ROLES)
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    role_name = models.CharField(max_length=255, null=True, blank=True, choices=ROLES)
 
     objects = MockUserManager()
 
@@ -87,12 +82,10 @@ class MockUserRole(models.Model):
 
     def __str__(self):
         return self.email
-        
+
+
 class MockUser(AbstractBaseUser, PermissionsMixin):
-    id = models.UUIDField(
-            primary_key=True,
-            default=uuid.uuid4,
-            editable=False)
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     email = models.EmailField(max_length=255, unique=True)
     # username = models.CharField(max_length=255, unique=True)
     first_name = models.CharField(max_length=255)
