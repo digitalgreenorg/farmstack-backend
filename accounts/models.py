@@ -59,8 +59,9 @@ class UserRole(models.Model):
     def get_full_name(self):
         return f"{self.first_name} - {self.last_name}"
 
+
 class User(AbstractBaseUser, TimeStampMixin):
-    """User model for of all the datahub users
+    """User model of all the datahub users
 
     status:
         active = 1

@@ -78,7 +78,9 @@ class ParticipantViewSet(GenericViewSet):
         """POST method: create action to save an object by sending a POST request"""
         # self.retrieve(request, request.data.get("email", ""))
         # filter email from the queryset
-        org_queryset = Organization.objects.filter(org_email=self.request.data['org_email']).values()
+        org_queryset = Organization.objects.filter(
+            org_email=self.request.data["org_email"]
+        ).values()
         if not org_queryset:
             serializer = self.get_serializer(data=request.data)
             serializer.is_valid(raise_exception=True)
@@ -90,7 +92,9 @@ class ParticipantViewSet(GenericViewSet):
         serializer.is_valid(raise_exception=True)
         user_saved = self.perform_create(serializer)
 
-        user_org_serializer = UserOrganizationMapSerializer(data={"user_id": user_saved.id, "organization_id": org_id})
+        user_org_serializer = UserOrganizationMapSerializer(
+            data={"user_id": user_saved.id, "organization_id": org_id}
+        )
         user_org_serializer.is_valid(raise_exception=True)
         self.perform_create(user_org_serializer)
         return Response(serializer.data, status=status.HTTP_201_CREATED)

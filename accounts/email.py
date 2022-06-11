@@ -5,39 +5,28 @@ from django.conf import settings
 from .models import User
 import sendgrid
 from sendgrid.helpers.mail import *
-from .utils import generateKey
+from .utils import generateKey, OTPManager
 from django.conf import settings
 
 
 def send_otp_via_email(to_email):
-    """send otp via email using django cache
-
-        # Example: creating cache
-        cache.set_many({'a': 1, 'b': 2, 'c': 3})
-        cache.get_many(['a', 'b', 'c'])
-
-        # Check for expiry of cache
-        sentinel = object()
-        cache.get('my_key', sentinel) is sentinel
-        False
-
-        # Wait 30 seconds for 'my_key' to expire...
-        cache.get('my_key', sentinel) is sentinel
-        True
-
-        # Delete cache
-        cache.delete_many(['a', 'b', 'c'])
-    """
+    """send otp via email using django cache"""
     try:
         gen_key = generateKey()
         otp = gen_key.returnValue()["OTP"]
-        cache.set_many({'user_otp': otp, 'creation_time': datetime.datetime.now(), 'otp_count': settings.OTP_MIN}, settings.OTP_DURATION)
+        user_email = User.objects.filter(email=to_email)[0].email
+
+        # store user otp
+        otp_manager = OTPManager()
+        otp_manager.create_user_otp(user_email, otp, settings.OTP_DURATION)
+        print(cache.get(user_email))
+
         sg = sendgrid.SendGridAPIClient(settings.SENDGRID_API_KEY)
         from_email = Email(settings.EMAIL_HOST_USER)
         subject = f"Your account verification OTP"
         content = Content("text/plain", f"Your OTP is {otp}")
         mail = Mail(from_email, to_email, subject, content)
-        sg.client.mail.send.post(request_body=mail.get())
+        # sg.client.mail.send.post(request_body=mail.get())
 
     except Exception as e:
         print(e)
@@ -51,7 +40,7 @@ def send_verification_email(to_email):
         subject = f"Your account verification success"
         content = Content("text/plain", f"Your account is successfully verified")
         mail = Mail(from_email, to_email, subject, content)
-        sg.client.mail.send.post(request_body=mail.get())
+        # sg.client.mail.send.post(request_body=mail.get())
 
     except Exception as e:
         print(e)
