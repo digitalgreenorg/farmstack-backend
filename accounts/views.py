@@ -1,3 +1,4 @@
+from django.contrib.auth import authenticate
 from django.core.cache import cache
 from django.shortcuts import render
 from rest_framework import status, serializers
@@ -68,6 +69,8 @@ class VerifyLoginOTPViewset(GenericViewSet):
         email = self.request.data["email"]
         otp_entered = self.request.data["otp"]
         user = User.objects.filter(email=email)
+        user = user.first()
+        refresh = RefreshToken.for_user(user)
 
         try:
             # get current user otp object's data
@@ -84,7 +87,10 @@ class VerifyLoginOTPViewset(GenericViewSet):
             if correct_otp == int(otp_entered) and cache.get(email)["email"] == email:
                 cache.delete(email)
                 return Response(
-                    {"message": "Successfully logged in!"}, status=status.HTTP_200_OK
+                    {"message": "Successfully logged in!",
+                        'refresh': str(refresh),
+                        'access': str(refresh.access_token),
+                    }, status=status.HTTP_200_OK
                 )
 
             elif correct_otp != int(otp_entered) or cache.get(email)["email"] != email:
@@ -100,7 +106,6 @@ class VerifyLoginOTPViewset(GenericViewSet):
                     )
                 else:
                     # when reached otp limit set user status = False
-                    user = user.first()
                     user.status = False
                     user.save()
 
