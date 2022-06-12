@@ -11,9 +11,10 @@ from accounts.serializers import UserCreateSerializer, UserUpdateSerializer
 from accounts.email import send_otp_via_email, send_verification_email
 from django.conf import settings
 from .email import send_otp_via_email
-import datetime
+import datetime, logging
 from .utils import OTPManager
 
+LOGGER = logging.getLogger(__name__)
 
 class RegisterViewset(GenericViewSet):
     """RegisterViewset for users to register"""
@@ -123,6 +124,6 @@ class VerifyLoginOTPViewset(GenericViewSet):
                 )
 
         except Exception as e:
-            print(e)
+            LOGGER.warning(e)
 
         return Response({"message": "Not allowed"}, status=status.HTTP_403_FORBIDDEN)

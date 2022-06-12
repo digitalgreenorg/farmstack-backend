@@ -1,5 +1,5 @@
 from django.core.cache import cache
-import datetime
+import datetime, logging
 from django.core.mail import send_mail
 from django.conf import settings
 from .models import User
@@ -7,6 +7,8 @@ import sendgrid
 from sendgrid.helpers.mail import *
 from .utils import generateKey, OTPManager
 from django.conf import settings
+
+LOGGER = logging.getLogger(__name__)
 
 SG = sendgrid.SendGridAPIClient(settings.SENDGRID_API_KEY)
 FROM_EMAIL = Email(settings.EMAIL_HOST_USER)
@@ -29,7 +31,7 @@ def send_otp_via_email(to_email):
         SG.client.mail.send.post(request_body=mail.get())
 
     except Exception as e:
-        print(e)
+        LOGGER.error(e)
 
 
 def send_verification_email(to_email):
@@ -41,7 +43,7 @@ def send_verification_email(to_email):
         SG.client.mail.send.post(request_body=mail.get())
 
     except Exception as e:
-        print(e)
+        LOGGER.error(e)
 
 
 def send_recovery_otp(email):
