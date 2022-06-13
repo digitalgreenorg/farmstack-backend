@@ -11,7 +11,8 @@ https://docs.djangoproject.com/en/4.0/ref/settings/
 """
 
 from pathlib import Path
-import os, environ
+import os
+import environ
 
 # Initialize environment variables
 env = environ.Env()
@@ -42,7 +43,6 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    'rest_framework',
     # third-party apps
     "rest_framework",
     "rest_framework_simplejwt",
@@ -149,5 +149,5 @@ REST_FRAMEWORK = {
 }
 
 # Email configuration
-SENDGRID_API_KEY = env("SENDGRID_API_KEY")
-EMAIL_HOST_USER = env("EMAIL_HOST_USER")
+SENDGRID_API_KEY = os.environ.get("SENDGRID_API_KEY", "")
+EMAIL_HOST_USER = os.environ.get("EMAIL_HOST_USER", "")

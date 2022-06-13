@@ -59,6 +59,16 @@ class UserRole(models.Model):
     def get_full_name(self):
         return f"{self.first_name} - {self.last_name}"
 
+
+def auto_str(cls):
+    def __str__(self):
+        return '%s(%s)' % (
+            type(self).__name__,
+            ', '.join('%s=%s' % item for item in vars(self).items())
+        )
+    cls.__str__ = __str__
+    return cls
+
 class User(AbstractBaseUser, TimeStampMixin):
     """User model for of all the datahub users
 

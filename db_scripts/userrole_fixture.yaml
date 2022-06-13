@@ -1,0 +1,20 @@
+- model: accounts.UserRole
+  pk: 1
+  fields:
+    role_name: datahub_admin
+- model: accounts.UserRole
+  pk: 2
+  fields:
+    role_name: datahub_team_member
+- model: accounts.UserRole
+  pk: 3
+  fields:
+    role_name: datahub_participant_root
+- model: accounts.UserRole
+  pk: 4
+  fields:
+    role_name: datahub_participant_team
+- model: accounts.UserRole
+  pk: 5
+  fields:
+    role_name: datahub_guest_user

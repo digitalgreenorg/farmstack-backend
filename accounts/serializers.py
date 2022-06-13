@@ -3,8 +3,6 @@ from django.db.models import fields
 from rest_framework import serializers
 from accounts.models import User
 
-from accounts.models import User 
-
 class UserCreateSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
@@ -18,6 +16,19 @@ class UserCreateSerializer(serializers.ModelSerializer):
             "subscription",
         )
 
+class UserSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = (
+            "id",
+            "email",
+            "first_name",
+            "last_name",
+            "phone_number",
+            "role",
+            "status",
+            "subscription",
+        )
 
 class VerifyAccountSerializer(serializers.Serializer):
     email = serializers.EmailField()
