@@ -133,5 +133,4 @@ class ParticipantViewSet(GenericViewSet):
         """DELETE method: delete an object"""
         product = self.get_object()
         result = product.delete()
-        print(result)
         return Response(status=status.HTTP_204_NO_CONTENT)
