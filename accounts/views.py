@@ -1,3 +1,4 @@
+from django.contrib.auth import authenticate
 from django.core.cache import cache
 from django.shortcuts import render
 from rest_framework import status, serializers
@@ -10,9 +11,10 @@ from accounts.serializers import UserCreateSerializer, UserUpdateSerializer
 from accounts.email import send_otp_via_email, send_verification_email
 from django.conf import settings
 from .email import send_otp_via_email
-import datetime
+import datetime, logging
 from .utils import OTPManager
 
+LOGGER = logging.getLogger(__name__)
 
 class RegisterViewset(GenericViewSet):
     """RegisterViewset for users to register"""
@@ -68,6 +70,8 @@ class VerifyLoginOTPViewset(GenericViewSet):
         email = self.request.data["email"]
         otp_entered = self.request.data["otp"]
         user = User.objects.filter(email=email)
+        user = user.first()
+        refresh = RefreshToken.for_user(user)
 
         try:
             # get current user otp object's data
@@ -84,7 +88,10 @@ class VerifyLoginOTPViewset(GenericViewSet):
             if correct_otp == int(otp_entered) and cache.get(email)["email"] == email:
                 cache.delete(email)
                 return Response(
-                    {"message": "Successfully logged in!"}, status=status.HTTP_200_OK
+                    {"message": "Successfully logged in!",
+                        'refresh': str(refresh),
+                        'access': str(refresh.access_token),
+                    }, status=status.HTTP_200_OK
                 )
 
             elif correct_otp != int(otp_entered) or cache.get(email)["email"] != email:
@@ -100,7 +107,6 @@ class VerifyLoginOTPViewset(GenericViewSet):
                     )
                 else:
                     # when reached otp limit set user status = False
-                    user = user.first()
                     user.status = False
                     user.save()
 
@@ -118,6 +124,6 @@ class VerifyLoginOTPViewset(GenericViewSet):
                 )
 
         except Exception as e:
-            print(e)
+            LOGGER.warning(e)
 
         return Response({"message": "Not allowed"}, status=status.HTTP_403_FORBIDDEN)
