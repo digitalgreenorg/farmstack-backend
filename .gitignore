@@ -103,7 +103,7 @@ celerybeat.pid
 *.sage.py
 
 # Environments
-.env
+*.env
 .venv
 env/
 venv/
@@ -129,5 +129,10 @@ dmypy.json
 # Pyre type checker
 .pyre/
 
-# SQLITE DB
+# poetry
+poetry.lock
+
+# sqlite3 db file
 db.sqlite3
+
+.idea
