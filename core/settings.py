@@ -41,6 +41,7 @@ INSTALLED_APPS = [
     # third-party apps
     "rest_framework",
     "rest_framework_simplejwt",
+    "debug_toolbar",
     "drf_yasg",
     "drf_spectacular",
     "drf_spectacular_sidecar",
@@ -50,6 +51,7 @@ INSTALLED_APPS = [
 ]
 
 MIDDLEWARE = [
+    "debug_toolbar.middleware.DebugToolbarMiddleware",
     "django.middleware.security.SecurityMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
@@ -57,6 +59,8 @@ MIDDLEWARE = [
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
+    "corsheaders.middleware.CorsMiddleware",
+
 ]
 
 ROOT_URLCONF = "core.urls"
@@ -213,3 +217,13 @@ LOGGING = {
         },
     },
 }
+
+# Enabl CORS headers
+CORS_ORIGIN_ALLOW_ALL = True
+# CORS_ORIGIN_WHITELIST = (
+#   'https://127.0.0.1:8000'
+# )
+
+INTERNAL_IPS = [
+    "127.0.0.1",
+]

@@ -36,6 +36,7 @@ urlpatterns = [
     re_path(r'^doc(?P<format>\.json|\.yaml)$', schema_view.without_ui(cache_timeout=0), name='schema-json'),
     re_path(r'^doc/$', schema_view.with_ui('swagger', cache_timeout=0), name='schema-swagger-ui'),
     re_path(r'^redoc/$', schema_view.with_ui('redoc', cache_timeout=0), name='schema-redoc'),
+    path('__debug__/', include('debug_toolbar.urls')),
     path("admin/", admin.site.urls),
     path("datahub/", include("datahub.urls")),
     path("accounts/", include("accounts.urls")),
