@@ -14,10 +14,6 @@ from pathlib import Path
 import os
 import environ
 
-# Initialize environment variables
-env = environ.Env()
-environ.Env.read_env()
-
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -46,12 +42,17 @@ INSTALLED_APPS = [
     # third-party apps
     "rest_framework",
     "rest_framework_simplejwt",
+    "debug_toolbar",
+    "drf_yasg",
+    "drf_spectacular",
+    "drf_spectacular_sidecar",
     # custom apps
     "accounts",
     "datahub",
 ]
 
 MIDDLEWARE = [
+    "debug_toolbar.middleware.DebugToolbarMiddleware",
     "django.middleware.security.SecurityMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
@@ -59,6 +60,8 @@ MIDDLEWARE = [
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
+    "corsheaders.middleware.CorsMiddleware",
+
 ]
 
 ROOT_URLCONF = "core.urls"
@@ -129,11 +132,14 @@ USE_TZ = True
 
 STATIC_URL = "static/"
 
-PROFILE_PICTURES_ROOT = os.path.join(STATIC_URL, "users")
-PROFILE_PICTURES_URL = "users/"
+MEDIA_ROOT = os.path.join(BASE_DIR, "media")
+MEDIA_URL = "/media/"
 
-ORGANIZATION_IMAGES_ROOT = os.path.join(STATIC_URL, "organizations")
-ORGANIZATION_IMAGES_URL = "organizations/"
+PROFILE_PICTURES_ROOT = os.path.join(MEDIA_URL, "users")
+PROFILE_PICTURES_URL = "users/profile_pictures/"
+
+ORGANIZATION_IMAGES_ROOT = os.path.join(MEDIA_URL, "organizations")
+ORGANIZATION_IMAGES_URL = "organizations/logos/"
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/4.0/ref/settings/#default-auto-field
@@ -145,9 +151,80 @@ AUTH_USER_MODEL = "accounts.User"
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": (
         "rest_framework_simplejwt.authentication.JWTAuthentication",
-    )
+    ),
+    "DEFAULT_PERMISSION_CLASSES": [],
+    "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
 }
 
 # Email configuration
-SENDGRID_API_KEY = os.environ.get("SENDGRID_API_KEY", "")
-EMAIL_HOST_USER = os.environ.get("EMAIL_HOST_USER", "")
+SENDGRID_API_KEY = os.environ.get("SENDGRID_API_KEY", "send_grid_key")
+SENDGRID_API_KEY = os.environ.get("EMAIL_HOST_USER", "email_host_user")
+
+# User OTP config
+OTP_DURATION = 120
+OTP_LIMIT = 3
+
+# Fixtures
+FIXTURE_DIRS = [
+    "fixtures",
+]
+
+# drf-spectacular - API documentation settings
+SPECTACULAR_SETTINGS = {
+    'TITLE': 'Datahub API',
+    'DESCRIPTION': 'API for datahub',
+    'VERSION': '1.0.0',
+    'SERVE_INCLUDE_SCHEMA': False,
+    'SWAGGER_UI_DIST': 'SIDECAR',  # shorthand to use the sidecar instead
+    'SWAGGER_UI_FAVICON_HREF': 'SIDECAR',
+    'REDOC_DIST': 'SIDECAR',
+    # OTHER SETTINGS
+}
+
+# LOGGING
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+ 
+    'filters':{
+        #information regarding filters
+    },
+ 
+    'formatters':{
+        'Simple_Format':{
+            'format': '{levelname} {message}',
+            'style': '{',
+        }
+    },
+ 
+    'handlers': {
+        'file': {
+            'level': 'DEBUG',
+            'class': 'logging.FileHandler',
+            'filename': './logs/log_file.log',
+            'formatter': 'Simple_Format'
+        },
+ 
+        'console': {
+            'level': 'DEBUG',
+            'class': 'logging.StreamHandler',
+        },
+    },
+ 
+    'loggers': {
+        'django': {
+            'handlers': ['file', 'console'],
+            'level': 'WARNING',
+        },
+    },
+}
+
+# Enabl CORS headers
+CORS_ORIGIN_ALLOW_ALL = True
+# CORS_ORIGIN_WHITELIST = (
+#   'https://127.0.0.1:8000'
+# )
+
+INTERNAL_IPS = [
+    "127.0.0.1",
+]

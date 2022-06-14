@@ -11,12 +11,21 @@ class OrganizationSerializer(serializers.ModelSerializer):
     Args:
         serializers (_type_): _description_
     """
+
     class Meta:
-        """_summary_
-        """
+        """_summary_"""
+
         model = Organization
-        fields = ["org_email", "name", "hero_image", "address", "logo", "phone_number", "website"]
-        
+        fields = [
+            "org_email",
+            "name",
+            "hero_image",
+            "address",
+            "logo",
+            "phone_number",
+            "website",
+        ]
+
 
 class OrganizationRetriveSerializer(serializers.ModelSerializer):
     """_summary_
@@ -37,9 +46,10 @@ class UserOrganizationMapSerializer(serializers.ModelSerializer):
     Args:
         serializers (_type_): _description_
     """
+
     class Meta:
-        """_summary_
-        """
+        """_summary_"""
+
         model = UserOrganizationMap
         fields = ["organization", "user"]
         

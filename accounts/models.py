@@ -25,7 +25,6 @@ class UserManager(BaseUserManager):
         extra_fields.setdefault("role_id", int(1))
         return self._create_user(email, **extra_fields)
 
-
 class UserRole(models.Model):
     """UserRole model for user roles of the datahub users
     User role mapping with id:
@@ -69,8 +68,9 @@ def auto_str(cls):
     cls.__str__ = __str__
     return cls
 
+@auto_str
 class User(AbstractBaseUser, TimeStampMixin):
-    """User model for of all the datahub users
+    """User model of all the datahub users
 
     status:
         active = 1
