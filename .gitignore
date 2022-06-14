@@ -1,5 +1,5 @@
 # Byte-compiled / optimized / DLL files
-__pycache__/
+*__pycache__/
 *.pyc
 *.py[cod]
 *$py.class
@@ -59,8 +59,9 @@ coverage.xml
 # Django stuff:
 *.log
 local_settings.py
-# db.sqlite3
-# db.sqlite3-journal
+db.sqlite3
+db.sqlite3-journal
+*migrations
 
 # Flask stuff:
 instance/
@@ -131,8 +132,11 @@ dmypy.json
 
 # poetry
 poetry.lock
+<<<<<<< HEAD
 
 # sqlite3 db file
 db.sqlite3
 
 .idea
+=======
+>>>>>>> dev
