@@ -10,4 +10,5 @@ router.register("resend_otp", views.LoginViewset, basename="resend_otp")
 
 urlpatterns = [
     path("", include(router.urls)),
+    path("policy_docs/", views.PolicyDocumentsView.as_view()),
 ]

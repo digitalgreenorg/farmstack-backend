@@ -32,6 +32,14 @@ class Organization(TimeStampMixin):
         return self.name
 
 
+class DatahubDocuments(models.Model):
+    """OrganizationDocuments model"""
+    governing_law = models.TextField()
+    warranty = models.TextField()
+    limitations_of_liabilities = models.TextField()
+    privacy_policy = models.TextField()
+    tos = models.TextField()
+
 class UserOrganizationMap(TimeStampMixin):
     """UserOrganizationMap model for mapping User and Organization model"""
 

@@ -1,12 +1,19 @@
 from accounts.models import User
 from accounts.serializers import UserCreateSerializer
+from django.conf import settings
 from drf_braces.mixins import MultipleSerializersViewMixin
 from rest_framework import pagination, status
+from rest_framework.parsers import MultiPartParser, FileUploadParser
 from rest_framework.response import Response
+from rest_framework.views import APIView
 from rest_framework.viewsets import GenericViewSet, ViewSet
 
 from datahub.models import Organization, UserOrganizationMap
-from datahub.serializers import OrganizationSerializer, UserOrganizationMapSerializer
+from datahub.serializers import OrganizationSerializer, UserOrganizationMapSerializer, PolicyDocumentSerializer
+
+import datetime, logging, os, shutil
+
+LOGGER = logging.getLogger(__name__)
 
 
 class DefaultPagination(pagination.PageNumberPagination):
@@ -129,3 +136,58 @@ class ParticipantViewSet(GenericViewSet):
         product = self.get_object()
         product.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+class DropDocumentView(APIView):
+    """View for uploading organization document files"""
+    parser_class = (MultiPartParser, FileUploadParser)
+
+    def post(self, request):
+        """Saves the document files in temp location before saving"""
+        try:
+            # get name, type, size & file obj from key of the form-data
+            file_name = list(request.FILES.keys())[0]
+            file_type = request.FILES.get(file_name).content_type.split('/')[1]     # file type
+            file_size = request.FILES[file_name].size
+            file = request.data[file_name]  # file obj
+            max_limit = settings.FILE_UPLOAD_MAX_SIZE * 1000000
+
+            if file_size > max_limit:
+                return Response({'message: please upload file with size lesser than 2MB'})
+            # check for file types (pdf, doc, docx)
+            elif file_type not in settings.FILE_TYPES_ALLOWED:
+                return Response({'message: Please upload only pdf or doc files'})
+            else:
+                with open(settings.TEMP_FILE_PATH + file_name + '.' + file_type, 'wb+') as file_upload_path:
+                    for chunk in file.chunks():
+                        file_upload_path.write(chunk)           # uploading
+
+                    return Response({'message: uploading....'}, status=status.HTTP_201_CREATED) 
+
+        except Exception as e:
+            LOGGER.error(e)
+
+        return Response({'message: encountered an error while uploading'}, status=status.HTTP_400_BAD_REQUEST)
+
+
+class DocumentSaveView(GenericViewSet):
+    """View for uploading all the datahub documents and content"""
+    serializer_class = PolicyDocumentSerializer
+
+    def create(self, request, *args, **kwargs):
+        """Saves the document content and files"""
+        try:
+            serializer = PolicyDocumentSerializer(data=request.data)
+            serializer.is_valid(raise_exception=True)
+            serializer.save()
+
+            for root, dirs, files in os.walk(settings.TEMP_FILE_PATH):
+                for file in files:
+                    # save the files in the destination directory
+                    shutil.copyfile(root+file, os.getcwd() + '/' + settings.CONTENT_URL + file)
+
+            return Response({'message: Document content saved!'}, status=status.HTTP_201_CREATED)
+
+        except Exception as e:
+            LOGGER.error(e)
+
+        return Response({'message: not allowed'}, status=status.HTTP_400_BAD_REQUEST)

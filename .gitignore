@@ -132,3 +132,8 @@ dmypy.json
 
 # poetry
 poetry.lock
+
+# media
+*media
+*logo
+*content

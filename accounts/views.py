@@ -4,21 +4,28 @@ from django.shortcuts import render
 from rest_framework import status, serializers
 from rest_framework.response import Response
 from rest_framework.views import APIView
-from rest_framework.viewsets import GenericViewSet
+from rest_framework.viewsets import GenericViewSet, ModelViewSet
 from rest_framework_simplejwt.tokens import RefreshToken
 from accounts.models import User
 from accounts.serializers import UserCreateSerializer, UserUpdateSerializer
 from accounts.email import send_otp_via_email, send_verification_email
 from django.conf import settings
 from .email import send_otp_via_email
-import datetime, logging
+import datetime, logging, os, shutil
 from .utils import OTPManager
+from rest_framework.parsers import MultiPartParser, FileUploadParser
+from PIL import Image
+from datahub.models import DatahubDocuments
+from django.core.files.storage import FileSystemStorage
+from django.core.files.base import ContentFile
+from django.core.files.uploadedfile import UploadedFile
 
 LOGGER = logging.getLogger(__name__)
 
 class RegisterViewset(GenericViewSet):
     """RegisterViewset for users to register"""
 
+    parser_classes = (MultiPartParser, FileUploadParser)
     serializer_class = UserCreateSerializer
 
     def create(self, request, *args, **kwargs):
@@ -39,9 +46,11 @@ class RegisterViewset(GenericViewSet):
 
 class LoginViewset(GenericViewSet):
     """LoginViewset for users to register"""
+    serializer_class = UserCreateSerializer
 
     def create(self, request, *args, **kwargs):
         """POST method: to save a newly registered user"""
+
         email = request.data["email"]
         user_obj = User.objects.filter(email=self.request.data["email"]).values()
 
@@ -127,3 +136,31 @@ class VerifyLoginOTPViewset(GenericViewSet):
             LOGGER.warning(e)
 
         return Response({"message": "Not allowed"}, status=status.HTTP_403_FORBIDDEN)
+
+
+class PolicyDocumentsView(APIView):
+    """ View for Policy document uploads """
+    # serializer_class = PolicyDocumentSerializer
+    parser_class = (MultiPartParser, FileUploadParser)
+
+    def post(self, request):
+        try:
+            files = dict((request.data).lists())['file']
+
+            for file in files:
+                with open(settings.CONTENT_URL + file.name, 'wb+') as file_upload_path:
+
+                    if not file_upload_path:
+                        for chunk in file.chunks():
+                            file_upload_path.write(chunk)
+                            print(str(file) + " uploaded!")
+                        return Response({'message: files successfully uploaded!'}, status=status.HTTP_201_CREATED)
+                    else:
+                        print(str(file) + " already present")
+            return Response({'message: files are already present!'}, status=status.HTTP_403_FORBIDDEN)
+        except Exception as e:
+            LOGGER.error(e)
+
+        return Response({'message: encountered an error while uploading'}, status=status.HTTP_400_BAD_REQUEST)
+
+

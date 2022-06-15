@@ -11,7 +11,7 @@ https://docs.djangoproject.com/en/4.0/ref/settings/
 """
 
 from pathlib import Path
-import os, environ
+import os
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -136,9 +136,14 @@ MEDIA_URL = "/media/"
 
 PROFILE_PICTURES_ROOT = os.path.join(MEDIA_URL, "users")
 PROFILE_PICTURES_URL = "users/profile_pictures/"
-
-ORGANIZATION_IMAGES_ROOT = os.path.join(MEDIA_URL, "organizations")
 ORGANIZATION_IMAGES_URL = "organizations/logos/"
+
+# ORGANIZATION_IMAGES_ROOT = os.path.join(MEDIA_URL, "organizations")
+# ORGANIZATION_IMAGES_URL = "organizations/logos/"
+CONTENT_URL = "content/"
+
+if not os.path.exists(CONTENT_URL):
+    os.makedirs(CONTENT_URL)           # create the content directory
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/4.0/ref/settings/#default-auto-field
@@ -218,7 +223,7 @@ LOGGING = {
     },
 }
 
-# Enabl CORS headers
+# Enable CORS headers
 CORS_ORIGIN_ALLOW_ALL = True
 # CORS_ORIGIN_WHITELIST = (
 #   'https://127.0.0.1:8000'
@@ -227,3 +232,12 @@ CORS_ORIGIN_ALLOW_ALL = True
 INTERNAL_IPS = [
     "127.0.0.1",
 ]
+
+# FILE HANDLING
+FILE_UPLOAD_MAX_SIZE = 2
+FILE_TYPES_ALLOWED = ['pdf', 'doc', 'docx']
+TEMP_FILE_PATH = '/tmp/datahub/'
+
+if not os.path.exists(TEMP_FILE_PATH):
+    os.makedirs(TEMP_FILE_PATH)           # create the temp directory
+
