@@ -27,8 +27,9 @@ SECRET_KEY = "django-insecure-3^tn^3x$=(dx(whzib2t_y^0()c*bv6i_!7ft*w4_-4n#7rs$v
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
-
+ALLOWED_HOSTS = ["*"]
+SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+CORS_ORIGIN_ALLOW_ALL = True
 
 # Application definition
 
@@ -45,6 +46,7 @@ INSTALLED_APPS = [
     "rest_framework_simplejwt",
     "debug_toolbar",
     "drf_yasg",
+    "corsheaders",
     "drf_spectacular",
     "drf_spectacular_sidecar",
     # custom apps
@@ -62,7 +64,6 @@ MIDDLEWARE = [
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
     "corsheaders.middleware.CorsMiddleware",
-
 ]
 
 ROOT_URLCONF = "core.urls"
@@ -156,9 +157,10 @@ REST_FRAMEWORK = {
 }
 
 # Email configuration
-SENDGRID_API_KEY = os.environ.get("SENDGRID_API_KEY", "send_grid_key")
-SENDGRID_API_KEY = os.environ.get("EMAIL_HOST_USER", "email_host_user")
-
+# SENDGRID_API_KEY = os.environ.get("SENDGRID_API_KEY", "send_grid_key")
+# SENDGRID_API_KEY = os.environ.get("EMAIL_HOST_USER", "email_host_user")
+SENDGRID_API_KEY = "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"
+EMAIL_HOST_USER = "farmstack.dg@gmail.com"
 # User OTP config
 OTP_DURATION = 120
 OTP_LIMIT = 3
@@ -170,50 +172,45 @@ FIXTURE_DIRS = [
 
 # drf-spectacular - API documentation settings
 SPECTACULAR_SETTINGS = {
-    'TITLE': 'Datahub API',
-    'DESCRIPTION': 'API for datahub',
-    'VERSION': '1.0.0',
-    'SERVE_INCLUDE_SCHEMA': False,
-    'SWAGGER_UI_DIST': 'SIDECAR',  # shorthand to use the sidecar instead
-    'SWAGGER_UI_FAVICON_HREF': 'SIDECAR',
-    'REDOC_DIST': 'SIDECAR',
+    "TITLE": "Datahub API",
+    "DESCRIPTION": "API for datahub",
+    "VERSION": "1.0.0",
+    "SERVE_INCLUDE_SCHEMA": False,
+    "SWAGGER_UI_DIST": "SIDECAR",  # shorthand to use the sidecar instead
+    "SWAGGER_UI_FAVICON_HREF": "SIDECAR",
+    "REDOC_DIST": "SIDECAR",
     # OTHER SETTINGS
 }
 
 # LOGGING
 LOGGING = {
-    'version': 1,
-    'disable_existing_loggers': False,
- 
-    'filters':{
-        #information regarding filters
+    "version": 1,
+    "disable_existing_loggers": False,
+    "filters": {
+        # information regarding filters
     },
- 
-    'formatters':{
-        'Simple_Format':{
-            'format': '{levelname} {message}',
-            'style': '{',
+    "formatters": {
+        "Simple_Format": {
+            "format": "{levelname} {message}",
+            "style": "{",
         }
     },
- 
-    'handlers': {
-        'file': {
-            'level': 'DEBUG',
-            'class': 'logging.FileHandler',
-            'filename': './logs/log_file.log',
-            'formatter': 'Simple_Format'
+    "handlers": {
+        "file": {
+            "level": "DEBUG",
+            "class": "logging.FileHandler",
+            "filename": "./logs/log_file.log",
+            "formatter": "Simple_Format",
         },
- 
-        'console': {
-            'level': 'DEBUG',
-            'class': 'logging.StreamHandler',
+        "console": {
+            "level": "DEBUG",
+            "class": "logging.StreamHandler",
         },
     },
- 
-    'loggers': {
-        'django': {
-            'handlers': ['file', 'console'],
-            'level': 'WARNING',
+    "loggers": {
+        "django": {
+            "handlers": ["file", "console"],
+            "level": "WARNING",
         },
     },
 }
@@ -224,6 +221,4 @@ CORS_ORIGIN_ALLOW_ALL = True
 #   'https://127.0.0.1:8000'
 # )
 
-INTERNAL_IPS = [
-    "127.0.0.1",
-]
+INTERNAL_IPS = ["127.0.0.1", "fe3a-106-51-85-143.ngrok.io"]

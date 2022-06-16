@@ -4,6 +4,9 @@
 *.py[cod]
 *$py.class
 
+*media
+*migrations
+
 # C extensions
 *.so
 
