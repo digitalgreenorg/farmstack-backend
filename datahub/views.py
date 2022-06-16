@@ -1,12 +1,15 @@
+import logging
+
 from accounts.models import User
 from accounts.serializers import UserCreateSerializer
-from drf_braces.mixins import MultipleSerializersViewMixin
 from rest_framework import pagination, status
 from rest_framework.response import Response
 from rest_framework.viewsets import GenericViewSet, ViewSet
 
 from datahub.models import Organization, UserOrganizationMap
 from datahub.serializers import OrganizationSerializer, UserOrganizationMapSerializer
+
+LOGGER = logging.getLogger(__name__)
 
 
 class DefaultPagination(pagination.PageNumberPagination):
@@ -45,8 +48,8 @@ class TeamMemberViewSet(GenericViewSet):
 
     def retrieve(self, request, pk):
         """GET method: retrieve an object or instance of the Product model"""
-        product = self.get_object()
-        serializer = self.get_serializer(product)
+        team_member = self.get_object()
+        serializer = self.get_serializer(team_member)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
     def update(self, request, *args, **kwargs):
@@ -59,8 +62,47 @@ class TeamMemberViewSet(GenericViewSet):
 
     def destroy(self, request, pk):
         """DELETE method: delete an object"""
-        product = self.get_object()
-        product.delete()
+        team_member = self.get_object()
+        team_member.delete()
+
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class OrganizationViewSet(GenericViewSet):
+    """
+    Organisation Viewset.
+    """
+
+    serializer_class = OrganizationSerializer
+    queryset = Organization.objects.all()
+    pagination_class = DefaultPagination
+
+    def create(self, request, *args, **kwargs):
+        """POST method: create action to save an object by sending a POST request"""
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        serializer.save()
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+    def retrieve(self, request, pk):
+        """GET method: retrieve an object or instance of the Product model"""
+        organization = self.get_object()
+        serializer = self.get_serializer(organization)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+    def update(self, request, *args, **kwargs):
+        """PUT method: update or send a PUT request on an object of the Product model"""
+        instance = self.get_object()
+        serializer = self.get_serializer(instance, data=request.data, partial=None)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+    def destroy(self, request, pk):
+        """DELETE method: delete an object"""
+        organization = self.get_object()
+        # organization.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
@@ -78,9 +120,7 @@ class ParticipantViewSet(GenericViewSet):
         """POST method: create action to save an object by sending a POST request"""
         # self.retrieve(request, request.data.get("email", ""))
         # filter email from the queryset
-        org_queryset = Organization.objects.filter(
-            org_email=self.request.data["org_email"]
-        ).values()
+        org_queryset = Organization.objects.filter(org_email=self.request.data["org_email"]).values()
         if not org_queryset:
             serializer = self.get_serializer(data=request.data)
             serializer.is_valid(raise_exception=True)
@@ -92,9 +132,7 @@ class ParticipantViewSet(GenericViewSet):
         serializer.is_valid(raise_exception=True)
         user_saved = self.perform_create(serializer)
 
-        user_org_serializer = UserOrganizationMapSerializer(
-            data={"user_id": user_saved.id, "organization_id": org_id}
-        )
+        user_org_serializer = UserOrganizationMapSerializer(data={"user_id": user_saved.id, "organization_id": org_id})
         user_org_serializer.is_valid(raise_exception=True)
         self.perform_create(user_org_serializer)
         return Response(serializer.data, status=status.HTTP_201_CREATED)

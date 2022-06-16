@@ -1,12 +1,14 @@
 from posixpath import basename
+
 from django.urls import include, path
 from rest_framework.routers import DefaultRouter
 
-from datahub import views
-from datahub.views import ParticipantViewSet
+# Local Modules.
+from .views import OrganizationViewSet, TeamMemberViewSet
 
 router = DefaultRouter()
-router.register(r"participant", ParticipantViewSet, basename="participant")
+router.register(r"team_member", TeamMemberViewSet, basename="team_member")
+router.register(r"organization", OrganizationViewSet, basename="organization")
 
 urlpatterns = [
     path("", include(router.urls)),

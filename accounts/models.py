@@ -1,9 +1,12 @@
 import uuid
 
+# from utils.validators import validate_file_size
 from datahub.base_models import TimeStampMixin
+from django.conf import settings
 from django.contrib.auth.models import AbstractBaseUser, BaseUserManager
 from django.db import models
-from django.conf import settings
+
+from utils.validators import validate_file_size
 
 
 class UserManager(BaseUserManager):
@@ -78,7 +81,7 @@ class User(AbstractBaseUser, TimeStampMixin):
     phone_number = models.CharField(max_length=50, null=True, blank=True)
     role = models.ForeignKey(UserRole, max_length=255, on_delete=models.PROTECT)
     profile_picture = models.FileField(
-        upload_to=settings.PROFILE_PICTURES_URL, null=True, blank=True
+        upload_to=settings.PROFILE_PICTURES_URL, null=True, blank=True, validators=[validate_file_size]
     )
     status = models.BooleanField(default=False)
     subscription = models.CharField(max_length=50, null=True, blank=True)
@@ -86,9 +89,12 @@ class User(AbstractBaseUser, TimeStampMixin):
     objects = UserManager()
 
     USERNAME_FIELD = "email"
-    REQUIRED_FIELDS = ["first_name", "last_name"]
+    # REQUIRED_FIELDS = ["first_name", "last_name"]
 
     def get_full_name(self):
+        """
+        Helper Functions
+        """
         return f"{self.first_name} - {self.last_name}"
 
     def __str__(self):

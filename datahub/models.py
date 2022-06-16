@@ -1,7 +1,9 @@
 import uuid
 
+# from utils.validators import validate_file_size
 from django.conf import settings
 from django.db import models
+from utils.validators import validate_file_size
 
 from datahub.base_models import TimeStampMixin
 
@@ -20,10 +22,10 @@ class Organization(TimeStampMixin):
     address = models.JSONField()
     phone_number = models.CharField(max_length=50, null=True, blank=True)
     logo = models.FileField(
-        upload_to=settings.ORGANIZATION_IMAGES_URL, null=True, blank=True
+        upload_to=settings.ORGANIZATION_IMAGES_URL, null=True, blank=True, validators=[validate_file_size]
     )
     hero_image = models.FileField(
-        upload_to=settings.ORGANIZATION_IMAGES_URL, null=True, blank=True
+        upload_to=settings.ORGANIZATION_IMAGES_URL, null=True, blank=True, validators=[validate_file_size]
     )
     website = models.CharField(max_length=255, null=True, blank=True)
     status = models.BooleanField(default=True)
