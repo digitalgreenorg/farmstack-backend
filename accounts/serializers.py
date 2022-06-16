@@ -31,6 +31,7 @@ class UserSerializer(serializers.ModelSerializer):
             "role",
             "status",
             "subscription",
+            "profile_picture"
         )
 
 class UserUpdateSerializer(serializers.ModelSerializer):

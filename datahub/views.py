@@ -1,7 +1,9 @@
 from calendar import c
 
+import django
 from accounts.models import User, UserRole
 from accounts.serializers import UserCreateSerializer
+from core.utils import Utils
 from django.contrib.admin.utils import get_model_from_relation
 from django.db.models import F
 from drf_braces.mixins import MultipleSerializersViewMixin
@@ -86,9 +88,9 @@ class ParticipantViewSet(GenericViewSet):
         """POST method: create action to save an object by sending a POST request"""
         # self.retrieve(request, request.data.get("email", ""))
         # filter email from the queryset
-        org_queryset = list(Organization.objects.filter(org_email=self.request.data.get('org_email', "")).values())
+        org_queryset = list(Organization.objects.filter(org_email=self.request.data.get("org_email", "")).values())
         if not org_queryset:
-            serializer = self.get_serializer(data=request.data)
+            serializer = OrganizationSerializer(data=request.data)
             serializer.is_valid(raise_exception=True)
             org_queryset = self.perform_create(serializer)
             org_id = org_queryset.id
@@ -105,7 +107,7 @@ class ParticipantViewSet(GenericViewSet):
 
     def list(self, request, *args, **kwargs):
         """GET method: query all the list of objects from the Product model"""
-        roles = UserOrganizationMap.objects.prefetch_related("user", "organization").all()
+        roles = UserOrganizationMap.objects.select_related("user", "organization").filter(user__status=False).all()
         page = self.paginate_queryset(roles)
         if page is not None:
             participant_serializer = ParticipantSerializer(page, many=True)
@@ -116,9 +118,17 @@ class ParticipantViewSet(GenericViewSet):
 
     def retrieve(self, request, pk):
         """GET method: retrieve an object or instance of the Product model"""
-        product = self.get_object()
-        serializer = self.get_serializer(product)
-        return Response(serializer.data, status=status.HTTP_200_OK)
+        try:
+            roles = UserOrganizationMap.objects.prefetch_related("user", "organization").filter(
+                user__status=False, user=pk
+            )
+        except django.core.exceptions.ValidationError as error:
+            return Response(error, status=400)
+
+        participant_serializer = ParticipantSerializer(roles, many=True)
+        if participant_serializer.data:
+            return Response(participant_serializer.data[0], status=status.HTTP_200_OK)
+        return Response([], status=status.HTTP_200_OK)
 
     def update(self, request, *args, **kwargs):
         """PUT method: update or send a PUT request on an object of the Product model"""
@@ -132,5 +142,28 @@ class ParticipantViewSet(GenericViewSet):
     def destroy(self, request, pk):
         """DELETE method: delete an object"""
         product = self.get_object()
-        result = product.delete()
+        product.status = True
+        product.save()
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class MailInvitationViewSet(GenericViewSet):
+    """_summary_
+
+    Args:
+        GenericViewSet (_type_): _description_
+    """
+
+    def create(self, request, *args, **kwargs):
+        """_summary_
+
+        Args:
+            request (_type_): _description_
+
+        Returns:
+            _type_: _description_
+        """
+        data = request.data
+        return Utils().send_email(
+            to_email=data.get("to_email", []), content=data.get("content"), subject="Participant Invitation"
+        )
