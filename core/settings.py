@@ -25,7 +25,7 @@ SECRET_KEY = "django-insecure-3^tn^3x$=(dx(whzib2t_y^0()c*bv6i_!7ft*w4_-4n#7rs$v
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ["*"]
 
 
 # Application definition
@@ -43,6 +43,7 @@ INSTALLED_APPS = [
     "rest_framework_simplejwt",
     "debug_toolbar",
     "drf_yasg",
+    "corsheaders",
     "drf_spectacular",
     "drf_spectacular_sidecar",
     # custom apps
@@ -129,10 +130,11 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/4.0/howto/static-files/
 
+STATIC_ROOT = os.path.join(BASE_DIR, "static/")
 STATIC_URL = "static/"
 
 MEDIA_ROOT = os.path.join(BASE_DIR, "media")
-MEDIA_URL = "/media/"
+MEDIA_URL = "media/"
 
 PROFILE_PICTURES_ROOT = os.path.join(MEDIA_URL, "users")
 PROFILE_PICTURES_URL = "users/profile_pictures/"
@@ -142,8 +144,8 @@ ORGANIZATION_IMAGES_URL = "organizations/logos/"
 # ORGANIZATION_IMAGES_URL = "organizations/logos/"
 CONTENT_URL = "content/"
 
-if not os.path.exists(CONTENT_URL):
-    os.makedirs(CONTENT_URL)           # create the content directory
+if not os.path.exists(STATIC_URL):
+    os.makedirs(STATIC_URL)           # create the content directory
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/4.0/ref/settings/#default-auto-field

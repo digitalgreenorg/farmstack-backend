@@ -7,6 +7,8 @@ from rest_framework.parsers import MultiPartParser, FileUploadParser
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework.viewsets import GenericViewSet, ViewSet
+from django.core.files.base import ContentFile
+from django.core.files.storage import FileSystemStorage
 
 from datahub.models import Organization, UserOrganizationMap
 from datahub.serializers import OrganizationSerializer, UserOrganizationMapSerializer, PolicyDocumentSerializer
@@ -183,7 +185,8 @@ class DocumentSaveView(GenericViewSet):
             for root, dirs, files in os.walk(settings.TEMP_FILE_PATH):
                 for file in files:
                     # save the files in the destination directory
-                    shutil.copyfile(root+file, os.getcwd() + '/' + settings.CONTENT_URL + file)
+                    shutil.copyfile(root+file, settings.STATIC_ROOT + file)
+                    os.remove(root+file)
 
             return Response({'message: Document content saved!'}, status=status.HTTP_201_CREATED)
 
