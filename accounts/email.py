@@ -1,5 +1,5 @@
 from django.core.cache import cache
-import datetime
+import datetime, logging
 from django.core.mail import send_mail
 from django.conf import settings
 from .models import User
@@ -8,6 +8,10 @@ from sendgrid.helpers.mail import *
 from .utils import generateKey, OTPManager
 from django.conf import settings
 
+LOGGER = logging.getLogger(__name__)
+
+SG = sendgrid.SendGridAPIClient(settings.SENDGRID_API_KEY)
+FROM_EMAIL = Email(settings.EMAIL_HOST_USER)
 
 def send_otp_via_email(to_email):
     """send otp via email using django cache"""
@@ -21,29 +25,25 @@ def send_otp_via_email(to_email):
         otp_manager.create_user_otp(user_email, otp, settings.OTP_DURATION)
         print(cache.get(user_email))
 
-        sg = sendgrid.SendGridAPIClient(settings.SENDGRID_API_KEY)
-        from_email = Email(settings.EMAIL_HOST_USER)
         subject = f"Your account verification OTP"
         content = Content("text/plain", f"Your OTP is {otp}")
-        mail = Mail(from_email, to_email, subject, content)
-        # sg.client.mail.send.post(request_body=mail.get())
+        mail = Mail(FROM_EMAIL, to_email, subject, content)
+        SG.client.mail.send.post(request_body=mail.get())
 
     except Exception as e:
-        print(e)
+        LOGGER.error(e)
 
 
 def send_verification_email(to_email):
     """send account verification acknowledgement"""
     try:
-        sg = sendgrid.SendGridAPIClient(settings.SENDGRID_API_KEY)
-        from_email = Email(settings.EMAIL_HOST_USER)
         subject = f"Your account verification success"
         content = Content("text/plain", f"Your account is successfully verified")
-        mail = Mail(from_email, to_email, subject, content)
-        # sg.client.mail.send.post(request_body=mail.get())
+        mail = Mail(FROM_EMAIL, to_email, subject, content)
+        SG.client.mail.send.post(request_body=mail.get())
 
     except Exception as e:
-        print(e)
+        LOGGER.error(e)
 
 
 def send_recovery_otp(email):
