@@ -5,6 +5,7 @@
 *$py.class
 
 *media
+*migrations
 
 # C extensions
 *.so
@@ -134,3 +135,11 @@ dmypy.json
 
 # poetry
 poetry.lock
+<<<<<<< HEAD
+
+# sqlite3 db file
+db.sqlite3
+
+.idea
+=======
+>>>>>>> dev
