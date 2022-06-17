@@ -1,7 +1,8 @@
 # utils module for accounts app
+import datetime
+
+import pyotp
 from django.core.cache import cache
-from rest_framework.throttling import BaseThrottle, UserRateThrottle
-import pyotp, random, datetime
 
 
 class generateKey:

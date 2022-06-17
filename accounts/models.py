@@ -1,9 +1,12 @@
 import uuid
 
+# from utils.validators import validate_file_size
 from datahub.base_models import TimeStampMixin
+from django.conf import settings
 from django.contrib.auth.models import AbstractBaseUser, BaseUserManager
 from django.db import models
-from django.conf import settings
+
+from utils.validators import validate_file_size
 
 
 class UserManager(BaseUserManager):
@@ -24,7 +27,6 @@ class UserManager(BaseUserManager):
         # extra_fields.setdefault('role', "f1b55b3e-c5c7-453d-87e6-0e388c9d1fc3")
         extra_fields.setdefault("role_id", int(1))
         return self._create_user(email, **extra_fields)
-
 
 class UserRole(models.Model):
     """UserRole model for user roles of the datahub users
@@ -60,6 +62,16 @@ class UserRole(models.Model):
         return f"{self.first_name} - {self.last_name}"
 
 
+def auto_str(cls):
+    def __str__(self):
+        return '%s(%s)' % (
+            type(self).__name__,
+            ', '.join('%s=%s' % item for item in vars(self).items())
+        )
+    cls.__str__ = __str__
+    return cls
+
+@auto_str
 class User(AbstractBaseUser, TimeStampMixin):
     """User model of all the datahub users
 
@@ -78,7 +90,7 @@ class User(AbstractBaseUser, TimeStampMixin):
     phone_number = models.CharField(max_length=50, null=True, blank=True)
     role = models.ForeignKey(UserRole, max_length=255, on_delete=models.PROTECT)
     profile_picture = models.FileField(
-        upload_to=settings.PROFILE_PICTURES_URL, null=True, blank=True
+        upload_to=settings.PROFILE_PICTURES_URL, null=True, blank=True, validators=[validate_file_size]
     )
     status = models.BooleanField(default=False)
     subscription = models.CharField(max_length=50, null=True, blank=True)
@@ -86,9 +98,12 @@ class User(AbstractBaseUser, TimeStampMixin):
     objects = UserManager()
 
     USERNAME_FIELD = "email"
-    REQUIRED_FIELDS = ["first_name", "last_name"]
+    # REQUIRED_FIELDS = ["first_name", "last_name"]
 
     def get_full_name(self):
+        """
+        Helper Functions
+        """
         return f"{self.first_name} - {self.last_name}"
 
     def __str__(self):
