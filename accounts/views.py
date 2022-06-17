@@ -1,6 +1,7 @@
 import datetime
 import logging
 
+from django.conf import settings
 from django.contrib.auth import authenticate
 from django.core.cache import cache
 from django.shortcuts import render
@@ -30,7 +31,12 @@ class RegisterViewset(GenericViewSet):
     """RegisterViewset for users to register"""
 
     parser_classes = (MultiPartParser, FileUploadParser)
-    serializer_class = UserCreateSerializer
+    queryset = User.objects.all()
+
+    def get_serializer_class(self):
+        if self.request.method == 'PUT':
+            return UserUpdateSerializer
+        return UserCreateSerializer
 
     def create(self, request, *args, **kwargs):
         """POST method: to save a newly registered user
@@ -42,22 +48,35 @@ class RegisterViewset(GenericViewSet):
         serializer.save()
         email = request.data["email"]
         send_otp_via_email(email)
-        return Response(
-            {"message": "Please verify your account using OTP"},
-            status=status.HTTP_201_CREATED,
-        )
+        return Response({"message": "Please verify your account using OTP", "response": serializer.data}, status=status.HTTP_201_CREATED)
+
+    def retrieve(self, request, pk):
+        """GET method: retrieve an object or instance of the Product model"""
+        product = self.get_object()
+        serializer = self.get_serializer(product)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+    def update(self, request, *args, **kwargs):
+        """PUT method: update or send a PUT request on an object of the Product model"""
+        instance = self.get_object()
+        serializer = self.get_serializer(instance, data=request.data, partial=None)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response({"message": "updated user details", "response": serializer.data}, status=status.HTTP_201_CREATED)
 
 
 class LoginViewset(GenericViewSet):
     """LoginViewset for users to register"""
 
     serializer_class = UserCreateSerializer
+    queryset = User.objects.all()
 
     def create(self, request, *args, **kwargs):
         """POST method: to save a newly registered user"""
 
         email = request.data["email"]
         user_obj = User.objects.filter(email=self.request.data["email"]).values()
+        user_id = user_obj[0]['id']
 
         if not user_obj:
             return Response(
@@ -71,9 +90,7 @@ class LoginViewset(GenericViewSet):
             )
 
         send_otp_via_email(email)
-        return Response(
-            {"message": "Enter the OTP to login"}, status=status.HTTP_201_CREATED
-        )
+        return Response({"message": "Enter the OTP to login", "id": user_id, "email": user_obj[0]["email"]}, status=status.HTTP_201_CREATED)
 
 
 class VerifyLoginOTPViewset(GenericViewSet):

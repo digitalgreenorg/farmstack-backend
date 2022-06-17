@@ -47,3 +47,4 @@ class UserUpdateSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         exclude = ("created_at", "updated_at")
+        fields = ("email", "first_name", "last_name", "phone_number")
