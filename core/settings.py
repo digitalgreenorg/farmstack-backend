@@ -220,7 +220,7 @@ LOGGING = {
     'loggers': {
         'django': {
             'handlers': ['file', 'console'],
-            'level': 'WARNING',
+            'level': 'INFO',
         },
     },
 }
@@ -238,7 +238,9 @@ INTERNAL_IPS = [
 # FILE HANDLING
 FILE_UPLOAD_MAX_SIZE = 2
 FILE_TYPES_ALLOWED = ['pdf', 'doc', 'docx']
+IMAGE_TYPES_ALLOWED = ['jpg', 'jpeg', 'png']
 TEMP_FILE_PATH = '/tmp/datahub/'
+CSS_FILE_NAME = 'override.css'
 
 if not os.path.exists(TEMP_FILE_PATH):
     os.makedirs(TEMP_FILE_PATH)           # create the temp directory

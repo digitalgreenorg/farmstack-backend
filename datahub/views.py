@@ -3,7 +3,7 @@ from accounts.serializers import UserCreateSerializer
 from django.conf import settings
 from drf_braces.mixins import MultipleSerializersViewMixin
 from rest_framework import pagination, status
-from rest_framework.parsers import MultiPartParser, FileUploadParser
+from rest_framework.parsers import MultiPartParser, FileUploadParser, JSONParser, FormParser
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework.viewsets import GenericViewSet, ViewSet
@@ -12,8 +12,7 @@ from django.core.files.storage import FileSystemStorage
 
 from datahub.models import Organization, UserOrganizationMap
 from datahub.serializers import OrganizationSerializer, UserOrganizationMapSerializer, PolicyDocumentSerializer
-
-import datetime, logging, os, shutil
+import logging, os, shutil
 
 LOGGER = logging.getLogger(__name__)
 
@@ -139,31 +138,36 @@ class ParticipantViewSet(GenericViewSet):
         product.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
 
-class DropDocumentView(APIView):
-    """View for uploading organization document files"""
-    parser_class = (MultiPartParser, FileUploadParser)
 
-    def post(self, request):
+class DropDocumentView(GenericViewSet):
+    """View for uploading organization document files"""
+    parser_class = (MultiPartParser)
+
+    def create(self, request, *args, **kwargs):
         """Saves the document files in temp location before saving"""
         try:
-            # get name, type, size & file obj from key of the form-data
-            file_name = list(request.FILES.keys())[0]
-            file_type = request.FILES.get(file_name).content_type.split('/')[1]     # file type
-            file_size = request.FILES[file_name].size
-            file = request.data[file_name]  # file obj
-            max_limit = settings.FILE_UPLOAD_MAX_SIZE * 1000000
+            # get file, file name & type from the form-data
+            file_key = list(request.data.keys())[0]
+            file_uploaded = request.data[file_key]
+            file_type = file_uploaded.content_type.split('/')[1]
 
-            if file_size > max_limit:
+            if file_uploaded.size > settings.FILE_UPLOAD_MAX_SIZE * 1000000:
                 return Response({'message: please upload file with size lesser than 2MB'})
             # check for file types (pdf, doc, docx)
             elif file_type not in settings.FILE_TYPES_ALLOWED:
                 return Response({'message: Please upload only pdf or doc files'})
             else:
-                with open(settings.TEMP_FILE_PATH + file_name + '.' + file_type, 'wb+') as file_upload_path:
-                    for chunk in file.chunks():
-                        file_upload_path.write(chunk)           # uploading
+                fs = FileSystemStorage(settings.TEMP_FILE_PATH, directory_permissions_mode=0o755, file_permissions_mode=0o755)
+                file_name = str(file_key) + '.' + file_type
 
+                # replace if the files exist
+                if fs.exists(file_name):
+                    fs.delete(file_name)
+                    fs.save(file_name, file_uploaded)
                     return Response({'message: uploading....'}, status=status.HTTP_201_CREATED) 
+
+                fs.save(file_name, file_uploaded)
+                return Response({'message: uploading....'}, status=status.HTTP_201_CREATED) 
 
         except Exception as e:
             LOGGER.error(e)
@@ -194,3 +198,40 @@ class DocumentSaveView(GenericViewSet):
             LOGGER.error(e)
 
         return Response({'message: not allowed'}, status=status.HTTP_400_BAD_REQUEST)
+
+
+class DatahubThemeView(GenericViewSet):
+    """View for modifying datahub branding"""
+    parser_class = (MultiPartParser)
+
+    def create(self, request, *args, **kwargs):
+        """generates the override css for datahub"""
+        try:
+            hero_image = request.data['hero_image']
+            button_color = request.data['button_color']
+            file_type = hero_image.content_type.split('/')[1]
+
+            if hero_image.size > settings.FILE_UPLOAD_MAX_SIZE * 1000000:
+                return Response({'message: please upload file with size lesser than 2MB'})
+            # check for image file types (jpg, jpeg, png)
+            elif file_type not in settings.IMAGE_TYPES_ALLOWED:
+                return Response({'message: Please upload only jpg or jpeg or png files'})
+            else:
+                fs = FileSystemStorage(settings.STATIC_ROOT)
+                css = ".btn { background-color: " + button_color + "; }"
+
+                # override if the files exist
+                if fs.exists(str(hero_image)) and fs.exists(settings.CSS_FILE_NAME):
+                    fs.delete(str(hero_image))
+                    fs.delete(settings.CSS_FILE_NAME)
+                    fs.save(settings.CSS_FILE_NAME, ContentFile(css))
+                    fs.save(str(hero_image), hero_image)
+
+                    return Response('Successfully created the brand identity', status=status.HTTP_201_CREATED)
+                else:
+                    fs.save(str(hero_image), hero_image)
+                    fs.save(settings.CSS_FILE_NAME, ContentFile(css))
+                    return Response('Successfully created the brand identity', status=status.HTTP_201_CREATED)
+
+        except Exception as e:
+            LOGGER.error(e)
