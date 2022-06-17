@@ -50,6 +50,7 @@ class RegisterViewset(GenericViewSet):
 
 class LoginViewset(GenericViewSet):
     """LoginViewset for users to register"""
+
     serializer_class = UserCreateSerializer
 
     def create(self, request, *args, **kwargs):
@@ -59,7 +60,9 @@ class LoginViewset(GenericViewSet):
         user_obj = User.objects.filter(email=self.request.data["email"]).values()
 
         if not user_obj:
-            return Response({"message": "User not registered"}, status=status.HTTP_401_UNAUTHORIZED)
+            return Response(
+                {"message": "User not registered"}, status=status.HTTP_401_UNAUTHORIZED
+            )
 
         elif user_obj[0]["status"] is False:
             return Response(
@@ -68,7 +71,9 @@ class LoginViewset(GenericViewSet):
             )
 
         send_otp_via_email(email)
-        return Response({"message": "Enter the OTP to login"}, status=status.HTTP_201_CREATED)
+        return Response(
+            {"message": "Enter the OTP to login"}, status=status.HTTP_201_CREATED
+        )
 
 
 class VerifyLoginOTPViewset(GenericViewSet):
@@ -87,7 +92,9 @@ class VerifyLoginOTPViewset(GenericViewSet):
             otp_manager = OTPManager()
             correct_otp = int(cache.get(email)["user_otp"])
             otp_created = cache.get(email)["updation_time"]
-            otp_count = int(cache.get(email)["otp_count"]) + 1  # increment the otp counter
+            otp_count = (
+                int(cache.get(email)["otp_count"]) + 1
+            )  # increment the otp counter
             new_duration = settings.OTP_DURATION - (
                 datetime.datetime.now().second - otp_created.second
             )  # reduce expiry duration of otp
@@ -107,7 +114,9 @@ class VerifyLoginOTPViewset(GenericViewSet):
                 # check for otp limit
                 if cache.get(email)["otp_count"] <= int(settings.OTP_LIMIT):
                     # update the user otp data
-                    otp_manager.create_user_otp(email, correct_otp, new_duration, otp_count)
+                    otp_manager.create_user_otp(
+                        email, correct_otp, new_duration, otp_count
+                    )
                     return Response(
                         {"message": "Invalid OTP, please enter valid credentials"},
                         status=status.HTTP_401_UNAUTHORIZED,
@@ -118,7 +127,9 @@ class VerifyLoginOTPViewset(GenericViewSet):
                     user.save()
 
                     return Response(
-                        {"message": "Maximum attempts taken, please retry after some time"},
+                        {
+                            "message": "Maximum attempts taken, please retry after some time"
+                        },
                         status=status.HTTP_401_UNAUTHORIZED,
                     )
             # check otp expiration
@@ -135,28 +146,36 @@ class VerifyLoginOTPViewset(GenericViewSet):
 
 
 class PolicyDocumentsView(APIView):
-    """ View for Policy document uploads """
+    """View for Policy document uploads"""
+
     # serializer_class = PolicyDocumentSerializer
     parser_class = (MultiPartParser, FileUploadParser)
 
     def post(self, request):
         try:
-            files = dict((request.data).lists())['file']
+            files = dict((request.data).lists())["file"]
 
             for file in files:
-                with open(settings.CONTENT_URL + file.name, 'wb+') as file_upload_path:
+                with open(settings.CONTENT_URL + file.name, "wb+") as file_upload_path:
 
                     if not file_upload_path:
                         for chunk in file.chunks():
                             file_upload_path.write(chunk)
                             print(str(file) + " uploaded!")
-                        return Response({'message: files successfully uploaded!'}, status=status.HTTP_201_CREATED)
+                        return Response(
+                            {"message: files successfully uploaded!"},
+                            status=status.HTTP_201_CREATED,
+                        )
                     else:
                         print(str(file) + " already present")
-            return Response({'message: files are already present!'}, status=status.HTTP_403_FORBIDDEN)
+            return Response(
+                {"message: files are already present!"},
+                status=status.HTTP_403_FORBIDDEN,
+            )
         except Exception as e:
             LOGGER.error(e)
 
-        return Response({'message: encountered an error while uploading'}, status=status.HTTP_400_BAD_REQUEST)
-
-
+        return Response(
+            {"message: encountered an error while uploading"},
+            status=status.HTTP_400_BAD_REQUEST,
+        )

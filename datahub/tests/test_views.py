@@ -50,7 +50,9 @@ invalid_role_data = {
     "name": "digitalgreen",
     "phone_number": "9985750356",
     "website": "website.com",
-    "address": json.dumps({"address": "Banglore", "country": "India", "pincode": "501011"}),
+    "address": json.dumps(
+        {"address": "Banglore", "country": "India", "pincode": "501011"}
+    ),
     "profile_picture": open("datahub/tests/test_data/pro.png", "rb"),
     "subscription": "aaaa",
 }
@@ -61,7 +63,9 @@ class MockUtils:
         if to_email == []:
             return Response({"message": "Invalid email address"}, 400)
         else:
-            return Response({"Message": "Invation sent to the participants"}, status=200)
+            return Response(
+                {"Message": "Invation sent to the participants"}, status=200
+            )
 
 
 class TestViews(TestCase):
@@ -112,7 +116,9 @@ class TestViews(TestCase):
         """_summary_"""
         response = self.client.post(self.participant_url, invalid_role_data)
         assert response.status_code == 400
-        assert response.json().get("role") == ['Invalid pk "3" - object does not exist.']
+        assert response.json().get("role") == [
+            'Invalid pk "3" - object does not exist.'
+        ]
         invalid_role_data["email"] = ""
         response = self.client.post(self.participant_url, invalid_role_data)
         assert response.status_code == 400
@@ -129,12 +135,16 @@ class TestViews(TestCase):
         assert data.get("count") == 1
         assert len(data.get("results")) == 1
         assert data.get("results")[0].get("user").get("phone_number") == "9985750356"
-        assert data.get("results")[0].get("organization").get("website") == "website.com"
+        assert (
+            data.get("results")[0].get("organization").get("website") == "website.com"
+        )
 
     def test_participant_update_user_details(self):
         id = User.objects.get(first_name="ugesh").id
         response = self.client.put(
-            self.participant_url + str(id) + "/", data=json.dumps(update_data), content_type="application/json"
+            self.participant_url + str(id) + "/",
+            data=json.dumps(update_data),
+            content_type="application/json",
         )
         data = response.json()
         assert response.status_code == 201
@@ -148,7 +158,9 @@ class TestViews(TestCase):
         assert data.get("count") == 1
         assert len(data.get("results")) == 1
         assert data.get("results")[0].get("user").get("first_name") == "ugesh"
-        assert data.get("results")[0].get("organization").get("website") == "website.com"
+        assert (
+            data.get("results")[0].get("organization").get("website") == "website.com"
+        )
 
     def test_participant_delete(self):
         id = User.objects.get(first_name="ugesh").id
@@ -161,7 +173,10 @@ class TestViews(TestCase):
         assert len(data.get("results")) == 0
 
     def test_send_invite(self):
-        data = {"to_email": ["ugesh@gmail.com"], "content": "Sample email for participant invitdation"}
+        data = {
+            "to_email": ["ugesh@gmail.com"],
+            "content": "Sample email for participant invitdation",
+        }
         self.monkeypatch.setattr("core.utils.Utils", MockUtils)
         response = self.client.post(self.send_invite, data)
         assert response.json() == {"Message": "Invation sent to the participants"}

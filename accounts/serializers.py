@@ -5,9 +5,11 @@ from rest_framework import serializers
 from accounts.models import User
 from rest_framework.parsers import MultiPartParser
 
+
 class UserCreateSerializer(serializers.ModelSerializer):
     """UserCreateSerializer"""
-    parser_classes = (MultiPartParser)
+
+    parser_classes = MultiPartParser
 
     class Meta:
         model = User
@@ -22,6 +24,7 @@ class UserCreateSerializer(serializers.ModelSerializer):
         #     )
         fields = "__all__"
 
+
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
@@ -34,8 +37,9 @@ class UserSerializer(serializers.ModelSerializer):
             "role",
             "status",
             "subscription",
-            "profile_picture"
+            "profile_picture",
         )
+
 
 class UserUpdateSerializer(serializers.ModelSerializer):
     """UserUpdateSerializer"""

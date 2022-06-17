@@ -1,6 +1,7 @@
 import uuid
 
 from accounts.models import User
+
 # from utils.validators import validate_file_size
 from django.conf import settings
 from django.db import models
@@ -11,10 +12,11 @@ from datahub.base_models import TimeStampMixin
 
 def auto_str(cls):
     def __str__(self):
-        return '%s'%(', '.join('%s=%s' % item for item in vars(self).items())
-        )
+        return "%s" % (", ".join("%s=%s" % item for item in vars(self).items()))
+
     cls.__str__ = __str__
     return cls
+
 
 @auto_str
 class Organization(TimeStampMixin):
@@ -31,10 +33,16 @@ class Organization(TimeStampMixin):
     address = models.JSONField()
     phone_number = models.CharField(max_length=50, null=True, blank=True)
     logo = models.FileField(
-        upload_to=settings.ORGANIZATION_IMAGES_URL, null=True, blank=True, validators=[validate_file_size]
+        upload_to=settings.ORGANIZATION_IMAGES_URL,
+        null=True,
+        blank=True,
+        validators=[validate_file_size],
     )
     hero_image = models.FileField(
-        upload_to=settings.ORGANIZATION_IMAGES_URL, null=True, blank=True, validators=[validate_file_size]
+        upload_to=settings.ORGANIZATION_IMAGES_URL,
+        null=True,
+        blank=True,
+        validators=[validate_file_size],
     )
     website = models.CharField(max_length=255, null=True, blank=True)
     status = models.BooleanField(default=True)
@@ -45,13 +53,16 @@ class Organization(TimeStampMixin):
 
 class DatahubDocuments(models.Model):
     """OrganizationDocuments model"""
+
     governing_law = models.TextField()
     warranty = models.TextField()
     limitations_of_liabilities = models.TextField()
     privacy_policy = models.TextField()
     tos = models.TextField()
 
+
 class UserOrganizationMap(TimeStampMixin):
     """UserOrganizationMap model for mapping User and Organization model"""
+
     user = models.ForeignKey(User, on_delete=models.CASCADE)
     organization = models.ForeignKey(Organization, on_delete=models.CASCADE)

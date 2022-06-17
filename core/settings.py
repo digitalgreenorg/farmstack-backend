@@ -61,7 +61,6 @@ MIDDLEWARE = [
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
     "corsheaders.middleware.CorsMiddleware",
-
 ]
 
 ROOT_URLCONF = "core.urls"
@@ -145,7 +144,7 @@ ORGANIZATION_IMAGES_URL = "organizations/logos/"
 CONTENT_URL = "content/"
 
 if not os.path.exists(STATIC_URL):
-    os.makedirs(STATIC_URL)           # create the content directory
+    os.makedirs(STATIC_URL)  # create the content directory
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/4.0/ref/settings/#default-auto-field
@@ -177,50 +176,45 @@ FIXTURE_DIRS = [
 
 # drf-spectacular - API documentation settings
 SPECTACULAR_SETTINGS = {
-    'TITLE': 'Datahub API',
-    'DESCRIPTION': 'API for datahub',
-    'VERSION': '1.0.0',
-    'SERVE_INCLUDE_SCHEMA': False,
-    'SWAGGER_UI_DIST': 'SIDECAR',  # shorthand to use the sidecar instead
-    'SWAGGER_UI_FAVICON_HREF': 'SIDECAR',
-    'REDOC_DIST': 'SIDECAR',
+    "TITLE": "Datahub API",
+    "DESCRIPTION": "API for datahub",
+    "VERSION": "1.0.0",
+    "SERVE_INCLUDE_SCHEMA": False,
+    "SWAGGER_UI_DIST": "SIDECAR",  # shorthand to use the sidecar instead
+    "SWAGGER_UI_FAVICON_HREF": "SIDECAR",
+    "REDOC_DIST": "SIDECAR",
     # OTHER SETTINGS
 }
 
 # LOGGING
 LOGGING = {
-    'version': 1,
-    'disable_existing_loggers': False,
- 
-    'filters':{
-        #information regarding filters
+    "version": 1,
+    "disable_existing_loggers": False,
+    "filters": {
+        # information regarding filters
     },
- 
-    'formatters':{
-        'Simple_Format':{
-            'format': '{levelname} {message}',
-            'style': '{',
+    "formatters": {
+        "Simple_Format": {
+            "format": "{levelname} {message}",
+            "style": "{",
         }
     },
- 
-    'handlers': {
-        'file': {
-            'level': 'DEBUG',
-            'class': 'logging.FileHandler',
-            'filename': './logs/log_file.log',
-            'formatter': 'Simple_Format'
+    "handlers": {
+        "file": {
+            "level": "DEBUG",
+            "class": "logging.FileHandler",
+            "filename": "./logs/log_file.log",
+            "formatter": "Simple_Format",
         },
- 
-        'console': {
-            'level': 'DEBUG',
-            'class': 'logging.StreamHandler',
+        "console": {
+            "level": "DEBUG",
+            "class": "logging.StreamHandler",
         },
     },
- 
-    'loggers': {
-        'django': {
-            'handlers': ['file', 'console'],
-            'level': 'INFO',
+    "loggers": {
+        "django": {
+            "handlers": ["file", "console"],
+            "level": "INFO",
         },
     },
 }
@@ -237,11 +231,10 @@ INTERNAL_IPS = [
 
 # FILE HANDLING
 FILE_UPLOAD_MAX_SIZE = 2
-FILE_TYPES_ALLOWED = ['pdf', 'doc', 'docx']
-IMAGE_TYPES_ALLOWED = ['jpg', 'jpeg', 'png']
-TEMP_FILE_PATH = '/tmp/datahub/'
-CSS_FILE_NAME = 'override.css'
+FILE_TYPES_ALLOWED = ["pdf", "doc", "docx"]
+IMAGE_TYPES_ALLOWED = ["jpg", "jpeg", "png"]
+TEMP_FILE_PATH = "/tmp/datahub/"
+CSS_FILE_NAME = "override.css"
 
 if not os.path.exists(TEMP_FILE_PATH):
-    os.makedirs(TEMP_FILE_PATH)           # create the temp directory
-
+    os.makedirs(TEMP_FILE_PATH)  # create the temp directory
