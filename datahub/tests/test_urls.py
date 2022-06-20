@@ -16,9 +16,9 @@ class TestUrls(SimpleTestCase):
         self.assertNotEqual(resolve(url).func, "ParticipantViewSet")
 
     # TeamMember Management.
-    def test_team_member_url_valid(self):
-        """
-        Checks if the url is mapped to TeamMemberViewset.
-        """
-        url = reverse("team-member-list")
-        print(url)
+    # def test_team_member_url_valid(self):
+    #     """
+    #     Checks if the url is mapped to TeamMemberViewset.
+    #     """
+    #     url = reverse("team-member-list")
+    #     print(url)

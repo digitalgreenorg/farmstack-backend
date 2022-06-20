@@ -10,8 +10,12 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/4.0/ref/settings/
 """
 
-from pathlib import Path
+import collections
 import os
+from pathlib import Path
+
+collections.Callable = collections.abc.Callable
+
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -27,6 +31,15 @@ DEBUG = True
 
 ALLOWED_HOSTS = ["*"]
 
+# Test cases configuration
+# Use nose to run all tests
+TEST_RUNNER = "django_nose.NoseTestSuiteRunner"
+
+# Tell nose to measure coverage on the 'foo' and 'bar' apps
+NOSE_ARGS = [
+    "--cover-html",
+    "--cover-package=datahub,accounts,core",
+]
 # Application definition
 
 INSTALLED_APPS = [
@@ -45,6 +58,7 @@ INSTALLED_APPS = [
     "corsheaders",
     "drf_spectacular",
     "drf_spectacular_sidecar",
+    "django_nose",
     # custom apps
     "accounts",
     "datahub",
@@ -153,9 +167,7 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 AUTH_USER_MODEL = "accounts.User"
 
 REST_FRAMEWORK = {
-    "DEFAULT_AUTHENTICATION_CLASSES": (
-        "rest_framework_simplejwt.authentication.JWTAuthentication",
-    ),
+    "DEFAULT_AUTHENTICATION_CLASSES": ("rest_framework_simplejwt.authentication.JWTAuthentication",),
     "DEFAULT_PERMISSION_CLASSES": [],
     "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
 }

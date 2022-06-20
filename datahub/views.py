@@ -1,38 +1,39 @@
+import json
+import logging
+import os
+import shutil
 from calendar import c
 
 import django
 from accounts.models import User, UserRole
 from accounts.serializers import UserCreateSerializer
+from core.constants import Constants
 from core.utils import Utils
-from django.contrib.admin.utils import get_model_from_relation
-from django.db.models import F
-from drf_braces.mixins import MultipleSerializersViewMixin
-import logging
-
-from accounts.models import User
-from accounts.serializers import UserCreateSerializer
 from django.conf import settings
+from django.contrib.admin.utils import get_model_from_relation
+from django.core.files.base import ContentFile
+from django.core.files.storage import FileSystemStorage
+from django.db.models import DEFERRED, F
+from drf_braces.mixins import MultipleSerializersViewMixin
 from rest_framework import pagination, status
 from rest_framework.parsers import (
-    MultiPartParser,
     FileUploadParser,
-    JSONParser,
     FormParser,
+    JSONParser,
+    MultiPartParser,
 )
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework.viewsets import GenericViewSet, ViewSet
-from django.core.files.base import ContentFile
-from django.core.files.storage import FileSystemStorage
+from uritemplate import partial
 
 from datahub.models import Organization, UserOrganizationMap
 from datahub.serializers import (
     OrganizationSerializer,
     ParticipantSerializer,
-    UserOrganizationMapSerializer,
     PolicyDocumentSerializer,
+    UserOrganizationMapSerializer,
 )
-import logging, os, shutil
 
 LOGGER = logging.getLogger(__name__)
 
@@ -132,23 +133,30 @@ class OrganizationViewSet(GenericViewSet):
 
 
 class ParticipantViewSet(GenericViewSet):
-    """Viewset for Product model"""
+    """
+    This class handles the participant CRUD operations.
+    """
 
+    parser_class = JSONParser
     serializer_class = UserCreateSerializer
     queryset = User.objects.all()
     pagination_class = DefaultPagination
 
     def perform_create(self, serializer):
+        """
+        This function performs the create operation of requested serializer.
+        Args:
+            serializer (_type_): serializer class object.
+
+        Returns:
+            _type_: Returns the saved details.
+        """
         return serializer.save()
 
     def create(self, request, *args, **kwargs):
         """POST method: create action to save an object by sending a POST request"""
-        # self.retrieve(request, request.data.get("email", ""))
-        # filter email from the queryset
         org_queryset = list(
-            Organization.objects.filter(
-                org_email=self.request.data.get("org_email", "")
-            ).values()
+            Organization.objects.filter(org_email=self.request.data.get(Constants.ORG_EMAIL, "")).values()
         )
         if not org_queryset:
             serializer = OrganizationSerializer(data=request.data)
@@ -156,13 +164,13 @@ class ParticipantViewSet(GenericViewSet):
             org_queryset = self.perform_create(serializer)
             org_id = org_queryset.id
         else:
-            org_id = org_queryset[0].get("id")
+            org_id = org_queryset[0].get(Constants.ID)
         serializer = UserCreateSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         user_saved = self.perform_create(serializer)
 
         user_org_serializer = UserOrganizationMapSerializer(
-            data={"user": user_saved.id, "organization": org_id}
+            data={Constants.USER: user_saved.id, Constants.ORGANIZATION: org_id}
         )
         user_org_serializer.is_valid(raise_exception=True)
         self.perform_create(user_org_serializer)
@@ -171,27 +179,21 @@ class ParticipantViewSet(GenericViewSet):
     def list(self, request, *args, **kwargs):
         """GET method: query all the list of objects from the Product model"""
         roles = (
-            UserOrganizationMap.objects.select_related("user", "organization")
-            .filter(user__status=False)
+            UserOrganizationMap.objects.select_related(Constants.USER, Constants.ORGANIZATION)
+            .filter(user__status=False, user__role=3)
             .all()
         )
         page = self.paginate_queryset(roles)
-        if page is not None:
-            participant_serializer = ParticipantSerializer(page, many=True)
-            return self.get_paginated_response(participant_serializer.data)
-
-        participant_serializer = ParticipantSerializer(roles, many=True)
-        return Response(participant_serializer.data, status=status.HTTP_200_OK)
+        participant_serializer = ParticipantSerializer(page, many=True)
+        return self.get_paginated_response(participant_serializer.data)
 
     def retrieve(self, request, pk):
         """GET method: retrieve an object or instance of the Product model"""
-        try:
-            roles = UserOrganizationMap.objects.prefetch_related(
-                "user", "organization"
-            ).filter(user__status=False, user=pk)
-        except django.core.exceptions.ValidationError as error:
-            return Response(error, status=400)
-
+        roles = (
+            UserOrganizationMap.objects.prefetch_related(Constants.USER, Constants.ORGANIZATION)
+            .filter(user__status=False, user__role=3, user=pk)
+            .all()
+        )
         participant_serializer = ParticipantSerializer(roles, many=True)
         if participant_serializer.data:
             return Response(participant_serializer.data[0], status=status.HTTP_200_OK)
@@ -199,42 +201,45 @@ class ParticipantViewSet(GenericViewSet):
 
     def update(self, request, *args, **kwargs):
         """PUT method: update or send a PUT request on an object of the Product model"""
-
         instance = self.get_object()
         serializer = self.get_serializer(instance, data=request.data, partial=None)
         serializer.is_valid(raise_exception=True)
-        serializer.save()
-        return Response(serializer.data, status=status.HTTP_201_CREATED)
+        self.perform_create(serializer)
+        organization = OrganizationSerializer(
+            Organization.objects.get(id=request.data.get(Constants.ID)), data=request.data, partial=None
+        )
+        organization.is_valid(raise_exception=True)
+        self.perform_create(organization)
+        data = {Constants.USER: serializer.data, Constants.ORGANIZATION: organization.data}
+        return Response(data, status=status.HTTP_201_CREATED)
 
     def destroy(self, request, pk):
         """DELETE method: delete an object"""
         product = self.get_object()
         product.status = True
-        product.save()
+        self.perform_create(product)
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
 class MailInvitationViewSet(GenericViewSet):
-    """_summary_
-
-    Args:
-        GenericViewSet (_type_): _description_
+    """
+    This class handles the mail invitation API views.
     """
 
     def create(self, request, *args, **kwargs):
-        """_summary_
-
+        """
+        This will send the mail to the requested user with content.
         Args:
-            request (_type_): _description_
+            request (_type_): Api request object.
 
         Returns:
-            _type_: _description_
+            _type_: Retuns the sucess response with message and status code.
         """
         data = request.data
         return Utils().send_email(
-            to_email=data.get("to_email", []),
-            content=data.get("content"),
-            subject="Participant Invitation",
+            to_email=data.get(Constants.TO_EMAIL, []),
+            content=data.get(Constants.CONTENT),
+            subject=Constants.PARTICIPANT_INVITATION,
         )
 
 
@@ -252,9 +257,7 @@ class DropDocumentView(GenericViewSet):
             file_type = file_uploaded.content_type.split("/")[1]
 
             if file_uploaded.size > settings.FILE_UPLOAD_MAX_SIZE * 1000000:
-                return Response(
-                    {"message: please upload file with size lesser than 2MB"}
-                )
+                return Response({"message: please upload file with size lesser than 2MB"})
             # check for file types (pdf, doc, docx)
             elif file_type not in settings.FILE_TYPES_ALLOWED:
                 return Response({"message: Please upload only pdf or doc files"})
@@ -270,14 +273,10 @@ class DropDocumentView(GenericViewSet):
                 if fs.exists(file_name):
                     fs.delete(file_name)
                     fs.save(file_name, file_uploaded)
-                    return Response(
-                        {"message: uploading...."}, status=status.HTTP_201_CREATED
-                    )
+                    return Response({"message: uploading...."}, status=status.HTTP_201_CREATED)
 
                 fs.save(file_name, file_uploaded)
-                return Response(
-                    {"message: uploading...."}, status=status.HTTP_201_CREATED
-                )
+                return Response({"message: uploading...."}, status=status.HTTP_201_CREATED)
 
         except Exception as e:
             LOGGER.error(e)
@@ -306,9 +305,7 @@ class DocumentSaveView(GenericViewSet):
                     shutil.copyfile(root + file, settings.STATIC_ROOT + file)
                     os.remove(root + file)
 
-            return Response(
-                {"message: Document content saved!"}, status=status.HTTP_201_CREATED
-            )
+            return Response({"message: Document content saved!"}, status=status.HTTP_201_CREATED)
 
         except Exception as e:
             LOGGER.error(e)
@@ -329,14 +326,10 @@ class DatahubThemeView(GenericViewSet):
             file_type = hero_image.content_type.split("/")[1]
 
             if hero_image.size > settings.FILE_UPLOAD_MAX_SIZE * 1000000:
-                return Response(
-                    {"message: please upload file with size lesser than 2MB"}
-                )
+                return Response({"message: please upload file with size lesser than 2MB"})
             # check for image file types (jpg, jpeg, png)
             elif file_type not in settings.IMAGE_TYPES_ALLOWED:
-                return Response(
-                    {"message: Please upload only jpg or jpeg or png files"}
-                )
+                return Response({"message: Please upload only jpg or jpeg or png files"})
             else:
                 fs = FileSystemStorage(settings.STATIC_ROOT)
                 css = ".btn { background-color: " + button_color + "; }"
