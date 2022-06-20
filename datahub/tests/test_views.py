@@ -90,13 +90,15 @@ class TestViews(TestCase):
             profile_picture="sasas",
             subscription="aaaa",
         )
-        Organization.objects.create(
+        org = Organization.objects.create(
             org_email="bglordg@digitalgreen.org",
             name="digitalgreen",
             phone_number="9985750356",
             website="website.com",
             address=json.dumps({"city": "Banglore"}),
         )
+        # Test model str class
+        print(Organization(org).__str__())
         UserOrganizationMap.objects.create(
             user=User.objects.get(first_name="ugesh"),
             organization=Organization.objects.get(org_email="bglordg@digitalgreen.org"),
@@ -201,7 +203,7 @@ class TestViews(TestCase):
 
     def test_send_invite(self):
         data = {"to_email": ["ugesh@gmail.com"], "content": "Sample email for participant invitdation"}
-        self.monkeypatch.setattr("core.utils.Utils", MockUtils)
+        self.monkeypatch.setattr("datahub.views.Utils", MockUtils)
         response = self.client.post(self.send_invite, data, secure=True)
         assert response.json() == {"Message": "Invation sent to the participants"}
         assert response.status_code == 200
