@@ -16,15 +16,7 @@ class OrganizationSerializer(serializers.ModelSerializer):
         """_summary_"""
 
         model = Organization
-        fields = [
-            "org_email",
-            "name",
-            "hero_image",
-            "address",
-            "logo",
-            "phone_number",
-            "website",
-        ]
+        fields = "__all__"
 
 
 class OrganizationRetriveSerializer(serializers.ModelSerializer):
@@ -33,11 +25,12 @@ class OrganizationRetriveSerializer(serializers.ModelSerializer):
     Args:
         serializers (_type_): _description_
     """
+
     class Meta:
-        """_summary_
-        """
+        """_summary_"""
+
         model = Organization
-        fields = ["id","org_email", "name", "hero_image", "address", "logo", "phone_number", "website"]
+        fields = ["id", "org_email", "name", "hero_image", "address", "logo", "phone_number", "website"]
 
 
 class UserOrganizationMapSerializer(serializers.ModelSerializer):
@@ -52,20 +45,19 @@ class UserOrganizationMapSerializer(serializers.ModelSerializer):
 
         model = UserOrganizationMap
         fields = ["organization", "user"]
-        
 
 
 class ParticipantSerializer(serializers.ModelSerializer):
     user_id = serializers.PrimaryKeyRelatedField(
         queryset=models.User.objects.all(),
         required=True,
-        source='user',
+        source="user",
     )
     organization_id = serializers.PrimaryKeyRelatedField(
         queryset=Organization.objects.all(),
         allow_null=True,
         required=False,
-        source='organization',
+        source="organization",
     )
 
     user = UserSerializer(
@@ -77,6 +69,7 @@ class ParticipantSerializer(serializers.ModelSerializer):
         allow_null=True,
         read_only=True,
     )
+
     class Meta:
         model = UserOrganizationMap
         exclude = ["created_at", "updated_at"]

@@ -1,23 +1,28 @@
+import json
+import logging
 from calendar import c
 
 import django
 from accounts.models import User, UserRole
 from accounts.serializers import UserCreateSerializer
+from core.constants import Constants
 from core.utils import Utils
 from django.contrib.admin.utils import get_model_from_relation
-from django.db.models import F
+from django.db.models import DEFERRED, F
 from drf_braces.mixins import MultipleSerializersViewMixin
-import logging
-
-from accounts.models import User
-from accounts.serializers import UserCreateSerializer
 from rest_framework import pagination, status
+from rest_framework.parsers import JSONParser
 from rest_framework.response import Response
 from rest_framework.viewsets import GenericViewSet, ViewSet
+from uritemplate import partial
 
 from datahub.models import Organization, UserOrganizationMap
-from datahub.serializers import OrganizationSerializer, ParticipantSerializer, UserOrganizationMapSerializer
-
+from datahub.serializers import (
+    OrganizationRetriveSerializer,
+    OrganizationSerializer,
+    ParticipantSerializer,
+    UserOrganizationMapSerializer,
+)
 
 LOGGER = logging.getLogger(__name__)
 
@@ -117,56 +122,67 @@ class OrganizationViewSet(GenericViewSet):
 
 
 class ParticipantViewSet(GenericViewSet):
-    """Viewset for Product model"""
+    """
+    This class handles the participant CRUD operations.
+    """
 
+    parser_class = JSONParser
     serializer_class = UserCreateSerializer
     queryset = User.objects.all()
     pagination_class = DefaultPagination
 
     def perform_create(self, serializer):
+        """
+        This function performs the create operation of requested serializer.
+        Args:
+            serializer (_type_): serializer class object.
+
+        Returns:
+            _type_: Returns the saved details.
+        """
         return serializer.save()
 
     def create(self, request, *args, **kwargs):
         """POST method: create action to save an object by sending a POST request"""
-        # self.retrieve(request, request.data.get("email", ""))
-        # filter email from the queryset
-        org_queryset = list(Organization.objects.filter(org_email=self.request.data.get("org_email", "")).values())
+        org_queryset = list(
+            Organization.objects.filter(org_email=self.request.data.get(Constants.ORG_EMAIL, "")).values()
+        )
         if not org_queryset:
             serializer = OrganizationSerializer(data=request.data)
             serializer.is_valid(raise_exception=True)
             org_queryset = self.perform_create(serializer)
             org_id = org_queryset.id
         else:
-            org_id = org_queryset[0].get("id")
+            org_id = org_queryset[0].get(Constants.ID)
         serializer = UserCreateSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         user_saved = self.perform_create(serializer)
 
-        user_org_serializer = UserOrganizationMapSerializer(data={"user": user_saved.id, "organization": org_id})
+        user_org_serializer = UserOrganizationMapSerializer(
+            data={Constants.USER: user_saved.id, Constants.ORGANIZATION: org_id}
+        )
         user_org_serializer.is_valid(raise_exception=True)
         self.perform_create(user_org_serializer)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
     def list(self, request, *args, **kwargs):
         """GET method: query all the list of objects from the Product model"""
-        roles = UserOrganizationMap.objects.select_related("user", "organization").filter(user__status=False).all()
+        roles = (
+            UserOrganizationMap.objects.select_related(Constants.USER, Constants.ORGANIZATION)
+            .filter(user__status=False, user__role=3)
+            .all()
+        )
         page = self.paginate_queryset(roles)
-        if page is not None:
-            participant_serializer = ParticipantSerializer(page, many=True)
-            return self.get_paginated_response(participant_serializer.data)
-
-        participant_serializer = ParticipantSerializer(roles, many=True)
-        return Response(participant_serializer.data, status=status.HTTP_200_OK)
+        participant_serializer = ParticipantSerializer(page, many=True)
+        return self.get_paginated_response(participant_serializer.data)
 
     def retrieve(self, request, pk):
         """GET method: retrieve an object or instance of the Product model"""
-        try:
-            roles = UserOrganizationMap.objects.prefetch_related("user", "organization").filter(
-                user__status=False, user=pk
-            )
-        except django.core.exceptions.ValidationError as error:
-            return Response(error, status=400)
-
+        roles = (
+            UserOrganizationMap.objects.prefetch_related(Constants.USER, Constants.ORGANIZATION)
+            .filter(user__status=False, user__role=3, user=pk)
+            .all()
+        )
         participant_serializer = ParticipantSerializer(roles, many=True)
         if participant_serializer.data:
             return Response(participant_serializer.data[0], status=status.HTTP_200_OK)
@@ -174,38 +190,43 @@ class ParticipantViewSet(GenericViewSet):
 
     def update(self, request, *args, **kwargs):
         """PUT method: update or send a PUT request on an object of the Product model"""
-
         instance = self.get_object()
         serializer = self.get_serializer(instance, data=request.data, partial=None)
         serializer.is_valid(raise_exception=True)
-        serializer.save()
-        return Response(serializer.data, status=status.HTTP_201_CREATED)
+        self.perform_create(serializer)
+        organization = OrganizationSerializer(
+            Organization.objects.get(id=request.data.get(Constants.ID)), data=request.data, partial=None
+        )
+        organization.is_valid(raise_exception=True)
+        self.perform_create(organization)
+        data = {Constants.USER: serializer.data, Constants.ORGANIZATION: organization.data}
+        return Response(data, status=status.HTTP_201_CREATED)
 
     def destroy(self, request, pk):
         """DELETE method: delete an object"""
         product = self.get_object()
         product.status = True
-        product.save()
+        self.perform_create(product)
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
 class MailInvitationViewSet(GenericViewSet):
-    """_summary_
-
-    Args:
-        GenericViewSet (_type_): _description_
+    """
+    This class handles the mail invitation API views.
     """
 
     def create(self, request, *args, **kwargs):
-        """_summary_
-
+        """
+        This will send the mail to the requested user with content.
         Args:
-            request (_type_): _description_
+            request (_type_): Api request object.
 
         Returns:
-            _type_: _description_
+            _type_: Retuns the sucess response with message and status code.
         """
         data = request.data
         return Utils().send_email(
-            to_email=data.get("to_email", []), content=data.get("content"), subject="Participant Invitation"
+            to_email=data.get(Constants.TO_EMAIL, []),
+            content=data.get(Constants.CONTENT),
+            subject=Constants.PARTICIPANT_INVITATION,
         )

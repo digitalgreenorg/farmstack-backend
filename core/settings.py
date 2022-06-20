@@ -10,9 +10,11 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/4.0/ref/settings/
 """
 
+import collections
 import os
 from pathlib import Path
 
+collections.Callable = collections.abc.Callable
 # import environ
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -31,6 +33,15 @@ ALLOWED_HOSTS = ["*"]
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 CORS_ORIGIN_ALLOW_ALL = True
 
+# Test cases configuration
+# Use nose to run all tests
+TEST_RUNNER = "django_nose.NoseTestSuiteRunner"
+
+# Tell nose to measure coverage on the 'foo' and 'bar' apps
+NOSE_ARGS = [
+    "--cover-html",
+    "--cover-package=datahub,accounts,core",
+]
 # Application definition
 
 INSTALLED_APPS = [
@@ -49,6 +60,7 @@ INSTALLED_APPS = [
     "corsheaders",
     "drf_spectacular",
     "drf_spectacular_sidecar",
+    "django_nose",
     # custom apps
     "accounts",
     "datahub",
@@ -139,6 +151,7 @@ MEDIA_URL = "/media/"
 
 PROFILE_PICTURES_ROOT = os.path.join(MEDIA_URL, "users")
 PROFILE_PICTURES_URL = "users/profile_pictures/"
+SECURE_SSL_REDIRECT = True
 
 ORGANIZATION_IMAGES_ROOT = os.path.join(MEDIA_URL, "organizations")
 ORGANIZATION_IMAGES_URL = "organizations/logos/"
