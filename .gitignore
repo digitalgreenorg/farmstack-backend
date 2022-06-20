@@ -135,11 +135,14 @@ dmypy.json
 
 # poetry
 poetry.lock
-<<<<<<< HEAD
+
+# media
+*static
+*media
+*logo
+*content
 
 # sqlite3 db file
 db.sqlite3
 
 .idea
-=======
->>>>>>> dev

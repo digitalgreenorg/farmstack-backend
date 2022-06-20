@@ -2,7 +2,7 @@ from accounts import models
 from accounts.serializers import UserCreateSerializer, UserSerializer
 from rest_framework import serializers
 
-from datahub.models import Organization, UserOrganizationMap
+from datahub.models import Organization, UserOrganizationMap, DatahubDocuments
 
 
 class OrganizationSerializer(serializers.ModelSerializer):
@@ -30,7 +30,16 @@ class OrganizationRetriveSerializer(serializers.ModelSerializer):
         """_summary_"""
 
         model = Organization
-        fields = ["id", "org_email", "name", "hero_image", "address", "logo", "phone_number", "website"]
+        fields = [
+            "id",
+            "org_email",
+            "name",
+            "hero_image",
+            "address",
+            "logo",
+            "phone_number",
+            "website",
+        ]
 
 
 class UserOrganizationMapSerializer(serializers.ModelSerializer):
@@ -73,3 +82,17 @@ class ParticipantSerializer(serializers.ModelSerializer):
     class Meta:
         model = UserOrganizationMap
         exclude = ["created_at", "updated_at"]
+
+
+class PolicyDocumentSerializer(serializers.ModelSerializer):
+    """PolicyDocumentSerializer class"""
+
+    privacy_policy = serializers.CharField()
+    tos = serializers.CharField()
+    governing_law = serializers.CharField()
+    limitations_of_liabilities = serializers.CharField()
+    warranty = serializers.CharField()
+
+    class Meta:
+        model = DatahubDocuments
+        fields = "__all__"

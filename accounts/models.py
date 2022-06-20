@@ -28,6 +28,7 @@ class UserManager(BaseUserManager):
         extra_fields.setdefault("role_id", int(1))
         return self._create_user(email, **extra_fields)
 
+
 class UserRole(models.Model):
     """UserRole model for user roles of the datahub users
     User role mapping with id:
@@ -64,12 +65,14 @@ class UserRole(models.Model):
 
 def auto_str(cls):
     def __str__(self):
-        return '%s(%s)' % (
+        return "%s(%s)" % (
             type(self).__name__,
-            ', '.join('%s=%s' % item for item in vars(self).items())
+            ", ".join("%s=%s" % item for item in vars(self).items()),
         )
+
     cls.__str__ = __str__
     return cls
+
 
 @auto_str
 class User(AbstractBaseUser, TimeStampMixin):
@@ -85,12 +88,15 @@ class User(AbstractBaseUser, TimeStampMixin):
     last_login = None
     is_superuser = None
     email = models.EmailField(max_length=255, unique=True)
-    first_name = models.CharField(max_length=255)
+    first_name = models.CharField(max_length=255, null=True, blank=True)
     last_name = models.CharField(max_length=255, null=True, blank=True)
     phone_number = models.CharField(max_length=50, null=True, blank=True)
-    role = models.ForeignKey(UserRole, max_length=255, on_delete=models.PROTECT)
+    role = models.ForeignKey(UserRole, max_length=255, null=True, blank=True, on_delete=models.PROTECT)
     profile_picture = models.FileField(
-        upload_to=settings.PROFILE_PICTURES_URL, null=True, blank=True, validators=[validate_file_size]
+        upload_to=settings.PROFILE_PICTURES_URL,
+        null=True,
+        blank=True,
+        validators=[validate_file_size],
     )
     status = models.BooleanField(default=False)
     subscription = models.CharField(max_length=50, null=True, blank=True)

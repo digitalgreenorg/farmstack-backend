@@ -33,16 +33,33 @@ class Organization(TimeStampMixin):
     address = models.JSONField()
     phone_number = models.CharField(max_length=50, null=True, blank=True)
     logo = models.FileField(
-        upload_to=settings.ORGANIZATION_IMAGES_URL, null=True, blank=True, validators=[validate_file_size]
+        upload_to=settings.ORGANIZATION_IMAGES_URL,
+        null=True,
+        blank=True,
+        validators=[validate_file_size],
     )
     hero_image = models.FileField(
-        upload_to=settings.ORGANIZATION_IMAGES_URL, null=True, blank=True, validators=[validate_file_size]
+        upload_to=settings.ORGANIZATION_IMAGES_URL,
+        null=True,
+        blank=True,
+        validators=[validate_file_size],
     )
+    org_description = models.TextField(max_length=512, null=True, blank=True)
     website = models.CharField(max_length=255, null=True, blank=True)
     status = models.BooleanField(default=True)
 
     def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
+
+
+class DatahubDocuments(models.Model):
+    """OrganizationDocuments model"""
+
+    governing_law = models.TextField()
+    warranty = models.TextField()
+    limitations_of_liabilities = models.TextField()
+    privacy_policy = models.TextField()
+    tos = models.TextField()
 
 
 class UserOrganizationMap(TimeStampMixin):

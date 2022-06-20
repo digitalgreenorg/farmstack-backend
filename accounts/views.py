@@ -1,13 +1,21 @@
 import datetime
 import logging
+import os
+import shutil
 
+from datahub.models import DatahubDocuments
+from django.conf import settings
 from django.contrib.auth import authenticate
 from django.core.cache import cache
+from django.core.files.base import ContentFile
+from django.core.files.storage import FileSystemStorage
+from django.core.files.uploadedfile import UploadedFile
 from django.shortcuts import render
 from rest_framework import serializers, status
+from rest_framework.parsers import FileUploadParser, MultiPartParser
 from rest_framework.response import Response
 from rest_framework.views import APIView
-from rest_framework.viewsets import GenericViewSet
+from rest_framework.viewsets import GenericViewSet, ModelViewSet
 from rest_framework_simplejwt.tokens import RefreshToken
 
 from accounts.email import send_otp_via_email, send_verification_email
@@ -23,31 +31,60 @@ LOGGER = logging.getLogger(__name__)
 class RegisterViewset(GenericViewSet):
     """RegisterViewset for users to register"""
 
-    serializer_class = UserCreateSerializer
+    parser_classes = (MultiPartParser, FileUploadParser)
+    queryset = User.objects.all()
+
+    def get_serializer_class(self):
+        if self.request.method == "PUT":
+            return UserUpdateSerializer
+        return UserCreateSerializer
 
     def create(self, request, *args, **kwargs):
         """POST method: to save a newly registered user
         creates a new user with status False
         User uses OTP to verify account
         """
+
+        print(request.data)
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         serializer.save()
         email = request.data["email"]
         send_otp_via_email(email)
         return Response(
-            {"message": "Please verify your account using OTP"},
+            {"message": "Please verify your account using OTP", "response": serializer.data},
             status=status.HTTP_201_CREATED,
+        )
+
+    def retrieve(self, request, pk):
+        """GET method: retrieve an object or instance of the Product model"""
+        product = self.get_object()
+        serializer = self.get_serializer(product)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+    def update(self, request, *args, **kwargs):
+        """PUT method: update or send a PUT request on an object of the Product model"""
+        instance = self.get_object()
+        serializer = self.get_serializer(instance, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response(
+            {"message": "updated user details", "response": serializer.data}, status=status.HTTP_201_CREATED
         )
 
 
 class LoginViewset(GenericViewSet):
     """LoginViewset for users to register"""
 
+    serializer_class = UserCreateSerializer
+    queryset = User.objects.all()
+
     def create(self, request, *args, **kwargs):
         """POST method: to save a newly registered user"""
+
         email = request.data["email"]
         user_obj = User.objects.filter(email=self.request.data["email"]).values()
+        user_id = user_obj[0]["id"]
 
         if not user_obj:
             return Response({"message": "User not registered"}, status=status.HTTP_401_UNAUTHORIZED)
@@ -59,7 +96,10 @@ class LoginViewset(GenericViewSet):
             )
 
         send_otp_via_email(email)
-        return Response({"message": "Enter the OTP to login"}, status=status.HTTP_201_CREATED)
+        return Response(
+            {"message": "Enter the OTP to login", "id": user_id, "email": user_obj[0]["email"]},
+            status=status.HTTP_201_CREATED,
+        )
 
 
 class VerifyLoginOTPViewset(GenericViewSet):
@@ -123,3 +163,39 @@ class VerifyLoginOTPViewset(GenericViewSet):
             LOGGER.warning(e)
 
         return Response({"message": "Not allowed"}, status=status.HTTP_403_FORBIDDEN)
+
+
+class PolicyDocumentsView(APIView):
+    """View for Policy document uploads"""
+
+    # serializer_class = PolicyDocumentSerializer
+    parser_class = (MultiPartParser, FileUploadParser)
+
+    def post(self, request):
+        try:
+            files = dict((request.data).lists())["file"]
+
+            for file in files:
+                with open(settings.CONTENT_URL + file.name, "wb+") as file_upload_path:
+
+                    if not file_upload_path:
+                        for chunk in file.chunks():
+                            file_upload_path.write(chunk)
+                            print(str(file) + " uploaded!")
+                        return Response(
+                            {"message: files successfully uploaded!"},
+                            status=status.HTTP_201_CREATED,
+                        )
+                    else:
+                        print(str(file) + " already present")
+            return Response(
+                {"message: files are already present!"},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+        except Exception as e:
+            LOGGER.error(e)
+
+        return Response(
+            {"message: encountered an error while uploading"},
+            status=status.HTTP_400_BAD_REQUEST,
+        )

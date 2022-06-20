@@ -13,6 +13,7 @@ LOGGER = logging.getLogger(__name__)
 SG = sendgrid.SendGridAPIClient(settings.SENDGRID_API_KEY)
 FROM_EMAIL = Email(settings.EMAIL_HOST_USER)
 
+
 def send_otp_via_email(to_email):
     """send otp via email using django cache"""
     try:

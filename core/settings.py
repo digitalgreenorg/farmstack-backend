@@ -15,7 +15,7 @@ import os
 from pathlib import Path
 
 collections.Callable = collections.abc.Callable
-# import environ
+
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -30,8 +30,6 @@ SECRET_KEY = "django-insecure-3^tn^3x$=(dx(whzib2t_y^0()c*bv6i_!7ft*w4_-4n#7rs$v
 DEBUG = True
 
 ALLOWED_HOSTS = ["*"]
-SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
-CORS_ORIGIN_ALLOW_ALL = True
 
 # Test cases configuration
 # Use nose to run all tests
@@ -144,17 +142,22 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/4.0/howto/static-files/
 
+STATIC_ROOT = os.path.join(BASE_DIR, "static/")
 STATIC_URL = "static/"
 
 MEDIA_ROOT = os.path.join(BASE_DIR, "media")
-MEDIA_URL = "/media/"
+MEDIA_URL = "media/"
 
 PROFILE_PICTURES_ROOT = os.path.join(MEDIA_URL, "users")
 PROFILE_PICTURES_URL = "users/profile_pictures/"
-SECURE_SSL_REDIRECT = True
-
-ORGANIZATION_IMAGES_ROOT = os.path.join(MEDIA_URL, "organizations")
 ORGANIZATION_IMAGES_URL = "organizations/logos/"
+
+# ORGANIZATION_IMAGES_ROOT = os.path.join(MEDIA_URL, "organizations")
+# ORGANIZATION_IMAGES_URL = "organizations/logos/"
+CONTENT_URL = "content/"
+
+if not os.path.exists(STATIC_URL):
+    os.makedirs(STATIC_URL)  # create the content directory
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/4.0/ref/settings/#default-auto-field
@@ -170,10 +173,9 @@ REST_FRAMEWORK = {
 }
 
 # Email configuration
-# SENDGRID_API_KEY = os.environ.get("SENDGRID_API_KEY", "send_grid_key")
-# SENDGRID_API_KEY = os.environ.get("EMAIL_HOST_USER", "email_host_user")
-SENDGRID_API_KEY = "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"
-EMAIL_HOST_USER = "farmstack.dg@gmail.com"
+SENDGRID_API_KEY = os.environ.get("SENDGRID_API_KEY", "send_grid_key")
+SENDGRID_API_KEY = os.environ.get("EMAIL_HOST_USER", "email_host_user")
+
 # User OTP config
 OTP_DURATION = 120
 OTP_LIMIT = 3
@@ -223,15 +225,28 @@ LOGGING = {
     "loggers": {
         "django": {
             "handlers": ["file", "console"],
-            "level": "WARNING",
+            "level": "INFO",
         },
     },
 }
 
-# Enabl CORS headers
+# Enable CORS headers
+SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 CORS_ORIGIN_ALLOW_ALL = True
 # CORS_ORIGIN_WHITELIST = (
 #   'https://127.0.0.1:8000'
 # )
 
-INTERNAL_IPS = ["127.0.0.1", "fe3a-106-51-85-143.ngrok.io"]
+INTERNAL_IPS = [
+    "127.0.0.1",
+]
+
+# FILE HANDLING
+FILE_UPLOAD_MAX_SIZE = 2
+FILE_TYPES_ALLOWED = ["pdf", "doc", "docx"]
+IMAGE_TYPES_ALLOWED = ["jpg", "jpeg", "png"]
+TEMP_FILE_PATH = "/tmp/datahub/"
+CSS_FILE_NAME = "override.css"
+
+if not os.path.exists(TEMP_FILE_PATH):
+    os.makedirs(TEMP_FILE_PATH)  # create the temp directory

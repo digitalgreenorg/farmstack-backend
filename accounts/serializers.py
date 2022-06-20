@@ -1,10 +1,15 @@
 from django.db import models
 from django.db.models import fields
-from accounts.models import User
 from rest_framework import serializers
+from rest_framework.parsers import MultiPartParser
+
+from accounts.models import User
+
 
 class UserCreateSerializer(serializers.ModelSerializer):
     """UserCreateSerializer"""
+
+    parser_classes = MultiPartParser
 
     class Meta:
         model = User
@@ -19,6 +24,7 @@ class UserCreateSerializer(serializers.ModelSerializer):
         #     )
         fields = "__all__"
 
+
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
@@ -31,12 +37,14 @@ class UserSerializer(serializers.ModelSerializer):
             "role",
             "status",
             "subscription",
-            "profile_picture"
+            "profile_picture",
         )
+
 
 class UserUpdateSerializer(serializers.ModelSerializer):
     """UserUpdateSerializer"""
 
     class Meta:
         model = User
-        exclude = ("created_at", "updated_at")
+        # exclude = ("created_at", "updated_at")
+        fields = ("email", "first_name", "last_name", "phone_number")
