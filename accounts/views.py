@@ -1,11 +1,18 @@
 import datetime
 import logging
+import os
+import shutil
 
+from datahub.models import DatahubDocuments
 from django.conf import settings
 from django.contrib.auth import authenticate
 from django.core.cache import cache
+from django.core.files.base import ContentFile
+from django.core.files.storage import FileSystemStorage
+from django.core.files.uploadedfile import UploadedFile
 from django.shortcuts import render
 from rest_framework import serializers, status
+from rest_framework.parsers import FileUploadParser, MultiPartParser
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework.viewsets import GenericViewSet, ModelViewSet
@@ -16,13 +23,7 @@ from accounts.models import User
 from accounts.serializers import UserCreateSerializer, UserUpdateSerializer
 
 from .email import send_otp_via_email
-import datetime, logging, os, shutil
 from .utils import OTPManager
-from rest_framework.parsers import MultiPartParser, FileUploadParser
-from datahub.models import DatahubDocuments
-from django.core.files.storage import FileSystemStorage
-from django.core.files.base import ContentFile
-from django.core.files.uploadedfile import UploadedFile
 
 LOGGER = logging.getLogger(__name__)
 
@@ -43,16 +44,15 @@ class RegisterViewset(GenericViewSet):
         creates a new user with status False
         User uses OTP to verify account
         """
+
+        print(request.data)
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         serializer.save()
         email = request.data["email"]
         send_otp_via_email(email)
         return Response(
-            {
-                "message": "Please verify your account using OTP",
-                "response": serializer.data,
-            },
+            {"message": "Please verify your account using OTP", "response": serializer.data},
             status=status.HTTP_201_CREATED,
         )
 
@@ -65,12 +65,11 @@ class RegisterViewset(GenericViewSet):
     def update(self, request, *args, **kwargs):
         """PUT method: update or send a PUT request on an object of the Product model"""
         instance = self.get_object()
-        serializer = self.get_serializer(instance, data=request.data, partial=None)
+        serializer = self.get_serializer(instance, data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
         serializer.save()
         return Response(
-            {"message": "updated user details", "response": serializer.data},
-            status=status.HTTP_201_CREATED,
+            {"message": "updated user details", "response": serializer.data}, status=status.HTTP_201_CREATED
         )
 
 
@@ -88,9 +87,7 @@ class LoginViewset(GenericViewSet):
         user_id = user_obj[0]["id"]
 
         if not user_obj:
-            return Response(
-                {"message": "User not registered"}, status=status.HTTP_401_UNAUTHORIZED
-            )
+            return Response({"message": "User not registered"}, status=status.HTTP_401_UNAUTHORIZED)
 
         elif user_obj[0]["status"] is False:
             return Response(
@@ -100,11 +97,7 @@ class LoginViewset(GenericViewSet):
 
         send_otp_via_email(email)
         return Response(
-            {
-                "message": "Enter the OTP to login",
-                "id": user_id,
-                "email": user_obj[0]["email"],
-            },
+            {"message": "Enter the OTP to login", "id": user_id, "email": user_obj[0]["email"]},
             status=status.HTTP_201_CREATED,
         )
 
@@ -125,9 +118,7 @@ class VerifyLoginOTPViewset(GenericViewSet):
             otp_manager = OTPManager()
             correct_otp = int(cache.get(email)["user_otp"])
             otp_created = cache.get(email)["updation_time"]
-            otp_count = (
-                int(cache.get(email)["otp_count"]) + 1
-            )  # increment the otp counter
+            otp_count = int(cache.get(email)["otp_count"]) + 1  # increment the otp counter
             new_duration = settings.OTP_DURATION - (
                 datetime.datetime.now().second - otp_created.second
             )  # reduce expiry duration of otp
@@ -147,9 +138,7 @@ class VerifyLoginOTPViewset(GenericViewSet):
                 # check for otp limit
                 if cache.get(email)["otp_count"] <= int(settings.OTP_LIMIT):
                     # update the user otp data
-                    otp_manager.create_user_otp(
-                        email, correct_otp, new_duration, otp_count
-                    )
+                    otp_manager.create_user_otp(email, correct_otp, new_duration, otp_count)
                     return Response(
                         {"message": "Invalid OTP, please enter valid credentials"},
                         status=status.HTTP_401_UNAUTHORIZED,
@@ -160,9 +149,7 @@ class VerifyLoginOTPViewset(GenericViewSet):
                     user.save()
 
                     return Response(
-                        {
-                            "message": "Maximum attempts taken, please retry after some time"
-                        },
+                        {"message": "Maximum attempts taken, please retry after some time"},
                         status=status.HTTP_401_UNAUTHORIZED,
                     )
             # check otp expiration

@@ -1,9 +1,9 @@
 from django.db import models
 from django.db.models import fields
-from accounts.models import User
 from rest_framework import serializers
-from accounts.models import User
 from rest_framework.parsers import MultiPartParser
+
+from accounts.models import User
 
 
 class UserCreateSerializer(serializers.ModelSerializer):
@@ -46,4 +46,5 @@ class UserUpdateSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = User
+        # exclude = ("created_at", "updated_at")
         fields = ("email", "first_name", "last_name", "phone_number")

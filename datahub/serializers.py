@@ -21,15 +21,7 @@ class OrganizationSerializer(serializers.ModelSerializer):
         """_summary_"""
 
         model = Organization
-        fields = [
-            "org_email",
-            "name",
-            "hero_image",
-            "address",
-            "logo",
-            "phone_number",
-            "website",
-        ]
+        fields = "__all__"
 
 
 class OrganizationRetriveSerializer(serializers.ModelSerializer):
