@@ -1,5 +1,5 @@
 from calendar import c
-
+from django.core.files.uploadedfile import InMemoryUploadedFile
 import django
 from accounts.models import User, UserRole
 from accounts.serializers import UserCreateSerializer
@@ -13,6 +13,7 @@ from accounts.models import User
 from accounts.serializers import UserCreateSerializer
 from django.conf import settings
 from rest_framework import pagination, status
+from rest_framework.decorators import action
 from rest_framework.parsers import (
     MultiPartParser,
     FileUploadParser,
@@ -25,14 +26,17 @@ from rest_framework.viewsets import GenericViewSet, ViewSet
 from django.core.files.base import ContentFile
 from django.core.files.storage import FileSystemStorage
 
-from datahub.models import Organization, UserOrganizationMap
+from datahub.models import Organization, UserOrganizationMap, DatahubDocuments
 from datahub.serializers import (
     OrganizationSerializer,
     ParticipantSerializer,
     UserOrganizationMapSerializer,
     PolicyDocumentSerializer,
+    DropDocumentSerializer,
+    DatahubThemeSerializer,
 )
 import logging, os, shutil
+from utils import file_operations, validators
 
 LOGGER = logging.getLogger(__name__)
 
@@ -242,123 +246,95 @@ class DropDocumentView(GenericViewSet):
     """View for uploading organization document files"""
 
     parser_class = MultiPartParser
+    serializer_class = DropDocumentSerializer
 
     def create(self, request, *args, **kwargs):
         """Saves the document files in temp location before saving"""
-        try:
-            # get file, file name & type from the form-data
-            file_key = list(request.data.keys())[0]
-            file_uploaded = request.data[file_key]
-            file_type = file_uploaded.content_type.split("/")[1]
+        serializer = self.get_serializer(data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
 
-            if file_uploaded.size > settings.FILE_UPLOAD_MAX_SIZE * 1000000:
-                return Response(
-                    {"message: please upload file with size lesser than 2MB"}
-                )
-            # check for file types (pdf, doc, docx)
-            elif file_type not in settings.FILE_TYPES_ALLOWED:
-                return Response({"message: Please upload only pdf or doc files"})
-            else:
-                fs = FileSystemStorage(
-                    settings.TEMP_FILE_PATH,
-                    directory_permissions_mode=0o755,
-                    file_permissions_mode=0o755,
-                )
-                file_name = str(file_key) + "." + file_type
-
-                # replace if the files exist
-                if fs.exists(file_name):
-                    fs.delete(file_name)
-                    fs.save(file_name, file_uploaded)
-                    return Response(
-                        {"message: uploading...."}, status=status.HTTP_201_CREATED
-                    )
-
-                fs.save(file_name, file_uploaded)
-                return Response(
-                    {"message: uploading...."}, status=status.HTTP_201_CREATED
-                )
-
-        except Exception as e:
-            LOGGER.error(e)
+        # get file, file name & type from the form-data
+        key = list(request.data.keys())[0]
+        file = serializer.validated_data[key]
+        file_type = serializer.validated_data[key].content_type.split("/")[1]
+        file_name = str(key) + "." + file_type
+        file_operations.file_save(file, file_name, settings.TEMP_FILE_PATH)
 
         return Response(
-            {"message: encountered an error while uploading"},
-            status=status.HTTP_400_BAD_REQUEST,
+            {key: "uploading in progress..."}, status=status.HTTP_201_CREATED
         )
+
+    @action(detail=False, methods=["delete"])
+    def delete(self, request):
+        """remove the dropped documents"""
+        file_key = list(request.data.keys())[0]
+        file_operations.remove_files(file_key, settings.TEMP_FILE_PATH)
+
+        return Response({}, status=status.HTTP_204_NO_CONTENT)
 
 
 class DocumentSaveView(GenericViewSet):
     """View for uploading all the datahub documents and content"""
 
     serializer_class = PolicyDocumentSerializer
+    queryset = DatahubDocuments.objects.all()
 
-    def create(self, request, *args, **kwargs):
+    def retrieve(self, request, pk):
+        """GET method: retrieve an object or instance of the Product model"""
+        organization = self.get_object()
+        serializer = self.get_serializer(organization)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+    # def create(self, request, *args, **kwargs):
+    def update(self, request, *args, **kwargs):
         """Saves the document content and files"""
-        try:
-            serializer = PolicyDocumentSerializer(data=request.data)
-            serializer.is_valid(raise_exception=True)
-            serializer.save()
+        instance = self.get_object()
+        serializer = self.get_serializer(instance, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
 
-            for root, dirs, files in os.walk(settings.TEMP_FILE_PATH):
-                for file in files:
-                    # save the files in the destination directory
-                    shutil.copyfile(root + file, settings.STATIC_ROOT + file)
-                    os.remove(root + file)
+        # save the document files
+        file_operations.files_move(settings.TEMP_FILE_PATH, settings.STATIC_ROOT)
 
-            return Response(
-                {"message: Document content saved!"}, status=status.HTTP_201_CREATED
-            )
-
-        except Exception as e:
-            LOGGER.error(e)
-
-        return Response({"message: not allowed"}, status=status.HTTP_400_BAD_REQUEST)
+        return Response(
+            {"message": "Documents and content saved!"}, status=status.HTTP_201_CREATED
+        )
 
 
 class DatahubThemeView(GenericViewSet):
     """View for modifying datahub branding"""
 
     parser_class = MultiPartParser
+    serializer_class = DatahubThemeSerializer
 
     def create(self, request, *args, **kwargs):
         """generates the override css for datahub"""
-        try:
-            hero_image = request.data["hero_image"]
-            button_color = request.data["button_color"]
-            file_type = hero_image.content_type.split("/")[1]
+        serializer = self.get_serializer(data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
 
-            if hero_image.size > settings.FILE_UPLOAD_MAX_SIZE * 1000000:
-                return Response(
-                    {"message: please upload file with size lesser than 2MB"}
-                )
-            # check for image file types (jpg, jpeg, png)
-            elif file_type not in settings.IMAGE_TYPES_ALLOWED:
-                return Response(
-                    {"message: Please upload only jpg or jpeg or png files"}
-                )
-            else:
-                fs = FileSystemStorage(settings.STATIC_ROOT)
-                css = ".btn { background-color: " + button_color + "; }"
+        # get file, file name & type from the form-data
+        file_key = list(request.FILES.keys())[0]
+        file = data[file_key]
+        file_type = data[file_key].content_type.split("/")[1]
+        file_name = str(file_key) + "." + file_type
 
-                # override if the files exist
-                if fs.exists(str(hero_image)) and fs.exists(settings.CSS_FILE_NAME):
-                    fs.delete(str(hero_image))
-                    fs.delete(settings.CSS_FILE_NAME)
-                    fs.save(settings.CSS_FILE_NAME, ContentFile(css))
-                    fs.save(str(hero_image), hero_image)
+        # save datahub banner image
+        file_operations.file_save(file, file_name, settings.STATIC_ROOT)
 
-                    return Response(
-                        "Successfully created the brand identity",
-                        status=status.HTTP_201_CREATED,
-                    )
-                else:
-                    fs.save(str(hero_image), hero_image)
-                    fs.save(settings.CSS_FILE_NAME, ContentFile(css))
-                    return Response(
-                        "Successfully created the brand identity",
-                        status=status.HTTP_201_CREATED,
-                    )
+        # CSS generation
+        text_fields = []
+        for count in range(len(data.keys())):
+            key = list(data.keys())[count]
+            # get only text data fields and append them to text_fields list
+            if type(data[key]) is not InMemoryUploadedFile:
+                text_fields.append(data[key])
+            count += 1
 
-        except Exception as e:
-            LOGGER.error(e)
+        # save or override the CSS
+        css = ".btn { background-color: " + text_fields[0] + "; }"
+        file_operations.file_save(
+            ContentFile(css), settings.CSS_FILE_NAME, settings.STATIC_ROOT
+        )
+
+        return Response({"message": "Theme saved!"}, status=status.HTTP_201_CREATED)

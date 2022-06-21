@@ -91,7 +91,9 @@ class User(AbstractBaseUser, TimeStampMixin):
     first_name = models.CharField(max_length=255, null=True, blank=True)
     last_name = models.CharField(max_length=255, null=True, blank=True)
     phone_number = models.CharField(max_length=50, null=True, blank=True)
-    role = models.ForeignKey(UserRole, max_length=255, null=True, blank=True, on_delete=models.PROTECT)
+    role = models.ForeignKey(
+        UserRole, max_length=255, null=True, blank=True, on_delete=models.PROTECT
+    )
     profile_picture = models.FileField(
         upload_to=settings.PROFILE_PICTURES_URL,
         null=True,

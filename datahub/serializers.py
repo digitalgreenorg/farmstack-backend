@@ -3,6 +3,11 @@ from accounts.serializers import UserCreateSerializer, UserSerializer
 from rest_framework import serializers
 
 from datahub.models import Organization, UserOrganizationMap, DatahubDocuments
+from utils.validators import (
+    validate_file_size,
+    validate_document_type,
+    validate_image_type,
+)
 
 
 class OrganizationSerializer(serializers.ModelSerializer):
@@ -92,6 +97,24 @@ class ParticipantSerializer(serializers.ModelSerializer):
         exclude = ["created_at", "updated_at"]
 
 
+class DropDocumentSerializer(serializers.Serializer):
+    """DropDocumentSerializer class"""
+
+    governing_law = serializers.FileField(
+        validators=[validate_file_size, validate_document_type]
+    )
+    privacy_policy = serializers.FileField(
+        validators=[validate_file_size, validate_document_type]
+    )
+    tos = serializers.FileField(validators=[validate_file_size, validate_document_type])
+    limitations_of_liabilities = serializers.FileField(
+        validators=[validate_file_size, validate_document_type]
+    )
+    warranty = serializers.FileField(
+        validators=[validate_file_size, validate_document_type]
+    )
+
+
 class PolicyDocumentSerializer(serializers.ModelSerializer):
     """PolicyDocumentSerializer class"""
 
@@ -104,3 +127,13 @@ class PolicyDocumentSerializer(serializers.ModelSerializer):
     class Meta:
         model = DatahubDocuments
         fields = "__all__"
+
+
+class DatahubThemeSerializer(serializers.Serializer):
+    """DatahubThemeSerializer class"""
+
+    banner = serializers.ImageField(
+        validators=[validate_file_size, validate_image_type]
+    )
+    file = serializers.ImageField(validators=[validate_file_size, validate_image_type])
+    button_color = serializers.CharField()
