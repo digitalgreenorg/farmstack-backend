@@ -49,7 +49,7 @@ class RegisterViewset(GenericViewSet):
         User uses OTP to verify account
         """
 
-        serializer = self.get_serializer(data=request.data)
+        serializer = self.get_serializer(data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
         serializer.save()
         email = request.data["email"]

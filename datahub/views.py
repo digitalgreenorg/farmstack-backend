@@ -279,11 +279,16 @@ class DropDocumentView(GenericViewSet):
     @action(detail=False, methods=["delete"])
     def delete(self, request):
         """remove the dropped documents"""
-        file_key = list(request.data.keys())[0]
-        file_operations.remove_files(file_key, settings.TEMP_FILE_PATH)
+        try:
+            key = list(request.data.keys())[0]
+            file_operations.remove_files(request.data[key], settings.TEMP_FILE_PATH)
 
-        return Response({}, status=status.HTTP_204_NO_CONTENT)
+            return Response({}, status=status.HTTP_204_NO_CONTENT)
 
+        except Exception as e:
+            LOGGER.error(e)
+
+        return Response({}, status=status.HTTP_400_BAD_REQUEST)
 
 class DocumentSaveView(GenericViewSet):
     """View for uploading all the datahub documents and content"""
@@ -297,12 +302,10 @@ class DocumentSaveView(GenericViewSet):
         serializer = self.get_serializer(organization)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
-    # def create(self, request, *args, **kwargs):
-    def update(self, request, *args, **kwargs):
-        """Saves the document content and files"""
-        instance = self.get_object()
-        serializer = self.get_serializer(instance, data=request.data, partial=True)
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
+        print(serializer.validated_data)
         serializer.save()
 
         # save the document files
@@ -310,6 +313,20 @@ class DocumentSaveView(GenericViewSet):
 
         return Response(
             {"message": "Documents and content saved!"}, status=status.HTTP_201_CREATED
+        )
+
+    def update(self, request, *args, **kwargs):
+        """Saves the document content and files"""
+        instance = self.get_object()
+        serializer = self.get_serializer(instance, data=request.data)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+
+        # save the document files
+        file_operations.files_move(settings.TEMP_FILE_PATH, settings.STATIC_ROOT)
+
+        return Response(
+            {"message": "Documents and content updated!"}, status=status.HTTP_201_CREATED
         )
 
 
