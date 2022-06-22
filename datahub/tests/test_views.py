@@ -119,11 +119,17 @@ class TestViews(TestCase):
 
     def test_participant_post_add_user_invalid_fields_asserts(self):
         """_summary_"""
-        response = self.client.post(self.participant_url, invalid_role_data, secure=True)
+        response = self.client.post(
+            self.participant_url, invalid_role_data, secure=True
+        )
         assert response.status_code == 400
-        assert response.json().get("role") == ['Invalid pk "33" - object does not exist.']
+        assert response.json().get("role") == [
+            'Invalid pk "33" - object does not exist.'
+        ]
         invalid_role_data["email"] = ""
-        response = self.client.post(self.participant_url, invalid_role_data, secure=True)
+        response = self.client.post(
+            self.participant_url, invalid_role_data, secure=True
+        )
         assert response.status_code == 400
         assert response.json() == {
             "email": ["This field may not be blank."],
@@ -144,9 +150,14 @@ class TestViews(TestCase):
 
     def test_participant_update_user_details(self):
         id = User.objects.get(first_name="ugesh").id
-        update_data["id"] = Organization.objects.get(org_email="bglordg@digitalgreen.org").id
+        update_data["id"] = Organization.objects.get(
+            org_email="bglordg@digitalgreen.org"
+        ).id
         response = self.client.put(
-            self.participant_url + str(id) + "/", update_data, secure=True, content_type="application/json"
+            self.participant_url + str(id) + "/",
+            update_data,
+            secure=True,
+            content_type="application/json",
         )
         data = response.json()
         assert response.status_code == 201
@@ -155,9 +166,14 @@ class TestViews(TestCase):
 
     def test_participant_update_user_details_error(self):
         id = User.objects.get(first_name="ugesh").id
-        update_data["id"] = Organization.objects.get(org_email="bglordg@digitalgreen.org").id
+        update_data["id"] = Organization.objects.get(
+            org_email="bglordg@digitalgreen.org"
+        ).id
         response = self.client.put(
-            self.participant_url + str(uuid4()) + "/", update_data, secure=True, content_type="application/json"
+            self.participant_url + str(uuid4()) + "/",
+            update_data,
+            secure=True,
+            content_type="application/json",
         )
         data = response.json()
         assert response.status_code == 404
@@ -210,7 +226,10 @@ class TestViews(TestCase):
         assert data.get("count") == 0
 
     def test_send_invite(self):
-        data = {"to_email": ["ugesh@gmail.com"], "content": "Sample email for participant invitdation"}
+        data = {
+            "to_email": ["ugesh@gmail.com"],
+            "content": "Sample email for participant invitdation",
+        }
         self.monkeypatch.setattr("datahub.views.Utils", MockUtils)
         response = self.client.post(self.send_invite, data, secure=True)
         assert response.json() == {"Message": "Invation sent to the participants"}

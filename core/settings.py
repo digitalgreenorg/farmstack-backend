@@ -167,14 +167,16 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 AUTH_USER_MODEL = "accounts.User"
 
 REST_FRAMEWORK = {
-    "DEFAULT_AUTHENTICATION_CLASSES": ("rest_framework_simplejwt.authentication.JWTAuthentication",),
+    "DEFAULT_AUTHENTICATION_CLASSES": (
+        "rest_framework_simplejwt.authentication.JWTAuthentication",
+    ),
     "DEFAULT_PERMISSION_CLASSES": [],
     "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
 }
 
 # Email configuration
 SENDGRID_API_KEY = os.environ.get("SENDGRID_API_KEY", "send_grid_key")
-SENDGRID_API_KEY = os.environ.get("EMAIL_HOST_USER", "email_host_user")
+EMAIL_HOST_USER = os.environ.get("EMAIL_HOST_USER", "email_host_user")
 
 # User OTP config
 OTP_DURATION = 120

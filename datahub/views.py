@@ -157,7 +157,9 @@ class ParticipantViewSet(GenericViewSet):
     def create(self, request, *args, **kwargs):
         """POST method: create action to save an object by sending a POST request"""
         org_queryset = list(
-            Organization.objects.filter(org_email=self.request.data.get(Constants.ORG_EMAIL, "")).values()
+            Organization.objects.filter(
+                org_email=self.request.data.get(Constants.ORG_EMAIL, "")
+            ).values()
         )
         if not org_queryset:
             serializer = OrganizationSerializer(data=request.data)
@@ -180,7 +182,9 @@ class ParticipantViewSet(GenericViewSet):
     def list(self, request, *args, **kwargs):
         """GET method: query all the list of objects from the Product model"""
         roles = (
-            UserOrganizationMap.objects.select_related(Constants.USER, Constants.ORGANIZATION)
+            UserOrganizationMap.objects.select_related(
+                Constants.USER, Constants.ORGANIZATION
+            )
             .filter(user__status=False, user__role=3)
             .all()
         )
@@ -191,7 +195,9 @@ class ParticipantViewSet(GenericViewSet):
     def retrieve(self, request, pk):
         """GET method: retrieve an object or instance of the Product model"""
         roles = (
-            UserOrganizationMap.objects.prefetch_related(Constants.USER, Constants.ORGANIZATION)
+            UserOrganizationMap.objects.prefetch_related(
+                Constants.USER, Constants.ORGANIZATION
+            )
             .filter(user__status=False, user__role=3, user=pk)
             .all()
         )
@@ -207,11 +213,16 @@ class ParticipantViewSet(GenericViewSet):
         serializer.is_valid(raise_exception=True)
         self.perform_create(serializer)
         organization = OrganizationSerializer(
-            Organization.objects.get(id=request.data.get(Constants.ID)), data=request.data, partial=None
+            Organization.objects.get(id=request.data.get(Constants.ID)),
+            data=request.data,
+            partial=None,
         )
         organization.is_valid(raise_exception=True)
         self.perform_create(organization)
-        data = {Constants.USER: serializer.data, Constants.ORGANIZATION: organization.data}
+        data = {
+            Constants.USER: serializer.data,
+            Constants.ORGANIZATION: organization.data,
+        }
         return Response(data, status=status.HTTP_201_CREATED)
 
     def destroy(self, request, pk):

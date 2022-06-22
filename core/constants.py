@@ -1,7 +1,7 @@
 class Constants:
     CONTENT = "content"
     USER = "user"
-    ORGANIZATION  = "organization"
+    ORGANIZATION = "organization"
     ID = "id"
     EMAIL = "email"
     ORG_EMAIL = "org_email"
