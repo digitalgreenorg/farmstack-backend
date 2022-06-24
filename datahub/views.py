@@ -1,5 +1,9 @@
+import json
+import logging
+import os
+import shutil
 from calendar import c
-from django.core.files.uploadedfile import InMemoryUploadedFile
+
 import django
 from accounts.models import User, UserRole
 from accounts.serializers import UserCreateSerializer
@@ -9,6 +13,7 @@ from django.conf import settings
 from django.contrib.admin.utils import get_model_from_relation
 from django.core.files.base import ContentFile
 from django.core.files.storage import FileSystemStorage
+from django.core.files.uploadedfile import InMemoryUploadedFile
 from django.db.models import DEFERRED, F
 from drf_braces.mixins import MultipleSerializersViewMixin
 from rest_framework import pagination, status
@@ -23,18 +28,17 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework.viewsets import GenericViewSet, ViewSet
 from uritemplate import partial
+from utils import file_operations, validators
 
-from datahub.models import Organization, UserOrganizationMap, DatahubDocuments
+from datahub.models import DatahubDocuments, Organization, UserOrganizationMap
 from datahub.serializers import (
+    DatahubThemeSerializer,
+    DropDocumentSerializer,
     OrganizationSerializer,
     ParticipantSerializer,
     PolicyDocumentSerializer,
     UserOrganizationMapSerializer,
-    DropDocumentSerializer,
-    DatahubThemeSerializer,
 )
-import logging, os, shutil, json
-from utils import file_operations, validators
 
 LOGGER = logging.getLogger(__name__)
 
@@ -51,14 +55,15 @@ class TeamMemberViewSet(GenericViewSet):
     """Viewset for Product model"""
 
     serializer_class = UserCreateSerializer
-    queryset = User.objects.all()
+    queryset = User.objects.filter(status=False)
     pagination_class = DefaultPagination
 
     def create(self, request, *args, **kwargs):
         """POST method: create action to save an object by sending a POST request"""
+        # print(request.data)
+        # request.data["role"] = UserRole.objects.get(role_name=request.data["role"]).id
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-
         serializer.save()
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
@@ -76,12 +81,15 @@ class TeamMemberViewSet(GenericViewSet):
     def retrieve(self, request, pk):
         """GET method: retrieve an object or instance of the Product model"""
         team_member = self.get_object()
+
+        # team_member.role = UserRole.objects.get(role_name=team_member.role).id
         serializer = self.get_serializer(team_member)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
     def update(self, request, *args, **kwargs):
         """PUT method: update or send a PUT request on an object of the Product model"""
         instance = self.get_object()
+        # request.data["role"] = UserRole.objects.get(role_name=request.data["role"]).id
         serializer = self.get_serializer(instance, data=request.data, partial=None)
         serializer.is_valid(raise_exception=True)
         serializer.save()
@@ -90,8 +98,9 @@ class TeamMemberViewSet(GenericViewSet):
     def destroy(self, request, pk):
         """DELETE method: delete an object"""
         team_member = self.get_object()
-        team_member.delete()
-
+        team_member.status = True
+        # team_member.delete()
+        team_member.save()
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
@@ -157,9 +166,7 @@ class ParticipantViewSet(GenericViewSet):
     def create(self, request, *args, **kwargs):
         """POST method: create action to save an object by sending a POST request"""
         org_queryset = list(
-            Organization.objects.filter(
-                org_email=self.request.data.get(Constants.ORG_EMAIL, "")
-            ).values()
+            Organization.objects.filter(org_email=self.request.data.get(Constants.ORG_EMAIL, "")).values()
         )
         if not org_queryset:
             serializer = OrganizationSerializer(data=request.data)
@@ -182,9 +189,7 @@ class ParticipantViewSet(GenericViewSet):
     def list(self, request, *args, **kwargs):
         """GET method: query all the list of objects from the Product model"""
         roles = (
-            UserOrganizationMap.objects.select_related(
-                Constants.USER, Constants.ORGANIZATION
-            )
+            UserOrganizationMap.objects.select_related(Constants.USER, Constants.ORGANIZATION)
             .filter(user__status=False, user__role=3)
             .all()
         )
@@ -195,9 +200,7 @@ class ParticipantViewSet(GenericViewSet):
     def retrieve(self, request, pk):
         """GET method: retrieve an object or instance of the Product model"""
         roles = (
-            UserOrganizationMap.objects.prefetch_related(
-                Constants.USER, Constants.ORGANIZATION
-            )
+            UserOrganizationMap.objects.prefetch_related(Constants.USER, Constants.ORGANIZATION)
             .filter(user__status=False, user__role=3, user=pk)
             .all()
         )
@@ -272,9 +275,7 @@ class DropDocumentView(GenericViewSet):
         file_type = serializer.validated_data[key].content_type.split("/")[1]
         file_name = str(key) + "." + file_type
         file_operations.file_save(file, file_name, settings.TEMP_FILE_PATH)
-        return Response(
-            {key: "uploading in progress..."}, status=status.HTTP_201_CREATED
-        )
+        return Response({key: "uploading in progress..."}, status=status.HTTP_201_CREATED)
 
     @action(detail=False, methods=["delete"])
     def delete(self, request):
@@ -289,6 +290,7 @@ class DropDocumentView(GenericViewSet):
             LOGGER.error(e)
 
         return Response({}, status=status.HTTP_400_BAD_REQUEST)
+
 
 class DocumentSaveView(GenericViewSet):
     """View for uploading all the datahub documents and content"""
@@ -311,9 +313,7 @@ class DocumentSaveView(GenericViewSet):
         # save the document files
         file_operations.files_move(settings.TEMP_FILE_PATH, settings.STATIC_ROOT)
 
-        return Response(
-            {"message": "Documents and content saved!"}, status=status.HTTP_201_CREATED
-        )
+        return Response({"message": "Documents and content saved!"}, status=status.HTTP_201_CREATED)
 
     def update(self, request, *args, **kwargs):
         """Saves the document content and files"""
@@ -325,9 +325,7 @@ class DocumentSaveView(GenericViewSet):
         # save the document files
         file_operations.files_move(settings.TEMP_FILE_PATH, settings.STATIC_ROOT)
 
-        return Response(
-            {"message": "Documents and content updated!"}, status=status.HTTP_201_CREATED
-        )
+        return Response({"message": "Documents and content updated!"}, status=status.HTTP_201_CREATED)
 
 
 class DatahubThemeView(GenericViewSet):
@@ -362,8 +360,6 @@ class DatahubThemeView(GenericViewSet):
 
         # save or override the CSS
         css = ".btn { background-color: " + text_fields[0] + "; }"
-        file_operations.file_save(
-            ContentFile(css), settings.CSS_FILE_NAME, settings.STATIC_ROOT
-        )
+        file_operations.file_save(ContentFile(css), settings.CSS_FILE_NAME, settings.STATIC_ROOT)
 
         return Response({"message": "Theme saved!"}, status=status.HTTP_201_CREATED)
