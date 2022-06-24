@@ -177,7 +177,7 @@ class VerifyLoginOTPViewset(GenericViewSet):
                         {
                             "message": "Maximum attempts taken, please retry after some time"
                         },
-                        status=status.HTTP_401_UNAUTHORIZED,
+                        status=status.HTTP_403_FORBIDDEN,
                     )
             # check otp expiration
             elif cache.get(email) is None:
@@ -189,4 +189,4 @@ class VerifyLoginOTPViewset(GenericViewSet):
         except Exception as e:
             LOGGER.warning(e)
 
-        return Response({"message": "Not allowed"}, status=status.HTTP_403_FORBIDDEN)
+        return Response({"message": "Not allowed"}, status=status.HTTP_400_BAD_REQUEST)

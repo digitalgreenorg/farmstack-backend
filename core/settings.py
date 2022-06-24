@@ -179,7 +179,7 @@ SENDGRID_API_KEY = os.environ.get("SENDGRID_API_KEY", "send_grid_key")
 EMAIL_HOST_USER = os.environ.get("EMAIL_HOST_USER", "email_host_user")
 
 # User OTP config
-OTP_DURATION = 120
+OTP_DURATION = 900
 OTP_LIMIT = 3
 
 # Fixtures
