@@ -16,6 +16,11 @@ from django.core.files.storage import FileSystemStorage
 from django.core.files.uploadedfile import InMemoryUploadedFile
 from django.db.models import DEFERRED, F
 from drf_braces.mixins import MultipleSerializersViewMixin
+from participant.models import SupportTicket
+from participant.serializers import (
+    ParticipantSupportTicketSerializer,
+    TicketSupportSerializer,
+)
 from rest_framework import pagination, status
 from rest_framework.decorators import action
 from rest_framework.parsers import (
@@ -336,6 +341,41 @@ class DatahubThemeView(GenericViewSet):
 
     def create(self, request, *args, **kwargs):
         """generates the override css for datahub"""
+        try:
+            hero_image = request.data["hero_image"]
+            button_color = request.data["button_color"]
+            file_type = hero_image.content_type.split("/")[1]
+
+            if hero_image.size > settings.FILE_UPLOAD_MAX_SIZE * 1000000:
+                return Response({"message: please upload file with size lesser than 2MB"})
+            # check for image file types (jpg, jpeg, png)
+            elif file_type not in settings.IMAGE_TYPES_ALLOWED:
+                return Response({"message: Please upload only jpg or jpeg or png files"})
+            else:
+                fs = FileSystemStorage(settings.STATIC_ROOT)
+                css = ".btn { background-color: " + button_color + "; }"
+
+                # override if the files exist
+                if fs.exists(str(hero_image)) and fs.exists(settings.CSS_FILE_NAME):
+                    fs.delete(str(hero_image))
+                    fs.delete(settings.CSS_FILE_NAME)
+                    fs.save(settings.CSS_FILE_NAME, ContentFile(css))
+                    fs.save(str(hero_image), hero_image)
+
+                    return Response(
+                        "Successfully created the brand identity",
+                        status=status.HTTP_201_CREATED,
+                    )
+                else:
+                    fs.save(str(hero_image), hero_image)
+                    fs.save(settings.CSS_FILE_NAME, ContentFile(css))
+                    return Response(
+                        "Successfully created the brand identity",
+                        status=status.HTTP_201_CREATED,
+                    )
+
+        except Exception as e:
+            LOGGER.error(e)
         serializer = self.get_serializer(data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
         data = serializer.validated_data
@@ -363,3 +403,71 @@ class DatahubThemeView(GenericViewSet):
         file_operations.file_save(ContentFile(css), settings.CSS_FILE_NAME, settings.STATIC_ROOT)
 
         return Response({"message": "Theme saved!"}, status=status.HTTP_201_CREATED)
+
+
+
+class SupportViewSet(GenericViewSet):
+    """
+    This class handles the participant support tickets CRUD operations.
+    """
+
+    parser_class = JSONParser
+    serializer_class = TicketSupportSerializer
+    queryset = SupportTicket
+    pagination_class = DefaultPagination
+
+    def perform_create(self, serializer):
+        """
+        This function performs the create operation of requested serializer.
+        Args:
+            serializer (_type_): serializer class object.
+
+        Returns:
+            _type_: Returns the saved details.
+        """
+        return serializer.save()
+
+    def create(self, request, *args, **kwargs):
+        """POST method: create action to save an object by sending a POST request"""
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        self.perform_create(serializer)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+    def update(self, request, *args, **kwargs):
+        """PUT method: update or send a PUT request on an object of the Product model"""
+        instance = self.get_object()
+        serializer = self.get_serializer(instance, data=request.data, partial=None)
+        serializer.is_valid(raise_exception=True)
+        self.perform_create(serializer)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+    def list(self, request, *args, **kwargs):
+        """GET method: query all the list of objects from the Product model"""
+        # roles = SupportTicket.objects.prefetch_related("user").filter(user__status=False).all()
+        data = (
+            SupportTicket.objects.select_related(
+                Constants.USER_MAP, Constants.USER_MAP_USER, Constants.USER_MAP_ORGANIZATION
+            )
+            .filter(user_map__user__status=False)
+            .all()
+        )
+        page = self.paginate_queryset(data)
+        participant_serializer = ParticipantSupportTicketSerializer(page, many=True)
+        return self.get_paginated_response(participant_serializer.data)
+
+    def retrieve(self, request, pk):
+        """GET method: retrieve an object or instance of the Product model"""
+        data = (
+            SupportTicket.objects.select_related(
+                Constants.USER_MAP, Constants.USER_MAP_USER, Constants.USER_MAP_ORGANIZATION
+            )
+            .filter(user_map__user__status=False, id=pk)
+            .all()
+        )
+        participant_serializer = ParticipantSupportTicketSerializer(data, many=True)
+        if participant_serializer.data:
+            return Response(participant_serializer.data[0], status=status.HTTP_200_OK)
+        return Response([], status=status.HTTP_200_OK)
+
+    

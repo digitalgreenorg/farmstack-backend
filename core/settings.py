@@ -13,6 +13,7 @@ https://docs.djangoproject.com/en/4.0/ref/settings/
 import collections
 import os
 from pathlib import Path
+from pickle import FALSE, TRUE
 
 collections.Callable = collections.abc.Callable
 
@@ -27,7 +28,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = "django-insecure-3^tn^3x$=(dx(whzib2t_y^0()c*bv6i_!7ft*w4_-4n#7rs$v"
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = TRUE
 
 ALLOWED_HOSTS = ["*"]
 
@@ -62,6 +63,7 @@ INSTALLED_APPS = [
     # custom apps
     "accounts",
     "datahub",
+    "participant",
 ]
 
 MIDDLEWARE = [
@@ -151,6 +153,9 @@ MEDIA_URL = "media/"
 PROFILE_PICTURES_ROOT = os.path.join(MEDIA_URL, "users")
 PROFILE_PICTURES_URL = "users/profile_pictures/"
 ORGANIZATION_IMAGES_URL = "organizations/logos/"
+ISSUE_ATTACHEMENT_URL = "users/tickets/"
+SOLUCTION_ATTACHEMENT_URL = "users/tickets/soluctions/"
+
 
 # ORGANIZATION_IMAGES_ROOT = os.path.join(MEDIA_URL, "organizations")
 # ORGANIZATION_IMAGES_URL = "organizations/logos/"

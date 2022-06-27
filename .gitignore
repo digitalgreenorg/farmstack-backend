@@ -3,7 +3,7 @@
 *.pyc
 *.py[cod]
 *$py.class
-
+*cover
 *media
 *migrations
 

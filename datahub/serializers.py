@@ -2,6 +2,7 @@ from accounts import models
 from accounts.serializers import UserCreateSerializer, UserSerializer
 from rest_framework import serializers
 
+from datahub.models import DatahubDocuments, Organization, UserOrganizationMap
 from datahub.models import Organization, UserOrganizationMap, DatahubDocuments
 from utils.validators import (
     validate_file_size,
@@ -35,16 +36,7 @@ class OrganizationRetriveSerializer(serializers.ModelSerializer):
         """_summary_"""
 
         model = Organization
-        fields = [
-            "id",
-            "org_email",
-            "name",
-            "hero_image",
-            "address",
-            "logo",
-            "phone_number",
-            "website",
-        ]
+        exclude = ["created_at", "updated_at"]
 
 
 class UserOrganizationMapSerializer(serializers.ModelSerializer):

@@ -13,6 +13,7 @@ from datahub.views import (
     MailInvitationViewSet,
     OrganizationViewSet,
     ParticipantViewSet,
+    SupportViewSet,
     TeamMemberViewSet,
 )
 
@@ -24,6 +25,7 @@ router.register(r"team_member", TeamMemberViewSet, basename="team_member")
 router.register("drop_document", DropDocumentView, basename="drop_document")
 router.register("save_documents", DocumentSaveView, basename="save_documents")
 router.register("theme", DatahubThemeView, basename="theme")
+router.register(r"support", SupportViewSet, basename="support_tickets")
 
 
 urlpatterns = [
