@@ -20,7 +20,11 @@ from rest_framework_simplejwt.tokens import RefreshToken
 
 from accounts.email import send_otp_via_email, send_verification_email
 from accounts.models import User
-from accounts.serializers import UserCreateSerializer, UserUpdateSerializer
+from accounts.serializers import (
+    UserCreateSerializer,
+    UserUpdateSerializer,
+    LoginSerializer,
+)
 
 from .email import send_otp_via_email
 from .utils import OTPManager
@@ -45,14 +49,16 @@ class RegisterViewset(GenericViewSet):
         User uses OTP to verify account
         """
 
-        print(request.data)
-        serializer = self.get_serializer(data=request.data)
+        serializer = self.get_serializer(data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
         serializer.save()
         email = request.data["email"]
         send_otp_via_email(email)
         return Response(
-            {"message": "Please verify your account using OTP", "response": serializer.data},
+            {
+                "message": "Please verify your account using OTP",
+                "response": serializer.data,
+            },
             status=status.HTTP_201_CREATED,
         )
 
@@ -69,62 +75,79 @@ class RegisterViewset(GenericViewSet):
         serializer.is_valid(raise_exception=True)
         serializer.save()
         return Response(
-            {"message": "updated user details", "response": serializer.data}, status=status.HTTP_201_CREATED
+            {"message": "updated user details", "response": serializer.data},
+            status=status.HTTP_201_CREATED,
         )
 
 
 class LoginViewset(GenericViewSet):
     """LoginViewset for users to register"""
 
-    serializer_class = UserCreateSerializer
-    queryset = User.objects.all()
+    serializer_class = LoginSerializer
 
     def create(self, request, *args, **kwargs):
         """POST method: to save a newly registered user"""
 
-        email = request.data["email"]
-        user_obj = User.objects.filter(email=self.request.data["email"]).values()
-        user_id = user_obj[0]["id"]
+        serializer = self.get_serializer(data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        email = serializer.validated_data["email"]
+        user_obj = User.objects.filter(email=email).values()
 
-        if not user_obj:
-            return Response({"message": "User not registered"}, status=status.HTTP_401_UNAUTHORIZED)
+        try:
+            if not user_obj:
+                return Response(
+                    {"email": "User not registered"}, status=status.HTTP_400_BAD_REQUEST
+                )
 
-        elif user_obj[0]["status"] is False:
+            elif user_obj.first()["status"] is False:
+                return Response(
+                    {"email": "User not verified, please verify using OTP"},
+                    status=status.HTTP_401_UNAUTHORIZED,
+                )
+
+            send_otp_via_email(email)
+            user_id = user_obj.first()["id"]
             return Response(
-                {"message": "User not verified, please verify using OTP"},
-                status=status.HTTP_401_UNAUTHORIZED,
+                {"id": user_id, "email": email, "message": "Enter the OTP to login"},
+                status=status.HTTP_201_CREATED,
             )
 
-        send_otp_via_email(email)
-        return Response(
-            {"message": "Enter the OTP to login", "id": user_id, "email": user_obj[0]["email"]},
-            status=status.HTTP_201_CREATED,
-        )
+        except Exception as e:
+            LOGGER.warning(e)
+
+        return Response({}, status=status.HTTP_400_BAD_REQUEST)
 
 
 class VerifyLoginOTPViewset(GenericViewSet):
     """User verification with OTP"""
 
+    serializer_class = LoginSerializer
+
     def create(self, request, *args, **kwargs):
         """POST method: to verify registered users"""
-        email = self.request.data["email"]
-        otp_entered = self.request.data["otp"]
+
+        serializer = self.get_serializer(data=request.data, partial=None)
+        serializer.is_valid(raise_exception=True)
+        email = serializer.validated_data["email"]
+        otp_entered = serializer.validated_data["otp"]
         user = User.objects.filter(email=email)
         user = user.first()
-        refresh = RefreshToken.for_user(user)
 
         try:
             # get current user otp object's data
             otp_manager = OTPManager()
             correct_otp = int(cache.get(email)["user_otp"])
             otp_created = cache.get(email)["updation_time"]
-            otp_count = int(cache.get(email)["otp_count"]) + 1  # increment the otp counter
+            otp_count = (
+                int(cache.get(email)["otp_count"]) + 1
+            )  # increment the otp counter
             new_duration = settings.OTP_DURATION - (
                 datetime.datetime.now().second - otp_created.second
             )  # reduce expiry duration of otp
 
             if correct_otp == int(otp_entered) and cache.get(email)["email"] == email:
                 cache.delete(email)
+                refresh = RefreshToken.for_user(user)
                 return Response(
                     {
                         "message": "Successfully logged in!",
@@ -138,7 +161,9 @@ class VerifyLoginOTPViewset(GenericViewSet):
                 # check for otp limit
                 if cache.get(email)["otp_count"] <= int(settings.OTP_LIMIT):
                     # update the user otp data
-                    otp_manager.create_user_otp(email, correct_otp, new_duration, otp_count)
+                    otp_manager.create_user_otp(
+                        email, correct_otp, new_duration, otp_count
+                    )
                     return Response(
                         {"message": "Invalid OTP, please enter valid credentials"},
                         status=status.HTTP_401_UNAUTHORIZED,
@@ -149,8 +174,10 @@ class VerifyLoginOTPViewset(GenericViewSet):
                     user.save()
 
                     return Response(
-                        {"message": "Maximum attempts taken, please retry after some time"},
-                        status=status.HTTP_401_UNAUTHORIZED,
+                        {
+                            "message": "Maximum attempts taken, please retry after some time"
+                        },
+                        status=status.HTTP_403_FORBIDDEN,
                     )
             # check otp expiration
             elif cache.get(email) is None:
@@ -162,40 +189,4 @@ class VerifyLoginOTPViewset(GenericViewSet):
         except Exception as e:
             LOGGER.warning(e)
 
-        return Response({"message": "Not allowed"}, status=status.HTTP_403_FORBIDDEN)
-
-
-class PolicyDocumentsView(APIView):
-    """View for Policy document uploads"""
-
-    # serializer_class = PolicyDocumentSerializer
-    parser_class = (MultiPartParser, FileUploadParser)
-
-    def post(self, request):
-        try:
-            files = dict((request.data).lists())["file"]
-
-            for file in files:
-                with open(settings.CONTENT_URL + file.name, "wb+") as file_upload_path:
-
-                    if not file_upload_path:
-                        for chunk in file.chunks():
-                            file_upload_path.write(chunk)
-                            print(str(file) + " uploaded!")
-                        return Response(
-                            {"message: files successfully uploaded!"},
-                            status=status.HTTP_201_CREATED,
-                        )
-                    else:
-                        print(str(file) + " already present")
-            return Response(
-                {"message: files are already present!"},
-                status=status.HTTP_403_FORBIDDEN,
-            )
-        except Exception as e:
-            LOGGER.error(e)
-
-        return Response(
-            {"message: encountered an error while uploading"},
-            status=status.HTTP_400_BAD_REQUEST,
-        )
+        return Response({"message": "Not allowed"}, status=status.HTTP_400_BAD_REQUEST)

@@ -48,3 +48,8 @@ class UserUpdateSerializer(serializers.ModelSerializer):
         model = User
         # exclude = ("created_at", "updated_at")
         fields = ("email", "first_name", "last_name", "phone_number")
+
+
+class LoginSerializer(serializers.Serializer):
+    email = serializers.EmailField()
+    otp = serializers.IntegerField()

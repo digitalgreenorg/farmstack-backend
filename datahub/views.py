@@ -13,6 +13,7 @@ from django.conf import settings
 from django.contrib.admin.utils import get_model_from_relation
 from django.core.files.base import ContentFile
 from django.core.files.storage import FileSystemStorage
+from django.core.files.uploadedfile import InMemoryUploadedFile
 from django.db.models import DEFERRED, F
 from drf_braces.mixins import MultipleSerializersViewMixin
 from participant.models import SupportTicket
@@ -21,6 +22,7 @@ from participant.serializers import (
     TicketSupportSerializer,
 )
 from rest_framework import pagination, status
+from rest_framework.decorators import action
 from rest_framework.parsers import (
     FileUploadParser,
     FormParser,
@@ -31,9 +33,12 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework.viewsets import GenericViewSet, ViewSet
 from uritemplate import partial
+from utils import file_operations, validators
 
-from datahub.models import Organization, UserOrganizationMap
+from datahub.models import DatahubDocuments, Organization, UserOrganizationMap
 from datahub.serializers import (
+    DatahubThemeSerializer,
+    DropDocumentSerializer,
     OrganizationSerializer,
     ParticipantSerializer,
     PolicyDocumentSerializer,
@@ -55,14 +60,15 @@ class TeamMemberViewSet(GenericViewSet):
     """Viewset for Product model"""
 
     serializer_class = UserCreateSerializer
-    queryset = User.objects.all()
+    queryset = User.objects.filter(status=False)
     pagination_class = DefaultPagination
 
     def create(self, request, *args, **kwargs):
         """POST method: create action to save an object by sending a POST request"""
+        # print(request.data)
+        # request.data["role"] = UserRole.objects.get(role_name=request.data["role"]).id
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-
         serializer.save()
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
@@ -80,12 +86,15 @@ class TeamMemberViewSet(GenericViewSet):
     def retrieve(self, request, pk):
         """GET method: retrieve an object or instance of the Product model"""
         team_member = self.get_object()
+
+        # team_member.role = UserRole.objects.get(role_name=team_member.role).id
         serializer = self.get_serializer(team_member)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
     def update(self, request, *args, **kwargs):
         """PUT method: update or send a PUT request on an object of the Product model"""
         instance = self.get_object()
+        # request.data["role"] = UserRole.objects.get(role_name=request.data["role"]).id
         serializer = self.get_serializer(instance, data=request.data, partial=None)
         serializer.is_valid(raise_exception=True)
         serializer.save()
@@ -94,8 +103,9 @@ class TeamMemberViewSet(GenericViewSet):
     def destroy(self, request, pk):
         """DELETE method: delete an object"""
         team_member = self.get_object()
-        team_member.delete()
-
+        team_member.status = True
+        # team_member.delete()
+        team_member.save()
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
@@ -211,11 +221,16 @@ class ParticipantViewSet(GenericViewSet):
         serializer.is_valid(raise_exception=True)
         self.perform_create(serializer)
         organization = OrganizationSerializer(
-            Organization.objects.get(id=request.data.get(Constants.ID)), data=request.data, partial=None
+            Organization.objects.get(id=request.data.get(Constants.ID)),
+            data=request.data,
+            partial=None,
         )
         organization.is_valid(raise_exception=True)
         self.perform_create(organization)
-        data = {Constants.USER: serializer.data, Constants.ORGANIZATION: organization.data}
+        data = {
+            Constants.USER: serializer.data,
+            Constants.ORGANIZATION: organization.data,
+        }
         return Response(data, status=status.HTTP_201_CREATED)
 
     def destroy(self, request, pk):
@@ -252,76 +267,77 @@ class DropDocumentView(GenericViewSet):
     """View for uploading organization document files"""
 
     parser_class = MultiPartParser
+    serializer_class = DropDocumentSerializer
 
     def create(self, request, *args, **kwargs):
         """Saves the document files in temp location before saving"""
+        serializer = self.get_serializer(data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+
+        # get file, file name & type from the form-data
+        key = list(request.data.keys())[0]
+        file = serializer.validated_data[key]
+        file_type = serializer.validated_data[key].content_type.split("/")[1]
+        file_name = str(key) + "." + file_type
+        file_operations.file_save(file, file_name, settings.TEMP_FILE_PATH)
+        return Response({key: "uploading in progress..."}, status=status.HTTP_201_CREATED)
+
+    @action(detail=False, methods=["delete"])
+    def delete(self, request):
+        """remove the dropped documents"""
         try:
-            # get file, file name & type from the form-data
-            file_key = list(request.data.keys())[0]
-            file_uploaded = request.data[file_key]
-            file_type = file_uploaded.content_type.split("/")[1]
+            key = list(request.data.keys())[0]
+            file_operations.remove_files(request.data[key], settings.TEMP_FILE_PATH)
 
-            if file_uploaded.size > settings.FILE_UPLOAD_MAX_SIZE * 1000000:
-                return Response({"message: please upload file with size lesser than 2MB"})
-            # check for file types (pdf, doc, docx)
-            elif file_type not in settings.FILE_TYPES_ALLOWED:
-                return Response({"message: Please upload only pdf or doc files"})
-            else:
-                fs = FileSystemStorage(
-                    settings.TEMP_FILE_PATH,
-                    directory_permissions_mode=0o755,
-                    file_permissions_mode=0o755,
-                )
-                file_name = str(file_key) + "." + file_type
-
-                # replace if the files exist
-                if fs.exists(file_name):
-                    fs.delete(file_name)
-                    fs.save(file_name, file_uploaded)
-                    return Response({"message: uploading...."}, status=status.HTTP_201_CREATED)
-
-                fs.save(file_name, file_uploaded)
-                return Response({"message: uploading...."}, status=status.HTTP_201_CREATED)
+            return Response({}, status=status.HTTP_204_NO_CONTENT)
 
         except Exception as e:
             LOGGER.error(e)
 
-        return Response(
-            {"message: encountered an error while uploading"},
-            status=status.HTTP_400_BAD_REQUEST,
-        )
+        return Response({}, status=status.HTTP_400_BAD_REQUEST)
 
 
 class DocumentSaveView(GenericViewSet):
     """View for uploading all the datahub documents and content"""
 
     serializer_class = PolicyDocumentSerializer
+    queryset = DatahubDocuments.objects.all()
+
+    def retrieve(self, request, pk):
+        """GET method: retrieve an object or instance of the Product model"""
+        organization = self.get_object()
+        serializer = self.get_serializer(organization)
+        return Response(serializer.data, status=status.HTTP_200_OK)
 
     def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        print(serializer.validated_data)
+        serializer.save()
+
+        # save the document files
+        file_operations.files_move(settings.TEMP_FILE_PATH, settings.STATIC_ROOT)
+
+        return Response({"message": "Documents and content saved!"}, status=status.HTTP_201_CREATED)
+
+    def update(self, request, *args, **kwargs):
         """Saves the document content and files"""
-        try:
-            serializer = PolicyDocumentSerializer(data=request.data)
-            serializer.is_valid(raise_exception=True)
-            serializer.save()
+        instance = self.get_object()
+        serializer = self.get_serializer(instance, data=request.data)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
 
-            for root, dirs, files in os.walk(settings.TEMP_FILE_PATH):
-                for file in files:
-                    # save the files in the destination directory
-                    shutil.copyfile(root + file, settings.STATIC_ROOT + file)
-                    os.remove(root + file)
+        # save the document files
+        file_operations.files_move(settings.TEMP_FILE_PATH, settings.STATIC_ROOT)
 
-            return Response({"message: Document content saved!"}, status=status.HTTP_201_CREATED)
-
-        except Exception as e:
-            LOGGER.error(e)
-
-        return Response({"message: not allowed"}, status=status.HTTP_400_BAD_REQUEST)
+        return Response({"message": "Documents and content updated!"}, status=status.HTTP_201_CREATED)
 
 
 class DatahubThemeView(GenericViewSet):
     """View for modifying datahub branding"""
 
     parser_class = MultiPartParser
+    serializer_class = DatahubThemeSerializer
 
     def create(self, request, *args, **kwargs):
         """generates the override css for datahub"""
@@ -360,6 +376,34 @@ class DatahubThemeView(GenericViewSet):
 
         except Exception as e:
             LOGGER.error(e)
+        serializer = self.get_serializer(data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
+
+        # get file, file name & type from the form-data
+        file_key = list(request.FILES.keys())[0]
+        file = data[file_key]
+        file_type = data[file_key].content_type.split("/")[1]
+        file_name = str(file_key) + "." + file_type
+
+        # save datahub banner image
+        file_operations.file_save(file, file_name, settings.STATIC_ROOT)
+
+        # CSS generation
+        text_fields = []
+        for count in range(len(data.keys())):
+            key = list(data.keys())[count]
+            # get only text data fields and append them to text_fields list
+            if type(data[key]) is not InMemoryUploadedFile:
+                text_fields.append(data[key])
+            count += 1
+
+        # save or override the CSS
+        css = ".btn { background-color: " + text_fields[0] + "; }"
+        file_operations.file_save(ContentFile(css), settings.CSS_FILE_NAME, settings.STATIC_ROOT)
+
+        return Response({"message": "Theme saved!"}, status=status.HTTP_201_CREATED)
+
 
 
 class SupportViewSet(GenericViewSet):
@@ -386,6 +430,14 @@ class SupportViewSet(GenericViewSet):
     def create(self, request, *args, **kwargs):
         """POST method: create action to save an object by sending a POST request"""
         serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        self.perform_create(serializer)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+    def update(self, request, *args, **kwargs):
+        """PUT method: update or send a PUT request on an object of the Product model"""
+        instance = self.get_object()
+        serializer = self.get_serializer(instance, data=request.data, partial=None)
         serializer.is_valid(raise_exception=True)
         self.perform_create(serializer)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
@@ -418,10 +470,4 @@ class SupportViewSet(GenericViewSet):
             return Response(participant_serializer.data[0], status=status.HTTP_200_OK)
         return Response([], status=status.HTTP_200_OK)
 
-    def update(self, request, *args, **kwargs):
-        """PUT method: update or send a PUT request on an object of the Product model"""
-        instance = self.get_object()
-        serializer = self.get_serializer(instance, data=request.data, partial=None)
-        serializer.is_valid(raise_exception=True)
-        self.perform_create(serializer)
-        return Response(serializer.data, status=status.HTTP_201_CREATED)
+    
