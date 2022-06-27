@@ -3,8 +3,9 @@ import urllib
 
 import sendgrid
 from django.conf import settings
+from django.db import models
 from python_http_client import exceptions
-from rest_framework import status
+from rest_framework import pagination, status
 from rest_framework.response import Response
 from sendgrid.helpers.mail import Content, Email, Mail
 
@@ -53,3 +54,19 @@ class Utils:
         return Response(
             {"Message": "Invation sent to the participants"}, status=status.HTTP_200_OK
         )
+
+class DefaultPagination(pagination.PageNumberPagination):
+    """
+    Configure Pagination
+    """
+
+    page_size = 5
+
+
+
+class TimeStampMixin(models.Model):
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        abstract = True
