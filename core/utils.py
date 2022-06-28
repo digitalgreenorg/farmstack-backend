@@ -30,7 +30,7 @@ class Utils:
             content (None, optional): _description_. Defaults to None.
             subject (None, optional): _description_. Defaults to None.
         """
-        content = Content("text/plain", content)
+        content = Content("text/html", content)
         mail = Mail(FROM_EMAIL, to_email, subject, content)
         try:
             SG.client.mail.send.post(request_body=mail.get())
@@ -51,9 +51,8 @@ class Utils:
             )
             return Response({"Error": "Faild to send email "}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)  # type: ignore
 
-        return Response(
-            {"Message": "Invation sent to the participants"}, status=status.HTTP_200_OK
-        )
+        return Response({"Message": "Invation sent to the participants"}, status=status.HTTP_200_OK)
+
 
 class DefaultPagination(pagination.PageNumberPagination):
     """
@@ -61,7 +60,6 @@ class DefaultPagination(pagination.PageNumberPagination):
     """
 
     page_size = 5
-
 
 
 class TimeStampMixin(models.Model):
