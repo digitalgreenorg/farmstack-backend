@@ -1,6 +1,5 @@
 from calendar import c
 from django.core.files.uploadedfile import InMemoryUploadedFile
-import django
 from accounts.models import User, UserRole
 from accounts.serializers import UserCreateSerializer
 from core.constants import Constants
@@ -8,8 +7,8 @@ from core.utils import Utils
 from django.conf import settings
 from django.contrib.admin.utils import get_model_from_relation
 from django.core.files.base import ContentFile
-from django.core.files.storage import FileSystemStorage
 from django.db.models import DEFERRED, F
+from django.db import transaction
 from drf_braces.mixins import MultipleSerializersViewMixin
 from rest_framework import pagination, status
 from rest_framework.decorators import action
@@ -19,6 +18,7 @@ from rest_framework.parsers import (
     JSONParser,
     MultiPartParser,
 )
+from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework.viewsets import GenericViewSet, ViewSet
@@ -53,6 +53,7 @@ class TeamMemberViewSet(GenericViewSet):
     serializer_class = UserCreateSerializer
     queryset = User.objects.all()
     pagination_class = DefaultPagination
+    # permission_classes = [IsAuthenticated]
 
     def create(self, request, *args, **kwargs):
         """POST method: create action to save an object by sending a POST request"""
@@ -103,6 +104,7 @@ class OrganizationViewSet(GenericViewSet):
     serializer_class = OrganizationSerializer
     queryset = Organization.objects.all()
     pagination_class = DefaultPagination
+    # permission_classes = [IsAuthenticated]
 
     def create(self, request, *args, **kwargs):
         """POST method: create action to save an object by sending a POST request"""
@@ -142,6 +144,7 @@ class ParticipantViewSet(GenericViewSet):
     serializer_class = UserCreateSerializer
     queryset = User.objects.all()
     pagination_class = DefaultPagination
+    # permission_classes = [IsAuthenticated]
 
     def perform_create(self, serializer):
         """
@@ -238,6 +241,8 @@ class MailInvitationViewSet(GenericViewSet):
     This class handles the mail invitation API views.
     """
 
+    # permission_classes = [IsAuthenticated]
+
     def create(self, request, *args, **kwargs):
         """
         This will send the mail to the requested user with content.
@@ -260,6 +265,7 @@ class DropDocumentView(GenericViewSet):
 
     parser_class = MultiPartParser
     serializer_class = DropDocumentSerializer
+    # permission_classes = [IsAuthenticated]
 
     def create(self, request, *args, **kwargs):
         """Saves the document files in temp location before saving"""
@@ -290,44 +296,49 @@ class DropDocumentView(GenericViewSet):
 
         return Response({}, status=status.HTTP_400_BAD_REQUEST)
 
+
 class DocumentSaveView(GenericViewSet):
     """View for uploading all the datahub documents and content"""
 
     serializer_class = PolicyDocumentSerializer
     queryset = DatahubDocuments.objects.all()
+    # permission_classes = [IsAuthenticated]
 
     def retrieve(self, request, pk):
         """GET method: retrieve an object or instance of the Product model"""
-        organization = self.get_object()
-        serializer = self.get_serializer(organization)
+        datahub_documents = self.get_object()
+        serializer = self.get_serializer(datahub_documents)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
-        print(serializer.validated_data)
-        serializer.save()
 
-        # save the document files
-        file_operations.files_move(settings.TEMP_FILE_PATH, settings.STATIC_ROOT)
+        with transaction.atomic():
+            serializer.save()
+            # save the document files
+            file_operations.files_move(settings.TEMP_FILE_PATH, settings.STATIC_ROOT)
 
-        return Response(
-            {"message": "Documents and content saved!"}, status=status.HTTP_201_CREATED
-        )
+            return Response(
+                {"message": "Documents and content saved!"},
+                status=status.HTTP_201_CREATED,
+            )
 
     def update(self, request, *args, **kwargs):
         """Saves the document content and files"""
         instance = self.get_object()
         serializer = self.get_serializer(instance, data=request.data)
         serializer.is_valid(raise_exception=True)
-        serializer.save()
 
-        # save the document files
-        file_operations.files_move(settings.TEMP_FILE_PATH, settings.STATIC_ROOT)
+        with transaction.atomic():
+            serializer.save()
+            # save the document files
+            file_operations.files_move(settings.TEMP_FILE_PATH, settings.STATIC_ROOT)
 
-        return Response(
-            {"message": "Documents and content updated!"}, status=status.HTTP_201_CREATED
-        )
+            return Response(
+                {"message": "Documents and content updated!"},
+                status=status.HTTP_201_CREATED,
+            )
 
 
 class DatahubThemeView(GenericViewSet):
@@ -335,35 +346,51 @@ class DatahubThemeView(GenericViewSet):
 
     parser_class = MultiPartParser
     serializer_class = DatahubThemeSerializer
+    # permission_classes = [IsAuthenticated]
 
     def create(self, request, *args, **kwargs):
         """generates the override css for datahub"""
         serializer = self.get_serializer(data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
         data = serializer.validated_data
+        user = User.objects.filter(email=data["email"])
+        user = user.first()
 
-        # get file, file name & type from the form-data
-        file_key = list(request.FILES.keys())[0]
-        file = data[file_key]
-        file_type = data[file_key].content_type.split("/")[1]
-        file_name = str(file_key) + "." + file_type
+        try:
+            # get file, file name & type from the form-data
+            file_key = list(request.FILES.keys())[0]
+            file = data[file_key]
+            file_type = data[file_key].content_type.split("/")[1]
+            file_name = str(file_key) + "." + file_type
 
-        # save datahub banner image
-        file_operations.file_save(file, file_name, settings.STATIC_ROOT)
+            # CSS generation
+            # text_fields = []
+            # for count in range(len(data.keys())):
+            #     key = list(data.keys())[count]
+            #     # get only text data fields and append them to text_fields list
+            #     if type(data[key]) is not InMemoryUploadedFile:
+            #         text_fields.append(data[key])
+            #     count += 1
 
-        # CSS generation
-        text_fields = []
-        for count in range(len(data.keys())):
-            key = list(data.keys())[count]
-            # get only text data fields and append them to text_fields list
-            if type(data[key]) is not InMemoryUploadedFile:
-                text_fields.append(data[key])
-            count += 1
+            with transaction.atomic():
+                # save datahub banner image
+                file_operations.file_save(file, file_name, settings.STATIC_ROOT)
 
-        # save or override the CSS
-        css = ".btn { background-color: " + text_fields[0] + "; }"
-        file_operations.file_save(
-            ContentFile(css), settings.CSS_FILE_NAME, settings.STATIC_ROOT
-        )
+                # save or override the CSS
+                css = ".btn { background-color: " + data["button_color"] + "; }"
+                file_operations.file_save(
+                    ContentFile(css), settings.CSS_FILE_NAME, settings.STATIC_ROOT
+                )
 
-        return Response({"message": "Theme saved!"}, status=status.HTTP_201_CREATED)
+                # set user status to True
+                user.status = True
+                user.save()
+
+                return Response(
+                    {"message": "Theme saved!"}, status=status.HTTP_201_CREATED
+                )
+
+        except Exception as e:
+            LOGGER.error(e)
+
+        return Response({}, status=status.HTTP_400_BAD_REQUEST)

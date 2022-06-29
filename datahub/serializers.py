@@ -127,5 +127,5 @@ class DatahubThemeSerializer(serializers.Serializer):
     banner = serializers.ImageField(
         validators=[validate_file_size, validate_image_type]
     )
-    file = serializers.ImageField(validators=[validate_file_size, validate_image_type])
     button_color = serializers.CharField()
+    email = serializers.EmailField()

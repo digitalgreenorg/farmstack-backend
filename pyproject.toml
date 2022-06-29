@@ -19,6 +19,7 @@ django-environ = "^0.8.1"
 pyaml = "^21.10.1"
 Pillow = "^9.1.1"
 django-nose = "^1.4.7"
+django-filter = "^22.1"
 
 [tool.poetry.dev-dependencies]
 black = "^22.3.0"
