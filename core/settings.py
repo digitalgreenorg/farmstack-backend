@@ -172,19 +172,18 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 AUTH_USER_MODEL = "accounts.User"
 
 REST_FRAMEWORK = {
-    "DEFAULT_AUTHENTICATION_CLASSES": (
-        "rest_framework_simplejwt.authentication.JWTAuthentication",
-    ),
+    "DEFAULT_AUTHENTICATION_CLASSES": ("rest_framework_simplejwt.authentication.JWTAuthentication",),
     "DEFAULT_PERMISSION_CLASSES": [],
     "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
 }
 
 # Email configuration
-SENDGRID_API_KEY = os.environ.get("SENDGRID_API_KEY", "send_grid_key")
-EMAIL_HOST_USER = os.environ.get("EMAIL_HOST_USER", "email_host_user")
-
+# SENDGRID_API_KEY = os.environ.get("SENDGRID_API_KEY", "send_grid_key")
+# EMAIL_HOST_USER = os.environ.get("EMAIL_HOST_USER", "email_host_user")
+SENDGRID_API_KEY = "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"
+EMAIL_HOST_USER = "farmstack.dg@gmail.com"
 # User OTP config
-OTP_DURATION = 900
+OTP_DURATION = 120
 OTP_LIMIT = 3
 
 # Fixtures

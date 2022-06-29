@@ -405,7 +405,6 @@ class DatahubThemeView(GenericViewSet):
         return Response({"message": "Theme saved!"}, status=status.HTTP_201_CREATED)
 
 
-
 class SupportViewSet(GenericViewSet):
     """
     This class handles the participant support tickets CRUD operations.
@@ -449,7 +448,8 @@ class SupportViewSet(GenericViewSet):
             SupportTicket.objects.select_related(
                 Constants.USER_MAP, Constants.USER_MAP_USER, Constants.USER_MAP_ORGANIZATION
             )
-            .filter(user_map__user__status=False)
+            .filter(user_map__user__status=False, **request.GET)
+            .order_by("updated_at")
             .all()
         )
         page = self.paginate_queryset(data)
@@ -469,5 +469,3 @@ class SupportViewSet(GenericViewSet):
         if participant_serializer.data:
             return Response(participant_serializer.data[0], status=status.HTTP_200_OK)
         return Response([], status=status.HTTP_200_OK)
-
-    

@@ -37,12 +37,7 @@ class ParticipantSupportTicketSerializer(serializers.ModelSerializer):
         required=False,
         source="user_map.organization",
     )
-    user = UserSerializer(
-        read_only=False,
-        required=False,
-        allow_null=True,
-        source = "user_map.user"
-    )
+    user = UserSerializer(read_only=False, required=False, allow_null=True, source="user_map.user")
     organization = OrganizationRetriveSerializer(
         required=False,
         allow_null=True,
