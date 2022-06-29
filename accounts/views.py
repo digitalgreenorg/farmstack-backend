@@ -96,7 +96,8 @@ class LoginViewset(GenericViewSet):
         try:
             if not user:
                 return Response(
-                    {"email": "User not registered"}, status=status.HTTP_400_BAD_REQUEST
+                    {"email": "User not registered"},
+                    status=status.HTTP_400_BAD_REQUEST,
                 )
 
             # check if user is suspended
@@ -128,7 +129,11 @@ class LoginViewset(GenericViewSet):
             print(cache.get(email))
 
             return Response(
-                {"id": user.id, "email": email, "message": "Enter the OTP to login"},
+                {
+                    "id": user.id,
+                    "email": email,
+                    "message": "Enter the OTP to login",
+                },
                 status=status.HTTP_201_CREATED,
             )
 

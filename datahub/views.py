@@ -1,5 +1,6 @@
+import logging, os, shutil, json
 from calendar import c
-from django.core.files.uploadedfile import InMemoryUploadedFile
+import django
 from accounts.models import User, UserRole
 from accounts.serializers import UserCreateSerializer
 from core.constants import Constants
@@ -7,9 +8,15 @@ from core.utils import Utils
 from django.conf import settings
 from django.contrib.admin.utils import get_model_from_relation
 from django.core.files.base import ContentFile
+from django.core.files.uploadedfile import InMemoryUploadedFile
 from django.db.models import DEFERRED, F
 from django.db import transaction
 from drf_braces.mixins import MultipleSerializersViewMixin
+from participant.models import SupportTicket
+from participant.serializers import (
+    ParticipantSupportTicketSerializer,
+    TicketSupportSerializer,
+)
 from rest_framework import pagination, status
 from rest_framework.decorators import action
 from rest_framework.parsers import (
@@ -23,18 +30,17 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework.viewsets import GenericViewSet, ViewSet
 from uritemplate import partial
+from utils import file_operations, validators
 
-from datahub.models import Organization, UserOrganizationMap, DatahubDocuments
+from datahub.models import DatahubDocuments, Organization, UserOrganizationMap
 from datahub.serializers import (
+    DatahubThemeSerializer,
+    DropDocumentSerializer,
     OrganizationSerializer,
     ParticipantSerializer,
     PolicyDocumentSerializer,
     UserOrganizationMapSerializer,
-    DropDocumentSerializer,
-    DatahubThemeSerializer,
 )
-import logging, os, shutil, json
-from utils import file_operations, validators
 
 LOGGER = logging.getLogger(__name__)
 
@@ -51,15 +57,16 @@ class TeamMemberViewSet(GenericViewSet):
     """Viewset for Product model"""
 
     serializer_class = UserCreateSerializer
-    queryset = User.objects.all()
+    queryset = User.objects.filter(status=False)
     pagination_class = DefaultPagination
     # permission_classes = [IsAuthenticated]
 
     def create(self, request, *args, **kwargs):
         """POST method: create action to save an object by sending a POST request"""
+        # print(request.data)
+        # request.data["role"] = UserRole.objects.get(role_name=request.data["role"]).id
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-
         serializer.save()
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
@@ -77,12 +84,15 @@ class TeamMemberViewSet(GenericViewSet):
     def retrieve(self, request, pk):
         """GET method: retrieve an object or instance of the Product model"""
         team_member = self.get_object()
+
+        # team_member.role = UserRole.objects.get(role_name=team_member.role).id
         serializer = self.get_serializer(team_member)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
     def update(self, request, *args, **kwargs):
         """PUT method: update or send a PUT request on an object of the Product model"""
         instance = self.get_object()
+        # request.data["role"] = UserRole.objects.get(role_name=request.data["role"]).id
         serializer = self.get_serializer(instance, data=request.data, partial=None)
         serializer.is_valid(raise_exception=True)
         serializer.save()
@@ -91,8 +101,9 @@ class TeamMemberViewSet(GenericViewSet):
     def destroy(self, request, pk):
         """DELETE method: delete an object"""
         team_member = self.get_object()
-        team_member.delete()
-
+        team_member.status = True
+        # team_member.delete()
+        team_member.save()
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
@@ -176,7 +187,10 @@ class ParticipantViewSet(GenericViewSet):
         user_saved = self.perform_create(serializer)
 
         user_org_serializer = UserOrganizationMapSerializer(
-            data={Constants.USER: user_saved.id, Constants.ORGANIZATION: org_id}
+            data={
+                Constants.USER: user_saved.id,
+                Constants.ORGANIZATION: org_id,
+            }
         )
         user_org_serializer.is_valid(raise_exception=True)
         self.perform_create(user_org_serializer)
@@ -379,7 +393,9 @@ class DatahubThemeView(GenericViewSet):
                 # save or override the CSS
                 css = ".btn { background-color: " + data["button_color"] + "; }"
                 file_operations.file_save(
-                    ContentFile(css), settings.CSS_FILE_NAME, settings.STATIC_ROOT
+                    ContentFile(css),
+                    settings.CSS_FILE_NAME,
+                    settings.STATIC_ROOT,
                 )
 
                 # set user status to True
@@ -394,3 +410,73 @@ class DatahubThemeView(GenericViewSet):
             LOGGER.error(e)
 
         return Response({}, status=status.HTTP_400_BAD_REQUEST)
+
+
+class SupportViewSet(GenericViewSet):
+    """
+    This class handles the participant support tickets CRUD operations.
+    """
+
+    parser_class = JSONParser
+    serializer_class = TicketSupportSerializer
+    queryset = SupportTicket
+    pagination_class = DefaultPagination
+
+    def perform_create(self, serializer):
+        """
+        This function performs the create operation of requested serializer.
+        Args:
+            serializer (_type_): serializer class object.
+
+        Returns:
+            _type_: Returns the saved details.
+        """
+        return serializer.save()
+
+    def create(self, request, *args, **kwargs):
+        """POST method: create action to save an object by sending a POST request"""
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        self.perform_create(serializer)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+    def update(self, request, *args, **kwargs):
+        """PUT method: update or send a PUT request on an object of the Product model"""
+        instance = self.get_object()
+        serializer = self.get_serializer(instance, data=request.data, partial=None)
+        serializer.is_valid(raise_exception=True)
+        self.perform_create(serializer)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+    def list(self, request, *args, **kwargs):
+        """GET method: query all the list of objects from the Product model"""
+        # roles = SupportTicket.objects.prefetch_related("user").filter(user__status=False).all()
+        data = (
+            SupportTicket.objects.select_related(
+                Constants.USER_MAP,
+                Constants.USER_MAP_USER,
+                Constants.USER_MAP_ORGANIZATION,
+            )
+            .filter(user_map__user__status=False, **request.GET)
+            .order_by("updated_at")
+            .all()
+        )
+        page = self.paginate_queryset(data)
+        participant_serializer = ParticipantSupportTicketSerializer(page, many=True)
+        return self.get_paginated_response(participant_serializer.data)
+
+    def retrieve(self, request, pk):
+        """GET method: retrieve an object or instance of the Product model"""
+        data = (
+            SupportTicket.objects.select_related(
+                Constants.USER_MAP,
+                Constants.USER_MAP_USER,
+                Constants.USER_MAP_ORGANIZATION,
+            )
+            .filter(user_map__user__status=False, id=pk)
+            .all()
+        )
+        participant_serializer = ParticipantSupportTicketSerializer(data, many=True)
+        if participant_serializer.data:
+            return Response(participant_serializer.data[0], status=status.HTTP_200_OK)
+        return Response([], status=status.HTTP_200_OK)
