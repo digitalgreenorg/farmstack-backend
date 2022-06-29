@@ -84,19 +84,11 @@ class ParticipantSerializer(serializers.ModelSerializer):
 class DropDocumentSerializer(serializers.Serializer):
     """DropDocumentSerializer class"""
 
-    governing_law = serializers.FileField(
-        validators=[validate_file_size, validate_document_type]
-    )
-    privacy_policy = serializers.FileField(
-        validators=[validate_file_size, validate_document_type]
-    )
+    governing_law = serializers.FileField(validators=[validate_file_size, validate_document_type])
+    privacy_policy = serializers.FileField(validators=[validate_file_size, validate_document_type])
     tos = serializers.FileField(validators=[validate_file_size, validate_document_type])
-    limitations_of_liabilities = serializers.FileField(
-        validators=[validate_file_size, validate_document_type]
-    )
-    warranty = serializers.FileField(
-        validators=[validate_file_size, validate_document_type]
-    )
+    limitations_of_liabilities = serializers.FileField(validators=[validate_file_size, validate_document_type])
+    warranty = serializers.FileField(validators=[validate_file_size, validate_document_type])
 
 
 class PolicyDocumentSerializer(serializers.ModelSerializer):
@@ -116,8 +108,6 @@ class PolicyDocumentSerializer(serializers.ModelSerializer):
 class DatahubThemeSerializer(serializers.Serializer):
     """DatahubThemeSerializer class"""
 
-    banner = serializers.ImageField(
-        validators=[validate_file_size, validate_image_type]
-    )
+    banner = serializers.ImageField(validators=[validate_file_size, validate_image_type])
     button_color = serializers.CharField()
     email = serializers.EmailField()

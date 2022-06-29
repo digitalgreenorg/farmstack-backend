@@ -102,10 +102,7 @@ class LoginViewset(GenericViewSet):
 
             # check if user is suspended
             if cache.get(user.id) is not None:
-                if (
-                    cache.get(user.id)["email"] == email
-                    and cache.get(user.id)["cache_type"] == "user_suspension"
-                ):
+                if cache.get(user.id)["email"] == email and cache.get(user.id)["cache_type"] == "user_suspension":
                     return Response(
                         {
                             "email": email,
@@ -165,9 +162,7 @@ class VerifyLoginOTPViewset(GenericViewSet):
             # increment the otp counter
             otp_attempt = int(cache.get(email)["otp_attempt"]) + 1
             # update the expiry duration of otp
-            new_duration = settings.OTP_DURATION - (
-                datetime.datetime.now().second - otp_created.second
-            )
+            new_duration = settings.OTP_DURATION - (datetime.datetime.now().second - otp_created.second)
 
             if correct_otp == int(otp_entered) and cache.get(email)["email"] == email:
 
@@ -190,9 +185,7 @@ class VerifyLoginOTPViewset(GenericViewSet):
                 # check for otp limit
                 if cache.get(email)["otp_attempt"] < int(settings.OTP_LIMIT):
                     # update the user otp data
-                    login_helper.create_user_otp(
-                        email, correct_otp, new_duration, otp_attempt
-                    )
+                    login_helper.create_user_otp(email, correct_otp, new_duration, otp_attempt)
                     print(cache.get(email))
                     return Response(
                         {
@@ -206,9 +199,7 @@ class VerifyLoginOTPViewset(GenericViewSet):
                     login_helper.user_suspension(user.id, email)
                     # print(cache.get(user.id))
                     return Response(
-                        {
-                            "message": "Maximum attempts taken, please retry after some time"
-                        },
+                        {"message": "Maximum attempts taken, please retry after some time"},
                         status=status.HTTP_403_FORBIDDEN,
                     )
             # check otp expiration

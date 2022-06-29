@@ -52,9 +52,7 @@ invalid_role_data = {
     "name": "digitalgreen",
     "phone_number": "9985750356",
     "website": "website.com",
-    "address": json.dumps(
-        {"address": "Banglore", "country": "India", "pincode": "501011"}
-    ),
+    "address": json.dumps({"address": "Banglore", "country": "India", "pincode": "501011"}),
     "profile_picture": open("datahub/tests/test_data/pro.png", "rb"),
     "subscription": "aaaa",
 }
@@ -65,9 +63,7 @@ class MockUtils:
         if to_email == []:
             return Response({"message": "Invalid email address"}, 400)
         else:
-            return Response(
-                {"Message": "Invation sent to the participants"}, status=200
-            )
+            return Response({"Message": "Invation sent to the participants"}, status=200)
 
 
 class TestViews(TestCase):
@@ -120,17 +116,11 @@ class TestViews(TestCase):
 
     def test_participant_post_add_user_invalid_fields_asserts(self):
         """_summary_"""
-        response = self.client.post(
-            self.participant_url, invalid_role_data, secure=True
-        )
+        response = self.client.post(self.participant_url, invalid_role_data, secure=True)
         assert response.status_code == 400
-        assert response.json().get("role") == [
-            'Invalid pk "33" - object does not exist.'
-        ]
+        assert response.json().get("role") == ['Invalid pk "33" - object does not exist.']
         invalid_role_data["email"] = ""
-        response = self.client.post(
-            self.participant_url, invalid_role_data, secure=True
-        )
+        response = self.client.post(self.participant_url, invalid_role_data, secure=True)
         assert response.status_code == 400
         assert response.json() == {
             "email": ["This field may not be blank."],
@@ -145,15 +135,11 @@ class TestViews(TestCase):
         assert data.get("count") == 1
         assert len(data.get("results")) == 1
         assert data.get("results")[0].get("user").get("phone_number") == "9985750356"
-        assert (
-            data.get("results")[0].get("organization").get("website") == "website.com"
-        )
+        assert data.get("results")[0].get("organization").get("website") == "website.com"
 
     def test_participant_update_user_details(self):
         id = User.objects.get(first_name="ugesh").id
-        update_data["id"] = Organization.objects.get(
-            org_email="bglordg@digitalgreen.org"
-        ).id
+        update_data["id"] = Organization.objects.get(org_email="bglordg@digitalgreen.org").id
         response = self.client.put(
             self.participant_url + str(id) + "/",
             update_data,
@@ -169,9 +155,7 @@ class TestViews(TestCase):
 
     def test_participant_update_user_details_error(self):
         id = User.objects.get(first_name="ugesh").id
-        update_data["id"] = Organization.objects.get(
-            org_email="bglordg@digitalgreen.org"
-        ).id
+        update_data["id"] = Organization.objects.get(org_email="bglordg@digitalgreen.org").id
         response = self.client.put(
             self.participant_url + str(uuid4()) + "/",
             update_data,
@@ -189,9 +173,7 @@ class TestViews(TestCase):
         assert data.get("count") == 1
         assert len(data.get("results")) == 1
         assert data.get("results")[0].get("user").get("first_name") == "ugesh"
-        assert (
-            data.get("results")[0].get("organization").get("website") == "website.com"
-        )
+        assert data.get("results")[0].get("organization").get("website") == "website.com"
 
     def test_participant_delete(self):
         id = User.objects.get(first_name="ugesh").id
@@ -312,9 +294,7 @@ class SupportTestViews(TestCase):
             organization=Organization.objects.get(org_email="bglordg@digitalgreen.org"),
         )
         self.user_map_id = user_map.id
-        SupportTicket.objects.create(
-            **ticket_dump_data, user_map=UserOrganizationMap.objects.get(id=user_map.id)
-        )
+        SupportTicket.objects.create(**ticket_dump_data, user_map=UserOrganizationMap.objects.get(id=user_map.id))
 
     def test_participant_support_invalid(self):
         """_summary_"""
@@ -331,9 +311,7 @@ class SupportTestViews(TestCase):
 
     def test_participant_support_valid_ticket(self):
         """_summary_"""
-        user_id = UserOrganizationMap.objects.get(
-            user_id=User.objects.get(first_name="ugesh").id
-        ).id
+        user_id = UserOrganizationMap.objects.get(user_id=User.objects.get(first_name="ugesh").id).id
         ticket_valid_data["user_map"] = user_id
         response = self.client.post(self.support_url, ticket_valid_data, secure=True)
         assert response.status_code == 201

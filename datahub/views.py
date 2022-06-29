@@ -171,9 +171,7 @@ class ParticipantViewSet(GenericViewSet):
     def create(self, request, *args, **kwargs):
         """POST method: create action to save an object by sending a POST request"""
         org_queryset = list(
-            Organization.objects.filter(
-                org_email=self.request.data.get(Constants.ORG_EMAIL, "")
-            ).values()
+            Organization.objects.filter(org_email=self.request.data.get(Constants.ORG_EMAIL, "")).values()
         )
         if not org_queryset:
             serializer = OrganizationSerializer(data=request.data)
@@ -199,9 +197,7 @@ class ParticipantViewSet(GenericViewSet):
     def list(self, request, *args, **kwargs):
         """GET method: query all the list of objects from the Product model"""
         roles = (
-            UserOrganizationMap.objects.select_related(
-                Constants.USER, Constants.ORGANIZATION
-            )
+            UserOrganizationMap.objects.select_related(Constants.USER, Constants.ORGANIZATION)
             .filter(user__status=False, user__role=3)
             .all()
         )
@@ -212,9 +208,7 @@ class ParticipantViewSet(GenericViewSet):
     def retrieve(self, request, pk):
         """GET method: retrieve an object or instance of the Product model"""
         roles = (
-            UserOrganizationMap.objects.prefetch_related(
-                Constants.USER, Constants.ORGANIZATION
-            )
+            UserOrganizationMap.objects.prefetch_related(Constants.USER, Constants.ORGANIZATION)
             .filter(user__status=False, user__role=3, user=pk)
             .all()
         )
@@ -292,9 +286,7 @@ class DropDocumentView(GenericViewSet):
         file_type = serializer.validated_data[key].content_type.split("/")[1]
         file_name = str(key) + "." + file_type
         file_operations.file_save(file, file_name, settings.TEMP_FILE_PATH)
-        return Response(
-            {key: "uploading in progress..."}, status=status.HTTP_201_CREATED
-        )
+        return Response({key: "uploading in progress..."}, status=status.HTTP_201_CREATED)
 
     @action(detail=False, methods=["delete"])
     def delete(self, request):
@@ -402,9 +394,7 @@ class DatahubThemeView(GenericViewSet):
                 user.status = True
                 user.save()
 
-                return Response(
-                    {"message": "Theme saved!"}, status=status.HTTP_201_CREATED
-                )
+                return Response({"message": "Theme saved!"}, status=status.HTTP_201_CREATED)
 
         except Exception as e:
             LOGGER.error(e)

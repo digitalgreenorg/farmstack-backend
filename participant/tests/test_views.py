@@ -77,9 +77,7 @@ class TestViews(TestCase):
             organization=Organization.objects.get(org_email="bglordg@digitalgreen.org"),
         )
         self.user_map_id = user_map.id
-        SupportTicket.objects.create(
-            **dump_data, user_map=UserOrganizationMap.objects.get(id=user_map.id)
-        )
+        SupportTicket.objects.create(**dump_data, user_map=UserOrganizationMap.objects.get(id=user_map.id))
 
     def test_participant_support_invalid(self):
         """_summary_"""
@@ -96,9 +94,7 @@ class TestViews(TestCase):
 
     def test_participant_support_valid_ticket(self):
         """_summary_"""
-        user_id = UserOrganizationMap.objects.get(
-            user_id=User.objects.get(first_name="ugesh").id
-        ).id
+        user_id = UserOrganizationMap.objects.get(user_id=User.objects.get(first_name="ugesh").id).id
         valid_data["user_map"] = user_id
         response = self.client.post(self.support_url, valid_data, secure=True)
         assert response.status_code == 201
@@ -107,9 +103,7 @@ class TestViews(TestCase):
 
     def test_participant_support_get_list(self):
         user_id = User.objects.get(first_name="ugesh").id
-        response = self.client.get(
-            self.support_url, args={"user_id": user_id}, secure=True
-        )
+        response = self.client.get(self.support_url, args={"user_id": user_id}, secure=True)
         data = response.json()
         assert response.status_code == 200
         assert data.get("count") == 0

@@ -51,9 +51,7 @@ class Utils:
             )
             return Response({"Error": "Failed to send email "}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)  # type: ignore
 
-        return Response(
-            {"Message": "Email successfully sent!"}, status=status.HTTP_200_OK
-        )
+        return Response({"Message": "Email successfully sent!"}, status=status.HTTP_200_OK)
 
 
 class DefaultPagination(pagination.PageNumberPagination):
