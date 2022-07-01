@@ -195,9 +195,18 @@ SENDGRID_API_KEY = os.environ.get("SENDGRID_API_KEY", "send_grid_key")
 EMAIL_HOST_USER = os.environ.get("EMAIL_HOST_USER", "email_host_user")
 
 # User OTP config
-OTP_DURATION = 300
+OTP_DURATION = 900
 OTP_LIMIT = 3
 USER_SUSPENSION_DURATION = 300
+
+# Store cache in file
+CACHES = {
+    "default": {
+        "BACKEND": "django.core.cache.backends.filebased.FileBasedCache",
+        # 'LOCATION': '/var/django_cache/'
+        "LOCATION": os.path.join(BASE_DIR, "django_cache/"),
+    }
+}
 
 # Fixtures
 FIXTURE_DIRS = [

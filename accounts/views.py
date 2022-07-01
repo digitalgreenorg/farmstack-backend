@@ -89,15 +89,15 @@ class LoginViewset(GenericViewSet):
                 )
 
             # check if user is suspended
-            if user.status == False:
-                return Response(
-                    {
-                        "email": email,
-                        "message": "Your account is suspended, please try after some time",
-                    },
-                    # status=status.HTTP_403_FORBIDDEN,
-                    status=status.HTTP_401_UNAUTHORIZED,
-                )
+            if cache.get(user.id) is not None:
+                if cache.get(user.id)["email"] == email and cache.get(user.id)["cache_type"] == "user_suspension":
+                    return Response(
+                        {
+                            "email": email,
+                            "message": "Your account is suspended, please try after some time",
+                        },
+                        status=status.HTTP_401_UNAUTHORIZED,
+                    )
 
             # generate and send OTP to the the user
             gen_key = login_helper.generateKey()
@@ -182,11 +182,11 @@ class VerifyLoginOTPViewset(GenericViewSet):
                         status=status.HTTP_401_UNAUTHORIZED,
                     )
                 else:
-                    cache.delete(email)
-
                     # On maximum invalid OTP attempts set user status to False
-                    user.status = False
-                    user.save()
+                    cache.delete(email)
+                    login_helper.user_suspension(user.id, email)
+                    # user.status = False
+                    # user.save()
 
                     return Response(
                         {"message": "Maximum attempts taken, please retry after some time"},
