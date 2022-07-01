@@ -37,25 +37,14 @@ class RegisterViewset(GenericViewSet):
         """POST method: to save a newly registered user
         creates a new user with status False
         """
-
         serializer = self.get_serializer(data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
-        email = serializer.validated_data["email"]
         serializer.save()
-
-        gen_key = login_helper.generateKey()  # generate otp
-        otp = gen_key.returnValue()["OTP"]
-
-        # send OTP to the the user
-        Utils().send_email(
-            to_email=email,
-            content=f"Your OTP is {otp}",
-            subject=f"Your account verification OTP",
-        )
 
         return Response(
             {
-                "message": "Please verify your using OTP",
+                # "message": "Please verify your using OTP",
+                "message": "Successfully created the account!",
                 "response": serializer.data,
             },
             status=status.HTTP_201_CREATED,
@@ -63,8 +52,8 @@ class RegisterViewset(GenericViewSet):
 
     def retrieve(self, request, pk):
         """GET method: retrieve an object or instance of the Product model"""
-        product = self.get_object()
-        serializer = self.get_serializer(product)
+        user = self.get_object()
+        serializer = self.get_serializer(user)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
     def update(self, request, *args, **kwargs):
@@ -86,7 +75,6 @@ class LoginViewset(GenericViewSet):
 
     def create(self, request, *args, **kwargs):
         """POST method: to save a newly registered user"""
-
         serializer = self.get_serializer(data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
         email = serializer.validated_data["email"]
@@ -101,16 +89,15 @@ class LoginViewset(GenericViewSet):
                 )
 
             # check if user is suspended
-            if cache.get(user.id) is not None:
-                if cache.get(user.id)["email"] == email and cache.get(user.id)["cache_type"] == "user_suspension":
-                    return Response(
-                        {
-                            "email": email,
-                            "message": "Your account is suspended, please try after some time",
-                        },
-                        # status=status.HTTP_403_FORBIDDEN,
-                        status=status.HTTP_401_UNAUTHORIZED,
-                    )
+            if user.status == False:
+                return Response(
+                    {
+                        "email": email,
+                        "message": "Your account is suspended, please try after some time",
+                    },
+                    # status=status.HTTP_403_FORBIDDEN,
+                    status=status.HTTP_401_UNAUTHORIZED,
+                )
 
             # generate and send OTP to the the user
             gen_key = login_helper.generateKey()
@@ -121,8 +108,8 @@ class LoginViewset(GenericViewSet):
                 subject=f"Your account verification OTP",
             )
 
-            # assign OTP to the user
-            login_helper.create_user_otp(email, otp, settings.OTP_DURATION)
+            # assign OTP to the user using cache
+            login_helper.set_user_otp(email, otp, settings.OTP_DURATION)
             print(cache.get(email))
 
             return Response(
@@ -147,8 +134,7 @@ class VerifyLoginOTPViewset(GenericViewSet):
 
     def create(self, request, *args, **kwargs):
         """POST method: to verify registered users"""
-
-        serializer = self.get_serializer(data=request.data, partial=None)
+        serializer = self.get_serializer(data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
         email = serializer.validated_data["email"]
         otp_entered = serializer.validated_data["otp"]
@@ -164,8 +150,8 @@ class VerifyLoginOTPViewset(GenericViewSet):
             # update the expiry duration of otp
             new_duration = settings.OTP_DURATION - (datetime.datetime.now().second - otp_created.second)
 
+            # On successful validation generate JWT tokens
             if correct_otp == int(otp_entered) and cache.get(email)["email"] == email:
-
                 cache.delete(email)
                 refresh = RefreshToken.for_user(user)
                 return Response(
@@ -184,9 +170,10 @@ class VerifyLoginOTPViewset(GenericViewSet):
             elif correct_otp != int(otp_entered) or cache.get(email)["email"] != email:
                 # check for otp limit
                 if cache.get(email)["otp_attempt"] < int(settings.OTP_LIMIT):
-                    # update the user otp data
-                    login_helper.create_user_otp(email, correct_otp, new_duration, otp_attempt)
+                    # update the user otp data in cache
+                    login_helper.set_user_otp(email, correct_otp, new_duration, otp_attempt)
                     print(cache.get(email))
+
                     return Response(
                         {
                             "message": "Invalid OTP, remaining attempts left: "
@@ -196,8 +183,11 @@ class VerifyLoginOTPViewset(GenericViewSet):
                     )
                 else:
                     cache.delete(email)
-                    login_helper.user_suspension(user.id, email)
-                    # print(cache.get(user.id))
+
+                    # On maximum invalid OTP attempts set user status to False
+                    user.status = False
+                    user.save()
+
                     return Response(
                         {"message": "Maximum attempts taken, please retry after some time"},
                         status=status.HTTP_403_FORBIDDEN,

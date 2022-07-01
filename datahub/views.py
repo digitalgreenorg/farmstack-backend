@@ -363,22 +363,12 @@ class DatahubThemeView(GenericViewSet):
         user = user.first()
 
         try:
-            # get file, file name & type from the form-data
-            file_key = list(request.FILES.keys())[0]
-            file = data[file_key]
-            file_type = data[file_key].content_type.split("/")[1]
-            file_name = str(file_key) + "." + file_type
+            if all(key in data for key in ("button_color", "banner")):
+                file_key = list(request.FILES.keys())[0]
+                file = data[file_key]
+                file_type = data[file_key].content_type.split("/")[1]
+                file_name = str(file_key) + "." + file_type
 
-            # CSS generation
-            # text_fields = []
-            # for count in range(len(data.keys())):
-            #     key = list(data.keys())[count]
-            #     # get only text data fields and append them to text_fields list
-            #     if type(data[key]) is not InMemoryUploadedFile:
-            #         text_fields.append(data[key])
-            #     count += 1
-
-            with transaction.atomic():
                 # save datahub banner image
                 file_operations.file_save(file, file_name, settings.STATIC_ROOT)
 
@@ -390,11 +380,11 @@ class DatahubThemeView(GenericViewSet):
                     settings.STATIC_ROOT,
                 )
 
-                # set user status to True
-                user.status = True
-                user.save()
+            # set datahub admin user status to True
+            user.status = True
+            user.save()
 
-                return Response({"message": "Theme saved!"}, status=status.HTTP_201_CREATED)
+            return Response({"message": "Theme saved!"}, status=status.HTTP_201_CREATED)
 
         except Exception as e:
             LOGGER.error(e)

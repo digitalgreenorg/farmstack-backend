@@ -17,7 +17,7 @@ class generateKey:
         return {"totp": secret, "OTP": OTP}
 
 
-def create_user_otp(
+def set_user_otp(
     email,
     otp,
     otp_duration,

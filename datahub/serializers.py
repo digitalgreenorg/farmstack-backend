@@ -108,6 +108,8 @@ class PolicyDocumentSerializer(serializers.ModelSerializer):
 class DatahubThemeSerializer(serializers.Serializer):
     """DatahubThemeSerializer class"""
 
-    banner = serializers.ImageField(validators=[validate_file_size, validate_image_type])
-    button_color = serializers.CharField()
+    banner = serializers.ImageField(
+        validators=[validate_file_size, validate_image_type], required=False, allow_null=True
+    )
+    button_color = serializers.CharField(required=False, allow_null=True)
     email = serializers.EmailField()

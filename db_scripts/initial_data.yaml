@@ -1,58 +1,11 @@
 - model: accounts.User
-  pk: "045c343f-ac78-46c1-9825-408cda8e0798"
-  fields:
-    created_at: "2022-06-30 15:07:26.316380"
-    updated_at: "2022-06-30 15:07:26.316411"
-    first_name: "Monica"
-    email: "monica@email.com"
-    role: 3
-- model: accounts.User
-  pk: "3aa01d5e-aa18-41f5-8937-0ba5a237d50d"
-  fields:
-    created_at: "2022-06-30 15:08:26.316380"
-    updated_at: "2022-06-30 15:08:26.316411"
-    first_name: "Chandler"
-    email: "chandler@email.com"
-    role: 3
-- model: accounts.User
-  pk: "9f924c79-1946-4c26-a1d7-fb653543ea98"
-  fields:
-    created_at: "2022-06-30 15:09:26.316380"
-    updated_at: "2022-06-30 15:09:26.316411"
-    first_name: "Phoebe"
-    email: "phoebe@email.com"
-    role: 3
-- model: accounts.User
-  pk: "c235ac5e-b7b1-4a37-8d32-6cacda4901e7"
-  fields:
-    created_at: "2022-06-30 15:11:26.316380"
-    updated_at: "2022-06-30 15:11:26.316411"
-    first_name: "Rachel"
-    email: "rachel@email.com"
-    role: 3
-- model: accounts.User
-  pk: "8c2e3e49-7f52-4a5b-8912-76c6d789b35f"
-  fields:
-    created_at: "2022-06-30 15:12:26.316380"
-    updated_at: "2022-06-30 15:12:26.316411"
-    first_name: "Ross"
-    email: "ross@email.com"
-    role: 3
-- model: accounts.User
-  pk: "4433334d-df68-476d-b375-8e1bf471c214"
-  fields:
-    created_at: "2022-06-30 15:10:26.316380"
-    updated_at: "2022-06-30 15:10:26.316411"
-    first_name: "Gunther"
-    email: "gunter@email.com"
-    role: 3
-- model: accounts.User
   pk: "2f0c183f-0a5e-484a-ab8c-1f76f430b54f"
   fields:
     created_at: "2022-07-01 05:21:55.463786"
     updated_at: "2022-07-01 05:21:55.464100"
     first_name: "Varun"
     email: "varun@digitalgreen.org"
+    status: True
     role: 1
 - model: accounts.User
   pk: "0efa4f87-e642-4737-97aa-1384c377e765"
@@ -61,6 +14,7 @@
     updated_at: "2022-07-01 05:22:55.464100"
     first_name: "Waseem"
     email: "waseempasha@digitalgreen.org"
+    status: True
     role: 1
 - model: accounts.User
   pk: "67e30bd1-c907-43ab-a6a9-45c969ceed05"
@@ -69,6 +23,7 @@
     updated_at: "2022-07-01 05:23:55.464100"
     first_name: "Ugesh"
     email: "ugesh@digitalgreen.org"
+    status: True
     role: 1
 - model: accounts.User
   pk: "7ca4d95f-ee3b-45b1-ac32-bc343fc24381"

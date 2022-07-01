@@ -46,10 +46,7 @@ class UserRole(models.Model):
         ("datahub_guest_user", "datahub_guest_user"),
     )
 
-    # id = models.UUIDField(
-    #         primary_key=True,
-    #         default=uuid.uuid4,
-    #         editable=False)
+    # id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     id = models.IntegerField(primary_key=True)
     role_name = models.CharField(max_length=255, null=True, blank=True, choices=ROLES)
 
@@ -98,7 +95,7 @@ class User(AbstractBaseUser, TimeStampMixin):
         blank=True,
         validators=[validate_file_size],
     )
-    status = models.BooleanField(default=False)
+    status = models.BooleanField(default=True)
     subscription = models.CharField(max_length=50, null=True, blank=True)
 
     objects = UserManager()
