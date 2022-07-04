@@ -27,16 +27,17 @@ class UserCreateSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = User
-        # fields = (
-        #     "email",
-        #     "first_name",
-        #     "last_name",
-        #     "phone_number",
-        #     "role",
-        #     "status",
-        #     "subscription"
-        #     )
-        fields = "__all__"
+        fields =  (
+            "id",
+            "email",
+            "first_name",
+            "last_name",
+            "phone_number",
+            "role",
+            "subscription",
+            "profile_picture"
+            )
+        # fields = "__all__"
         depth = 1
 
 
