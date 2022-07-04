@@ -56,16 +56,10 @@ class ParticipantSupportViewSet(GenericViewSet):
 
     def list(self, request, *args, **kwargs):
         """GET method: query all the list of objects from the Product model"""
-        # roles = SupportTicket.objects.prefetch_related("user").filter(user__status=False).all()
         user_id = request.GET.get(Constants.USER_ID)
         data = (
-            SupportTicket.objects.select_related(
-                Constants.USER_MAP,
-                Constants.USER_MAP_USER,
-                Constants.USER_MAP_ORGANIZATION,
-            )
-            .filter(user_map__user__status=False, user_map__user=user_id)
-            .order_by("updated_at")
+            SupportTicket.objects.select_related(Constants.USER_MAP, Constants.USER_MAP_USER, Constants.USER_MAP_ORGANIZATION)
+            .filter(user_map__user__status=False, user_map__user=user_id).order_by(Constants.UPDATED_AT)
             .all()
         )
         page = self.paginate_queryset(data)

@@ -66,7 +66,7 @@ class MockUtils:
             return Response({"Message": "Invation sent to the participants"}, status=200)
 
 
-class TestViews(TestCase):
+class ParticipantTestViews(TestCase):
     """_summary_
 
     Args:
@@ -318,6 +318,16 @@ class SupportTestViews(TestCase):
         assert response.json().get("category") == ticket_valid_data.get("category")
         assert response.json().get("status") == ticket_valid_data.get("status")
 
+    def test_participant_support_valid_ticket_second_record(self):
+        user_id = UserOrganizationMap.objects.get(user_id=User.objects.get(first_name="ugesh").id).id
+        ticket_valid_data["user_map"] = user_id
+        ticket_valid_data["category"] = "datasets"
+        del ticket_valid_data["issue_attachments"]
+        response = self.client.post(self.support_url, ticket_valid_data, secure=True)
+        assert response.status_code == 201
+        assert response.json().get("category") == ticket_valid_data.get("category")
+        assert response.json().get("status") == ticket_valid_data.get("status")
+
     def test_participant_support_get_list(self):
         response = self.client.get(self.support_url, secure=True)
         data = response.json()
@@ -358,8 +368,8 @@ class SupportTestViews(TestCase):
         assert response.status_code == 200
         assert data.get("count") == 1
         assert len(data.get("results")) == 1
-        # assert data.get("results")[0].get("subject") == update_data.get("subject")
-        # assert data.get("results")[0].get("status") == update_data.get("status")
+        assert data.get("results")[0].get("subject") == ticket_valid_data.get("subject")
+        assert data.get("results")[0].get("status") == ticket_valid_data.get("status")
 
     def test_participant_support_details_empty(self):
         url = self.support_url + str(uuid4()) + "/"
@@ -367,3 +377,21 @@ class SupportTestViews(TestCase):
         data = response.json()
         assert response.status_code == 200
         assert data == []
+
+    def test_participant_support_get_list_filter(self):
+        response = self.client.post(self.support_url + "filters_tickets/", {}, secure=True)
+        data = response.json()
+        assert response.status_code == 200
+        assert data.get("count") == 1
+        assert len(data.get("results")) == 1
+        response = self.client.post(
+            self.support_url + "filters_tickets/", json={"category": "connectors"}, secure=True
+        )
+        data = response.json()
+        assert response.status_code == 200
+        assert data.get("count") == 1
+        assert data.get("results")[0].get("category") == "connectors"
+
+    def test_participant_support_get_list_filter_error(self):
+        response = self.client.post(self.support_url + "filters_tickets/", {"statuuus": "open"}, secure=True)
+        assert response.status_code == 400

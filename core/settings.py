@@ -13,6 +13,7 @@ https://docs.djangoproject.com/en/4.0/ref/settings/
 import collections
 import os
 from pathlib import Path
+
 from datetime import timedelta
 from pickle import FALSE, TRUE
 
@@ -29,7 +30,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = "django-insecure-3^tn^3x$=(dx(whzib2t_y^0()c*bv6i_!7ft*w4_-4n#7rs$v"
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = TRUE
+DEBUG = True
 
 ALLOWED_HOSTS = ["*"]
 
@@ -104,6 +105,17 @@ WSGI_APPLICATION = "core.wsgi.application"
 # https://docs.djangoproject.com/en/4.0/ref/settings/#databases
 
 DATABASES = {
+    # "default": {
+    #     "ENGINE": "django.db.backends.postgresql",
+    #     "NAME": "postgres",
+    #     "USER": "postgres",
+    #     "PASSWORD": "postgres",
+    #     "HOST": "db",
+    #     "PORT": 5432,
+    #     'OPTIONS': {
+    #         'client_encoding': 'UTF8',
+    #     },
+    # }
     "default": {
         "ENGINE": "django.db.backends.sqlite3",
         "NAME": BASE_DIR / "db.sqlite3",
@@ -157,7 +169,6 @@ ORGANIZATION_IMAGES_URL = "organizations/logos/"
 ISSUE_ATTACHEMENT_URL = "users/tickets/"
 SOLUCTION_ATTACHEMENT_URL = "users/tickets/soluctions/"
 
-
 # ORGANIZATION_IMAGES_ROOT = os.path.join(MEDIA_URL, "organizations")
 # ORGANIZATION_IMAGES_URL = "organizations/logos/"
 CONTENT_URL = "content/"
@@ -191,6 +202,9 @@ SIMPLE_JWT = {
 }
 
 # Email configuration
+
+USE_X_FORWARDED_HOST = True
+
 SENDGRID_API_KEY = os.environ.get("SENDGRID_API_KEY", "send_grid_key")
 EMAIL_HOST_USER = os.environ.get("EMAIL_HOST_USER", "email_host_user")
 
@@ -198,6 +212,7 @@ EMAIL_HOST_USER = os.environ.get("EMAIL_HOST_USER", "email_host_user")
 OTP_DURATION = 900
 OTP_LIMIT = 3
 USER_SUSPENSION_DURATION = 300
+
 
 # Store cache in file
 CACHES = {

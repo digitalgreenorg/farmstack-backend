@@ -8,7 +8,7 @@ import django
 from accounts.models import User, UserRole
 from accounts.serializers import UserCreateSerializer
 from core.constants import Constants
-from core.utils import Utils
+from core.utils import LargeResultsSetPagination, Utils
 from django.conf import settings
 from django.contrib.admin.utils import get_model_from_relation
 from django.core.files.base import ContentFile
@@ -57,7 +57,6 @@ class DefaultPagination(pagination.PageNumberPagination):
     """
     Configure Pagination
     """
-
     page_size = 5
 
 
@@ -160,8 +159,8 @@ class ParticipantViewSet(GenericViewSet):
     parser_class = JSONParser
     serializer_class = UserCreateSerializer
     queryset = User.objects.all()
-    pagination_class = DefaultPagination
-    # permission_classes = [IsAuthenticated]
+    pagination_class = LargeResultsSetPagination
+
 
     def perform_create(self, serializer):
         """
@@ -202,6 +201,7 @@ class ParticipantViewSet(GenericViewSet):
 
     def list(self, request, *args, **kwargs):
         """GET method: query all the list of objects from the Product model"""
+        print(request.headers)
         roles = (
             UserOrganizationMap.objects.select_related(Constants.USER, Constants.ORGANIZATION)
             .filter(user__status=False, user__role=3)
@@ -330,7 +330,6 @@ class DocumentSaveView(GenericViewSet):
             serializer.save()
             # save the document files
             file_operations.files_move(settings.TEMP_FILE_PATH, settings.STATIC_ROOT)
-
             return Response(
                 {"message": "Documents and content saved!"},
                 status=status.HTTP_201_CREATED,
@@ -426,6 +425,28 @@ class SupportViewSet(GenericViewSet):
         self.perform_create(serializer)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
+    @action(detail=False, methods=["post"])
+    def filters_tickets(self, request, *args, **kwargs):
+        """This function get the filter args in body. based on the filter args orm filters the data."""
+        try:
+            data = (
+                SupportTicket.objects.select_related(
+                    Constants.USER_MAP,
+                    Constants.USER_MAP_USER,
+                    Constants.USER_MAP_ORGANIZATION,
+                )
+                .filter(user_map__user__status=False, **request.data)
+                .order_by(Constants.UPDATED_AT)
+                .all()
+            )
+        except django.core.exceptions.FieldError as error:  # type: ignore
+            logging.error(f"Error while filtering the ticketd ERROR: {error}")
+            return Response(f"Invalid filter fields: {list(request.data.keys())}", status=400)
+
+        page = self.paginate_queryset(data)
+        participant_serializer = ParticipantSupportTicketSerializer(page, many=True)
+        return self.get_paginated_response(participant_serializer.data)
+
     def update(self, request, *args, **kwargs):
         """PUT method: update or send a PUT request on an object of the Product model"""
         instance = self.get_object()
@@ -444,7 +465,7 @@ class SupportViewSet(GenericViewSet):
                 Constants.USER_MAP_ORGANIZATION,
             )
             .filter(user_map__user__status=False, **request.GET)
-            .order_by("updated_at")
+            .order_by(Constants.UPDATED_AT)
             .all()
         )
         page = self.paginate_queryset(data)
