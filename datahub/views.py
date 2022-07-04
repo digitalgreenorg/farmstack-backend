@@ -1,5 +1,9 @@
-import logging, os, shutil, json
+import json
+import logging
+import os
+import shutil
 from calendar import c
+
 import django
 from accounts.models import User, UserRole
 from accounts.serializers import UserCreateSerializer
@@ -9,8 +13,8 @@ from django.conf import settings
 from django.contrib.admin.utils import get_model_from_relation
 from django.core.files.base import ContentFile
 from django.core.files.uploadedfile import InMemoryUploadedFile
-from django.db.models import DEFERRED, F
 from django.db import transaction
+from django.db.models import DEFERRED, F, Q
 from drf_braces.mixins import MultipleSerializersViewMixin
 from participant.models import SupportTicket
 from participant.serializers import (
@@ -39,6 +43,10 @@ from datahub.serializers import (
     OrganizationSerializer,
     ParticipantSerializer,
     PolicyDocumentSerializer,
+    TeamMemberCreateSerializer,
+    TeamMemberDetailsSerializer,
+    TeamMemberListSerializer,
+    TeamMemberUpdateSerializer,
     UserOrganizationMapSerializer,
 )
 
@@ -56,23 +64,22 @@ class DefaultPagination(pagination.PageNumberPagination):
 class TeamMemberViewSet(GenericViewSet):
     """Viewset for Product model"""
 
-    serializer_class = UserCreateSerializer
-    queryset = User.objects.filter(status=False)
+    serializer_class = TeamMemberListSerializer
+    queryset = User.objects.all()
     pagination_class = DefaultPagination
     # permission_classes = [IsAuthenticated]
 
     def create(self, request, *args, **kwargs):
         """POST method: create action to save an object by sending a POST request"""
-        # print(request.data)
-        # request.data["role"] = UserRole.objects.get(role_name=request.data["role"]).id
-        serializer = self.get_serializer(data=request.data)
+        serializer = TeamMemberCreateSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         serializer.save()
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
     def list(self, request, *args, **kwargs):
         """GET method: query all the list of objects from the Product model"""
-        queryset = self.filter_queryset(self.get_queryset())
+        # queryset = self.filter_queryset(self.get_queryset())
+        queryset = User.objects.filter(Q(status=False) & (Q(role__id=2) | Q(role__id=5)))
         page = self.paginate_queryset(queryset)
         if page is not None:
             serializer = self.get_serializer(page, many=True)
@@ -84,16 +91,15 @@ class TeamMemberViewSet(GenericViewSet):
     def retrieve(self, request, pk):
         """GET method: retrieve an object or instance of the Product model"""
         team_member = self.get_object()
-
-        # team_member.role = UserRole.objects.get(role_name=team_member.role).id
-        serializer = self.get_serializer(team_member)
+        serializer = TeamMemberDetailsSerializer(team_member)
+        # serializer.is_valid(raise_exception=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
     def update(self, request, *args, **kwargs):
         """PUT method: update or send a PUT request on an object of the Product model"""
         instance = self.get_object()
         # request.data["role"] = UserRole.objects.get(role_name=request.data["role"]).id
-        serializer = self.get_serializer(instance, data=request.data, partial=None)
+        serializer = TeamMemberUpdateSerializer(instance, data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
         serializer.save()
         return Response(serializer.data, status=status.HTTP_201_CREATED)
