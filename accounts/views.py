@@ -127,6 +127,68 @@ class LoginViewset(GenericViewSet):
         return Response({}, status=status.HTTP_400_BAD_REQUEST)
 
 
+class ResendOTPViewset(GenericViewSet):
+    """ResendOTPViewset for users to register"""
+
+    serializer_class = LoginSerializer
+
+    def create(self, request, *args, **kwargs):
+        """POST method: to save a newly registered user"""
+        serializer = self.get_serializer(data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        email = serializer.validated_data["email"]
+        user = User.objects.filter(email=email)
+        user = user.first()
+
+        try:
+            if not user:
+                return Response(
+                    {"email": "User not registered"},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+            # check if user is suspended
+            if cache.get(user.id) is not None:
+                if cache.get(user.id)["email"] == email and cache.get(user.id)["cache_type"] == "user_suspension":
+                    return Response(
+                        {
+                            "email": email,
+                            "message": "Your account is suspended, please try after some time",
+                        },
+                        status=status.HTTP_401_UNAUTHORIZED,
+                    )
+
+            # get current user otp attempt
+            otp_attempt = int(cache.get(email)["otp_attempt"])
+
+            # generate and send OTP to the the user
+            gen_key = login_helper.generateKey()
+            otp = gen_key.returnValue()["OTP"]
+            Utils().send_email(
+                to_email=email,
+                content=f"Your OTP is {otp}",
+                subject=f"Your account verification OTP",
+            )
+
+            # assign OTP to the user using cache
+            login_helper.set_user_otp(email, otp, settings.OTP_DURATION, otp_attempt)
+            print(cache.get(email))
+
+            return Response(
+                {
+                    "id": user.id,
+                    "email": email,
+                    "message": "Enter the resent OTP to login",
+                },
+                status=status.HTTP_201_CREATED,
+            )
+
+        except Exception as e:
+            LOGGER.warning(e)
+
+        return Response({}, status=status.HTTP_400_BAD_REQUEST)
+
+
 class VerifyLoginOTPViewset(GenericViewSet):
     """User verification with OTP"""
 
