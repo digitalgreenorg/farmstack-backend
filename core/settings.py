@@ -12,9 +12,8 @@ https://docs.djangoproject.com/en/4.0/ref/settings/
 
 import collections
 import os
-from pathlib import Path
-
 from datetime import timedelta
+from pathlib import Path
 from pickle import FALSE, TRUE
 
 collections.Callable = collections.abc.Callable
@@ -62,6 +61,7 @@ INSTALLED_APPS = [
     "drf_spectacular",
     "drf_spectacular_sidecar",
     "django_nose",
+    "django_filters",
     # custom apps
     "accounts",
     "datahub",
