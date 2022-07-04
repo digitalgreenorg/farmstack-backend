@@ -13,4 +13,3 @@ class TestUrls(SimpleTestCase):
         """_summary_"""
         url = reverse("support-list")
         self.assertNotEqual(resolve(url).func, "ParticipantSupportViewSet")
-        

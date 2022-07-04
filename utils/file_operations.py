@@ -36,8 +36,10 @@ def files_move(source, destination):
     try:
         for root, dirs, files in os.walk(source):
             for file in files:
-                shutil.move(root + file, destination)
-            # shutil.copytree(root, destination, ignore=None)
+                # shutil.move(root + file, destination)
+                # shutil.copytree(root, destination, ignore=None)
+                shutil.copy(root + file, destination)
+                os.remove(root + file)
     except Exception as e:
         LOGGER.error(e)
 

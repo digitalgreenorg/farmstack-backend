@@ -1,15 +1,25 @@
+import uuid
+
 from accounts import models
-from accounts.serializers import UserCreateSerializer, UserSerializer
+from accounts.models import User, UserRole
+from accounts.serializers import (
+    UserCreateSerializer,
+    UserRoleSerializer,
+    UserSerializer,
+)
 from rest_framework import serializers
 from core.constants import Constants
 
 from datahub.models import DatahubDocuments, Organization, UserOrganizationMap
 from datahub.models import Organization, UserOrganizationMap, DatahubDocuments
+
 from utils.validators import (
-    validate_file_size,
     validate_document_type,
+    validate_file_size,
     validate_image_type,
 )
+
+from datahub.models import DatahubDocuments, Organization, UserOrganizationMap
 
 
 class OrganizationSerializer(serializers.ModelSerializer):
@@ -85,19 +95,11 @@ class ParticipantSerializer(serializers.ModelSerializer):
 class DropDocumentSerializer(serializers.Serializer):
     """DropDocumentSerializer class"""
 
-    governing_law = serializers.FileField(
-        validators=[validate_file_size, validate_document_type]
-    )
-    privacy_policy = serializers.FileField(
-        validators=[validate_file_size, validate_document_type]
-    )
+    governing_law = serializers.FileField(validators=[validate_file_size, validate_document_type])
+    privacy_policy = serializers.FileField(validators=[validate_file_size, validate_document_type])
     tos = serializers.FileField(validators=[validate_file_size, validate_document_type])
-    limitations_of_liabilities = serializers.FileField(
-        validators=[validate_file_size, validate_document_type]
-    )
-    warranty = serializers.FileField(
-        validators=[validate_file_size, validate_document_type]
-    )
+    limitations_of_liabilities = serializers.FileField(validators=[validate_file_size, validate_document_type])
+    warranty = serializers.FileField(validators=[validate_file_size, validate_document_type])
 
 
 class PolicyDocumentSerializer(serializers.ModelSerializer):
@@ -118,7 +120,54 @@ class DatahubThemeSerializer(serializers.Serializer):
     """DatahubThemeSerializer class"""
 
     banner = serializers.ImageField(
-        validators=[validate_file_size, validate_image_type]
+        validators=[validate_file_size, validate_image_type], required=False, allow_null=True
     )
-    file = serializers.ImageField(validators=[validate_file_size, validate_image_type])
-    button_color = serializers.CharField()
+    button_color = serializers.CharField(required=False, allow_null=True)
+    email = serializers.EmailField()
+
+
+class TeamMemberListSerializer(serializers.Serializer):
+    """
+    Create Team Member Serializer.
+    """
+
+    class Meta:
+        model = User
+
+    id = serializers.UUIDField()
+    email = serializers.EmailField()
+    first_name = serializers.CharField()
+    last_name = serializers.CharField()
+    role = serializers.PrimaryKeyRelatedField(queryset=UserRole.objects.all(), read_only=False)
+    profile_picture = serializers.FileField()
+    status = serializers.BooleanField()
+
+
+class TeamMemberCreateSerializer(serializers.ModelSerializer):
+    """
+    Create a Team Member
+    """
+
+    class Meta:
+        model = User
+        fields = ("email", "first_name", "last_name", "role")
+
+
+class TeamMemberDetailsSerializer(serializers.ModelSerializer):
+    """
+    Details of a Team Member
+    """
+
+    class Meta:
+        model = User
+        fields = ("id", "email", "first_name", "last_name", "role")
+
+
+class TeamMemberUpdateSerializer(serializers.ModelSerializer):
+    """
+    Update Team Member
+    """
+
+    class Meta:
+        model = User
+        fields = ("id", "email", "first_name", "last_name", "role")

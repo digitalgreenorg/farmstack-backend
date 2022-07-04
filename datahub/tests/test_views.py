@@ -221,7 +221,10 @@ class ParticipantTestViews(TestCase):
         assert response.status_code == 200
 
     def test_send_invite_error(self):
-        data = {"to_email": [], "content": "Sample email for participant invitdation"}
+        data = {
+            "to_email": [],
+            "content": "Sample email for participant invitdation",
+        }
         self.monkeypatch.setattr("datahub.views.Utils", MockUtils)
         response = self.client.post(self.send_invite, data, secure=True)
         assert response.json() == {"message": "Invalid email address"}
@@ -337,7 +340,10 @@ class SupportTestViews(TestCase):
         id = SupportTicket.objects.get(category="connectors").id
         ticket_update_data["user_map"] = self.user_map_id
         response = self.client.put(
-            self.support_url + str(id) + "/", ticket_update_data, secure=True, content_type="application/json"
+            self.support_url + str(id) + "/",
+            ticket_update_data,
+            secure=True,
+            content_type="application/json",
         )
         data = response.json()
         assert response.status_code == 201
@@ -346,7 +352,10 @@ class SupportTestViews(TestCase):
 
     def test_participant_update_ticket_error(self):
         response = self.client.put(
-            self.support_url + str(uuid4()) + "/", ticket_update_data, secure=True, content_type="application/json"
+            self.support_url + str(uuid4()) + "/",
+            ticket_update_data,
+            secure=True,
+            content_type="application/json",
         )
         data = response.json()
         assert response.status_code == 404

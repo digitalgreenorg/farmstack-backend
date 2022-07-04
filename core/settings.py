@@ -14,6 +14,9 @@ import collections
 import os
 from pathlib import Path
 
+from datetime import timedelta
+from pickle import FALSE, TRUE
+
 collections.Callable = collections.abc.Callable
 
 
@@ -181,24 +184,44 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 AUTH_USER_MODEL = "accounts.User"
 
 REST_FRAMEWORK = {
+    "DEFAULT_FILTER_BACKENDS": ["django_filters.rest_framework.DjangoFilterBackend"],
     "DEFAULT_AUTHENTICATION_CLASSES": ("rest_framework_simplejwt.authentication.JWTAuthentication",),
     "DEFAULT_PERMISSION_CLASSES": [],
     "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
 }
 
+SIMPLE_JWT = {
+    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=30),
+    "REFRESH_TOKEN_LIFETIME": timedelta(days=1),
+    "AUTH_HEADER_TYPES": ("Bearer",),
+    "USER_ID_FIELD": "id",
+    "USER_ID_CLAIM": "user_id",
+    "AUTH_TOKEN_CLASSES": ("rest_framework_simplejwt.tokens.AccessToken",),
+    "TOKEN_TYPE_CLAIM": "token_type",
+    "JTI_CLAIM": "jti",
+}
+
 # Email configuration
-# SENDGRID_API_KEY = os.environ.get("SENDGRID_API_KEY", "send_grid_key")
-# EMAIL_HOST_USER = os.environ.get("EMAIL_HOST_USER", "email_host_user")
 
 USE_X_FORWARDED_HOST = True
-SENDGRID_API_KEY = "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"
-EMAIL_HOST_USER = "farmstack.dg@gmail.com"
 
+SENDGRID_API_KEY = os.environ.get("SENDGRID_API_KEY", "send_grid_key")
+EMAIL_HOST_USER = os.environ.get("EMAIL_HOST_USER", "email_host_user")
 
 # User OTP config
 OTP_DURATION = 900
 OTP_LIMIT = 3
 USER_SUSPENSION_DURATION = 300
+
+
+# Store cache in file
+CACHES = {
+    "default": {
+        "BACKEND": "django.core.cache.backends.filebased.FileBasedCache",
+        # 'LOCATION': '/var/django_cache/'
+        "LOCATION": os.path.join(BASE_DIR, "django_cache/"),
+    }
+}
 
 # Fixtures
 FIXTURE_DIRS = [
@@ -270,3 +293,6 @@ CSS_FILE_NAME = "override.css"
 
 if not os.path.exists(TEMP_FILE_PATH):
     os.makedirs(TEMP_FILE_PATH)  # create the temp directory
+
+if not os.path.exists("logs"):
+    os.makedirs("logs")  # create the logs directory

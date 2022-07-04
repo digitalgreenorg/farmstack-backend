@@ -42,7 +42,7 @@ class OTPManager:
         email,
         otp,
         otp_duration,
-        otp_count=1,
+        otp_attempt=0,
         updation_time=datetime.datetime.now(),
     ):
         """Creates a user OTP for login or account verification"""
@@ -51,7 +51,7 @@ class OTPManager:
             {
                 "email": email,
                 "user_otp": otp,
-                "otp_count": otp_count,
+                "otp_attempt": otp_attempt,
                 "updation_time": updation_time,
             },
             otp_duration,

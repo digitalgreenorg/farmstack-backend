@@ -12,9 +12,9 @@ from core.utils import LargeResultsSetPagination, Utils
 from django.conf import settings
 from django.contrib.admin.utils import get_model_from_relation
 from django.core.files.base import ContentFile
-from django.core.files.storage import FileSystemStorage
 from django.core.files.uploadedfile import InMemoryUploadedFile
-from django.db.models import DEFERRED, F
+from django.db import transaction
+from django.db.models import DEFERRED, F, Q
 from drf_braces.mixins import MultipleSerializersViewMixin
 from participant.models import SupportTicket
 from participant.serializers import (
@@ -29,6 +29,7 @@ from rest_framework.parsers import (
     JSONParser,
     MultiPartParser,
 )
+from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework.viewsets import GenericViewSet, ViewSet
@@ -42,6 +43,10 @@ from datahub.serializers import (
     OrganizationSerializer,
     ParticipantSerializer,
     PolicyDocumentSerializer,
+    TeamMemberCreateSerializer,
+    TeamMemberDetailsSerializer,
+    TeamMemberListSerializer,
+    TeamMemberUpdateSerializer,
     UserOrganizationMapSerializer,
 )
 
@@ -58,22 +63,22 @@ class DefaultPagination(pagination.PageNumberPagination):
 class TeamMemberViewSet(GenericViewSet):
     """Viewset for Product model"""
 
-    serializer_class = UserCreateSerializer
-    queryset = User.objects.filter(status=False)
+    serializer_class = TeamMemberListSerializer
+    queryset = User.objects.all()
     pagination_class = DefaultPagination
+    # permission_classes = [IsAuthenticated]
 
     def create(self, request, *args, **kwargs):
         """POST method: create action to save an object by sending a POST request"""
-        # print(request.data)
-        # request.data["role"] = UserRole.objects.get(role_name=request.data["role"]).id
-        serializer = self.get_serializer(data=request.data)
+        serializer = TeamMemberCreateSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         serializer.save()
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
     def list(self, request, *args, **kwargs):
         """GET method: query all the list of objects from the Product model"""
-        queryset = self.filter_queryset(self.get_queryset())
+        # queryset = self.filter_queryset(self.get_queryset())
+        queryset = User.objects.filter(Q(status=False) & (Q(role__id=2) | Q(role__id=5)))
         page = self.paginate_queryset(queryset)
         if page is not None:
             serializer = self.get_serializer(page, many=True)
@@ -85,16 +90,15 @@ class TeamMemberViewSet(GenericViewSet):
     def retrieve(self, request, pk):
         """GET method: retrieve an object or instance of the Product model"""
         team_member = self.get_object()
-
-        # team_member.role = UserRole.objects.get(role_name=team_member.role).id
-        serializer = self.get_serializer(team_member)
+        serializer = TeamMemberDetailsSerializer(team_member)
+        # serializer.is_valid(raise_exception=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
     def update(self, request, *args, **kwargs):
         """PUT method: update or send a PUT request on an object of the Product model"""
         instance = self.get_object()
         # request.data["role"] = UserRole.objects.get(role_name=request.data["role"]).id
-        serializer = self.get_serializer(instance, data=request.data, partial=None)
+        serializer = TeamMemberUpdateSerializer(instance, data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
         serializer.save()
         return Response(serializer.data, status=status.HTTP_201_CREATED)
@@ -116,6 +120,7 @@ class OrganizationViewSet(GenericViewSet):
     serializer_class = OrganizationSerializer
     queryset = Organization.objects.all()
     pagination_class = DefaultPagination
+    # permission_classes = [IsAuthenticated]
 
     def create(self, request, *args, **kwargs):
         """POST method: create action to save an object by sending a POST request"""
@@ -155,6 +160,7 @@ class ParticipantViewSet(GenericViewSet):
     serializer_class = UserCreateSerializer
     queryset = User.objects.all()
     pagination_class = LargeResultsSetPagination
+
 
     def perform_create(self, serializer):
         """
@@ -249,6 +255,8 @@ class MailInvitationViewSet(GenericViewSet):
     This class handles the mail invitation API views.
     """
 
+    # permission_classes = [IsAuthenticated]
+
     def create(self, request, *args, **kwargs):
         """
         This will send the mail to the requested user with content.
@@ -271,6 +279,7 @@ class DropDocumentView(GenericViewSet):
 
     parser_class = MultiPartParser
     serializer_class = DropDocumentSerializer
+    # permission_classes = [IsAuthenticated]
 
     def create(self, request, *args, **kwargs):
         """Saves the document files in temp location before saving"""
@@ -305,41 +314,42 @@ class DocumentSaveView(GenericViewSet):
 
     serializer_class = PolicyDocumentSerializer
     queryset = DatahubDocuments.objects.all()
+    # permission_classes = [IsAuthenticated]
 
     def retrieve(self, request, pk):
         """GET method: retrieve an object or instance of the Product model"""
-        organization = self.get_object()
-        serializer = self.get_serializer(organization)
+        datahub_documents = self.get_object()
+        serializer = self.get_serializer(datahub_documents)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
-        print(serializer.validated_data)
-        serializer.save()
 
-        # save the document files
-        file_operations.files_move(settings.TEMP_FILE_PATH, settings.STATIC_ROOT)
-
-        return Response(
-            {"message": "Documents and content saved!"},
-            status=status.HTTP_201_CREATED,
-        )
+        with transaction.atomic():
+            serializer.save()
+            # save the document files
+            file_operations.files_move(settings.TEMP_FILE_PATH, settings.STATIC_ROOT)
+            return Response(
+                {"message": "Documents and content saved!"},
+                status=status.HTTP_201_CREATED,
+            )
 
     def update(self, request, *args, **kwargs):
         """Saves the document content and files"""
         instance = self.get_object()
         serializer = self.get_serializer(instance, data=request.data)
         serializer.is_valid(raise_exception=True)
-        serializer.save()
 
-        # save the document files
-        file_operations.files_move(settings.TEMP_FILE_PATH, settings.STATIC_ROOT)
+        with transaction.atomic():
+            serializer.save()
+            # save the document files
+            file_operations.files_move(settings.TEMP_FILE_PATH, settings.STATIC_ROOT)
 
-        return Response(
-            {"message": "Documents and content updated!"},
-            status=status.HTTP_201_CREATED,
-        )
+            return Response(
+                {"message": "Documents and content updated!"},
+                status=status.HTTP_201_CREATED,
+            )
 
 
 class DatahubThemeView(GenericViewSet):
@@ -347,71 +357,44 @@ class DatahubThemeView(GenericViewSet):
 
     parser_class = MultiPartParser
     serializer_class = DatahubThemeSerializer
+    # permission_classes = [IsAuthenticated]
 
     def create(self, request, *args, **kwargs):
         """generates the override css for datahub"""
-        try:
-            hero_image = request.data["hero_image"]
-            button_color = request.data["button_color"]
-            file_type = hero_image.content_type.split("/")[1]
-
-            if hero_image.size > settings.FILE_UPLOAD_MAX_SIZE * 1000000:
-                return Response({"message: please upload file with size lesser than 2MB"})
-            # check for image file types (jpg, jpeg, png)
-            elif file_type not in settings.IMAGE_TYPES_ALLOWED:
-                return Response({"message: Please upload only jpg or jpeg or png files"})
-            else:
-                fs = FileSystemStorage(settings.STATIC_ROOT)
-                css = ".btn { background-color: " + button_color + "; }"
-
-                # override if the files exist
-                if fs.exists(str(hero_image)) and fs.exists(settings.CSS_FILE_NAME):
-                    fs.delete(str(hero_image))
-                    fs.delete(settings.CSS_FILE_NAME)
-                    fs.save(settings.CSS_FILE_NAME, ContentFile(css))
-                    fs.save(str(hero_image), hero_image)
-
-                    return Response(
-                        "Successfully created the brand identity",
-                        status=status.HTTP_201_CREATED,
-                    )
-                else:
-                    fs.save(str(hero_image), hero_image)
-                    fs.save(settings.CSS_FILE_NAME, ContentFile(css))
-                    return Response(
-                        "Successfully created the brand identity",
-                        status=status.HTTP_201_CREATED,
-                    )
-
-        except Exception as e:
-            LOGGER.error(e)
         serializer = self.get_serializer(data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
         data = serializer.validated_data
+        user = User.objects.filter(email=data["email"])
+        user = user.first()
 
-        # get file, file name & type from the form-data
-        file_key = list(request.FILES.keys())[0]
-        file = data[file_key]
-        file_type = data[file_key].content_type.split("/")[1]
-        file_name = str(file_key) + "." + file_type
+        try:
+            if all(key in data for key in ("button_color", "banner")):
+                file_key = list(request.FILES.keys())[0]
+                file = data[file_key]
+                file_type = data[file_key].content_type.split("/")[1]
+                file_name = str(file_key) + "." + file_type
 
-        # save datahub banner image
-        file_operations.file_save(file, file_name, settings.STATIC_ROOT)
+                # save datahub banner image
+                file_operations.file_save(file, file_name, settings.STATIC_ROOT)
 
-        # CSS generation
-        text_fields = []
-        for count in range(len(data.keys())):
-            key = list(data.keys())[count]
-            # get only text data fields and append them to text_fields list
-            if type(data[key]) is not InMemoryUploadedFile:
-                text_fields.append(data[key])
-            count += 1
+                # save or override the CSS
+                css = ".btn { background-color: " + data["button_color"] + "; }"
+                file_operations.file_save(
+                    ContentFile(css),
+                    settings.CSS_FILE_NAME,
+                    settings.STATIC_ROOT,
+                )
 
-        # save or override the CSS
-        css = ".btn { background-color: " + text_fields[0] + "; }"
-        file_operations.file_save(ContentFile(css), settings.CSS_FILE_NAME, settings.STATIC_ROOT)
+            # set datahub admin user status to True
+            user.status = True
+            user.save()
 
-        return Response({"message": "Theme saved!"}, status=status.HTTP_201_CREATED)
+            return Response({"message": "Theme saved!"}, status=status.HTTP_201_CREATED)
+
+        except Exception as e:
+            LOGGER.error(e)
+
+        return Response({}, status=status.HTTP_400_BAD_REQUEST)
 
 
 class SupportViewSet(GenericViewSet):

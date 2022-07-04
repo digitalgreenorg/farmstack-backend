@@ -33,7 +33,12 @@ class ParticipantSupportTicketSerializer(serializers.ModelSerializer):
     organization_id = serializers.PrimaryKeyRelatedField(
         queryset=Organization.objects.all(), allow_null=True, required=False, source="user_map.organization"
     )
-    user = UserSerializer(read_only=False, required=False, allow_null=True, source="user_map.user")
+    user = UserSerializer(
+        read_only=False,
+        required=False,
+        allow_null=True,
+        source="user_map.user",
+    )
     organization = OrganizationRetriveSerializer(
         required=False, allow_null=True, read_only=True, source="user_map.organization"
     )

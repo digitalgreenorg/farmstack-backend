@@ -38,7 +38,7 @@ class Utils:
             SG.client.mail.send.post(request_body=mail.get())
         except exceptions.BadRequestsError as error:
             logger.error(
-                "Faild to send email Subject: %s with ERROR: %s",
+                "Failed to send email Subject: %s with ERROR: %s",
                 subject,
                 error.body,
                 exc_info=True,
@@ -46,14 +46,14 @@ class Utils:
             return error
         except urllib.error.URLError as error:  # type: ignore
             logger.error(
-                "Faild to send email Subject: %s with ERROR: %s",
+                "Failed to send email Subject: %s with ERROR: %s",
                 subject,
                 error,
                 exc_info=True,
             )
-            return Response({"Error": "Faild to send email "}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)  # type: ignore
+            return Response({"Error": "Failed to send email "}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)  # type: ignore
 
-        return Response({"Message": "Invation sent to the participants"}, status=status.HTTP_200_OK)
+        return Response({"Message": "Email successfully sent!"}, status=status.HTTP_200_OK)
 
 
 def replace_query_param(url, key, val, req):

@@ -146,3 +146,6 @@ poetry.lock
 db.sqlite3
 
 .idea
+
+# django cache directory
+*django_cache

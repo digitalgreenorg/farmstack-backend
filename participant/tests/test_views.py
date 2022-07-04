@@ -117,7 +117,10 @@ class TestViews(TestCase):
         id = SupportTicket.objects.get(category="connectors").id
         update_data["user_map"] = self.user_map_id
         response = self.client.put(
-            self.support_url + str(id) + "/", update_data, secure=True, content_type="application/json"
+            self.support_url + str(id) + "/",
+            update_data,
+            secure=True,
+            content_type="application/json",
         )
         data = response.json()
         assert response.status_code == 201
@@ -126,7 +129,10 @@ class TestViews(TestCase):
 
     def test_participant_update_ticket_error(self):
         response = self.client.put(
-            self.support_url + str(uuid4()) + "/", update_data, secure=True, content_type="application/json"
+            self.support_url + str(uuid4()) + "/",
+            update_data,
+            secure=True,
+            content_type="application/json",
         )
         data = response.json()
         assert response.status_code == 404

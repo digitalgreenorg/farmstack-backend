@@ -69,7 +69,11 @@ class ParticipantSupportViewSet(GenericViewSet):
     def retrieve(self, request, pk):
         """GET method: retrieve an object or instance of the Product model"""
         data = (
-            SupportTicket.objects.select_related(Constants.USER_MAP, Constants.USER_MAP_USER, Constants.USER_MAP_ORGANIZATION)
+            SupportTicket.objects.select_related(
+                Constants.USER_MAP,
+                Constants.USER_MAP_USER,
+                Constants.USER_MAP_ORGANIZATION,
+            )
             .filter(user_map__user__status=False, id=pk)
             .all()
         )
