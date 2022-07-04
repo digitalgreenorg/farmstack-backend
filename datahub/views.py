@@ -65,7 +65,7 @@ class TeamMemberViewSet(GenericViewSet):
 
     serializer_class = TeamMemberListSerializer
     queryset = User.objects.all()
-    pagination_class = DefaultPagination
+    pagination_class = LargeResultsSetPagination
     # permission_classes = [IsAuthenticated]
 
     def create(self, request, *args, **kwargs):
@@ -119,7 +119,7 @@ class OrganizationViewSet(GenericViewSet):
 
     serializer_class = OrganizationSerializer
     queryset = Organization.objects.all()
-    pagination_class = DefaultPagination
+    pagination_class = LargeResultsSetPagination
     # permission_classes = [IsAuthenticated]
 
     def create(self, request, *args, **kwargs):
@@ -405,7 +405,7 @@ class SupportViewSet(GenericViewSet):
     parser_class = JSONParser
     serializer_class = TicketSupportSerializer
     queryset = SupportTicket
-    pagination_class = DefaultPagination
+    pagination_class = LargeResultsSetPagination
 
     def perform_create(self, serializer):
         """
