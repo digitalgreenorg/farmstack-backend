@@ -1,70 +1,70 @@
-asgiref @ file:///Users/ugesh/Library/Caches/pypoetry/artifacts/22/46/4d/e9d170f76cad59b81e4568f6b37cce88f46df63c197e476a1020862182/asgiref-3.5.2-py3-none-any.whl
-astroid @ file:///Users/ugesh/Library/Caches/pypoetry/artifacts/8a/32/6b/3524772f55f60c85dcfda62027927d1ea5d6344bbbaa5c1156a691e3e1/astroid-2.11.5-py3-none-any.whl
-attrs @ file:///Users/ugesh/Library/Caches/pypoetry/artifacts/c4/ee/75/fcd6c2f4c5a1d60b1bcd97014702ca01b3f032fd927d88780b38708409/attrs-21.4.0-py2.py3-none-any.whl
-black @ file:///Users/ugesh/Library/Caches/pypoetry/artifacts/22/89/e1/52794fc9c5cec5c84b78d7876ef51625658fb4ef67db67c695dab92df9/black-22.3.0-cp310-cp310-macosx_10_9_x86_64.whl
+asgiref
+astroid
+attrs
+black
 CacheControl==0.12.11
 cachy==0.3.0
 certifi==2022.5.18.1
 charset-normalizer==2.0.12
 cleo==0.8.1
-click @ file:///Users/ugesh/Library/Caches/pypoetry/artifacts/63/f3/4c/2270b95f4d37b9ea73cd401abe68b6e9ede30380533cd4e7118a8e3aa3/click-8.1.3-py3-none-any.whl
+click
 clikit==0.6.2
 crashtest==0.3.1
-dateutils @ file:///Users/ugesh/Library/Caches/pypoetry/artifacts/57/08/85/62702927eb55c4d53fca0557494d5729162538184ffdcaada4fc8c6fc9/dateutils-0.6.12-py2.py3-none-any.whl
-dill @ file:///Users/ugesh/Library/Caches/pypoetry/artifacts/f7/b9/8c/cca9e9031d347991b7bfc8345ce044a4ec65e0990c95f8297d8177affb/dill-0.3.5.1-py2.py3-none-any.whl
+dateutils
+dill
 distlib==0.3.4
-Django @ file:///Users/ugesh/Library/Caches/pypoetry/artifacts/47/b9/04/d295270c4eaf424629f731b58832fad2deb0015adbbcaf85f6ca188a9b/Django-4.0.5-py3-none-any.whl
-django-debug-toolbar @ file:///Users/ugesh/Library/Caches/pypoetry/artifacts/94/ae/be/fe93b81a7fb98f872f9c497d11413ec86918ccc112396dd1e21531aa3c/django_debug_toolbar-3.4.0-py3-none-any.whl
-django-environ @ file:///Users/ugesh/Library/Caches/pypoetry/artifacts/24/63/2d/c9afc5ad4bb1175c3aacfd47426fcddc1e36963b0109219b1b93068a37/django_environ-0.8.1-py2.py3-none-any.whl
-django-extensions @ file:///Users/ugesh/Library/Caches/pypoetry/artifacts/48/ec/78/cf2bc730412f70766fc1164d4f8172e6ee32e15321f44a7c539f7a8d1c/django_extensions-3.1.5-py3-none-any.whl
-django-rest-framework-braces @ file:///Users/ugesh/Library/Caches/pypoetry/artifacts/ad/8f/63/cabc57bb435df8a394ef8deefe5442e812d58a5323b9ff574c5b3d9320/django_rest_framework_braces-0.3.4-py2.py3-none-any.whl
-djangorestframework @ file:///Users/ugesh/Library/Caches/pypoetry/artifacts/7a/1a/9f/2d5a19ae6bfb95d667e8b4f5046c140bfa7cabbbf75bf9a179d1776aa1/djangorestframework-3.13.1-py3-none-any.whl
-djangorestframework-simplejwt @ file:///Users/ugesh/Library/Caches/pypoetry/artifacts/cc/de/6d/584e6b8fb7a5d1b4719e0fc6b5379ea3a4f4acf129795029024d450790/djangorestframework_simplejwt-5.2.0-py3-none-any.whl
+Django
+django-debug-toolbar
+django-environ
+django-extensions
+django-rest-framework-braces
+djangorestframework
+djangorestframework-simplejwt
 filelock==3.7.1
 html5lib==1.1
 idna==3.3
 importlib-metadata==4.11.4
-iniconfig @ file:///Users/ugesh/Library/Caches/pypoetry/artifacts/1d/67/0c/79706e7a41ef01be0b1a38aa3b4ddc9bd800a95ccd8d8dc7de4e090623/iniconfig-1.1.1-py2.py3-none-any.whl
-isort @ file:///Users/ugesh/Library/Caches/pypoetry/artifacts/12/e3/f1/e8e484225dcc659de6e4ac34a4ad996cb71f36119e54e71462cc7ad7e8/isort-5.10.1-py3-none-any.whl
+iniconfig
+isort
 keyring==23.5.1
-lazy-object-proxy @ file:///Users/ugesh/Library/Caches/pypoetry/artifacts/e4/d8/f1/743becc38973e7fbd9d2a11211e39f549522610ed7f1887bf96f0f61a0/lazy_object_proxy-1.7.1-cp310-cp310-macosx_10_9_x86_64.whl
+lazy-object-proxy
 lockfile==0.12.2
-mccabe @ file:///Users/ugesh/Library/Caches/pypoetry/artifacts/6e/13/d3/27dd3d81419a63f54cee1343db4375f63135b517d83e52d7447875f739/mccabe-0.7.0-py2.py3-none-any.whl
+mccabe
 msgpack==1.0.4
-mypy-extensions @ file:///Users/ugesh/Library/Caches/pypoetry/artifacts/2f/c6/09/3e1afdcb75322c65b786e63cd7e879b6be3db36dea78ca376db5483ae4/mypy_extensions-0.4.3-py2.py3-none-any.whl
-packaging @ file:///Users/ugesh/Library/Caches/pypoetry/artifacts/d3/1f/90/3f2473250ebd055fe7f0856810677783949fc0d2e5f25bbb4dc00ad0a9/packaging-21.3-py3-none-any.whl
+mypy-extensions
+packaging
 pastel==0.2.1
-pathspec @ file:///Users/ugesh/Library/Caches/pypoetry/artifacts/48/a0/9f/f5128d9e11d591bca7a942dd80ec44f9b2de8294775c68e0b99beeef93/pathspec-0.9.0-py2.py3-none-any.whl
+pathspec
 pexpect==4.8.0
 pkginfo==1.8.2
 platformdirs==2.5.2
-pluggy @ file:///Users/ugesh/Library/Caches/pypoetry/artifacts/49/3e/55/309ec3705ba3309d817d531002c0a02f643d06c5d5a889ce43236130d5/pluggy-1.0.0-py2.py3-none-any.whl
+pluggy
 poetry==1.1.13
 poetry-core==1.0.8
 ptyprocess==0.7.0
-py @ file:///Users/ugesh/Library/Caches/pypoetry/artifacts/71/fb/64/bfdc833c2055a893883f33deaac35ef2cbdd95d58031cfc69a630f32bf/py-1.11.0-py2.py3-none-any.whl
-pyaml @ file:///Users/ugesh/Library/Caches/pypoetry/artifacts/d4/cd/26/c0bf5e448c0ded29e410e6e41cd2446ea4e218231e7fc23661e45d3cf6/pyaml-21.10.1-py2.py3-none-any.whl
-PyJWT @ file:///Users/ugesh/Library/Caches/pypoetry/artifacts/52/b6/64/671139dabf2879c6a0aa3887212be6f47753d1d97ea1b7644f6103e0c9/PyJWT-2.4.0-py3-none-any.whl
+py
+pyaml
+PyJWT
 pylev==1.4.0
-pylint @ file:///Users/ugesh/Library/Caches/pypoetry/artifacts/74/5a/7c/6b2863a00c075488ee65728ffb6aec72802deeb9146e8563abf4b02394/pylint-2.14.1-py3-none-any.whl
-pyotp @ file:///Users/ugesh/Library/Caches/pypoetry/artifacts/04/4c/23/412d14db9fc4d4a7c490a4a38d7b62ba12a3ab9ecb9bb3a671f504b066/pyotp-2.6.0-py2.py3-none-any.whl
+pylint
+pyotp
 pyparsing==3.0.9
-pytest @ file:///Users/ugesh/Library/Caches/pypoetry/artifacts/81/e7/80/83cc65ea38ab41a59121aea7e519147cea204e1eaf989149cc12b3b342/pytest-7.1.2-py3-none-any.whl
-python-dateutil @ file:///Users/ugesh/Library/Caches/pypoetry/artifacts/39/9b/3b/576da7c854551d780528d75132c98882925e44de0aecf8a31a4bea379c/python_dateutil-2.8.2-py2.py3-none-any.whl
-python-http-client @ file:///Users/ugesh/Library/Caches/pypoetry/artifacts/c2/0d/a2/71cec5906f69381d7813b20ff7acf81e6bd0b683c3708a5aa06a7d2713/python_http_client-3.3.7-py3-none-any.whl
-pytz @ file:///Users/ugesh/Library/Caches/pypoetry/artifacts/76/c4/54/e82c514018d400ab72bc3cc53469bd3b519f30e674c7d905fd7c872314/pytz-2022.1-py2.py3-none-any.whl
-PyYAML @ file:///Users/ugesh/Library/Caches/pypoetry/artifacts/b7/39/92/8bdbcdf8ebd1fea6988a1f3f061f52aaaf2fbb8ec3af7618aebca532b7/PyYAML-6.0-cp310-cp310-macosx_11_0_arm64.whl
+pytest
+python-dateutil
+python-http-client
+pytz
+PyYAML
 requests==2.27.1
 requests-toolbelt==0.9.1
-sendgrid @ file:///Users/ugesh/Library/Caches/pypoetry/artifacts/6e/eb/51/9539ea3730117b1e6c0fefbb24c178a6b3d97f63c6f14e8295ae4929cf/sendgrid-6.9.7-py3-none-any.whl
+sendgrid
 shellingham==1.4.0
 six==1.16.0
-sqlparse @ file:///Users/ugesh/Library/Caches/pypoetry/artifacts/10/f5/22/c9c991a71e27c4d8f69907d92cce74a369cbb3183dc4a6d27e2ae4ab0b/sqlparse-0.4.2-py3-none-any.whl
-starkbank-ecdsa @ file:///Users/ugesh/Library/Caches/pypoetry/artifacts/c8/a5/fb/8b0005f4f8333fb15e8529dc58c9850dd78049c967df8023a64294d59f/starkbank-ecdsa-2.0.3.tar.gz
-tomli @ file:///Users/ugesh/Library/Caches/pypoetry/artifacts/62/12/b6/6db9ebb9c8e1a6c5aa8a92ae73098d8119816b5e8507490916621bc305/tomli-2.0.1-py3-none-any.whl
+sqlparse
+starkbank-ecdsa
+tomli
 tomlkit==0.11.0
 urllib3==1.26.9
 virtualenv==20.14.1
 webencodings==0.5.1
-wrapt @ file:///Users/ugesh/Library/Caches/pypoetry/artifacts/b5/64/b6/28e5c4ea99f93d6a4996375147d3b8fa898f546247c8ad06cc13044a9c/wrapt-1.14.1-cp310-cp310-macosx_10_9_x86_64.whl
+wrapt
 zipp==3.8.0

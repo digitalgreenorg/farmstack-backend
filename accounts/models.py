@@ -31,19 +31,19 @@ class UserManager(BaseUserManager):
 class UserRole(models.Model):
     """UserRole model for user roles of the datahub users
     User role mapping with id:
-        datahub_admin: 1
-        datahub_team_member: 2
-        datahub_participant_root: 3
-        datahub_participant_team: 4
-        datahub_guest_user: 5
+        ADMIN: 1
+        TEAM MEMBER: 2
+        PARTICIPANT ROOT: 3
+        PARTICIPANT TEAM MEMBER: 4
+        GUEST: 5
     """
 
     ROLES = (
-        ("datahub_admin", "datahub_admin"),
-        ("datahub_participant_root", "datahub_participant_root"),
-        ("datahub_participant_team", "datahub_participant_team"),
-        ("datahub_team_member", "datahub_team_member"),
-        ("datahub_guest_user", "datahub_guest_user"),
+        ("ADMIN", "ADMIN"),
+        ("PARTICIPANT ROOT", "PARTICIPANT ROOT"),
+        ("PARTICIPANT TEAM MEMBER", "PARTICIPANT TEAM MEMBER"),
+        ("TEAM MEMBER", "TEAM MEMBER"),
+        ("GUEST", "GUEST"),
     )
 
     # id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)

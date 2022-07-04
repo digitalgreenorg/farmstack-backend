@@ -11,6 +11,7 @@ class UserRoleSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = UserRole
+        # exclude = ("id",)
         fields = "__all__"
 
 
