@@ -12,9 +12,7 @@ https://docs.djangoproject.com/en/4.0/ref/settings/
 
 import collections
 import os
-from datetime import timedelta
 from pathlib import Path
-from pickle import FALSE, TRUE
 
 collections.Callable = collections.abc.Callable
 
@@ -106,15 +104,12 @@ WSGI_APPLICATION = "core.wsgi.application"
 
 DATABASES = {
     # "default": {
-    #     "ENGINE": "django.db.backends.postgresql",
-    #     "NAME": "postgres",
-    #     "USER": "postgres",
-    #     "PASSWORD": "postgres",
-    #     "HOST": "db",
-    #     "PORT": 5432,
-    #     'OPTIONS': {
-    #         'client_encoding': 'UTF8',
-    #     },
+    #     "ENGINE": os.environ.get("SQL_ENGINE", "django.db.backends.postgresql"),
+    #     "NAME": os.environ.get("SQL_DATABASE", "farm_stack"),
+    #     "USER": os.environ.get("SQL_USER", "farm_stack"),
+    #     "PASSWORD": os.environ.get("SQL_PASSWORD", "farm_stack"),
+    #     "HOST": os.environ.get("SQL_HOST", "db"),
+    #     "PORT": os.environ.get("SQL_PORT", "5432"),
     # }
     "default": {
         "ENGINE": "django.db.backends.sqlite3",
@@ -190,38 +185,16 @@ REST_FRAMEWORK = {
     "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
 }
 
-SIMPLE_JWT = {
-    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=30),
-    "REFRESH_TOKEN_LIFETIME": timedelta(days=1),
-    "AUTH_HEADER_TYPES": ("Bearer",),
-    "USER_ID_FIELD": "id",
-    "USER_ID_CLAIM": "user_id",
-    "AUTH_TOKEN_CLASSES": ("rest_framework_simplejwt.tokens.AccessToken",),
-    "TOKEN_TYPE_CLAIM": "token_type",
-    "JTI_CLAIM": "jti",
-}
-
 # Email configuration
-
-USE_X_FORWARDED_HOST = True
-
 SENDGRID_API_KEY = os.environ.get("SENDGRID_API_KEY", "send_grid_key")
 EMAIL_HOST_USER = os.environ.get("EMAIL_HOST_USER", "email_host_user")
+
+USE_X_FORWARDED_HOST = True
 
 # User OTP config
 OTP_DURATION = 900
 OTP_LIMIT = 3
 USER_SUSPENSION_DURATION = 300
-
-
-# Store cache in file
-CACHES = {
-    "default": {
-        "BACKEND": "django.core.cache.backends.filebased.FileBasedCache",
-        # 'LOCATION': '/var/django_cache/'
-        "LOCATION": os.path.join(BASE_DIR, "django_cache/"),
-    }
-}
 
 # Fixtures
 FIXTURE_DIRS = [
@@ -293,6 +266,3 @@ CSS_FILE_NAME = "override.css"
 
 if not os.path.exists(TEMP_FILE_PATH):
     os.makedirs(TEMP_FILE_PATH)  # create the temp directory
-
-if not os.path.exists("logs"):
-    os.makedirs("logs")  # create the logs directory

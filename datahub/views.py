@@ -65,7 +65,7 @@ class TeamMemberViewSet(GenericViewSet):
 
     serializer_class = TeamMemberListSerializer
     queryset = User.objects.all()
-    pagination_class = DefaultPagination
+    pagination_class = LargeResultsSetPagination
     # permission_classes = [IsAuthenticated]
 
     def create(self, request, *args, **kwargs):
@@ -78,7 +78,7 @@ class TeamMemberViewSet(GenericViewSet):
     def list(self, request, *args, **kwargs):
         """GET method: query all the list of objects from the Product model"""
         # queryset = self.filter_queryset(self.get_queryset())
-        queryset = User.objects.filter(Q(status=False) & (Q(role__id=2) | Q(role__id=5)))
+        queryset = User.objects.filter(Q(status=True) & (Q(role__id=2) | Q(role__id=5)))
         page = self.paginate_queryset(queryset)
         if page is not None:
             serializer = self.get_serializer(page, many=True)
@@ -106,7 +106,7 @@ class TeamMemberViewSet(GenericViewSet):
     def destroy(self, request, pk):
         """DELETE method: delete an object"""
         team_member = self.get_object()
-        team_member.status = True
+        team_member.status = False
         # team_member.delete()
         team_member.save()
         return Response(status=status.HTTP_204_NO_CONTENT)
@@ -119,7 +119,7 @@ class OrganizationViewSet(GenericViewSet):
 
     serializer_class = OrganizationSerializer
     queryset = Organization.objects.all()
-    pagination_class = DefaultPagination
+    pagination_class = LargeResultsSetPagination
     # permission_classes = [IsAuthenticated]
 
     def create(self, request, *args, **kwargs):
@@ -179,7 +179,7 @@ class ParticipantViewSet(GenericViewSet):
             Organization.objects.filter(org_email=self.request.data.get(Constants.ORG_EMAIL, "")).values()
         )
         if not org_queryset:
-            serializer = OrganizationSerializer(data=request.data)
+            serializer = OrganizationSerializer(data=request.data, partial=True)
             serializer.is_valid(raise_exception=True)
             org_queryset = self.perform_create(serializer)
             org_id = org_queryset.id
@@ -201,10 +201,9 @@ class ParticipantViewSet(GenericViewSet):
 
     def list(self, request, *args, **kwargs):
         """GET method: query all the list of objects from the Product model"""
-        print(request.headers)
         roles = (
             UserOrganizationMap.objects.select_related(Constants.USER, Constants.ORGANIZATION)
-            .filter(user__status=False, user__role=3)
+            .filter(user__status=True, user__role=3)
             .all()
         )
         page = self.paginate_queryset(roles)
@@ -215,7 +214,7 @@ class ParticipantViewSet(GenericViewSet):
         """GET method: retrieve an object or instance of the Product model"""
         roles = (
             UserOrganizationMap.objects.prefetch_related(Constants.USER, Constants.ORGANIZATION)
-            .filter(user__status=False, user__role=3, user=pk)
+            .filter(user__status=True, user__role=3, user=pk)
             .all()
         )
         participant_serializer = ParticipantSerializer(roles, many=True)
@@ -245,7 +244,7 @@ class ParticipantViewSet(GenericViewSet):
     def destroy(self, request, pk):
         """DELETE method: delete an object"""
         product = self.get_object()
-        product.status = True
+        product.status = False
         self.perform_create(product)
         return Response(status=status.HTTP_204_NO_CONTENT)
 
@@ -405,7 +404,7 @@ class SupportViewSet(GenericViewSet):
     parser_class = JSONParser
     serializer_class = TicketSupportSerializer
     queryset = SupportTicket
-    pagination_class = DefaultPagination
+    pagination_class = LargeResultsSetPagination
 
     def perform_create(self, serializer):
         """
@@ -435,7 +434,7 @@ class SupportViewSet(GenericViewSet):
                     Constants.USER_MAP_USER,
                     Constants.USER_MAP_ORGANIZATION,
                 )
-                .filter(user_map__user__status=False, **request.data)
+                .filter(user_map__user__status=True, **request.data)
                 .order_by(Constants.UPDATED_AT)
                 .all()
             )
@@ -464,7 +463,7 @@ class SupportViewSet(GenericViewSet):
                 Constants.USER_MAP_USER,
                 Constants.USER_MAP_ORGANIZATION,
             )
-            .filter(user_map__user__status=False, **request.GET)
+            .filter(user_map__user__status=True, **request.GET)
             .order_by(Constants.UPDATED_AT)
             .all()
         )
@@ -480,7 +479,7 @@ class SupportViewSet(GenericViewSet):
                 Constants.USER_MAP_USER,
                 Constants.USER_MAP_ORGANIZATION,
             )
-            .filter(user_map__user__status=False, id=pk)
+            .filter(user_map__user__status=True, id=pk)
             .all()
         )
         participant_serializer = ParticipantSupportTicketSerializer(data, many=True)
