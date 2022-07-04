@@ -77,7 +77,10 @@ class TestViews(TestCase):
             organization=Organization.objects.get(org_email="bglordg@digitalgreen.org"),
         )
         self.user_map_id = user_map.id
-        SupportTicket.objects.create(**dump_data, user_map=UserOrganizationMap.objects.get(id=user_map.id))
+        sup_ticket = SupportTicket.objects.create(
+            **dump_data, user_map=UserOrganizationMap.objects.get(id=user_map.id)
+        )
+        print(sup_ticket)
 
     def test_participant_support_invalid(self):
         """_summary_"""
@@ -144,3 +147,13 @@ class TestViews(TestCase):
         data = response.json()
         assert response.status_code == 200
         assert data == []
+
+    def test_participant_support_details(self):
+        id = SupportTicket.objects.get(subject="Not Able to Install").id
+        url = self.support_url + str(id) + "/"
+        response = self.client.get(url, secure=True)
+        data = response.json()
+        print(data)
+        assert response.status_code == 200
+        assert data.get("subject") == "Not Able to Install"
+        assert data.get("user").get("email") == "ugeshbasa45@digitalgreen.org"

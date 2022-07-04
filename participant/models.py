@@ -4,7 +4,7 @@ from unicodedata import category
 
 from accounts.models import User
 from core import settings
-from core.utils import TimeStampMixin
+from core.base_models import TimeStampMixin
 from datahub.models import UserOrganizationMap
 from django.db import models
 from utils.validators import validate_file_size

@@ -1,6 +1,7 @@
 from accounts import models
 from accounts.serializers import UserCreateSerializer, UserSerializer
 from rest_framework import serializers
+from core.constants import Constants
 
 from datahub.models import DatahubDocuments, Organization, UserOrganizationMap
 from datahub.models import Organization, UserOrganizationMap, DatahubDocuments
@@ -22,7 +23,7 @@ class OrganizationSerializer(serializers.ModelSerializer):
         """_summary_"""
 
         model = Organization
-        fields = "__all__"
+        fields = Constants.ALL
 
 
 class OrganizationRetriveSerializer(serializers.ModelSerializer):
@@ -36,7 +37,7 @@ class OrganizationRetriveSerializer(serializers.ModelSerializer):
         """_summary_"""
 
         model = Organization
-        exclude = ["created_at", "updated_at"]
+        exclude = Constants.EXCLUDE_DATES
 
 
 class UserOrganizationMapSerializer(serializers.ModelSerializer):
@@ -50,20 +51,20 @@ class UserOrganizationMapSerializer(serializers.ModelSerializer):
         """_summary_"""
 
         model = UserOrganizationMap
-        fields = ["organization", "user"]
+        fields = [Constants.ORGANIZATION, Constants.USER]
 
 
 class ParticipantSerializer(serializers.ModelSerializer):
     user_id = serializers.PrimaryKeyRelatedField(
         queryset=models.User.objects.all(),
         required=True,
-        source="user",
+        source=Constants.USER,
     )
     organization_id = serializers.PrimaryKeyRelatedField(
         queryset=Organization.objects.all(),
         allow_null=True,
         required=False,
-        source="organization",
+        source=Constants.ORGANIZATION,
     )
 
     user = UserSerializer(
@@ -78,7 +79,7 @@ class ParticipantSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = UserOrganizationMap
-        exclude = ["created_at", "updated_at"]
+        exclude = Constants.EXCLUDE_DATES
 
 
 class DropDocumentSerializer(serializers.Serializer):
@@ -110,7 +111,7 @@ class PolicyDocumentSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = DatahubDocuments
-        fields = "__all__"
+        fields = Constants.ALL
 
 
 class DatahubThemeSerializer(serializers.Serializer):

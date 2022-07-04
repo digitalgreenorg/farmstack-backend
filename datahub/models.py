@@ -7,7 +7,7 @@ from django.conf import settings
 from django.db import models
 from utils.validators import validate_file_size
 
-from datahub.base_models import TimeStampMixin
+from core.base_models import TimeStampMixin
 
 
 def auto_str(cls):
