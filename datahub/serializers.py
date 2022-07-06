@@ -22,20 +22,6 @@ from utils.validators import (
 from datahub.models import DatahubDocuments, Organization, UserOrganizationMap
 
 
-class OrganizationSerializer(serializers.ModelSerializer):
-    """_summary_
-
-    Args:
-        serializers (_type_): _description_
-    """
-
-    class Meta:
-        """_summary_"""
-
-        model = Organization
-        fields = Constants.ALL
-
-
 class OrganizationRetriveSerializer(serializers.ModelSerializer):
     """_summary_
 
@@ -48,6 +34,21 @@ class OrganizationRetriveSerializer(serializers.ModelSerializer):
 
         model = Organization
         exclude = Constants.EXCLUDE_DATES
+
+
+class OrganizationSerializer(serializers.ModelSerializer):
+    """_summary_
+
+    Args:
+        serializers (_type_): _description_
+    """
+
+    class Meta:
+        """_summary_"""
+
+        model = Organization
+        exclude = Constants.EXCLUDE_DATES
+        # fields = Constants.ALL
 
 
 class UserOrganizationMapSerializer(serializers.ModelSerializer):
@@ -76,7 +77,6 @@ class ParticipantSerializer(serializers.ModelSerializer):
         required=False,
         source=Constants.ORGANIZATION,
     )
-
     user = UserSerializer(
         read_only=False,
         required=False,

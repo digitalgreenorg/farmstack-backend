@@ -1,12 +1,9 @@
-import json
-import logging
-import os
-import shutil
+import json, logging, os, shutil
 from calendar import c
 
 import django
 from accounts.models import User, UserRole
-from accounts.serializers import UserCreateSerializer
+from accounts.serializers import UserCreateSerializer, UserUpdateSerializer
 from core.constants import Constants
 from core.utils import LargeResultsSetPagination, Utils
 from django.conf import settings
@@ -57,6 +54,7 @@ class DefaultPagination(pagination.PageNumberPagination):
     """
     Configure Pagination
     """
+
     page_size = 5
 
 
@@ -120,29 +118,101 @@ class OrganizationViewSet(GenericViewSet):
     serializer_class = OrganizationSerializer
     queryset = Organization.objects.all()
     pagination_class = LargeResultsSetPagination
+    parser_class = MultiPartParser
     # permission_classes = [IsAuthenticated]
 
-    def create(self, request, *args, **kwargs):
-        """POST method: create action to save an object by sending a POST request"""
-        serializer = self.get_serializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
+    def perform_create(self, serializer):
+        """
+        This function performs the create operation of requested serializer.
+        Args:
+            serializer (_type_): serializer class object.
 
-        serializer.save()
-        return Response(serializer.data, status=status.HTTP_201_CREATED)
+        Returns:
+            _type_: Returns the saved details.
+        """
+        return serializer.save()
+
+    def create(self, request, *args, **kwargs):
+        """POST method: create action to save an organization object using User ID"""
+        user_queryset = User.objects.filter(id=request.data["user_id"])
+        if not user_queryset:
+            return Response({"message": "User is not available"}, status=status.HTTP_400_BAD_REQUEST)
+
+        org_queryset = list(Organization.objects.filter(org_email=request.data["org_email"]).values())
+        # check if the user is mapped to the organization
+        user_org_queryset = UserOrganizationMap.objects.filter(user_id=user_queryset.first().id)
+
+        if not user_org_queryset:
+            with transaction.atomic():
+                serializer = OrganizationSerializer(data=request.data, partial=True)
+                serializer.is_valid(raise_exception=True)
+                org_queryset = self.perform_create(serializer)
+
+                user_org_serializer = UserOrganizationMapSerializer(
+                    data={
+                        Constants.USER: user_queryset.first().id,
+                        Constants.ORGANIZATION: org_queryset.id,
+                    }
+                )
+                user_org_serializer.is_valid(raise_exception=True)
+                self.perform_create(user_org_serializer)
+                return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+        elif user_org_queryset:
+            # print("USER ID:" + str(user_queryset.first().id))
+            # print("ORG_ID mapped to user: " + str(user_org_queryset.first().organization_id))
+            return Response(
+                {"message": "User is already associated with an organization"}, status=status.HTTP_400_BAD_REQUEST
+            )
+
+        return Response({}, status=status.HTTP_400_BAD_REQUEST)
+
+    def list(self, request, *args, **kwargs):
+        """GET method: query all the list of objects from the Product model"""
+        user_org_queryset = (
+            UserOrganizationMap.objects.select_related(Constants.USER, Constants.ORGANIZATION)
+            .filter(organization__status=True)
+            .all()
+        )
+        page = self.paginate_queryset(user_org_queryset)
+        user_organization_serializer = ParticipantSerializer(page, many=True)
+        return self.get_paginated_response(user_organization_serializer.data)
 
     def retrieve(self, request, pk):
-        """GET method: retrieve an object or instance of the Product model"""
-        organization = self.get_object()
-        serializer = self.get_serializer(organization)
-        return Response(serializer.data, status=status.HTTP_200_OK)
+        """GET method: retrieve an object of Organization using User ID of the User"""
+        user_org_queryset = (
+            UserOrganizationMap.objects.prefetch_related(Constants.USER, Constants.ORGANIZATION)
+            .filter(organization__status=True, user=pk)
+            .all()
+        )
+        organization_serializer = ParticipantSerializer(user_org_queryset, many=True)
+        if organization_serializer.data:
+            return Response(organization_serializer.data[0], status=status.HTTP_200_OK)
 
-    def update(self, request, *args, **kwargs):
-        """PUT method: update or send a PUT request on an object of the Product model"""
-        instance = self.get_object()
-        serializer = self.get_serializer(instance, data=request.data, partial=None)
-        serializer.is_valid(raise_exception=True)
-        serializer.save()
-        return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response({}, status=status.HTTP_404_NOT_FOUND)
+
+    def update(self, request, pk):
+        """PUT method: update or PUT request for Organization using User ID of the User"""
+        user_org_queryset = (
+            UserOrganizationMap.objects.prefetch_related(Constants.USER, Constants.ORGANIZATION).filter(user=pk).all()
+        )
+        user_org_id = user_org_queryset.first().organization_id
+
+        if user_org_id:
+            organization_serializer = OrganizationSerializer(
+                Organization.objects.get(id=user_org_id),
+                data=request.data,
+                partial=True,
+            )
+
+            organization_serializer.is_valid(raise_exception=True)
+            self.perform_create(organization_serializer)
+            data = {
+                Constants.ORGANIZATION: organization_serializer.data,
+            }
+            return Response(data, status=status.HTTP_201_CREATED)
+
+        return Response({}, status=status.HTTP_404_NOT_FOUND)
 
     def destroy(self, request, pk):
         """DELETE method: delete an object"""
@@ -160,7 +230,6 @@ class ParticipantViewSet(GenericViewSet):
     serializer_class = UserCreateSerializer
     queryset = User.objects.all()
     pagination_class = LargeResultsSetPagination
-
 
     def perform_create(self, serializer):
         """
@@ -225,7 +294,7 @@ class ParticipantViewSet(GenericViewSet):
     def update(self, request, *args, **kwargs):
         """PUT method: update or send a PUT request on an object of the Product model"""
         instance = self.get_object()
-        serializer = self.get_serializer(instance, data=request.data, partial=None)
+        serializer = self.get_serializer(instance, data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
         self.perform_create(serializer)
         organization = OrganizationSerializer(
