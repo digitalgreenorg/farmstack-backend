@@ -177,20 +177,20 @@ class OrganizationViewSet(GenericViewSet):
 
     def retrieve(self, request, pk):
         """GET method: retrieve an object of Organization using User ID of the User (IMPORTANT: Using USER ID instead of Organization ID)"""
-        user_queryset = User.objects.filter(id=pk).all()
+        user_obj = User.objects.get(id=pk)
         user_org_queryset = (
             UserOrganizationMap.objects.prefetch_related(Constants.USER, Constants.ORGANIZATION)
             # .filter(organization__status=True, user=pk)
-            .filter(user=pk).all()
+            .filter(user=pk)
         )
 
         if not user_org_queryset:
-            data = {Constants.USER: {"id": user_queryset.first().id}, Constants.ORGANIZATION: "null"}
+            data = {Constants.USER: {"id": user_obj.id}, Constants.ORGANIZATION: "null"}
             return Response(data, status=status.HTTP_200_OK)
 
-        org_queryset = Organization.objects.filter(id=user_org_queryset.first().organization_id).values()
-        user_org_serializer = OrganizationSerializer(org_queryset, many=True)
-        data = {Constants.USER: {"id": user_queryset.first().id}, Constants.ORGANIZATION: user_org_serializer.data[0]}
+        org_obj = Organization.objects.get(id=user_org_queryset.first().organization_id)
+        user_org_serializer = OrganizationSerializer(org_obj)
+        data = {Constants.USER: {"id": user_obj.id}, Constants.ORGANIZATION: user_org_serializer.data}
         return Response(data, status=status.HTTP_200_OK)
 
     def update(self, request, pk):
