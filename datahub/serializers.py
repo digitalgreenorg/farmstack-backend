@@ -51,6 +51,32 @@ class OrganizationSerializer(serializers.ModelSerializer):
         # fields = Constants.ALL
 
 
+class UserOrganizationCreateSerializer(serializers.Serializer):
+    """_summary_
+
+    Args:
+        serializers (_type_): _description_
+    """
+
+    user = UserSerializer(
+        read_only=True,
+        allow_null=True,
+        required=False,
+    )
+    organization = OrganizationRetriveSerializer(
+        read_only=True,
+        allow_null=True,
+        required=False,
+    )
+
+    # class Meta:
+    #     """_summary_"""
+
+    # model = UserOrganizationMap
+    # fields = [Constants.ORGANIZATION, Constants.USER]
+    # exclude = Constants.EXCLUDE_DATES
+
+
 class UserOrganizationMapSerializer(serializers.ModelSerializer):
     """_summary_
 
@@ -63,6 +89,7 @@ class UserOrganizationMapSerializer(serializers.ModelSerializer):
 
         model = UserOrganizationMap
         fields = [Constants.ORGANIZATION, Constants.USER]
+        # exclude = Constants.EXCLUDE_DATES
 
 
 class ParticipantSerializer(serializers.ModelSerializer):

@@ -3,13 +3,12 @@ from calendar import c
 
 import django
 from accounts.models import User, UserRole
-from accounts.serializers import UserCreateSerializer, UserUpdateSerializer
+from accounts.serializers import UserCreateSerializer, UserUpdateSerializer, UserSerializer
 from core.constants import Constants
 from core.utils import LargeResultsSetPagination, Utils
 from django.conf import settings
 from django.contrib.admin.utils import get_model_from_relation
 from django.core.files.base import ContentFile
-from django.core.files.uploadedfile import InMemoryUploadedFile
 from django.db import transaction
 from django.db.models import DEFERRED, F, Q
 from drf_braces.mixins import MultipleSerializersViewMixin
@@ -21,14 +20,11 @@ from participant.serializers import (
 from rest_framework import pagination, status
 from rest_framework.decorators import action
 from rest_framework.parsers import (
-    FileUploadParser,
-    FormParser,
     JSONParser,
     MultiPartParser,
 )
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
-from rest_framework.views import APIView
 from rest_framework.viewsets import GenericViewSet, ViewSet
 from uritemplate import partial
 from utils import file_operations, validators
@@ -45,6 +41,7 @@ from datahub.serializers import (
     TeamMemberListSerializer,
     TeamMemberUpdateSerializer,
     UserOrganizationMapSerializer,
+    UserOrganizationCreateSerializer,
 )
 
 LOGGER = logging.getLogger(__name__)
@@ -133,7 +130,7 @@ class OrganizationViewSet(GenericViewSet):
         return serializer.save()
 
     def create(self, request, *args, **kwargs):
-        """POST method: create action to save an organization object using User ID"""
+        """POST method: create action to save an organization object using User ID (IMPORTANT: Using USER ID instead of Organization ID)"""
         user_queryset = User.objects.filter(id=request.data["user_id"])
         if not user_queryset:
             return Response({"message": "User is not available"}, status=status.HTTP_400_BAD_REQUEST)
@@ -168,10 +165,10 @@ class OrganizationViewSet(GenericViewSet):
         return Response({}, status=status.HTTP_400_BAD_REQUEST)
 
     def list(self, request, *args, **kwargs):
-        """GET method: query all the list of objects from the Product model"""
+        """GET method: query the list of Organization objects"""
         user_org_queryset = (
             UserOrganizationMap.objects.select_related(Constants.USER, Constants.ORGANIZATION)
-            .filter(organization__status=True)
+            # .filter(organization__status=True)
             .all()
         )
         page = self.paginate_queryset(user_org_queryset)
@@ -179,40 +176,46 @@ class OrganizationViewSet(GenericViewSet):
         return self.get_paginated_response(user_organization_serializer.data)
 
     def retrieve(self, request, pk):
-        """GET method: retrieve an object of Organization using User ID of the User"""
+        """GET method: retrieve an object of Organization using User ID of the User (IMPORTANT: Using USER ID instead of Organization ID)"""
+        user_queryset = User.objects.filter(id=pk).all()
         user_org_queryset = (
             UserOrganizationMap.objects.prefetch_related(Constants.USER, Constants.ORGANIZATION)
-            .filter(organization__status=True, user=pk)
-            .all()
+            # .filter(organization__status=True, user=pk)
+            .filter(user=pk).all()
         )
-        organization_serializer = ParticipantSerializer(user_org_queryset, many=True)
-        if organization_serializer.data:
-            return Response(organization_serializer.data[0], status=status.HTTP_200_OK)
 
-        return Response({}, status=status.HTTP_404_NOT_FOUND)
+        if not user_org_queryset:
+            data = {Constants.USER: {"id": user_queryset.first().id}, Constants.ORGANIZATION: "null"}
+            return Response(data, status=status.HTTP_200_OK)
+
+        org_queryset = Organization.objects.filter(id=user_org_queryset.first().organization_id).values()
+        user_org_serializer = OrganizationSerializer(org_queryset, many=True)
+        data = {Constants.USER: {"id": user_queryset.first().id}, Constants.ORGANIZATION: user_org_serializer.data[0]}
+        return Response(data, status=status.HTTP_200_OK)
 
     def update(self, request, pk):
-        """PUT method: update or PUT request for Organization using User ID of the User"""
+        """PUT method: update or PUT request for Organization using User ID of the User (IMPORTANT: Using USER ID instead of Organization ID)"""
         user_org_queryset = (
             UserOrganizationMap.objects.prefetch_related(Constants.USER, Constants.ORGANIZATION).filter(user=pk).all()
         )
+
+        if not user_org_queryset:
+            return Response({}, status=status.HTTP_404_NOT_FOUND)
+
         user_org_id = user_org_queryset.first().organization_id
+        organization_serializer = OrganizationSerializer(
+            Organization.objects.get(id=user_org_id),
+            data=request.data,
+            partial=True,
+        )
 
-        if user_org_id:
-            organization_serializer = OrganizationSerializer(
-                Organization.objects.get(id=user_org_id),
-                data=request.data,
-                partial=True,
-            )
-
-            organization_serializer.is_valid(raise_exception=True)
-            self.perform_create(organization_serializer)
-            data = {
-                Constants.ORGANIZATION: organization_serializer.data,
-            }
-            return Response(data, status=status.HTTP_201_CREATED)
-
-        return Response({}, status=status.HTTP_404_NOT_FOUND)
+        organization_serializer.is_valid(raise_exception=True)
+        self.perform_create(organization_serializer)
+        data = {
+            Constants.USER: {"id": pk},
+            Constants.ORGANIZATION: organization_serializer.data,
+        }
+        return Response(data, status=status.HTTP_201_CREATED)
 
     def destroy(self, request, pk):
         """DELETE method: delete an object"""
