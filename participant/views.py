@@ -58,8 +58,11 @@ class ParticipantSupportViewSet(GenericViewSet):
         """GET method: query all the list of objects from the Product model"""
         user_id = request.GET.get(Constants.USER_ID)
         data = (
-            SupportTicket.objects.select_related(Constants.USER_MAP, Constants.USER_MAP_USER, Constants.USER_MAP_ORGANIZATION)
-            .filter(user_map__user__status=False, user_map__user=user_id).order_by(Constants.UPDATED_AT)
+            SupportTicket.objects.select_related(
+                Constants.USER_MAP, Constants.USER_MAP_USER, Constants.USER_MAP_ORGANIZATION
+            )
+            .filter(user_map__user__status=False, user_map__user=user_id)
+            .order_by(Constants.UPDATED_AT)
             .all()
         )
         page = self.paginate_queryset(data)

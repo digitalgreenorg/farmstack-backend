@@ -50,22 +50,41 @@ class RegisterViewset(GenericViewSet):
             status=status.HTTP_201_CREATED,
         )
 
+    def list(self, request, *args, **kwargs):
+        """GET method: query all the list of objects from the Product model"""
+        queryset = self.filter_queryset(self.get_queryset())
+        page = self.paginate_queryset(queryset)
+        if page is not None:
+            serializer = self.get_serializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
+
+        serializer = self.get_serializer(queryset, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
     def retrieve(self, request, pk):
         """GET method: retrieve an object or instance of the Product model"""
         user = self.get_object()
-        serializer = self.get_serializer(user)
+        # serializer = self.get_serializer(user)
+        serializer = UserUpdateSerializer(user)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
     def update(self, request, *args, **kwargs):
         """PUT method: update or send a PUT request on an object of the Product model"""
         instance = self.get_object()
         serializer = self.get_serializer(instance, data=request.data, partial=True)
+        # serializer = UserUpdateSerializer(instance, data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
         serializer.save()
         return Response(
             {"message": "updated user details", "response": serializer.data},
             status=status.HTTP_201_CREATED,
         )
+
+    def destroy(self, request, pk):
+        """DELETE method: delete an object"""
+        user = self.get_object()
+        # user.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
 
 class LoginViewset(GenericViewSet):
