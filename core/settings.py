@@ -12,9 +12,8 @@ https://docs.djangoproject.com/en/4.0/ref/settings/
 
 import collections
 import os
-from datetime import timedelta
 from pathlib import Path
-from pickle import FALSE, TRUE
+from datetime import timedelta
 
 collections.Callable = collections.abc.Callable
 
@@ -106,15 +105,12 @@ WSGI_APPLICATION = "core.wsgi.application"
 
 DATABASES = {
     # "default": {
-    #     "ENGINE": "django.db.backends.postgresql",
-    #     "NAME": "postgres",
-    #     "USER": "postgres",
-    #     "PASSWORD": "postgres",
-    #     "HOST": "db",
-    #     "PORT": 5432,
-    #     'OPTIONS': {
-    #         'client_encoding': 'UTF8',
-    #     },
+    #     "ENGINE": os.environ.get("SQL_ENGINE", "django.db.backends.postgresql"),
+    #     "NAME": os.environ.get("SQL_DATABASE", "farm_stack"),
+    #     "USER": os.environ.get("SQL_USER", "farm_stack"),
+    #     "PASSWORD": os.environ.get("SQL_PASSWORD", "farm_stack"),
+    #     "HOST": os.environ.get("SQL_HOST", "db"),
+    #     "PORT": os.environ.get("SQL_PORT", "5432"),
     # }
     "default": {
         "ENGINE": "django.db.backends.sqlite3",
@@ -191,8 +187,8 @@ REST_FRAMEWORK = {
 }
 
 SIMPLE_JWT = {
-    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=30),
-    "REFRESH_TOKEN_LIFETIME": timedelta(days=1),
+    "ACCESS_TOKEN_LIFETIME": timedelta(days=1),
+    "REFRESH_TOKEN_LIFETIME": timedelta(days=7),
     "AUTH_HEADER_TYPES": ("Bearer",),
     "USER_ID_FIELD": "id",
     "USER_ID_CLAIM": "user_id",
@@ -202,17 +198,15 @@ SIMPLE_JWT = {
 }
 
 # Email configuration
-
-USE_X_FORWARDED_HOST = True
-
 SENDGRID_API_KEY = os.environ.get("SENDGRID_API_KEY", "send_grid_key")
 EMAIL_HOST_USER = os.environ.get("EMAIL_HOST_USER", "email_host_user")
+
+USE_X_FORWARDED_HOST = True
 
 # User OTP config
 OTP_DURATION = 900
 OTP_LIMIT = 3
 USER_SUSPENSION_DURATION = 300
-
 
 # Store cache in file
 CACHES = {
