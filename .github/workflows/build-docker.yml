@@ -42,4 +42,4 @@ jobs:
           context: .
           file: Dockerfile
           push: true
-          tags: farmstack/datahub-be:latest
+          tags: farmstack/datahub-be:test
