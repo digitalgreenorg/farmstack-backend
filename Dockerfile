@@ -9,7 +9,7 @@ ADD . /datahub
 WORKDIR /datahub
 
 # RUN poetry init
-RUN python3 -m pip install --upgrade  pip
+RUN python3 -m pip install
 RUN pip install -r requirements.txt
 
 # RUN python manage.py makemigrations \
