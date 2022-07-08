@@ -177,21 +177,31 @@ class ResendOTPViewset(GenericViewSet):
                         status=status.HTTP_401_UNAUTHORIZED,
                     )
 
-            # get current user otp attempt
-            otp_attempt = int(cache.get(email)["otp_attempt"])
-
-            # generate and send OTP to the the user
             gen_key = login_helper.generateKey()
-            otp = gen_key.returnValue()["OTP"]
-            Utils().send_email(
-                to_email=email,
-                content=f"Your OTP is {otp}",
-                subject=f"Your account verification OTP",
-            )
 
-            # assign OTP to the user using cache
-            login_helper.set_user_otp(email, otp, settings.OTP_DURATION, otp_attempt)
-            print(cache.get(email))
+            # update the current attempts of OTP
+            if cache.get(email):
+                otp = gen_key.returnValue()["OTP"]
+                Utils().send_email(
+                    to_email=email,
+                    content=f"Your OTP is {otp}",
+                    subject=f"Your account verification OTP",
+                )
+
+                otp_attempt = int(cache.get(email)["otp_attempt"])
+                login_helper.set_user_otp(email, otp, settings.OTP_DURATION, otp_attempt)
+                print(cache.get(email))
+
+            # generate a new attempts of OTP
+            elif not cache.get(email):
+                otp = gen_key.returnValue()["OTP"]
+                Utils().send_email(
+                    to_email=email,
+                    content=f"Your OTP is {otp}",
+                    subject=f"Your account verification OTP",
+                )
+
+                login_helper.set_user_otp(email, otp, settings.OTP_DURATION)
 
             return Response(
                 {
