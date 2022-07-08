@@ -12,8 +12,6 @@ WORKDIR /datahub
 RUN python3 -m pip install --upgrade  pip
 RUN pip install -r requirements.txt
 
-RUN echo "Hey there **************"
-
 # RUN python manage.py makemigrations \
 #     && python manage.py migrate \
 #     && python manage.py loaddata db_scripts/userrole_fixture.yaml \
