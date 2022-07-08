@@ -9,8 +9,10 @@ ADD . /datahub
 WORKDIR /datahub
 
 # RUN poetry init
-RUN python3 -m pip install
+RUN python3 -m pip install --upgrade  pip
 RUN pip install -r requirements.txt
+
+RUN echo "Hey there **************"
 
 # RUN python manage.py makemigrations \
 #     && python manage.py migrate \
