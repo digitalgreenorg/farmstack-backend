@@ -1,3 +1,9 @@
 # datahub-api
 
-1. Testing the CI Pipeline.
+***To Run Test cases***
+
+coverage  run --source='.' manage.py test
+
+***To check the Coverage***
+
+coverage report -m  
