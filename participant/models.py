@@ -50,8 +50,8 @@ class SupportTicket(TimeStampMixin):
         blank=True,
         validators=[validate_file_size],
     )
-    soluction_message = models.CharField(max_length=1000, null=True)
-    soluction_attachments = models.FileField(
+    solution_message = models.CharField(max_length=1000, null=True)
+    solution_attachments = models.FileField(
         upload_to=settings.SOLUCTION_ATTACHEMENT_URL,
         null=True,
         blank=True,
