@@ -1,4 +1,5 @@
-<<<<<<< HEAD
+setuptools
+psycopg2-binary
 asgiref==3.5.2
 astroid==2.11.6
 attrs==21.4.0
@@ -59,7 +60,6 @@ platformdirs==2.5.2
 pluggy==1.0.0
 poetry==1.1.13
 poetry-core==1.0.8
-psycopg2-binary==2.9.3
 ptyprocess==0.7.0
 py==1.11.0
 pyaml==21.10.1
