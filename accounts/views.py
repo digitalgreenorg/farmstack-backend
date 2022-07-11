@@ -64,8 +64,8 @@ class RegisterViewset(GenericViewSet):
     def retrieve(self, request, pk):
         """GET method: retrieve an object or instance of the Product model"""
         user = self.get_object()
-        # serializer = self.get_serializer(user)
-        serializer = UserUpdateSerializer(user)
+        serializer = self.get_serializer(user)
+        # serializer = UserUpdateSerializer(user)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
     def update(self, request, *args, **kwargs):
