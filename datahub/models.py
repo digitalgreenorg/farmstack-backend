@@ -62,6 +62,7 @@ class DatahubDocuments(models.Model):
     tos = models.TextField()
 
 
+@auto_str
 class UserOrganizationMap(TimeStampMixin):
     """UserOrganizationMap model for mapping User and Organization model"""
 

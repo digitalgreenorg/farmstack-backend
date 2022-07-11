@@ -50,22 +50,41 @@ class RegisterViewset(GenericViewSet):
             status=status.HTTP_201_CREATED,
         )
 
+    def list(self, request, *args, **kwargs):
+        """GET method: query all the list of objects from the Product model"""
+        queryset = self.filter_queryset(self.get_queryset())
+        page = self.paginate_queryset(queryset)
+        if page is not None:
+            serializer = self.get_serializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
+
+        serializer = self.get_serializer(queryset, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
     def retrieve(self, request, pk):
         """GET method: retrieve an object or instance of the Product model"""
         user = self.get_object()
-        serializer = self.get_serializer(user)
+        # serializer = self.get_serializer(user)
+        serializer = UserUpdateSerializer(user)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
     def update(self, request, *args, **kwargs):
         """PUT method: update or send a PUT request on an object of the Product model"""
         instance = self.get_object()
         serializer = self.get_serializer(instance, data=request.data, partial=True)
+        # serializer = UserUpdateSerializer(instance, data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
         serializer.save()
         return Response(
             {"message": "updated user details", "response": serializer.data},
             status=status.HTTP_201_CREATED,
         )
+
+    def destroy(self, request, pk):
+        """DELETE method: delete an object"""
+        user = self.get_object()
+        # user.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
 
 class LoginViewset(GenericViewSet):
@@ -158,21 +177,31 @@ class ResendOTPViewset(GenericViewSet):
                         status=status.HTTP_401_UNAUTHORIZED,
                     )
 
-            # get current user otp attempt
-            otp_attempt = int(cache.get(email)["otp_attempt"])
-
-            # generate and send OTP to the the user
             gen_key = login_helper.generateKey()
-            otp = gen_key.returnValue()["OTP"]
-            Utils().send_email(
-                to_email=email,
-                content=f"Your OTP is {otp}",
-                subject=f"Your account verification OTP",
-            )
 
-            # assign OTP to the user using cache
-            login_helper.set_user_otp(email, otp, settings.OTP_DURATION, otp_attempt)
-            print(cache.get(email))
+            # update the current attempts of OTP
+            if cache.get(email):
+                otp = gen_key.returnValue()["OTP"]
+                Utils().send_email(
+                    to_email=email,
+                    content=f"Your OTP is {otp}",
+                    subject=f"Your account verification OTP",
+                )
+
+                otp_attempt = int(cache.get(email)["otp_attempt"])
+                login_helper.set_user_otp(email, otp, settings.OTP_DURATION, otp_attempt)
+                print(cache.get(email))
+
+            # generate a new attempts of OTP
+            elif not cache.get(email):
+                otp = gen_key.returnValue()["OTP"]
+                Utils().send_email(
+                    to_email=email,
+                    content=f"Your OTP is {otp}",
+                    subject=f"Your account verification OTP",
+                )
+
+                login_helper.set_user_otp(email, otp, settings.OTP_DURATION)
 
             return Response(
                 {

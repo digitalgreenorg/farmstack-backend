@@ -48,7 +48,7 @@ class UserRole(models.Model):
 
     # id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     id = models.IntegerField(primary_key=True)
-    role_name  = models.CharField(max_length=255, null=True, blank=True, choices=ROLES)
+    role_name = models.CharField(max_length=255, null=True, blank=True, choices=ROLES)
 
     def __str__(self):
         return self.role_name
