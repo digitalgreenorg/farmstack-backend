@@ -27,16 +27,7 @@ class UserCreateSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = User
-        fields =  (
-            "id",
-            "email",
-            "first_name",
-            "last_name",
-            "phone_number",
-            "role",
-            "subscription",
-            "profile_picture"
-            )
+        fields = ("id", "email", "first_name", "last_name", "phone_number", "role", "subscription", "profile_picture")
         # fields = "__all__"
         depth = 1
 
@@ -67,7 +58,7 @@ class UserUpdateSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = User
-        fields = ("email", "first_name", "last_name", "phone_number", "role")
+        fields = ("email", "first_name", "last_name", "phone_number", "role", "profile_picture")
         depth = 1
 
 

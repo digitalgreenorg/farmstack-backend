@@ -22,20 +22,6 @@ from utils.validators import (
 from datahub.models import DatahubDocuments, Organization, UserOrganizationMap
 
 
-class OrganizationSerializer(serializers.ModelSerializer):
-    """_summary_
-
-    Args:
-        serializers (_type_): _description_
-    """
-
-    class Meta:
-        """_summary_"""
-
-        model = Organization
-        fields = Constants.ALL
-
-
 class OrganizationRetriveSerializer(serializers.ModelSerializer):
     """_summary_
 
@@ -50,6 +36,47 @@ class OrganizationRetriveSerializer(serializers.ModelSerializer):
         exclude = Constants.EXCLUDE_DATES
 
 
+class OrganizationSerializer(serializers.ModelSerializer):
+    """_summary_
+
+    Args:
+        serializers (_type_): _description_
+    """
+
+    class Meta:
+        """_summary_"""
+
+        model = Organization
+        exclude = Constants.EXCLUDE_DATES
+        # fields = Constants.ALL
+
+
+class UserOrganizationCreateSerializer(serializers.Serializer):
+    """_summary_
+
+    Args:
+        serializers (_type_): _description_
+    """
+
+    user = UserSerializer(
+        read_only=True,
+        allow_null=True,
+        required=False,
+    )
+    organization = OrganizationRetriveSerializer(
+        read_only=True,
+        allow_null=True,
+        required=False,
+    )
+
+    # class Meta:
+    #     """_summary_"""
+
+    # model = UserOrganizationMap
+    # fields = [Constants.ORGANIZATION, Constants.USER]
+    # exclude = Constants.EXCLUDE_DATES
+
+
 class UserOrganizationMapSerializer(serializers.ModelSerializer):
     """_summary_
 
@@ -62,6 +89,7 @@ class UserOrganizationMapSerializer(serializers.ModelSerializer):
 
         model = UserOrganizationMap
         fields = [Constants.ORGANIZATION, Constants.USER]
+        # exclude = Constants.EXCLUDE_DATES
 
 
 class ParticipantSerializer(serializers.ModelSerializer):
@@ -76,7 +104,6 @@ class ParticipantSerializer(serializers.ModelSerializer):
         required=False,
         source=Constants.ORGANIZATION,
     )
-
     user = UserSerializer(
         read_only=False,
         required=False,
