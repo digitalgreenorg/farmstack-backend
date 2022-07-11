@@ -190,7 +190,11 @@ class OrganizationViewSet(GenericViewSet):
 
         org_queryset = Organization.objects.filter(id=user_org_queryset.first().organization_id).values()
         user_org_serializer = OrganizationSerializer(org_queryset, many=True)
+        # user_org_serializer.is_valid(raise_exception=True)
+        # user_org_serializer = user_org_serializer.validated_data
+
         data = {Constants.USER: {"id": user_queryset.first().id}, Constants.ORGANIZATION: user_org_serializer.data[0]}
+        # data = {Constants.ORGANIZATION: user_org_serializer}
         return Response(data, status=status.HTTP_200_OK)
 
     def update(self, request, pk):
@@ -387,11 +391,19 @@ class DocumentSaveView(GenericViewSet):
     queryset = DatahubDocuments.objects.all()
     # permission_classes = [IsAuthenticated]
 
+    def list(self, request, *args, **kwargs):
+        """GET method: query all the list of objects from the Product model"""
+        queryset = self.filter_queryset(self.get_queryset())
+        serializer = self.get_serializer(queryset, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
     def retrieve(self, request, pk):
         """GET method: retrieve an object or instance of the Product model"""
         datahub_documents = self.get_object()
         serializer = self.get_serializer(datahub_documents)
-        return Response(serializer.data, status=status.HTTP_200_OK)
+        file_paths = file_operations.file_path(settings.DOCUMENTS_URL)
+        data = {"Content": serializer.data, "Documents": file_paths}
+        return Response(data, status=status.HTTP_200_OK)
 
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data, partial=True)
@@ -400,7 +412,7 @@ class DocumentSaveView(GenericViewSet):
         with transaction.atomic():
             serializer.save()
             # save the document files
-            file_operations.files_move(settings.TEMP_FILE_PATH, settings.STATIC_ROOT)
+            file_operations.files_move(settings.TEMP_FILE_PATH, settings.DOCUMENTS_ROOT)
             return Response(
                 {"message": "Documents and content saved!"},
                 status=status.HTTP_201_CREATED,
@@ -414,9 +426,7 @@ class DocumentSaveView(GenericViewSet):
 
         with transaction.atomic():
             serializer.save()
-            # save the document files
             file_operations.files_move(settings.TEMP_FILE_PATH, settings.STATIC_ROOT)
-
             return Response(
                 {"message": "Documents and content updated!"},
                 status=status.HTTP_201_CREATED,
@@ -446,14 +456,14 @@ class DatahubThemeView(GenericViewSet):
                 file_name = str(file_key) + "." + file_type
 
                 # save datahub banner image
-                file_operations.file_save(file, file_name, settings.STATIC_ROOT)
+                file_operations.file_save(file, file_name, settings.THEME_ROOT)
 
                 # save or override the CSS
                 css = ".btn { background-color: " + data["button_color"] + "; }"
                 file_operations.file_save(
                     ContentFile(css),
                     settings.CSS_FILE_NAME,
-                    settings.STATIC_ROOT,
+                    settings.THEME_ROOT,
                 )
 
             # set datahub admin user status to True
