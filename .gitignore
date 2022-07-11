@@ -6,6 +6,7 @@
 *cover
 *media
 *migrations
+*data
 
 # C extensions
 *.so

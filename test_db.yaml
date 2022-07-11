@@ -1,0 +1,26 @@
+version: '3.8'
+services:
+  db:
+    image: postgres
+    volumes:
+      - ./data/db:/var/lib/postgresql/data
+    environment:
+      - POSTGRES_DB=postgres
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - "POSTGRES_HOST_AUTH_METHOD=trust"
+    hostname: postgres 
+    ports:
+      - '5432:5432'
+    volumes: 
+      - ./db_data:/var/lib/postgresql
+    networks:
+      - postgresql-network
+
+volumes:
+  db_data:
+    driver: local
+
+networks:
+  postgresql-network:
+    driver: bridge
