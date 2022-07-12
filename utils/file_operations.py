@@ -34,7 +34,9 @@ def file_save(source_file, file_name, destination):
 def file_path(destination):
     try:
         for root, dirs, files in os.walk(destination):
-            file_paths = {file: root + file for file in files}
+            file_paths = {os.path.splitext(os.path.basename(file))[0]: root + file for file in files}
+            # file_paths = {file: root + file for file in files}
+            print(file_paths)
             return file_paths
     except Exception as e:
         LOGGER.error(e)
