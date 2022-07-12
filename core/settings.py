@@ -298,6 +298,12 @@ IMAGE_TYPES_ALLOWED = ["jpg", "jpeg", "png"]
 TEMP_FILE_PATH = "/tmp/datahub/"
 CSS_FILE_NAME = "override.css"
 
+CSS_ROOT = os.path.join(BASE_DIR, "media/theme/css/")
+CSS_URL = "media/theme/css/"
+
+if not os.path.exists(CSS_ROOT):
+    os.makedirs(CSS_ROOT)  # create the temp directory
+
 if not os.path.exists(TEMP_FILE_PATH):
     os.makedirs(TEMP_FILE_PATH)  # create the temp directory
 

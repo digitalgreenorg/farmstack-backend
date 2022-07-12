@@ -1,5 +1,7 @@
-import json, logging, os, shutil
+import json, logging, os, shutil, cssutils
 from calendar import c
+
+from python_http_client import exceptions
 
 import django
 from accounts.models import User, UserRole
@@ -456,38 +458,125 @@ class DatahubThemeView(GenericViewSet):
 
     def create(self, request, *args, **kwargs):
         """generates the override css for datahub"""
-        serializer = self.get_serializer(data=request.data, partial=True)
-        serializer.is_valid(raise_exception=True)
-        data = serializer.validated_data
-        user = User.objects.filter(email=data["email"])
+        user = User.objects.filter(email=request.data.get("email", ""))
         user = user.first()
+        data = {}
 
         try:
-            if all(key in data for key in ("button_color", "banner")):
-                file_key = list(request.FILES.keys())[0]
-                file = data[file_key]
-                file_type = data[file_key].content_type.split("/")[1]
-                file_name = str(file_key) + "." + file_type
+            banner = request.data.get("banner", "null")
+            banner = None if banner == "null" else banner
+            button_color = request.data.get("button_color", "null")
+            button_color = None if button_color == "null" else button_color
 
-                # save datahub banner image
-                file_operations.file_save(file, file_name, settings.THEME_ROOT)
+            if not banner and not button_color:
+                data = {"banner": "null", "button_color": "null"}
 
-                # save or override the CSS
-                css = ".btn { background-color: " + data["button_color"] + "; }"
+            elif banner and not button_color:
+                file_name = file_operations.get_file_name(str(banner), "banner")
+                file_operations.file_save(banner, file_name, settings.THEME_ROOT)
+                data = {"banner": file_name, "button_color": "null"}
+
+            elif not banner and button_color:
+                css = ".btn { background-color: " + button_color + "; }"
                 file_operations.file_save(
                     ContentFile(css),
                     settings.CSS_FILE_NAME,
-                    settings.THEME_ROOT,
+                    settings.CSS_ROOT,
                 )
+                data = {"banner": "null", "button_color": settings.CSS_FILE_NAME}
+
+            elif banner and button_color:
+                file_name = file_operations.get_file_name(str(banner), "banner")
+                file_operations.file_save(banner, file_name, settings.THEME_ROOT)
+
+                css = ".btn { background-color: " + button_color + "; }"
+                file_operations.file_save(
+                    ContentFile(css),
+                    settings.CSS_FILE_NAME,
+                    settings.CSS_ROOT,
+                )
+                data = {"banner": file_name, "button_color": settings.CSS_FILE_NAME}
 
             # set datahub admin user status to True
             user.status = True
             user.save()
-
-            return Response({"message": "Theme saved!"}, status=status.HTTP_201_CREATED)
+            return Response(data, status=status.HTTP_201_CREATED)
 
         except Exception as e:
             LOGGER.error(e)
+
+        return Response({}, status=status.HTTP_400_BAD_REQUEST)
+
+    @action(detail=False, methods=["get"])
+    def get(self, request):
+        """retrieves Datahub Theme attributes"""
+        file_paths = file_operations.file_path(settings.THEME_URL)
+        css_path = file_operations.file_path(settings.CSS_URL)
+        data = {}
+
+        try:
+            css_attribute = file_operations.get_css_attributes(css_path, settings.CSS_FILE_NAME, "background-color")
+
+            if not css_path and not file_paths:
+                data = {"banner": "null", "css": "null"}
+            elif not css_path:
+                data = {"banner": file_paths["banner.png"], "css": "null"}
+            elif css_path and not file_paths:
+                # data = {"banner": "null", "css": { "btnBackground": sheet.cssRules[0].style['background-color']}}
+                data = {"banner": "null", "css": {"btnBackground": css_attribute}}
+            elif css_path and file_paths:
+                # data = {"banner": file_paths['banner.png'], "css": { "btnBackground": sheet.cssRules[0].style['background-color']}}
+                data = {"banner": file_paths["banner.png"], "css": {"btnBackground": css_attribute}}
+
+            return Response(data, status=status.HTTP_200_OK)
+
+        except Exception as e:
+            LOGGER.error(e)
+
+        return Response({}, status=status.HTTP_400_BAD_REQUEST)
+
+    @action(detail=False)
+    def put(self, request, *args, **kwargs):
+        data = {}
+        try:
+            banner = request.data.get("banner", "null")
+            banner = None if banner == "null" else banner
+            button_color = request.data.get("button_color", "null")
+            button_color = None if button_color == "null" else button_color
+
+            if banner is None and button_color is None:
+                data = {"banner": "null", "button_color": "null"}
+
+            elif banner and button_color is None:
+                file_name = file_operations.get_file_name(str(banner), "banner")
+                file_operations.file_save(banner, file_name, settings.THEME_ROOT)
+                data = {"banner": file_name, "button_color": "null"}
+
+            elif not banner and button_color:
+                css = ".btn { background-color: " + button_color + "; }"
+                file_operations.file_save(
+                    ContentFile(css),
+                    settings.CSS_FILE_NAME,
+                    settings.CSS_ROOT,
+                )
+                data = {"banner": "null", "button_color": settings.CSS_FILE_NAME}
+
+            elif banner and button_color:
+                file_name = file_operations.get_file_name(str(banner), "banner")
+                file_operations.file_save(banner, file_name, settings.THEME_ROOT)
+
+                css = ".btn { background-color: " + button_color + "; }"
+                file_operations.file_save(
+                    ContentFile(css),
+                    settings.CSS_FILE_NAME,
+                    settings.CSS_ROOT,
+                )
+                data = {"banner": file_name, "button_color": settings.CSS_FILE_NAME}
+
+            return Response(data, status=status.HTTP_201_CREATED)
+
+        except exceptions as error:
+            LOGGER.error(error)
 
         return Response({}, status=status.HTTP_400_BAD_REQUEST)
 
