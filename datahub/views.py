@@ -395,15 +395,29 @@ class DocumentSaveView(GenericViewSet):
 
     def retrieve(self, request, pk):
         """GET method: retrieve an object or instance of the Product model"""
-        datahub_documents = self.get_object()
-        serializer = self.get_serializer(datahub_documents)
         file_paths = file_operations.file_path(settings.DOCUMENTS_URL)
-        if not file_paths:
-            data = {"Content": serializer.data, "Documents": "null"}
-            return Response(data, status=status.HTTP_200_OK)
+        datahub_obj = DatahubDocuments.objects.filter(id=pk)
 
-        data = {"Content": serializer.data, "Documents": file_paths}
-        return Response(data, status=status.HTTP_200_OK)
+        try:
+            if not datahub_obj and not file_paths:
+                data = {"Content": "null", "Documents": "null"}
+                return Response(data, status=status.HTTP_200_OK)
+            elif not datahub_obj:
+                data = {"Content": "null", "Documents": file_paths}
+                return Response(data, status=status.HTTP_200_OK)
+            elif datahub_obj and not file_paths:
+                documents_serializer = PolicyDocumentSerializer(datahub_obj.first())
+                data = {"Content": documents_serializer.data, "Documents": "null"}
+                return Response(data, status=status.HTTP_200_OK)
+            elif datahub_obj and file_paths:
+                documents_serializer = PolicyDocumentSerializer(datahub_obj.first())
+                data = {"Content": documents_serializer.data, "Documents": file_paths}
+                return Response(data, status=status.HTTP_200_OK)
+
+        except Exception as e:
+            LOGGER.error(e)
+
+        return Response({}, status=status.HTTP_404_NOT_FOUND)
 
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data, partial=True)
