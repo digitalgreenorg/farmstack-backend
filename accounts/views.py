@@ -50,16 +50,16 @@ class RegisterViewset(GenericViewSet):
             status=status.HTTP_201_CREATED,
         )
 
-    def list(self, request, *args, **kwargs):
-        """GET method: query all the list of objects from the Product model"""
-        queryset = self.filter_queryset(self.get_queryset())
-        page = self.paginate_queryset(queryset)
-        if page is not None:
-            serializer = self.get_serializer(page, many=True)
-            return self.get_paginated_response(serializer.data)
+    # def list(self, request, *args, **kwargs):
+    #     """GET method: query all the list of objects from the Product model"""
+    #     queryset = self.filter_queryset(self.get_queryset())
+    #     page = self.paginate_queryset(queryset)
+    #     if page is not None:
+    #         serializer = self.get_serializer(page, many=True)
+    #         return self.get_paginated_response(serializer.data)
 
-        serializer = self.get_serializer(queryset, many=True)
-        return Response(serializer.data, status=status.HTTP_200_OK)
+    #     serializer = self.get_serializer(queryset, many=True)
+    #     return Response(serializer.data, status=status.HTTP_200_OK)
 
     def retrieve(self, request, pk):
         """GET method: retrieve an object or instance of the Product model"""
