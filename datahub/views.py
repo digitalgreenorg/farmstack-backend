@@ -512,22 +512,21 @@ class DatahubThemeView(GenericViewSet):
     def get(self, request):
         """retrieves Datahub Theme attributes"""
         file_paths = file_operations.file_path(settings.THEME_URL)
-        css_path = file_operations.file_path(settings.CSS_URL)
+        # css_path = file_operations.file_path(settings.CSS_ROOT)
+        css_path = settings.CSS_ROOT+settings.CSS_FILE_NAME
         data = {}
 
         try:
-            css_attribute = file_operations.get_css_attributes(css_path, settings.CSS_FILE_NAME, "background-color")
+            css_attribute = file_operations.get_css_attributes(css_path, "background-color")
 
             if not css_path and not file_paths:
                 data = {"banner": "null", "css": "null"}
             elif not css_path:
-                data = {"banner": file_paths["banner.png"], "css": "null"}
+                data = {"banner": file_paths, "css": "null"}
             elif css_path and not file_paths:
-                # data = {"banner": "null", "css": { "btnBackground": sheet.cssRules[0].style['background-color']}}
                 data = {"banner": "null", "css": {"btnBackground": css_attribute}}
             elif css_path and file_paths:
-                # data = {"banner": file_paths['banner.png'], "css": { "btnBackground": sheet.cssRules[0].style['background-color']}}
-                data = {"banner": file_paths["banner.png"], "css": {"btnBackground": css_attribute}}
+                data = {"banner": file_paths, "css": {"btnBackground": css_attribute}}
 
             return Response(data, status=status.HTTP_200_OK)
 
