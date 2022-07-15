@@ -67,19 +67,18 @@ def get_file_name(file, output_file):
         file_name = output_file + "." + file_type
         print(file_name)
         return file_name
-    except exceptions as e:
+    except Exception as e:
         LOGGER.error(e)
 
 
-def get_css_attributes(css_path, css_file_name, css_attribute):
+def get_css_attributes(css_path, css_attribute):
     """Get CSS files"""
     try:
-        # with open(css_path['override.css']) as css:
-        with open(css_path[css_file_name]) as css:
+        with open(css_path) as css:
             sheet = cssutils.css.CSSStyleSheet()
             sheet.cssText = css.read()
-            print(sheet)
             css_attribute_value = sheet.cssRules[0].style[css_attribute]
+            print(css_attribute_value)
         return css_attribute_value
-    except exceptions as e:
+    except Exception as e:
         LOGGER.error(e)
