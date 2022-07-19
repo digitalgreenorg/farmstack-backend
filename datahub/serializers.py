@@ -7,19 +7,15 @@ from accounts.serializers import (
     UserRoleSerializer,
     UserSerializer,
 )
-from rest_framework import serializers
 from core.constants import Constants
-
-from datahub.models import DatahubDocuments, Datasets, Organization, UserOrganizationMap
-from datahub.models import Organization, UserOrganizationMap, DatahubDocuments
-
+from rest_framework import serializers
 from utils.validators import (
     validate_document_type,
     validate_file_size,
     validate_image_type,
 )
 
-from datahub.models import DatahubDocuments, Organization, UserOrganizationMap
+from datahub.models import DatahubDocuments, Datasets, Organization, UserOrganizationMap
 
 
 class OrganizationRetriveSerializer(serializers.ModelSerializer):
@@ -200,8 +196,6 @@ class TeamMemberUpdateSerializer(serializers.ModelSerializer):
         fields = ("id", "email", "first_name", "last_name", "role")
 
 
-
-
 class DatasetSerializer(serializers.ModelSerializer):
     """_summary_
 
@@ -213,7 +207,21 @@ class DatasetSerializer(serializers.ModelSerializer):
         """_summary_"""
 
         model = Datasets
-        fields = Constants.ALL
+        fields = [
+            "user_map",
+            "name",
+            "description",
+            "category",
+            "geography",
+            "crop_detail",
+            "constantly_update",
+            "dataset_size",
+            "connector_availability",
+            "age_of_date",
+            "sample_dataset",
+            "data_capture_start",
+            "data_capture_end",
+        ]
 
 
 class DatahubDatasetsDetailSerializer(serializers.ModelSerializer):

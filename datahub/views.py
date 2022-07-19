@@ -1,10 +1,11 @@
-
-import json, logging, os, shutil, cssutils
+import json
+import logging
+import os
+import shutil
 from calendar import c
 
-from python_http_client import exceptions
-
 import django
+import pandas as pd
 from accounts.models import User, UserRole
 from accounts.serializers import (
     UserCreateSerializer,
@@ -24,6 +25,7 @@ from participant.serializers import (
     ParticipantSupportTicketSerializer,
     TicketSupportSerializer,
 )
+from python_http_client import exceptions
 from rest_framework import pagination, status
 from rest_framework.decorators import action
 from rest_framework.parsers import JSONParser, MultiPartParser
@@ -66,7 +68,7 @@ class TeamMemberViewSet(GenericViewSet):
 
     serializer_class = TeamMemberListSerializer
     queryset = User.objects.all()
-    pagination_class = LargeResultsSetPagination
+    pagination_class = CustomPagination
     permission_classes = [IsAuthenticated]
 
     def create(self, request, *args, **kwargs):
@@ -238,7 +240,7 @@ class ParticipantViewSet(GenericViewSet):
     parser_class = JSONParser
     serializer_class = UserCreateSerializer
     queryset = User.objects.all()
-    pagination_class = LargeResultsSetPagination
+    pagination_class = CustomPagination
     permission_classes = [IsAuthenticated]
 
     def perform_create(self, serializer):
@@ -517,7 +519,7 @@ class DatahubThemeView(GenericViewSet):
         """retrieves Datahub Theme attributes"""
         file_paths = file_operations.file_path(settings.THEME_URL)
         # css_path = file_operations.file_path(settings.CSS_ROOT)
-        css_path = settings.CSS_ROOT+settings.CSS_FILE_NAME
+        css_path = settings.CSS_ROOT + settings.CSS_FILE_NAME
         data = {}
 
         try:
@@ -686,6 +688,7 @@ class DatahubDatasetsViewSet(GenericViewSet):
     serializer_class = DatasetSerializer
     queryset = Datasets
     pagination_class = CustomPagination
+    permission_classes = [IsAuthenticated]
 
     def perform_create(self, serializer):
         """
@@ -736,7 +739,13 @@ class DatahubDatasetsViewSet(GenericViewSet):
         )
         participant_serializer = DatahubDatasetsSerializer(data, many=True)
         if participant_serializer.data:
-            return Response(participant_serializer.data[0], status=status.HTTP_200_OK)
+            data = participant_serializer.data[0]
+            data[Constants.CONTENT] = (
+                (pd.read_csv("." + data.get(Constants.SAMPLE_DATASET)).head(2).to_dict(orient=Constants.RECORDS))
+                if data.get(Constants.SAMPLE_DATASET)
+                else []
+            )
+            return Response(data, status=status.HTTP_200_OK)
         return Response({}, status=status.HTTP_200_OK)
 
     def update(self, request, *args, **kwargs):
