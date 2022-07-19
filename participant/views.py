@@ -126,8 +126,8 @@ class ParticipantDatasetsViewSet(GenericViewSet):
         data = []
         user_id = request.query_params.get(Constants.USER_ID)
         org_id = request.query_params.get(Constants.ORG_ID)
-        exclude = {"user_map__user": user_id} if org_id else {}
-        filter_data = {"user_map__user": user_id, "user_map__organization": org_id}
+        exclude = {Constants.USER_MAP_USER: user_id} if org_id else {}
+        filter_data = {Constants.USER_MAP_USER: user_id, Constants.USER_MAP_ORGANIZATION: org_id}
         filters = {key: value for key, value in filter_data.items() if value and key not in list(exclude.keys())}
         if filters:
             data = (

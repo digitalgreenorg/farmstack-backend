@@ -507,8 +507,6 @@ class TestDatahubDatasetsViews(TestCase):
         """_summary_"""
         datasets_invalid_data["user_map"] = self.user_map_id
         response = self.client.post(self.datasets_url, datasets_invalid_data, secure=True)
-        print(response)
-        print(response.json())
         assert response.status_code == 400
         assert response.json() == {
             "name": ["This field is required."],

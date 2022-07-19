@@ -711,14 +711,16 @@ class DatahubDatasetsViewSet(GenericViewSet):
     def list(self, request, *args, **kwargs):
         """GET method: query all the list of objects from the Product model"""
         data = []
-
         user_id = request.query_params.get(Constants.USER_ID)
-        filters = {"user_map__user": user_id} if user_id else {}
+        others = request.query_params.get(Constants.OTHERS)
+        filters = {Constants.USER_MAP_USER: user_id} if user_id and not others else {}
+        exclude = {Constants.USER_MAP_USER: user_id} if others else {}
         data = (
             Datasets.objects.select_related(
                 Constants.USER_MAP, Constants.USER_MAP_USER, Constants.USER_MAP_ORGANIZATION
             )
             .filter(user_map__user__status=True, status=True, **filters)
+            .exclude(**exclude)
             .order_by(Constants.UPDATED_AT)
             .all()
         )
