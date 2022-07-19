@@ -1,4 +1,3 @@
-from participant.views import ParticipantSupportViewSet
 from django.test import SimpleTestCase
 from django.urls import resolve, reverse
 
@@ -13,3 +12,14 @@ class TestUrls(SimpleTestCase):
         """_summary_"""
         url = reverse("support-list")
         self.assertNotEqual(resolve(url).func, "ParticipantSupportViewSet")
+
+    def test_participant_datasets_create_valid(self):
+        """_summary_"""
+        url = reverse("participant_datasets-list")
+        assert resolve(url)._func_path == "participant.views.ParticipantDatasetsViewSet"
+
+    def test_participant_datasets_create_invalid(self):
+        """_summary_"""
+        url = reverse("participant_datasets-list")
+        print(resolve(url))
+        self.assertNotEqual(resolve(url).func, "ParticipantDatasetsViewSet")
