@@ -10,7 +10,7 @@ from accounts.serializers import (
 from rest_framework import serializers
 from core.constants import Constants
 
-from datahub.models import DatahubDocuments, Organization, UserOrganizationMap
+from datahub.models import DatahubDocuments, Datasets, Organization, UserOrganizationMap
 from datahub.models import Organization, UserOrganizationMap, DatahubDocuments
 
 from utils.validators import (
@@ -198,3 +198,63 @@ class TeamMemberUpdateSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = ("id", "email", "first_name", "last_name", "role")
+
+
+
+
+class DatasetSerializer(serializers.ModelSerializer):
+    """_summary_
+
+    Args:
+        serializers (_type_): _description_
+    """
+
+    class Meta:
+        """_summary_"""
+
+        model = Datasets
+        fields = Constants.ALL
+
+
+class DatahubDatasetsDetailSerializer(serializers.ModelSerializer):
+    user_id = serializers.PrimaryKeyRelatedField(
+        queryset=models.User.objects.all(), required=True, source="user_map.user"
+    )
+    organization_id = serializers.PrimaryKeyRelatedField(
+        queryset=Organization.objects.all(), allow_null=True, required=False, source="user_map.organization"
+    )
+    user = UserSerializer(
+        read_only=False,
+        required=False,
+        allow_null=True,
+        source="user_map.user",
+    )
+    organization = OrganizationRetriveSerializer(
+        required=False, allow_null=True, read_only=True, source="user_map.organization"
+    )
+
+    class Meta:
+        model = Datasets
+        exclude = Constants.EXCLUDE_DATES
+
+
+class DatahubDatasetsSerializer(serializers.ModelSerializer):
+    class OrganizationDatsetsListRetriveSerializer(serializers.ModelSerializer):
+        class Meta:
+            model = Organization
+            fields = ["org_email", "org_description", "name", "logo"]
+
+    user_id = serializers.PrimaryKeyRelatedField(
+        queryset=models.User.objects.all(), required=True, source="user_map.user"
+    )
+    organization_id = serializers.PrimaryKeyRelatedField(
+        queryset=Organization.objects.all(), allow_null=True, required=False, source="user_map.organization"
+    )
+
+    organization = OrganizationDatsetsListRetriveSerializer(
+        required=False, allow_null=True, read_only=True, source="user_map.organization"
+    )
+
+    class Meta:
+        model = Datasets
+        fields = Constants.ALL
