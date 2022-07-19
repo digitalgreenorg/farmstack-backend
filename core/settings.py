@@ -12,8 +12,8 @@ https://docs.djangoproject.com/en/4.0/ref/settings/
 
 import collections
 import os
-from pathlib import Path
 from datetime import timedelta
+from pathlib import Path
 
 collections.Callable = collections.abc.Callable
 
@@ -36,10 +36,10 @@ ALLOWED_HOSTS = ["*"]
 # Use nose to run all tests
 TEST_RUNNER = "django_nose.NoseTestSuiteRunner"
 
-# Tell nose to measure coverage on the 'foo' and 'bar' apps
+# Tell nose to measure coverage on the datahub, accounts, core and participants apps
 NOSE_ARGS = [
     "--cover-html",
-    "--cover-package=datahub,accounts,core",
+    "--cover-package=datahub,accounts,core, participants",
 ]
 # Application definition
 
@@ -61,10 +61,19 @@ INSTALLED_APPS = [
     "drf_spectacular_sidecar",
     "django_nose",
     "django_filters",
+    "drf_generators",
     # custom apps
     "accounts",
     "datahub",
     "participant",
+]
+# Use nose to run all tests
+TEST_RUNNER = "django_nose.NoseTestSuiteRunner"
+
+# Tell nose to measure coverage on the 'foo' and 'bar' apps
+NOSE_ARGS = [
+    "--with-coverage",
+    "--cover-package=datahub,participant",
 ]
 
 MIDDLEWARE = [
@@ -104,21 +113,21 @@ WSGI_APPLICATION = "core.wsgi.application"
 # https://docs.djangoproject.com/en/4.0/ref/settings/#databases
 
 DATABASES = {
-    "default": {
-        "ENGINE": "django.db.backends.postgresql",
-        "NAME": os.environ.get("POSTGRES_NAME"),
-        "USER": os.environ.get("POSTGRES_USER"),
-        "PASSWORD": os.environ.get("POSTGRES_PASSWORD"),
-        "HOST": "db",
-        "PORT": 5432,
-        "OPTIONS": {
-            "client_encoding": "UTF8",
-        },
-    }
     # "default": {
-    #     "ENGINE": "django.db.backends.sqlite3",
-    #     "NAME": BASE_DIR / "db.sqlite3",
+    #     "ENGINE": "django.db.backends.postgresql",
+    #     "NAME": os.environ.get("POSTGRES_NAME"),
+    #     "USER": os.environ.get("POSTGRES_USER"),
+    #     "PASSWORD": os.environ.get("POSTGRES_PASSWORD"),
+    #     "HOST": "db",
+    #     "PORT": 5432,
+    #     "OPTIONS": {
+    #         "client_encoding": "UTF8",
+    #     },
     # }
+    "default": {
+        "ENGINE": "django.db.backends.sqlite3",
+        "NAME": BASE_DIR / "db.sqlite3",
+    }
 }
 
 
@@ -184,6 +193,7 @@ PROFILE_PICTURES_URL = "users/profile_pictures/"
 ORGANIZATION_IMAGES_URL = "organizations/logos/"
 ISSUE_ATTACHEMENT_URL = "users/tickets/"
 SOLUCTION_ATTACHEMENT_URL = "users/tickets/soluctions/"
+SAMPLE_DATASETS_URL = "users/datasets/sample_data/"
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/4.0/ref/settings/#default-auto-field
@@ -192,23 +202,23 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 AUTH_USER_MODEL = "accounts.User"
 
-REST_FRAMEWORK = {
-    "DEFAULT_FILTER_BACKENDS": ["django_filters.rest_framework.DjangoFilterBackend"],
-    "DEFAULT_AUTHENTICATION_CLASSES": ("rest_framework_simplejwt.authentication.JWTAuthentication",),
-    "DEFAULT_PERMISSION_CLASSES": [],
-    "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
-}
+# REST_FRAMEWORK = {
+#     "DEFAULT_FILTER_BACKENDS": ["django_filters.rest_framework.DjangoFilterBackend"],
+#     "DEFAULT_AUTHENTICATION_CLASSES": ("rest_framework_simplejwt.authentication.JWTAuthentication",),
+#     "DEFAULT_PERMISSION_CLASSES": [],
+#     "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
+# }
 
-SIMPLE_JWT = {
-    "ACCESS_TOKEN_LIFETIME": timedelta(days=1),
-    "REFRESH_TOKEN_LIFETIME": timedelta(days=7),
-    "AUTH_HEADER_TYPES": ("Bearer",),
-    "USER_ID_FIELD": "id",
-    "USER_ID_CLAIM": "user_id",
-    "AUTH_TOKEN_CLASSES": ("rest_framework_simplejwt.tokens.AccessToken",),
-    "TOKEN_TYPE_CLAIM": "token_type",
-    "JTI_CLAIM": "jti",
-}
+# SIMPLE_JWT = {
+#     "ACCESS_TOKEN_LIFETIME": timedelta(days=1),
+#     "REFRESH_TOKEN_LIFETIME": timedelta(days=7),
+#     "AUTH_HEADER_TYPES": ("Bearer",),
+#     "USER_ID_FIELD": "id",
+#     "USER_ID_CLAIM": "user_id",
+#     "AUTH_TOKEN_CLASSES": ("rest_framework_simplejwt.tokens.AccessToken",),
+#     "TOKEN_TYPE_CLAIM": "token_type",
+#     "JTI_CLAIM": "jti",
+# }
 
 # Email configuration
 SENDGRID_API_KEY = os.environ.get("SENDGRID_API_KEY", "send_grid_key")

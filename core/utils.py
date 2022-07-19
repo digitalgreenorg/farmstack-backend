@@ -89,7 +89,7 @@ def remove_query_param(url, key, req):
     return parse.urlunsplit((scheme, netloc, path, query, fragment))
 
 
-class LargeResultsSetPagination(PageNumberPagination):
+class CustomPagination(PageNumberPagination):
     page_size = 5
     page_size_query_param = "per_page"
     max_page_size = 5
