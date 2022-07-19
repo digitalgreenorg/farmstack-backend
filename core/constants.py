@@ -28,3 +28,7 @@ class Constants:
     USERROLE = "userrole"
     ORG_ID = "org_id"
     DATAHUB_DATASETS = "datahub_datasets"
+    SAMPLE_DATASET = "sample_dataset"
+    RECORDS = "records"
+    CONTENTS = "contents"
+    OTHERS = "others"

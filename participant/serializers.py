@@ -60,7 +60,21 @@ class DatasetSerializer(serializers.ModelSerializer):
         """_summary_"""
 
         model = Datasets
-        exclude = ["approval_status", "is_enabled", "remarks"]
+        fields = [
+            "user_map",
+            "name",
+            "description",
+            "category",
+            "geography",
+            "crop_detail",
+            "constantly_update",
+            "dataset_size",
+            "connector_availability",
+            "age_of_date",
+            "sample_dataset",
+            "data_capture_start",
+            "data_capture_end",
+        ]
 
 
 class ParticipantDatasetsDetailSerializer(serializers.ModelSerializer):
@@ -106,6 +120,7 @@ class ParticipantDatasetsSerializer(serializers.ModelSerializer):
         model = Datasets
         # exclude = Constants.EXCLUDE_DATES
         fields = [
+            "id",
             "name",
             "description",
             "is_enabled",

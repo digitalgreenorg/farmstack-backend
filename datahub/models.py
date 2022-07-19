@@ -110,6 +110,6 @@ class Datasets(TimeStampMixin):
         validators=[validate_file_size],
     )
     status = models.BooleanField(default=True)
-    approval_status = models.CharField(max_length=255, null=True, choices=APPROVAL_STATUS, default="IN_PROGRESS")
-    is_enabled = models.BooleanField(default=True)
+    approval_status = models.CharField(max_length=255, null=True, choices=APPROVAL_STATUS, default="in_progress")
+    is_enabled = models.BooleanField(default=False)
     remarks = models.CharField(max_length=1000, null=True)
