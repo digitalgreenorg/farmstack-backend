@@ -2,12 +2,13 @@ from posixpath import basename
 from sys import settrace
 
 from core import settings
+from core.constants import Constants
 from django.urls import include, path
 from rest_framework.routers import DefaultRouter
-from core.constants import Constants
 
 from datahub import views
 from datahub.views import (
+    DatahubDatasetsViewSet,
     DatahubThemeView,
     DocumentSaveView,
     DropDocumentView,
@@ -27,6 +28,7 @@ router.register("drop_document", DropDocumentView, basename=Constants.DROP_DOCUM
 router.register("save_documents", DocumentSaveView, basename=Constants.SAVE_DOCUMENTS)
 router.register("theme", DatahubThemeView, basename=Constants.THEME)
 router.register(r"support", SupportViewSet, basename=Constants.SUPPORT_TICKETS)
+router.register(r"datasets", DatahubDatasetsViewSet, basename=Constants.DATAHUB_DATASETS)
 
 
 urlpatterns = [

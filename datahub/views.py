@@ -1,11 +1,18 @@
-import json, logging, os, shutil
+import json
+import logging
+import os
+import shutil
 from calendar import c
 
 import django
 from accounts.models import User, UserRole
-from accounts.serializers import UserCreateSerializer, UserUpdateSerializer, UserSerializer
+from accounts.serializers import (
+    UserCreateSerializer,
+    UserSerializer,
+    UserUpdateSerializer,
+)
 from core.constants import Constants
-from core.utils import LargeResultsSetPagination, Utils
+from core.utils import CustomPagination, Utils
 from django.conf import settings
 from django.contrib.admin.utils import get_model_from_relation
 from django.core.files.base import ContentFile
@@ -19,19 +26,18 @@ from participant.serializers import (
 )
 from rest_framework import pagination, status
 from rest_framework.decorators import action
-from rest_framework.parsers import (
-    JSONParser,
-    MultiPartParser,
-)
+from rest_framework.parsers import JSONParser, MultiPartParser
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.viewsets import GenericViewSet, ViewSet
 from uritemplate import partial
 from utils import file_operations, validators
 
-from datahub.models import DatahubDocuments, Organization, UserOrganizationMap
+from datahub.models import DatahubDocuments, Datasets, Organization, UserOrganizationMap
 from datahub.serializers import (
+    DatahubDatasetsSerializer,
     DatahubThemeSerializer,
+    DatasetSerializer,
     DropDocumentSerializer,
     OrganizationSerializer,
     ParticipantSerializer,
@@ -40,8 +46,8 @@ from datahub.serializers import (
     TeamMemberDetailsSerializer,
     TeamMemberListSerializer,
     TeamMemberUpdateSerializer,
-    UserOrganizationMapSerializer,
     UserOrganizationCreateSerializer,
+    UserOrganizationMapSerializer,
 )
 
 LOGGER = logging.getLogger(__name__)
@@ -60,7 +66,7 @@ class TeamMemberViewSet(GenericViewSet):
 
     serializer_class = TeamMemberListSerializer
     queryset = User.objects.all()
-    pagination_class = LargeResultsSetPagination
+    pagination_class = CustomPagination
     # permission_classes = [IsAuthenticated]
 
     def create(self, request, *args, **kwargs):
@@ -114,7 +120,7 @@ class OrganizationViewSet(GenericViewSet):
 
     serializer_class = OrganizationSerializer
     queryset = Organization.objects.all()
-    pagination_class = LargeResultsSetPagination
+    pagination_class = CustomPagination
     parser_class = MultiPartParser
     # permission_classes = [IsAuthenticated]
 
@@ -232,7 +238,7 @@ class ParticipantViewSet(GenericViewSet):
     parser_class = JSONParser
     serializer_class = UserCreateSerializer
     queryset = User.objects.all()
-    pagination_class = LargeResultsSetPagination
+    pagination_class = CustomPagination
 
     def perform_create(self, serializer):
         """
@@ -476,7 +482,7 @@ class SupportViewSet(GenericViewSet):
     parser_class = JSONParser
     serializer_class = TicketSupportSerializer
     queryset = SupportTicket
-    pagination_class = LargeResultsSetPagination
+    pagination_class = CustomPagination
 
     def perform_create(self, serializer):
         """
@@ -558,3 +564,103 @@ class SupportViewSet(GenericViewSet):
         if participant_serializer.data:
             return Response(participant_serializer.data[0], status=status.HTTP_200_OK)
         return Response([], status=status.HTTP_200_OK)
+
+
+class DatahubDatasetsViewSet(GenericViewSet):
+    """
+    This class handles the participant Datsets CRUD operations.
+    """
+
+    parser_class = JSONParser
+    serializer_class = DatasetSerializer
+    queryset = Datasets
+    pagination_class = CustomPagination
+
+    def perform_create(self, serializer):
+        """
+        This function performs the create operation of requested serializer.
+        Args:
+            serializer (_type_): serializer class object.
+
+        Returns:
+            _type_: Returns the saved details.
+        """
+        return serializer.save()
+
+    def create(self, request, *args, **kwargs):
+        """POST method: create action to save an object by sending a POST request"""
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        self.perform_create(serializer)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+    def list(self, request, *args, **kwargs):
+        """GET method: query all the list of objects from the Product model"""
+        data = []
+
+        user_id = request.query_params.get(Constants.USER_ID)
+        filters = {"user_map__user": user_id} if user_id else {}
+        data = (
+            Datasets.objects.select_related(
+                Constants.USER_MAP, Constants.USER_MAP_USER, Constants.USER_MAP_ORGANIZATION
+            )
+            .filter(user_map__user__status=True, status=True, **filters)
+            .order_by(Constants.UPDATED_AT)
+            .all()
+        )
+        page = self.paginate_queryset(data)
+        participant_serializer = DatahubDatasetsSerializer(page, many=True)
+        return self.get_paginated_response(participant_serializer.data)
+
+    def retrieve(self, request, pk):
+        """GET method: retrieve an object or instance of the Product model"""
+        data = (
+            Datasets.objects.select_related(
+                Constants.USER_MAP,
+                Constants.USER_MAP_USER,
+                Constants.USER_MAP_ORGANIZATION,
+            )
+            .filter(user_map__user__status=True, status=True, id=pk)
+            .all()
+        )
+        participant_serializer = DatahubDatasetsSerializer(data, many=True)
+        if participant_serializer.data:
+            return Response(participant_serializer.data[0], status=status.HTTP_200_OK)
+        return Response({}, status=status.HTTP_200_OK)
+
+    def update(self, request, *args, **kwargs):
+        """PUT method: update or send a PUT request on an object of the Product model"""
+        instance = self.get_object()
+        serializer = self.get_serializer(instance, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        self.perform_create(serializer)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+    def destroy(self, request, pk):
+        """DELETE method: delete an object"""
+        product = self.get_object()
+        product.status = False
+        self.perform_create(product)
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+    @action(detail=False, methods=["post"])
+    def filters_tickets(self, request, *args, **kwargs):
+        """This function get the filter args in body. based on the filter args orm filters the data."""
+        try:
+            data = (
+                Datasets.objects.select_related(
+                    Constants.USER_MAP,
+                    Constants.USER_MAP_USER,
+                    Constants.USER_MAP_ORGANIZATION,
+                )
+                .filter(status=True, **request.data)
+                .order_by(Constants.UPDATED_AT)
+                .all()
+            )
+        except Exception as error:  # type: ignore
+            logging.error("Error while filtering the datasets. ERROR: %s", error)
+            return Response(f"Invalid filter fields: {list(request.data.keys())}", status=500)
+
+        page = self.paginate_queryset(data)
+        participant_serializer = DatahubDatasetsSerializer(page, many=True)
+        return self.get_paginated_response(participant_serializer.data)
