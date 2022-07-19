@@ -1,8 +1,8 @@
-import json
-import logging
-import os
-import shutil
+
+import json, logging, os, shutil, cssutils
 from calendar import c
+
+from python_http_client import exceptions
 
 import django
 from accounts.models import User, UserRole
@@ -66,8 +66,8 @@ class TeamMemberViewSet(GenericViewSet):
 
     serializer_class = TeamMemberListSerializer
     queryset = User.objects.all()
-    pagination_class = CustomPagination
-    # permission_classes = [IsAuthenticated]
+    pagination_class = LargeResultsSetPagination
+    permission_classes = [IsAuthenticated]
 
     def create(self, request, *args, **kwargs):
         """POST method: create action to save an object by sending a POST request"""
@@ -122,7 +122,7 @@ class OrganizationViewSet(GenericViewSet):
     queryset = Organization.objects.all()
     pagination_class = CustomPagination
     parser_class = MultiPartParser
-    # permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated]
 
     def perform_create(self, serializer):
         """
@@ -238,7 +238,8 @@ class ParticipantViewSet(GenericViewSet):
     parser_class = JSONParser
     serializer_class = UserCreateSerializer
     queryset = User.objects.all()
-    pagination_class = CustomPagination
+    pagination_class = LargeResultsSetPagination
+    permission_classes = [IsAuthenticated]
 
     def perform_create(self, serializer):
         """
@@ -332,7 +333,7 @@ class MailInvitationViewSet(GenericViewSet):
     This class handles the mail invitation API views.
     """
 
-    # permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated]
 
     def create(self, request, *args, **kwargs):
         """
@@ -356,7 +357,7 @@ class DropDocumentView(GenericViewSet):
 
     parser_class = MultiPartParser
     serializer_class = DropDocumentSerializer
-    # permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated]
 
     def create(self, request, *args, **kwargs):
         """Saves the document files in temp location before saving"""
@@ -391,13 +392,39 @@ class DocumentSaveView(GenericViewSet):
 
     serializer_class = PolicyDocumentSerializer
     queryset = DatahubDocuments.objects.all()
-    # permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated]
+
+    def list(self, request, *args, **kwargs):
+        """GET method: query all the list of objects from the Product model"""
+        queryset = self.filter_queryset(self.get_queryset())
+        serializer = self.get_serializer(queryset, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
 
     def retrieve(self, request, pk):
         """GET method: retrieve an object or instance of the Product model"""
-        datahub_documents = self.get_object()
-        serializer = self.get_serializer(datahub_documents)
-        return Response(serializer.data, status=status.HTTP_200_OK)
+        file_paths = file_operations.file_path(settings.DOCUMENTS_URL)
+        datahub_obj = DatahubDocuments.objects.filter(id=pk)
+
+        try:
+            if not datahub_obj and not file_paths:
+                data = {"Content": "null", "Documents": "null"}
+                return Response(data, status=status.HTTP_200_OK)
+            elif not datahub_obj:
+                data = {"Content": "null", "Documents": file_paths}
+                return Response(data, status=status.HTTP_200_OK)
+            elif datahub_obj and not file_paths:
+                documents_serializer = PolicyDocumentSerializer(datahub_obj.first())
+                data = {"Content": documents_serializer.data, "Documents": "null"}
+                return Response(data, status=status.HTTP_200_OK)
+            elif datahub_obj and file_paths:
+                documents_serializer = PolicyDocumentSerializer(datahub_obj.first())
+                data = {"Content": documents_serializer.data, "Documents": file_paths}
+                return Response(data, status=status.HTTP_200_OK)
+
+        except Exception as e:
+            LOGGER.error(e)
+
+        return Response({}, status=status.HTTP_404_NOT_FOUND)
 
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data, partial=True)
@@ -406,7 +433,7 @@ class DocumentSaveView(GenericViewSet):
         with transaction.atomic():
             serializer.save()
             # save the document files
-            file_operations.files_move(settings.TEMP_FILE_PATH, settings.STATIC_ROOT)
+            file_operations.files_move(settings.TEMP_FILE_PATH, settings.DOCUMENTS_ROOT)
             return Response(
                 {"message": "Documents and content saved!"},
                 status=status.HTTP_201_CREATED,
@@ -420,9 +447,7 @@ class DocumentSaveView(GenericViewSet):
 
         with transaction.atomic():
             serializer.save()
-            # save the document files
             file_operations.files_move(settings.TEMP_FILE_PATH, settings.STATIC_ROOT)
-
             return Response(
                 {"message": "Documents and content updated!"},
                 status=status.HTTP_201_CREATED,
@@ -434,42 +459,128 @@ class DatahubThemeView(GenericViewSet):
 
     parser_class = MultiPartParser
     serializer_class = DatahubThemeSerializer
-    # permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated]
 
     def create(self, request, *args, **kwargs):
         """generates the override css for datahub"""
-        serializer = self.get_serializer(data=request.data, partial=True)
-        serializer.is_valid(raise_exception=True)
-        data = serializer.validated_data
-        user = User.objects.filter(email=data["email"])
+        user = User.objects.filter(email=request.data.get("email", ""))
         user = user.first()
+        data = {}
 
         try:
-            if all(key in data for key in ("button_color", "banner")):
-                file_key = list(request.FILES.keys())[0]
-                file = data[file_key]
-                file_type = data[file_key].content_type.split("/")[1]
-                file_name = str(file_key) + "." + file_type
+            banner = request.data.get("banner", "null")
+            banner = None if banner == "null" else banner
+            button_color = request.data.get("button_color", "null")
+            button_color = None if button_color == "null" else button_color
 
-                # save datahub banner image
-                file_operations.file_save(file, file_name, settings.STATIC_ROOT)
+            if not banner and not button_color:
+                data = {"banner": "null", "button_color": "null"}
 
-                # save or override the CSS
-                css = ".btn { background-color: " + data["button_color"] + "; }"
+            elif banner and not button_color:
+                file_name = file_operations.get_file_name(str(banner), "banner")
+                file_operations.file_save(banner, file_name, settings.THEME_ROOT)
+                data = {"banner": file_name, "button_color": "null"}
+
+            elif not banner and button_color:
+                css = ".btn { background-color: " + button_color + "; }"
                 file_operations.file_save(
                     ContentFile(css),
                     settings.CSS_FILE_NAME,
-                    settings.STATIC_ROOT,
+                    settings.CSS_ROOT,
                 )
+                data = {"banner": "null", "button_color": settings.CSS_FILE_NAME}
+
+            elif banner and button_color:
+                file_name = file_operations.get_file_name(str(banner), "banner")
+                file_operations.file_save(banner, file_name, settings.THEME_ROOT)
+
+                css = ".btn { background-color: " + button_color + "; }"
+                file_operations.file_save(
+                    ContentFile(css),
+                    settings.CSS_FILE_NAME,
+                    settings.CSS_ROOT,
+                )
+                data = {"banner": file_name, "button_color": settings.CSS_FILE_NAME}
 
             # set datahub admin user status to True
             user.status = True
             user.save()
-
-            return Response({"message": "Theme saved!"}, status=status.HTTP_201_CREATED)
+            return Response(data, status=status.HTTP_201_CREATED)
 
         except Exception as e:
             LOGGER.error(e)
+
+        return Response({}, status=status.HTTP_400_BAD_REQUEST)
+
+    @action(detail=False, methods=["get"])
+    def get(self, request):
+        """retrieves Datahub Theme attributes"""
+        file_paths = file_operations.file_path(settings.THEME_URL)
+        # css_path = file_operations.file_path(settings.CSS_ROOT)
+        css_path = settings.CSS_ROOT+settings.CSS_FILE_NAME
+        data = {}
+
+        try:
+            css_attribute = file_operations.get_css_attributes(css_path, "background-color")
+
+            if not css_path and not file_paths:
+                data = {"banner": "null", "css": "null"}
+            elif not css_path:
+                data = {"banner": file_paths, "css": "null"}
+            elif css_path and not file_paths:
+                data = {"banner": "null", "css": {"btnBackground": css_attribute}}
+            elif css_path and file_paths:
+                data = {"banner": file_paths, "css": {"btnBackground": css_attribute}}
+
+            return Response(data, status=status.HTTP_200_OK)
+
+        except Exception as e:
+            LOGGER.error(e)
+
+        return Response({}, status=status.HTTP_400_BAD_REQUEST)
+
+    @action(detail=False)
+    def put(self, request, *args, **kwargs):
+        data = {}
+        try:
+            banner = request.data.get("banner", "null")
+            banner = None if banner == "null" else banner
+            button_color = request.data.get("button_color", "null")
+            button_color = None if button_color == "null" else button_color
+
+            if banner is None and button_color is None:
+                data = {"banner": "null", "button_color": "null"}
+
+            elif banner and button_color is None:
+                file_name = file_operations.get_file_name(str(banner), "banner")
+                file_operations.file_save(banner, file_name, settings.THEME_ROOT)
+                data = {"banner": file_name, "button_color": "null"}
+
+            elif not banner and button_color:
+                css = ".btn { background-color: " + button_color + "; }"
+                file_operations.file_save(
+                    ContentFile(css),
+                    settings.CSS_FILE_NAME,
+                    settings.CSS_ROOT,
+                )
+                data = {"banner": "null", "button_color": settings.CSS_FILE_NAME}
+
+            elif banner and button_color:
+                file_name = file_operations.get_file_name(str(banner), "banner")
+                file_operations.file_save(banner, file_name, settings.THEME_ROOT)
+
+                css = ".btn { background-color: " + button_color + "; }"
+                file_operations.file_save(
+                    ContentFile(css),
+                    settings.CSS_FILE_NAME,
+                    settings.CSS_ROOT,
+                )
+                data = {"banner": file_name, "button_color": settings.CSS_FILE_NAME}
+
+            return Response(data, status=status.HTTP_201_CREATED)
+
+        except exceptions as error:
+            LOGGER.error(error)
 
         return Response({}, status=status.HTTP_400_BAD_REQUEST)
 

@@ -51,6 +51,7 @@ class Organization(TimeStampMixin):
         super().__init__(*args, **kwargs)
 
 
+@auto_str
 class DatahubDocuments(models.Model):
     """OrganizationDocuments model"""
 

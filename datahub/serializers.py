@@ -132,9 +132,9 @@ class DropDocumentSerializer(serializers.Serializer):
 class PolicyDocumentSerializer(serializers.ModelSerializer):
     """PolicyDocumentSerializer class"""
 
+    governing_law = serializers.CharField()
     privacy_policy = serializers.CharField()
     tos = serializers.CharField()
-    governing_law = serializers.CharField()
     limitations_of_liabilities = serializers.CharField()
     warranty = serializers.CharField()
 
