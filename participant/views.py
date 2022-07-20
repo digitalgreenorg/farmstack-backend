@@ -32,7 +32,7 @@ class ParticipantSupportViewSet(GenericViewSet):
     serializer_class = TicketSupportSerializer
     queryset = SupportTicket
     pagination_class = CustomPagination
-    permission_classes = [IsAuthenticated]
+    # permission_classes = [IsAuthenticated]
 
     def perform_create(self, serializer):
         """
@@ -101,7 +101,7 @@ class ParticipantDatasetsViewSet(GenericViewSet):
     serializer_class = DatasetSerializer
     queryset = Datasets
     pagination_class = CustomPagination
-    permission_classes = [IsAuthenticated]
+    # permission_classes = [IsAuthenticated]
 
     def perform_create(self, serializer):
         """

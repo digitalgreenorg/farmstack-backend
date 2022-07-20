@@ -1,5 +1,8 @@
-import datetime, logging
+import datetime
+import logging
 
+from core.utils import Utils
+from datahub.models import UserOrganizationMap
 from django.conf import settings
 from django.core.cache import cache
 from rest_framework import serializers, status
@@ -11,12 +14,10 @@ from rest_framework_simplejwt.tokens import RefreshToken
 
 from accounts.models import User
 from accounts.serializers import (
+    LoginSerializer,
     UserCreateSerializer,
     UserUpdateSerializer,
-    LoginSerializer,
 )
-
-from core.utils import Utils
 from utils import login_helper
 
 LOGGER = logging.getLogger(__name__)
@@ -229,9 +230,10 @@ class VerifyLoginOTPViewset(GenericViewSet):
         serializer.is_valid(raise_exception=True)
         email = serializer.validated_data["email"]
         otp_entered = serializer.validated_data["otp"]
+        # user = User.objects.filter(user__email=email).select_related()
+        user_map = UserOrganizationMap.objects.select_related("user").filter(user__email=email).first()
         user = User.objects.filter(email=email)
         user = user.first()
-
         try:
             # get current user otp object's data
             correct_otp = int(cache.get(email)["user_otp"])
@@ -240,7 +242,6 @@ class VerifyLoginOTPViewset(GenericViewSet):
             otp_attempt = int(cache.get(email)["otp_attempt"]) + 1
             # update the expiry duration of otp
             new_duration = settings.OTP_DURATION - (datetime.datetime.now().second - otp_created.second)
-
             # On successful validation generate JWT tokens
             if correct_otp == int(otp_entered) and cache.get(email)["email"] == email:
                 cache.delete(email)
@@ -248,9 +249,13 @@ class VerifyLoginOTPViewset(GenericViewSet):
                 return Response(
                     {
                         "user": user.id,
+                        "user_map": user_map.id if user_map else None,
+                        "org_id": user_map.organization_id if user_map else None,
                         "email": user.email,
                         "status": user.status,
+                        "on_boarded": user.on_boarded,
                         "role": str(user.role),
+                        "role_id": str(user.role_id),
                         "refresh": str(refresh),
                         "access": str(refresh.access_token),
                         "message": "Successfully logged in!",

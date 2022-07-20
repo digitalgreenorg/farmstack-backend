@@ -69,7 +69,7 @@ class TeamMemberViewSet(GenericViewSet):
     serializer_class = TeamMemberListSerializer
     queryset = User.objects.all()
     pagination_class = CustomPagination
-    permission_classes = [IsAuthenticated]
+    # permission_classes = [IsAuthenticated]
 
     def create(self, request, *args, **kwargs):
         """POST method: create action to save an object by sending a POST request"""
@@ -124,7 +124,7 @@ class OrganizationViewSet(GenericViewSet):
     queryset = Organization.objects.all()
     pagination_class = CustomPagination
     parser_class = MultiPartParser
-    permission_classes = [IsAuthenticated]
+    # permission_classes = [IsAuthenticated]
 
     def perform_create(self, serializer):
         """
@@ -241,7 +241,7 @@ class ParticipantViewSet(GenericViewSet):
     serializer_class = UserCreateSerializer
     queryset = User.objects.all()
     pagination_class = CustomPagination
-    permission_classes = [IsAuthenticated]
+    # permission_classes = [IsAuthenticated]
 
     def perform_create(self, serializer):
         """
@@ -335,7 +335,7 @@ class MailInvitationViewSet(GenericViewSet):
     This class handles the mail invitation API views.
     """
 
-    permission_classes = [IsAuthenticated]
+    # permission_classes = [IsAuthenticated]
 
     def create(self, request, *args, **kwargs):
         """
@@ -359,7 +359,7 @@ class DropDocumentView(GenericViewSet):
 
     parser_class = MultiPartParser
     serializer_class = DropDocumentSerializer
-    permission_classes = [IsAuthenticated]
+    # permission_classes = [IsAuthenticated]
 
     def create(self, request, *args, **kwargs):
         """Saves the document files in temp location before saving"""
@@ -394,7 +394,7 @@ class DocumentSaveView(GenericViewSet):
 
     serializer_class = PolicyDocumentSerializer
     queryset = DatahubDocuments.objects.all()
-    permission_classes = [IsAuthenticated]
+    # permission_classes = [IsAuthenticated]
 
     def list(self, request, *args, **kwargs):
         """GET method: query all the list of objects from the Product model"""
@@ -461,7 +461,7 @@ class DatahubThemeView(GenericViewSet):
 
     parser_class = MultiPartParser
     serializer_class = DatahubThemeSerializer
-    permission_classes = [IsAuthenticated]
+    # permission_classes = [IsAuthenticated]
 
     def create(self, request, *args, **kwargs):
         """generates the override css for datahub"""
@@ -505,7 +505,7 @@ class DatahubThemeView(GenericViewSet):
                 data = {"banner": file_name, "button_color": settings.CSS_FILE_NAME}
 
             # set datahub admin user status to True
-            user.status = True
+            user.on_boarded = True
             user.save()
             return Response(data, status=status.HTTP_201_CREATED)
 
@@ -647,7 +647,6 @@ class SupportViewSet(GenericViewSet):
 
     def list(self, request, *args, **kwargs):
         """GET method: query all the list of objects from the Product model"""
-        # roles = SupportTicket.objects.prefetch_related("user").filter(user__status=False).all()
         data = (
             SupportTicket.objects.select_related(
                 Constants.USER_MAP,
@@ -688,7 +687,7 @@ class DatahubDatasetsViewSet(GenericViewSet):
     serializer_class = DatasetSerializer
     queryset = Datasets
     pagination_class = CustomPagination
-    permission_classes = [IsAuthenticated]
+    # permission_classes = [IsAuthenticated]
 
     def perform_create(self, serializer):
         """
@@ -715,15 +714,16 @@ class DatahubDatasetsViewSet(GenericViewSet):
         others = request.query_params.get(Constants.OTHERS)
         filters = {Constants.USER_MAP_USER: user_id} if user_id and not others else {}
         exclude = {Constants.USER_MAP_USER: user_id} if others else {}
-        data = (
-            Datasets.objects.select_related(
-                Constants.USER_MAP, Constants.USER_MAP_USER, Constants.USER_MAP_ORGANIZATION
+        if exclude or filters:
+            data = (
+                Datasets.objects.select_related(
+                    Constants.USER_MAP, Constants.USER_MAP_USER, Constants.USER_MAP_ORGANIZATION
+                )
+                .filter(user_map__user__status=True, status=True, **filters)
+                .exclude(**exclude)
+                .order_by(Constants.UPDATED_AT)
+                .all()
             )
-            .filter(user_map__user__status=True, status=True, **filters)
-            .exclude(**exclude)
-            .order_by(Constants.UPDATED_AT)
-            .all()
-        )
         page = self.paginate_queryset(data)
         participant_serializer = DatahubDatasetsSerializer(page, many=True)
         return self.get_paginated_response(participant_serializer.data)
@@ -786,3 +786,26 @@ class DatahubDatasetsViewSet(GenericViewSet):
         page = self.paginate_queryset(data)
         participant_serializer = DatahubDatasetsSerializer(page, many=True)
         return self.get_paginated_response(participant_serializer.data)
+
+    @action(detail=False, methods=["GET"])
+    def filters_data(self, request, *args, **kwargs):
+        """This function provides the filters data"""
+        try:
+            geography = (
+                Datasets.objects.all()
+                .values_list("geography", flat=True)
+                .distinct()
+                .exclude(geography__isnull=True)
+                .exclude(geography__exact="")
+            )
+            crop_detail = (
+                Datasets.objects.all()
+                .values_list("crop_detail", flat=True)
+                .distinct()
+                .exclude(crop_detail__isnull=True)
+                .exclude(crop_detail__exact="")
+            )
+        except Exception as error:  # type: ignore
+            logging.error("Error while filtering the datasets. ERROR: %s", error)
+            return Response(f"Invalid filter fields: {list(request.data.keys())}", status=500)
+        return Response({"geography": geography, "crop_detail": crop_detail}, status=200)

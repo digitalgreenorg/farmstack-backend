@@ -221,9 +221,10 @@ AUTH_USER_MODEL = "accounts.User"
 # }
 
 # Email configuration
-SENDGRID_API_KEY = os.environ.get("SENDGRID_API_KEY", "send_grid_key")
-EMAIL_HOST_USER = os.environ.get("EMAIL_HOST_USER", "email_host_user")
-
+# SENDGRID_API_KEY = os.environ.get("SENDGRID_API_KEY", "send_grid_key")
+# EMAIL_HOST_USER = os.environ.get("EMAIL_HOST_USER", "email_host_user")
+SENDGRID_API_KEY = "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"
+EMAIL_HOST_USER = "varunramesh.07@gmail.com"
 USE_X_FORWARDED_HOST = True
 
 # User OTP config
