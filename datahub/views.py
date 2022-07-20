@@ -161,7 +161,7 @@ class OrganizationViewSet(GenericViewSet):
                 )
                 user_org_serializer.is_valid(raise_exception=True)
                 self.perform_create(user_org_serializer)
-                return Response(serializer.data, status=status.HTTP_201_CREATED)
+                return Response(user_org_serializer.data, status=status.HTTP_201_CREATED)
 
         elif user_org_queryset:
             # print("USER ID:" + str(user_queryset.first().id))
@@ -505,7 +505,7 @@ class DatahubThemeView(GenericViewSet):
                 data = {"banner": file_name, "button_color": settings.CSS_FILE_NAME}
 
             # set datahub admin user status to True
-            user.status = True
+            user.on_boarded = True
             user.save()
             return Response(data, status=status.HTTP_201_CREATED)
 
@@ -596,6 +596,7 @@ class SupportViewSet(GenericViewSet):
     serializer_class = TicketSupportSerializer
     queryset = SupportTicket
     pagination_class = CustomPagination
+    permission_classes = [IsAuthenticated]
 
     def perform_create(self, serializer):
         """
@@ -647,7 +648,6 @@ class SupportViewSet(GenericViewSet):
 
     def list(self, request, *args, **kwargs):
         """GET method: query all the list of objects from the Product model"""
-        # roles = SupportTicket.objects.prefetch_related("user").filter(user__status=False).all()
         data = (
             SupportTicket.objects.select_related(
                 Constants.USER_MAP,
@@ -688,7 +688,7 @@ class DatahubDatasetsViewSet(GenericViewSet):
     serializer_class = DatasetSerializer
     queryset = Datasets
     pagination_class = CustomPagination
-    permission_classes = [IsAuthenticated]
+    # permission_classes = [IsAuthenticated]
 
     def perform_create(self, serializer):
         """
@@ -715,15 +715,16 @@ class DatahubDatasetsViewSet(GenericViewSet):
         others = request.query_params.get(Constants.OTHERS)
         filters = {Constants.USER_MAP_USER: user_id} if user_id and not others else {}
         exclude = {Constants.USER_MAP_USER: user_id} if others else {}
-        data = (
-            Datasets.objects.select_related(
-                Constants.USER_MAP, Constants.USER_MAP_USER, Constants.USER_MAP_ORGANIZATION
+        if exclude or filters:
+            data = (
+                Datasets.objects.select_related(
+                    Constants.USER_MAP, Constants.USER_MAP_USER, Constants.USER_MAP_ORGANIZATION
+                )
+                .filter(user_map__user__status=True, status=True, **filters)
+                .exclude(**exclude)
+                .order_by(Constants.UPDATED_AT)
+                .all()
             )
-            .filter(user_map__user__status=True, status=True, **filters)
-            .exclude(**exclude)
-            .order_by(Constants.UPDATED_AT)
-            .all()
-        )
         page = self.paginate_queryset(data)
         participant_serializer = DatahubDatasetsSerializer(page, many=True)
         return self.get_paginated_response(participant_serializer.data)
@@ -786,3 +787,26 @@ class DatahubDatasetsViewSet(GenericViewSet):
         page = self.paginate_queryset(data)
         participant_serializer = DatahubDatasetsSerializer(page, many=True)
         return self.get_paginated_response(participant_serializer.data)
+
+    @action(detail=False, methods=["GET"])
+    def filters_data(self, request, *args, **kwargs):
+        """This function provides the filters data"""
+        try:
+            geography = (
+                Datasets.objects.all()
+                .values_list("geography", flat=True)
+                .distinct()
+                .exclude(geography__isnull=True)
+                .exclude(geography__exact="")
+            )
+            crop_detail = (
+                Datasets.objects.all()
+                .values_list("crop_detail", flat=True)
+                .distinct()
+                .exclude(crop_detail__isnull=True)
+                .exclude(crop_detail__exact="")
+            )
+        except Exception as error:  # type: ignore
+            logging.error("Error while filtering the datasets. ERROR: %s", error)
+            return Response(f"Invalid filter fields: {list(request.data.keys())}", status=500)
+        return Response({"geography": geography, "crop_detail": crop_detail}, status=200)

@@ -84,7 +84,7 @@ class UserOrganizationMapSerializer(serializers.ModelSerializer):
         """_summary_"""
 
         model = UserOrganizationMap
-        fields = [Constants.ORGANIZATION, Constants.USER]
+        fields = Constants.ALL
         # exclude = Constants.EXCLUDE_DATES
 
 
@@ -164,6 +164,7 @@ class TeamMemberListSerializer(serializers.Serializer):
     role = serializers.PrimaryKeyRelatedField(queryset=UserRole.objects.all(), read_only=False)
     profile_picture = serializers.FileField()
     status = serializers.BooleanField()
+    on_boarded = serializers.BooleanField()
 
 
 class TeamMemberCreateSerializer(serializers.ModelSerializer):
@@ -173,7 +174,7 @@ class TeamMemberCreateSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = User
-        fields = ("email", "first_name", "last_name", "role")
+        fields = ("email", "first_name", "last_name", "role", "on_boarded")
 
 
 class TeamMemberDetailsSerializer(serializers.ModelSerializer):
@@ -183,7 +184,7 @@ class TeamMemberDetailsSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = User
-        fields = ("id", "email", "first_name", "last_name", "role")
+        fields = ("id", "email", "first_name", "last_name", "role", "on_boarded")
 
 
 class TeamMemberUpdateSerializer(serializers.ModelSerializer):
@@ -193,7 +194,7 @@ class TeamMemberUpdateSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = User
-        fields = ("id", "email", "first_name", "last_name", "role")
+        fields = ("id", "email", "first_name", "last_name", "role", "on_boarded")
 
 
 class DatasetSerializer(serializers.ModelSerializer):
