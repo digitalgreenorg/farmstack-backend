@@ -84,7 +84,7 @@ class UserOrganizationMapSerializer(serializers.ModelSerializer):
         """_summary_"""
 
         model = UserOrganizationMap
-        fields = [Constants.ORGANIZATION, Constants.USER]
+        fields = Constants.ALL
         # exclude = Constants.EXCLUDE_DATES
 
 
@@ -165,7 +165,6 @@ class TeamMemberListSerializer(serializers.Serializer):
     profile_picture = serializers.FileField()
     status = serializers.BooleanField()
     on_boarded = serializers.BooleanField()
-
 
 
 class TeamMemberCreateSerializer(serializers.ModelSerializer):

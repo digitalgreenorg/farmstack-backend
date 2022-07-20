@@ -69,7 +69,7 @@ class TeamMemberViewSet(GenericViewSet):
     serializer_class = TeamMemberListSerializer
     queryset = User.objects.all()
     pagination_class = CustomPagination
-    # permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated]
 
     def create(self, request, *args, **kwargs):
         """POST method: create action to save an object by sending a POST request"""
@@ -124,7 +124,7 @@ class OrganizationViewSet(GenericViewSet):
     queryset = Organization.objects.all()
     pagination_class = CustomPagination
     parser_class = MultiPartParser
-    # permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated]
 
     def perform_create(self, serializer):
         """
@@ -161,7 +161,7 @@ class OrganizationViewSet(GenericViewSet):
                 )
                 user_org_serializer.is_valid(raise_exception=True)
                 self.perform_create(user_org_serializer)
-                return Response(serializer.data, status=status.HTTP_201_CREATED)
+                return Response(user_org_serializer.data, status=status.HTTP_201_CREATED)
 
         elif user_org_queryset:
             # print("USER ID:" + str(user_queryset.first().id))
@@ -241,7 +241,7 @@ class ParticipantViewSet(GenericViewSet):
     serializer_class = UserCreateSerializer
     queryset = User.objects.all()
     pagination_class = CustomPagination
-    # permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated]
 
     def perform_create(self, serializer):
         """
@@ -335,7 +335,7 @@ class MailInvitationViewSet(GenericViewSet):
     This class handles the mail invitation API views.
     """
 
-    # permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated]
 
     def create(self, request, *args, **kwargs):
         """
@@ -359,7 +359,7 @@ class DropDocumentView(GenericViewSet):
 
     parser_class = MultiPartParser
     serializer_class = DropDocumentSerializer
-    # permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated]
 
     def create(self, request, *args, **kwargs):
         """Saves the document files in temp location before saving"""
@@ -394,7 +394,7 @@ class DocumentSaveView(GenericViewSet):
 
     serializer_class = PolicyDocumentSerializer
     queryset = DatahubDocuments.objects.all()
-    # permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated]
 
     def list(self, request, *args, **kwargs):
         """GET method: query all the list of objects from the Product model"""
@@ -461,7 +461,7 @@ class DatahubThemeView(GenericViewSet):
 
     parser_class = MultiPartParser
     serializer_class = DatahubThemeSerializer
-    # permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated]
 
     def create(self, request, *args, **kwargs):
         """generates the override css for datahub"""
@@ -596,6 +596,7 @@ class SupportViewSet(GenericViewSet):
     serializer_class = TicketSupportSerializer
     queryset = SupportTicket
     pagination_class = CustomPagination
+    permission_classes = [IsAuthenticated]
 
     def perform_create(self, serializer):
         """
