@@ -96,6 +96,7 @@ class User(AbstractBaseUser, TimeStampMixin):
         validators=[validate_file_size],
     )
     status = models.BooleanField(default=True)
+    on_boarded = models.BooleanField(default=False)
     subscription = models.CharField(max_length=50, null=True, blank=True)
 
     objects = UserManager()

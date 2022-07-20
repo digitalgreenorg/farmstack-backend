@@ -9,6 +9,7 @@ from django.db import models
 from utils.validators import validate_file_size
 
 
+
 def auto_str(cls):
     def __str__(self):
         return "%s" % (", ".join("%s=%s" % item for item in vars(self).items()))
@@ -95,7 +96,7 @@ class Datasets(TimeStampMixin):
     user_map = models.ForeignKey(UserOrganizationMap, on_delete=models.PROTECT)
     name = models.CharField(max_length=255)
     description = models.CharField(max_length=255)
-    category = models.CharField(max_length=1000, choices=CATEGORY)
+    category = models.JSONField()
     geography = models.CharField(max_length=255)
     crop_detail = models.CharField(max_length=255, null=True)  # field should update
     constantly_update = models.BooleanField(default=False)
