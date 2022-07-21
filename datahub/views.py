@@ -238,7 +238,6 @@ class OrganizationViewSet(GenericViewSet):
             },
             status=status.HTTP_201_CREATED,
         )
-        return Response(data, status=status.HTTP_201_CREATED)
 
     def destroy(self, request, pk):
         """DELETE method: delete an object"""
