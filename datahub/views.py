@@ -757,11 +757,14 @@ class DatahubDatasetsViewSet(GenericViewSet):
         participant_serializer = DatahubDatasetsSerializer(data, many=True)
         if participant_serializer.data:
             data = participant_serializer.data[0]
-            data[Constants.CONTENT] = (
-                (pd.read_csv("." + data.get(Constants.SAMPLE_DATASET)).head(2).to_dict(orient=Constants.RECORDS))
-                if data.get(Constants.SAMPLE_DATASET)
-                else []
-            )
+            try:
+                data[Constants.CONTENT] = (
+                    (pd.read_csv("." + data.get(Constants.SAMPLE_DATASET)).head(2).to_dict(orient=Constants.RECORDS))
+                    if data.get(Constants.SAMPLE_DATASET)
+                    else []
+                )
+            except Exception as error:
+                data[Constants.CONTENT] = []
             return Response(data, status=status.HTTP_200_OK)
         return Response({}, status=status.HTTP_200_OK)
 
@@ -781,8 +784,10 @@ class DatahubDatasetsViewSet(GenericViewSet):
         return Response(status=status.HTTP_204_NO_CONTENT)
 
     @action(detail=False, methods=["post"])
-    def filters_tickets(self, request, *args, **kwargs):
+    def dataset_filters(self, request, *args, **kwargs):
         """This function get the filter args in body. based on the filter args orm filters the data."""
+        data = request.data
+        print()
         try:
             data = (
                 Datasets.objects.select_related(
