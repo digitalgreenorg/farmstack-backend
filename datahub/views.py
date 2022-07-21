@@ -230,6 +230,14 @@ class OrganizationViewSet(GenericViewSet):
             Constants.USER: {"id": pk},
             Constants.ORGANIZATION: organization_serializer.data,
         }
+        return Response(
+            {
+                "user_map": organization_serializer.data.get("id"),
+                "org_id": user_org_id,
+                "user_id": pk,
+            },
+            status=status.HTTP_201_CREATED,
+        )
         return Response(data, status=status.HTTP_201_CREATED)
 
     def destroy(self, request, pk):
