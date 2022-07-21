@@ -161,7 +161,14 @@ class OrganizationViewSet(GenericViewSet):
                 )
                 user_org_serializer.is_valid(raise_exception=True)
                 self.perform_create(user_org_serializer)
-                return Response(user_org_serializer.data, status=status.HTTP_201_CREATED)
+                return Response(
+                    {
+                        "user_map": user_org_serializer.data.get("id"),
+                        "org_id": org_queryset.id,
+                        "user_id": user_queryset.first().id,
+                    },
+                    status=status.HTTP_201_CREATED,
+                )
 
         elif user_org_queryset:
             # print("USER ID:" + str(user_queryset.first().id))
