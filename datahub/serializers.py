@@ -208,7 +208,24 @@ class DatasetSerializer(serializers.ModelSerializer):
         """_summary_"""
 
         model = Datasets
-        fields = Constants.ALL
+        fields = [
+            "user_map",
+            "name",
+            "description",
+            "category",
+            "geography",
+            "crop_detail",
+            "constantly_update",
+            "dataset_size",
+            "connector_availability",
+            "age_of_date",
+            "sample_dataset",
+            "data_capture_start",
+            "data_capture_end",
+            "remarks",
+            "is_enabled",
+            "approval_status",
+        ]
 
 
 class DatahubDatasetsDetailSerializer(serializers.ModelSerializer):
