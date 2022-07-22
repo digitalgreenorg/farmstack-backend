@@ -9,7 +9,6 @@ from django.db import models
 from utils.validators import validate_file_size
 
 
-
 def auto_str(cls):
     def __str__(self):
         return "%s" % (", ".join("%s=%s" % item for item in vars(self).items()))
@@ -112,5 +111,5 @@ class Datasets(TimeStampMixin):
     )
     status = models.BooleanField(default=True)
     approval_status = models.CharField(max_length=255, null=True, choices=APPROVAL_STATUS, default="in_progress")
-    is_enabled = models.BooleanField(default=False)
+    is_enabled = models.BooleanField(default=True)
     remarks = models.CharField(max_length=1000, null=True)
