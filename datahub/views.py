@@ -255,7 +255,7 @@ class ParticipantViewSet(GenericViewSet):
     serializer_class = UserCreateSerializer
     queryset = User.objects.all()
     pagination_class = CustomPagination
-    permission_classes = [IsAuthenticated]
+    # permission_classes = [IsAuthenticated]
 
     def perform_create(self, serializer):
         """
@@ -610,7 +610,6 @@ class SupportViewSet(GenericViewSet):
     serializer_class = TicketSupportSerializer
     queryset = SupportTicket
     pagination_class = CustomPagination
-    permission_classes = [IsAuthenticated]
 
     def perform_create(self, serializer):
         """
@@ -702,7 +701,6 @@ class DatahubDatasetsViewSet(GenericViewSet):
     serializer_class = DatasetSerializer
     queryset = Datasets
     pagination_class = CustomPagination
-    # permission_classes = [IsAuthenticated]
 
     def perform_create(self, serializer):
         """
@@ -787,7 +785,10 @@ class DatahubDatasetsViewSet(GenericViewSet):
     def dataset_filters(self, request, *args, **kwargs):
         """This function get the filter args in body. based on the filter args orm filters the data."""
         data = request.data
-        print()
+        others = data.pop("others")
+        user_id = data.pop("user_id")
+        filters = {Constants.USER_MAP_USER: user_id} if user_id and not others else {}
+        exclude = {Constants.USER_MAP_USER: user_id} if others else {}
         try:
             data = (
                 Datasets.objects.select_related(
@@ -795,7 +796,8 @@ class DatahubDatasetsViewSet(GenericViewSet):
                     Constants.USER_MAP_USER,
                     Constants.USER_MAP_ORGANIZATION,
                 )
-                .filter(status=True, **request.data)
+                .filter(status=True, **data, **filters)
+                .exclude(**exclude)
                 .order_by(Constants.UPDATED_AT)
                 .all()
             )
