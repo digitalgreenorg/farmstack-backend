@@ -1,4 +1,5 @@
 import logging
+from struct import unpack
 
 import pandas as pd
 from accounts.models import User
@@ -124,11 +125,10 @@ class ParticipantDatasetsViewSet(GenericViewSet):
     def list(self, request, *args, **kwargs):
         """GET method: query all the list of objects from the Product model"""
         data = []
-        user_id = request.query_params.get(Constants.USER_ID)
+        user_id = request.query_params.get(Constants.USER_ID, "")
         org_id = request.query_params.get(Constants.ORG_ID)
         exclude = {Constants.USER_MAP_USER: user_id} if org_id else {}
-        filter_data = {Constants.USER_MAP_USER: user_id, Constants.USER_MAP_ORGANIZATION: org_id}
-        filters = {key: value for key, value in filter_data.items() if value and key not in list(exclude.keys())}
+        filters = {Constants.USER_MAP_ORGANIZATION: org_id} if org_id else {Constants.USER_MAP_USER: user_id}
         if filters:
             data = (
                 Datasets.objects.select_related(
@@ -181,8 +181,13 @@ class ParticipantDatasetsViewSet(GenericViewSet):
         return Response(status=status.HTTP_204_NO_CONTENT)
 
     @action(detail=False, methods=["post"])
-    def filters_tickets(self, request, *args, **kwargs):
+    def dataset_filters(self, request, *args, **kwargs):
         """This function get the filter args in body. based on the filter args orm filters the data."""
+        data = request.data
+        org_id = data.pop("org_id", None)
+        user_id = data.pop("user_id", "")
+        exclude = {Constants.USER_MAP_USER: user_id} if org_id else {}
+        filters = {Constants.USER_MAP_ORGANIZATION: org_id} if org_id else {Constants.USER_MAP_USER: user_id}
         try:
             data = (
                 Datasets.objects.select_related(
@@ -190,7 +195,8 @@ class ParticipantDatasetsViewSet(GenericViewSet):
                     Constants.USER_MAP_USER,
                     Constants.USER_MAP_ORGANIZATION,
                 )
-                .filter(status=True, **request.data)
+                .filter(status=True, **data, **filters)
+                .exclude(**exclude)
                 .order_by(Constants.UPDATED_AT)
                 .all()
             )
