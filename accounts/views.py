@@ -1,11 +1,15 @@
 import datetime
 import logging
+from asyncio import exceptions
+from asyncio.log import logger
 
+from core.constants import Constants
 from core.utils import Utils
 from datahub.models import UserOrganizationMap
 from django.conf import settings
 from django.core.cache import cache
 from rest_framework import serializers, status
+from rest_framework.decorators import action, permission_classes
 from rest_framework.parsers import FileUploadParser, MultiPartParser
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -23,6 +27,7 @@ from utils import login_helper
 LOGGER = logging.getLogger(__name__)
 
 
+@permission_classes([])
 class RegisterViewset(GenericViewSet):
     """RegisterViewset for users to register"""
 
@@ -88,6 +93,7 @@ class RegisterViewset(GenericViewSet):
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
+@permission_classes([])
 class LoginViewset(GenericViewSet):
     """LoginViewset for users to register"""
 
@@ -146,7 +152,22 @@ class LoginViewset(GenericViewSet):
 
         return Response({}, status=status.HTTP_400_BAD_REQUEST)
 
+    @action(detail=False, methods=["post"])
+    def onboarded(self, request):
+        """This method makes the user on-boarded"""
+        try:
+            user = User.objects.get(id=request.data.get(Constants.USER_ID, ""))
+        except Exception as error:
+            LOGGER.error("Invalid user id: %s", error)
+            return Response(["Invalid User id"], 400)
+        if User:
+            user.on_boarded = request.data.get("on_boarded", True)
+            user.save()
+            return Response(status=status.HTTP_204_NO_CONTENT)
+        return Response(["Invalid User id"], 400)
 
+
+@permission_classes([])
 class ResendOTPViewset(GenericViewSet):
     """ResendOTPViewset for users to register"""
 
@@ -219,6 +240,7 @@ class ResendOTPViewset(GenericViewSet):
         return Response({}, status=status.HTTP_400_BAD_REQUEST)
 
 
+@permission_classes([])
 class VerifyLoginOTPViewset(GenericViewSet):
     """User verification with OTP"""
 

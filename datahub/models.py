@@ -83,7 +83,7 @@ CATEGORY = (
 )
 
 CONNECTOR_TYPE = (("MYSQL", "MYSQL"), ("MONGODB", "MONDODB"), ("CSV", "CSV"))
-APPROVAL_STATUS = (("approved", "approved"), ("in_progress", "in_progress"))
+APPROVAL_STATUS = (("approved", "approved"), ("rejected", "rejected"), ("for_review", "for_review"))
 AVAILABLITY = (("available", "available"), ("not_available", "not_available"))
 
 
@@ -110,6 +110,6 @@ class Datasets(TimeStampMixin):
         validators=[validate_file_size],
     )
     status = models.BooleanField(default=True)
-    approval_status = models.CharField(max_length=255, null=True, choices=APPROVAL_STATUS, default="in_progress")
+    approval_status = models.CharField(max_length=255, null=True, choices=APPROVAL_STATUS, default="for_review")
     is_enabled = models.BooleanField(default=True)
     remarks = models.CharField(max_length=1000, null=True)
