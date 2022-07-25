@@ -635,7 +635,7 @@ class SupportViewSet(GenericViewSet):
                     Constants.USER_MAP_USER,
                     Constants.USER_MAP_ORGANIZATION,
                 )
-                .filter(user_map__user__status=True, **request.data)
+                .filter(user_map__user__status=True, **request.data, **range)
                 .order_by(Constants.UPDATED_AT)
                 .all()
             )
