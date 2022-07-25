@@ -781,10 +781,14 @@ class DatahubDatasetsViewSet(GenericViewSet):
     def dataset_filters(self, request, *args, **kwargs):
         """This function get the filter args in body. based on the filter args orm filters the data."""
         data = request.data
-        others = data.pop("others")
-        user_id = data.pop("user_id")
+        others = data.pop(Constants.OTHERS)
+        user_id = data.pop(Constants.USER_ID)
         filters = {Constants.USER_MAP_USER: user_id} if user_id and not others else {}
         exclude = {Constants.USER_MAP_USER: user_id} if others else {}
+        range = {}
+        created_at__range = request.data.pop(Constants.CREATED_AT__RANGE, None)
+        if created_at__range:
+            range[Constants.CREATED_AT__RANGE] = date_formater(created_at__range)
         try:
             data = (
                 Datasets.objects.select_related(
@@ -792,7 +796,7 @@ class DatahubDatasetsViewSet(GenericViewSet):
                     Constants.USER_MAP_USER,
                     Constants.USER_MAP_ORGANIZATION,
                 )
-                .filter(status=True, **data, **filters)
+                .filter(status=True, **data, **filters, **range)
                 .exclude(**exclude)
                 .order_by(Constants.UPDATED_AT)
                 .all()
@@ -811,14 +815,14 @@ class DatahubDatasetsViewSet(GenericViewSet):
         try:
             geography = (
                 Datasets.objects.all()
-                .values_list("geography", flat=True)
+                .values_list(Constants.GEOGRAPHY, flat=True)
                 .distinct()
                 .exclude(geography__isnull=True)
                 .exclude(geography__exact="")
             )
             crop_detail = (
                 Datasets.objects.all()
-                .values_list("crop_detail", flat=True)
+                .values_list(Constants.CROP_DETAIL, flat=True)
                 .distinct()
                 .exclude(crop_detail__isnull=True)
                 .exclude(crop_detail__exact="")
