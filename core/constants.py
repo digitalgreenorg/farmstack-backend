@@ -32,3 +32,7 @@ class Constants:
     RECORDS = "records"
     CONTENTS = "contents"
     OTHERS = "others"
+    CREATED_AT__RANGE = "created_at__range"
+    UPDATED_AT__RANGE = "updated_at__range"
+    GEOGRAPHY = "geography"
+    CROP_DETAIL = "crop_detail"
