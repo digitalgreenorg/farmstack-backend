@@ -13,7 +13,7 @@ from accounts.serializers import (
     UserUpdateSerializer,
 )
 from core.constants import Constants
-from core.utils import CustomPagination, Utils
+from core.utils import CustomPagination, Utils, date_formater
 from django.conf import settings
 from django.contrib.admin.utils import get_model_from_relation
 from django.core.files.base import ContentFile
@@ -69,7 +69,6 @@ class TeamMemberViewSet(GenericViewSet):
     serializer_class = TeamMemberListSerializer
     queryset = User.objects.all()
     pagination_class = CustomPagination
-    permission_classes = [IsAuthenticated]
 
     def create(self, request, *args, **kwargs):
         """POST method: create action to save an object by sending a POST request"""
@@ -124,7 +123,6 @@ class OrganizationViewSet(GenericViewSet):
     queryset = Organization.objects.all()
     pagination_class = CustomPagination
     parser_class = MultiPartParser
-    permission_classes = [IsAuthenticated]
 
     def perform_create(self, serializer):
         """
@@ -255,7 +253,6 @@ class ParticipantViewSet(GenericViewSet):
     serializer_class = UserCreateSerializer
     queryset = User.objects.all()
     pagination_class = CustomPagination
-    # permission_classes = [IsAuthenticated]
 
     def perform_create(self, serializer):
         """
@@ -349,8 +346,6 @@ class MailInvitationViewSet(GenericViewSet):
     This class handles the mail invitation API views.
     """
 
-    permission_classes = [IsAuthenticated]
-
     def create(self, request, *args, **kwargs):
         """
         This will send the mail to the requested user with content.
@@ -373,7 +368,6 @@ class DropDocumentView(GenericViewSet):
 
     parser_class = MultiPartParser
     serializer_class = DropDocumentSerializer
-    permission_classes = [IsAuthenticated]
 
     def create(self, request, *args, **kwargs):
         """Saves the document files in temp location before saving"""
@@ -408,7 +402,6 @@ class DocumentSaveView(GenericViewSet):
 
     serializer_class = PolicyDocumentSerializer
     queryset = DatahubDocuments.objects.all()
-    permission_classes = [IsAuthenticated]
 
     def list(self, request, *args, **kwargs):
         """GET method: query all the list of objects from the Product model"""
@@ -475,7 +468,6 @@ class DatahubThemeView(GenericViewSet):
 
     parser_class = MultiPartParser
     serializer_class = DatahubThemeSerializer
-    permission_classes = [IsAuthenticated]
 
     def create(self, request, *args, **kwargs):
         """generates the override css for datahub"""
@@ -632,6 +624,10 @@ class SupportViewSet(GenericViewSet):
     @action(detail=False, methods=["post"])
     def filters_tickets(self, request, *args, **kwargs):
         """This function get the filter args in body. based on the filter args orm filters the data."""
+        range = {}
+        updated_range_at = request.data.pop("updated_at__range", None)
+        if updated_range_at:
+            range["updated_range__at"] = date_formater(updated_range_at)
         try:
             data = (
                 SupportTicket.objects.select_related(

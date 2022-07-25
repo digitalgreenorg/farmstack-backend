@@ -103,7 +103,7 @@ class ParticipantDatasetsSerializer(serializers.ModelSerializer):
     class OrganizationDatsetsListRetriveSerializer(serializers.ModelSerializer):
         class Meta:
             model = Organization
-            fields = ["org_email", "org_description", "name", "logo"]
+            fields = ["org_email", "org_description", "name", "logo", "address"]
 
     user_id = serializers.PrimaryKeyRelatedField(
         queryset=models.User.objects.all(), required=True, source="user_map.user"
