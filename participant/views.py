@@ -4,7 +4,7 @@ from struct import unpack
 import pandas as pd
 from accounts.models import User
 from core.constants import Constants
-from core.utils import CustomPagination, DefaultPagination, date_formater
+from core.utils import CustomPagination, DefaultPagination, csv_and_xlsx_file_validatation, date_formater, read_contents_from_csv_or_xlsx_file
 from datahub.models import Datasets, Organization, UserOrganizationMap
 from rest_framework import pagination, status
 from rest_framework.decorators import action
@@ -115,6 +115,10 @@ class ParticipantDatasetsViewSet(GenericViewSet):
 
     def create(self, request, *args, **kwargs):
         """POST method: create action to save an object by sending a POST request"""
+        if not csv_and_xlsx_file_validatation(request.data.get(Constants.SAMPLE_DATASET)):
+            return Response(
+                {Constants.SAMPLE_DATASET: ["Invalid Sample dataset file (or) Atleast 5 rows should be available. please upload valid file"]}, 400
+            )
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         self.perform_create(serializer)
@@ -155,11 +159,8 @@ class ParticipantDatasetsViewSet(GenericViewSet):
         participant_serializer = ParticipantDatasetsDetailSerializer(data, many=True)
         if participant_serializer.data:
             data = participant_serializer.data[0]
-            data[Constants.CONTENT] = (
-                (pd.read_csv("." + data.get(Constants.SAMPLE_DATASET)).head(2).to_dict(orient=Constants.RECORDS))
-                if data.get(Constants.SAMPLE_DATASET)
-                else []
-            )
+            data[Constants.CONTENT] = read_contents_from_csv_or_xlsx_file(data.get(Constants.SAMPLE_DATASET))
+
             return Response(data, status=status.HTTP_200_OK)
         return Response({}, status=status.HTTP_200_OK)
 

@@ -255,10 +255,11 @@ class DatahubDatasetsSerializer(serializers.ModelSerializer):
         class Meta:
             model = Organization
             fields = ["org_email", "org_description", "name", "logo", "address", "phone_number"]
+
     class UserDatasetSerializer(serializers.ModelSerializer):
         class Meta:
             model = User
-            fields = ["name", "email"]
+            fields = ["last_name", "first_name", "email"]
 
     user_id = serializers.PrimaryKeyRelatedField(
         queryset=models.User.objects.all(), required=True, source="user_map.user"
