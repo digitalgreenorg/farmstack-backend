@@ -254,7 +254,11 @@ class DatahubDatasetsSerializer(serializers.ModelSerializer):
     class OrganizationDatsetsListRetriveSerializer(serializers.ModelSerializer):
         class Meta:
             model = Organization
-            fields = ["org_email", "org_description", "name", "logo", "address"]
+            fields = ["org_email", "org_description", "name", "logo", "address", "phone_number"]
+    class UserDatasetSerializer(serializers.ModelSerializer):
+        class Meta:
+            model = User
+            fields = ["name", "email"]
 
     user_id = serializers.PrimaryKeyRelatedField(
         queryset=models.User.objects.all(), required=True, source="user_map.user"
@@ -266,6 +270,7 @@ class DatahubDatasetsSerializer(serializers.ModelSerializer):
     organization = OrganizationDatsetsListRetriveSerializer(
         required=False, allow_null=True, read_only=True, source="user_map.organization"
     )
+    user = UserDatasetSerializer(required=False, allow_null=True, read_only=True, source="user_map.user")
 
     class Meta:
         model = Datasets
