@@ -105,6 +105,11 @@ class ParticipantDatasetsSerializer(serializers.ModelSerializer):
             model = Organization
             fields = ["org_email", "org_description", "name", "logo", "address"]
 
+    class UserDatasetSerializer(serializers.ModelSerializer):
+        class Meta:
+            model = models.User
+            fields = ["name", "email"]
+
     user_id = serializers.PrimaryKeyRelatedField(
         queryset=models.User.objects.all(), required=True, source="user_map.user"
     )
@@ -115,6 +120,7 @@ class ParticipantDatasetsSerializer(serializers.ModelSerializer):
     organization = OrganizationDatsetsListRetriveSerializer(
         required=False, allow_null=True, read_only=True, source="user_map.organization"
     )
+    user = UserDatasetSerializer(required=False, allow_null=True, read_only=True, source="user_map.user")
 
     class Meta:
         model = Datasets
@@ -127,6 +133,7 @@ class ParticipantDatasetsSerializer(serializers.ModelSerializer):
             "created_at",
             "organization",
             "organization_id",
+            "user",
             "user_id",
             "category",
             "geography",
