@@ -84,7 +84,6 @@ CATEGORY = (
 
 CONNECTOR_TYPE = (("MYSQL", "MYSQL"), ("MONGODB", "MONDODB"), ("CSV", "CSV"))
 APPROVAL_STATUS = (("approved", "approved"), ("rejected", "rejected"), ("for_review", "for_review"))
-AVAILABLITY = (("available", "available"), ("not_available", "not_available"))
 
 
 @auto_str
@@ -103,7 +102,7 @@ class Datasets(TimeStampMixin):
     data_capture_start = models.DateTimeField(null=True)
     data_capture_end = models.DateTimeField(null=True)
     dataset_size = models.CharField(max_length=255, null=True)
-    connector_availability = models.CharField(max_length=255, null=True, choices=AVAILABLITY)
+    connector_availability = models.CharField(max_length=255, null=True)
     sample_dataset = models.FileField(
         upload_to=settings.SAMPLE_DATASETS_URL,
         blank=True,
