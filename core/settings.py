@@ -61,7 +61,6 @@ INSTALLED_APPS = [
     "drf_spectacular_sidecar",
     "django_nose",
     "django_filters",
-    "drf_generators",
     # custom apps
     "accounts",
     "datahub",
@@ -205,12 +204,12 @@ AUTH_USER_MODEL = "accounts.User"
 REST_FRAMEWORK = {
     "DEFAULT_FILTER_BACKENDS": ["django_filters.rest_framework.DjangoFilterBackend"],
     "DEFAULT_AUTHENTICATION_CLASSES": ("rest_framework_simplejwt.authentication.JWTAuthentication",),
-    # "DEFAULT_PERMISSION_CLASSES": [
-    #     "rest_framework.permissions.AllowAny"
-    # ],  #  Comment this line for test, stage and prod environments
     "DEFAULT_PERMISSION_CLASSES": [
-        "rest_framework.permissions.IsAuthenticated"
-    ],  # Un comment this to enable authentication
+        "rest_framework.permissions.AllowAny"
+    ],  #  Comment this line for test, stage and prod environments
+    # "DEFAULT_PERMISSION_CLASSES": [
+    #     "rest_framework.permissions.IsAuthenticated"
+    # ],  # Un comment this to enable authentication
     "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
 }
 
