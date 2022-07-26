@@ -108,7 +108,7 @@ class ParticipantDatasetsSerializer(serializers.ModelSerializer):
     class UserDatasetSerializer(serializers.ModelSerializer):
         class Meta:
             model = models.User
-            fields = ["name", "email"]
+            fields = ["last_name", "first_name", "email"]
 
     user_id = serializers.PrimaryKeyRelatedField(
         queryset=models.User.objects.all(), required=True, source="user_map.user"

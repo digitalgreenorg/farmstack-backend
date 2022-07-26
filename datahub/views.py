@@ -13,7 +13,7 @@ from accounts.serializers import (
     UserUpdateSerializer,
 )
 from core.constants import Constants
-from core.utils import CustomPagination, Utils, date_formater
+from core.utils import CustomPagination, Utils, csv_and_xlsx_file_validatation, date_formater, read_contents_from_csv_or_xlsx_file
 from django.conf import settings
 from django.contrib.admin.utils import get_model_from_relation
 from django.core.files.base import ContentFile
@@ -711,6 +711,10 @@ class DatahubDatasetsViewSet(GenericViewSet):
 
     def create(self, request, *args, **kwargs):
         """POST method: create action to save an object by sending a POST request"""
+        if not csv_and_xlsx_file_validatation(request.data.get(Constants.SAMPLE_DATASET)):
+            return Response(
+                {Constants.SAMPLE_DATASET: ["Invalid Sample dataset file (or) Atleast 5 rows should be available. please upload valid file"]}, 400
+            )
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         self.perform_create(serializer)
@@ -751,14 +755,7 @@ class DatahubDatasetsViewSet(GenericViewSet):
         participant_serializer = DatahubDatasetsSerializer(data, many=True)
         if participant_serializer.data:
             data = participant_serializer.data[0]
-            try:
-                data[Constants.CONTENT] = (
-                    (pd.read_csv("." + data.get(Constants.SAMPLE_DATASET)).head(2).to_dict(orient=Constants.RECORDS))
-                    if data.get(Constants.SAMPLE_DATASET)
-                    else []
-                )
-            except Exception as error:
-                data[Constants.CONTENT] = []
+            data[Constants.CONTENT] = read_contents_from_csv_or_xlsx_file(data.get(Constants.SAMPLE_DATASET))
             return Response(data, status=status.HTTP_200_OK)
         return Response({}, status=status.HTTP_200_OK)
 
