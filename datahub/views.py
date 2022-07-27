@@ -817,23 +817,28 @@ class DatahubDatasetsViewSet(GenericViewSet):
         participant_serializer = DatahubDatasetsSerializer(page, many=True)
         return self.get_paginated_response(participant_serializer.data)
 
-    @action(detail=False, methods=["GET"])
+    @action(detail=False, methods=["post"])
     def filters_data(self, request, *args, **kwargs):
         """This function provides the filters data"""
+        data = request.data
+        others = data.pop(Constants.OTHERS)
+        user_id = data.pop(Constants.USER_ID)
+        filters = {Constants.USER_MAP_USER: user_id} if user_id and not others else {}
+        exclude = {Constants.USER_MAP_USER: user_id} if others else {}
         try:
             geography = (
                 Datasets.objects.all()
                 .values_list(Constants.GEOGRAPHY, flat=True)
                 .distinct()
-                .exclude(geography__isnull=True)
-                .exclude(geography__exact="")
+                .filter(**filters)
+                .exclude(geography__isnull=True, geography__exact="", **exclude)
             )
             crop_detail = (
                 Datasets.objects.all()
                 .values_list(Constants.CROP_DETAIL, flat=True)
                 .distinct()
-                .exclude(crop_detail__isnull=True)
-                .exclude(crop_detail__exact="")
+                .filter(**filters)
+                .exclude(crop_detail__isnull=True, crop_detail__exact="", **exclude)
             )
         except Exception as error:  # type: ignore
             logging.error("Error while filtering the datasets. ERROR: %s", error)
