@@ -221,7 +221,9 @@ class OrganizationViewSet(GenericViewSet):
         if not user_org_queryset:
             return Response({}, status=status.HTTP_404_NOT_FOUND)
 
-        user_org_id = user_org_queryset.first().organization_id
+        user_org_map = user_org_queryset.first()
+        user_org_id = user_org_map.organization_id
+        user_map_id = user_org_map.id
         organization_serializer = OrganizationSerializer(
             Organization.objects.get(id=user_org_id),
             data=request.data,
@@ -236,7 +238,7 @@ class OrganizationViewSet(GenericViewSet):
         }
         return Response(
             {
-                "user_map": organization_serializer.data.get("id"),
+                "user_map": user_map_id,
                 "org_id": user_org_id,
                 "user_id": pk,
             },
