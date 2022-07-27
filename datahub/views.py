@@ -13,7 +13,13 @@ from accounts.serializers import (
     UserUpdateSerializer,
 )
 from core.constants import Constants
-from core.utils import CustomPagination, Utils
+from core.utils import (
+    CustomPagination,
+    Utils,
+    csv_and_xlsx_file_validatation,
+    date_formater,
+    read_contents_from_csv_or_xlsx_file,
+)
 from django.conf import settings
 from django.contrib.admin.utils import get_model_from_relation
 from django.core.files.base import ContentFile
@@ -69,7 +75,6 @@ class TeamMemberViewSet(GenericViewSet):
     serializer_class = TeamMemberListSerializer
     queryset = User.objects.all()
     pagination_class = CustomPagination
-    permission_classes = [IsAuthenticated]
 
     def create(self, request, *args, **kwargs):
         """POST method: create action to save an object by sending a POST request"""
@@ -124,7 +129,6 @@ class OrganizationViewSet(GenericViewSet):
     queryset = Organization.objects.all()
     pagination_class = CustomPagination
     parser_class = MultiPartParser
-    permission_classes = [IsAuthenticated]
 
     def perform_create(self, serializer):
         """
@@ -217,7 +221,9 @@ class OrganizationViewSet(GenericViewSet):
         if not user_org_queryset:
             return Response({}, status=status.HTTP_404_NOT_FOUND)
 
-        user_org_id = user_org_queryset.first().organization_id
+        user_org_map = user_org_queryset.first()
+        user_org_id = user_org_map.organization_id
+        user_map_id = user_org_map.id
         organization_serializer = OrganizationSerializer(
             Organization.objects.get(id=user_org_id),
             data=request.data,
@@ -229,13 +235,11 @@ class OrganizationViewSet(GenericViewSet):
         data = {
             Constants.USER: {"id": pk},
             Constants.ORGANIZATION: organization_serializer.data,
+            "user_map": user_map_id,
+            "org_id": user_org_id,
         }
         return Response(
-            {
-                "user_map": organization_serializer.data.get("id"),
-                "org_id": user_org_id,
-                "user_id": pk,
-            },
+            data,
             status=status.HTTP_201_CREATED,
         )
 
@@ -255,7 +259,6 @@ class ParticipantViewSet(GenericViewSet):
     serializer_class = UserCreateSerializer
     queryset = User.objects.all()
     pagination_class = CustomPagination
-    # permission_classes = [IsAuthenticated]
 
     def perform_create(self, serializer):
         """
@@ -349,8 +352,6 @@ class MailInvitationViewSet(GenericViewSet):
     This class handles the mail invitation API views.
     """
 
-    permission_classes = [IsAuthenticated]
-
     def create(self, request, *args, **kwargs):
         """
         This will send the mail to the requested user with content.
@@ -373,7 +374,6 @@ class DropDocumentView(GenericViewSet):
 
     parser_class = MultiPartParser
     serializer_class = DropDocumentSerializer
-    permission_classes = [IsAuthenticated]
 
     def create(self, request, *args, **kwargs):
         """Saves the document files in temp location before saving"""
@@ -408,7 +408,6 @@ class DocumentSaveView(GenericViewSet):
 
     serializer_class = PolicyDocumentSerializer
     queryset = DatahubDocuments.objects.all()
-    permission_classes = [IsAuthenticated]
 
     def list(self, request, *args, **kwargs):
         """GET method: query all the list of objects from the Product model"""
@@ -475,7 +474,6 @@ class DatahubThemeView(GenericViewSet):
 
     parser_class = MultiPartParser
     serializer_class = DatahubThemeSerializer
-    permission_classes = [IsAuthenticated]
 
     def create(self, request, *args, **kwargs):
         """generates the override css for datahub"""
@@ -632,6 +630,10 @@ class SupportViewSet(GenericViewSet):
     @action(detail=False, methods=["post"])
     def filters_tickets(self, request, *args, **kwargs):
         """This function get the filter args in body. based on the filter args orm filters the data."""
+        range = {}
+        updated_range_at = request.data.pop("updated_at__range", None)
+        if updated_range_at:
+            range["updated_at__range"] = date_formater(updated_range_at)
         try:
             data = (
                 SupportTicket.objects.select_related(
@@ -639,7 +641,7 @@ class SupportViewSet(GenericViewSet):
                     Constants.USER_MAP_USER,
                     Constants.USER_MAP_ORGANIZATION,
                 )
-                .filter(user_map__user__status=True, **request.data)
+                .filter(user_map__user__status=True, **request.data, **range)
                 .order_by(Constants.UPDATED_AT)
                 .all()
             )
@@ -715,6 +717,15 @@ class DatahubDatasetsViewSet(GenericViewSet):
 
     def create(self, request, *args, **kwargs):
         """POST method: create action to save an object by sending a POST request"""
+        if not csv_and_xlsx_file_validatation(request.data.get(Constants.SAMPLE_DATASET)):
+            return Response(
+                {
+                    Constants.SAMPLE_DATASET: [
+                        "Invalid Sample dataset file (or) Atleast 5 rows should be available. please upload valid file"
+                    ]
+                },
+                400,
+            )
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         self.perform_create(serializer)
@@ -755,14 +766,7 @@ class DatahubDatasetsViewSet(GenericViewSet):
         participant_serializer = DatahubDatasetsSerializer(data, many=True)
         if participant_serializer.data:
             data = participant_serializer.data[0]
-            try:
-                data[Constants.CONTENT] = (
-                    (pd.read_csv("." + data.get(Constants.SAMPLE_DATASET)).head(2).to_dict(orient=Constants.RECORDS))
-                    if data.get(Constants.SAMPLE_DATASET)
-                    else []
-                )
-            except Exception as error:
-                data[Constants.CONTENT] = []
+            data[Constants.CONTENT] = read_contents_from_csv_or_xlsx_file(data.get(Constants.SAMPLE_DATASET))
             return Response(data, status=status.HTTP_200_OK)
         return Response({}, status=status.HTTP_200_OK)
 
@@ -785,10 +789,14 @@ class DatahubDatasetsViewSet(GenericViewSet):
     def dataset_filters(self, request, *args, **kwargs):
         """This function get the filter args in body. based on the filter args orm filters the data."""
         data = request.data
-        others = data.pop("others")
-        user_id = data.pop("user_id")
+        others = data.pop(Constants.OTHERS)
+        user_id = data.pop(Constants.USER_ID)
         filters = {Constants.USER_MAP_USER: user_id} if user_id and not others else {}
         exclude = {Constants.USER_MAP_USER: user_id} if others else {}
+        range = {}
+        created_at__range = request.data.pop(Constants.CREATED_AT__RANGE, None)
+        if created_at__range:
+            range[Constants.CREATED_AT__RANGE] = date_formater(created_at__range)
         try:
             data = (
                 Datasets.objects.select_related(
@@ -796,7 +804,7 @@ class DatahubDatasetsViewSet(GenericViewSet):
                     Constants.USER_MAP_USER,
                     Constants.USER_MAP_ORGANIZATION,
                 )
-                .filter(status=True, **data, **filters)
+                .filter(status=True, **data, **filters, **range)
                 .exclude(**exclude)
                 .order_by(Constants.UPDATED_AT)
                 .all()
@@ -815,14 +823,14 @@ class DatahubDatasetsViewSet(GenericViewSet):
         try:
             geography = (
                 Datasets.objects.all()
-                .values_list("geography", flat=True)
+                .values_list(Constants.GEOGRAPHY, flat=True)
                 .distinct()
                 .exclude(geography__isnull=True)
                 .exclude(geography__exact="")
             )
             crop_detail = (
                 Datasets.objects.all()
-                .values_list("crop_detail", flat=True)
+                .values_list(Constants.CROP_DETAIL, flat=True)
                 .distinct()
                 .exclude(crop_detail__isnull=True)
                 .exclude(crop_detail__exact="")

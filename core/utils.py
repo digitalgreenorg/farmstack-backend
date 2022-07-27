@@ -1,8 +1,11 @@
+import datetime
 import logging
 import os
 import urllib
+from inspect import formatannotationrelativeto
 from urllib import parse
 
+import pandas as pd
 import sendgrid
 from django.conf import settings
 from django.db import models
@@ -11,6 +14,8 @@ from rest_framework import pagination, status
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.response import Response
 from sendgrid.helpers.mail import Content, Email, Mail
+
+from core.constants import Constants
 
 LOGGER = logging.getLogger(__name__)
 
@@ -119,3 +124,53 @@ class DefaultPagination(pagination.PageNumberPagination):
     """
 
     page_size = 5
+
+
+def date_formater(date_range: list):
+    """This function accepts from date and to date as list and converts into valid date.
+
+    Args:
+        date_range (list): _description_
+    """
+    try:
+        start = date_range[0].split("T")[0]
+        end = date_range[1].split("T")[0]
+        start = (datetime.datetime.strptime(start, "%Y-%m-%d") + datetime.timedelta(1)).strftime("%Y-%m-%d")
+        end = (datetime.datetime.strptime(end, "%Y-%m-%d") + datetime.timedelta(2)).strftime("%Y-%m-%d")
+        return [start, end]
+    except Exception as error:
+        logging.error("Invalid time formate: %s", error)
+        return ["", ""]
+
+
+def csv_and_xlsx_file_validatation(file_obj):
+    """This function accepts file obj and validates it."""
+    try:
+        name = file_obj.name
+        if name.endswith(".xlsx") or name.endswith(".xls"):
+            df = pd.read_excel(file_obj, header=0)
+        else:
+            df = pd.read_csv(file_obj, encoding="unicode_escape", header=0)
+        if len(df) < 5:
+            return False
+    except Exception as error:
+        logging.error("Invalid file ERROR: %s", error)
+        return False
+    return True
+
+
+def read_contents_from_csv_or_xlsx_file(file_path):
+    """This function reads the file and return the contents as dict"""
+    dataframe = pd.DataFrame([])
+    try:
+        if file_path.endswith(".xlsx") or file_path.endswith(".xls"):
+            content = pd.read_excel("." + file_path, header=0).head(2) if file_path else dataframe
+        else:
+            content = (
+                pd.read_csv("." + file_path, encoding="unicode_escape", header=0).head(2) if file_path else dataframe
+            )
+        content = content.fillna("")
+    except Exception as error:
+        logging.error("Invalid file ERROR: %s", error)
+        return []
+    return content.to_dict(orient=Constants.RECORDS)

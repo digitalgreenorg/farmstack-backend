@@ -61,7 +61,6 @@ INSTALLED_APPS = [
     "drf_spectacular_sidecar",
     "django_nose",
     "django_filters",
-    "drf_generators",
     # custom apps
     "accounts",
     "datahub",
@@ -119,7 +118,7 @@ DATABASES = {
         "USER": os.environ.get("POSTGRES_USER"),
         "PASSWORD": os.environ.get("POSTGRES_PASSWORD"),
         "HOST": "db",
-        "PORT": 5432,
+        "PORT": os.environ.get("POST"),
         "OPTIONS": {
             "client_encoding": "UTF8",
         },
@@ -205,7 +204,12 @@ AUTH_USER_MODEL = "accounts.User"
 REST_FRAMEWORK = {
     "DEFAULT_FILTER_BACKENDS": ["django_filters.rest_framework.DjangoFilterBackend"],
     "DEFAULT_AUTHENTICATION_CLASSES": ("rest_framework_simplejwt.authentication.JWTAuthentication",),
-    "DEFAULT_PERMISSION_CLASSES": [],
+    "DEFAULT_PERMISSION_CLASSES": [
+        "rest_framework.permissions.AllowAny"
+    ],  #  Comment this line for test, stage and prod environments
+    # "DEFAULT_PERMISSION_CLASSES": [
+    #     "rest_framework.permissions.IsAuthenticated"
+    # ],  # Un comment this to enable authentication
     "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
 }
 
@@ -223,7 +227,6 @@ SIMPLE_JWT = {
 # Email configuration
 SENDGRID_API_KEY = os.environ.get("SENDGRID_API_KEY", "send_grid_key")
 EMAIL_HOST_USER = os.environ.get("EMAIL_HOST_USER", "email_host_user")
-
 USE_X_FORWARDED_HOST = True
 
 # User OTP config
