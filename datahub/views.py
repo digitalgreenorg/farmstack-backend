@@ -831,14 +831,14 @@ class DatahubDatasetsViewSet(GenericViewSet):
                 .values_list(Constants.GEOGRAPHY, flat=True)
                 .distinct()
                 .filter(**filters)
-                .exclude(geography__isnull=True, geography__exact="", **exclude )
+                .exclude(geography__isnull=True, geography__exact="", **exclude)
             )
             crop_detail = (
                 Datasets.objects.all()
                 .values_list(Constants.CROP_DETAIL, flat=True)
                 .distinct()
-                .exclude(crop_detail__isnull=True)
-                .exclude(crop_detail__exact="")
+                .filter(**filters)
+                .exclude(crop_detail__isnull=True, crop_detail__exact="", **exclude)
             )
         except Exception as error:  # type: ignore
             logging.error("Error while filtering the datasets. ERROR: %s", error)
