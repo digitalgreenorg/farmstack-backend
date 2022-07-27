@@ -235,13 +235,11 @@ class OrganizationViewSet(GenericViewSet):
         data = {
             Constants.USER: {"id": pk},
             Constants.ORGANIZATION: organization_serializer.data,
+            "user_map": user_map_id,
+            "org_id": user_org_id,
         }
         return Response(
-            {
-                "user_map": user_map_id,
-                "org_id": user_org_id,
-                "user_id": pk,
-            },
+            data,
             status=status.HTTP_201_CREATED,
         )
 
