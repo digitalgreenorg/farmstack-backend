@@ -39,3 +39,14 @@ class TestUrls(SimpleTestCase):
         url = reverse("datahub_datasets-list")
         print(resolve(url))
         self.assertNotEqual(resolve(url).func, "DatahubDatasetsViewSet")
+
+    def test_organization_create_valid(self):
+        """_summary_"""
+        url = reverse("organization-list")
+        assert resolve(url)._func_path == "datahub.views.OrganizationViewSet"
+
+    def test_organization_create_invalid(self):
+        """_summary_"""
+        url = reverse("organization-list")
+        print(resolve(url))
+        self.assertNotEqual(resolve(url).func, "OrganizationViewSet")
