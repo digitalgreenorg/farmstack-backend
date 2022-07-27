@@ -13,7 +13,13 @@ from accounts.serializers import (
     UserUpdateSerializer,
 )
 from core.constants import Constants
-from core.utils import CustomPagination, Utils, csv_and_xlsx_file_validatation, date_formater, read_contents_from_csv_or_xlsx_file
+from core.utils import (
+    CustomPagination,
+    Utils,
+    csv_and_xlsx_file_validatation,
+    date_formater,
+    read_contents_from_csv_or_xlsx_file,
+)
 from django.conf import settings
 from django.contrib.admin.utils import get_model_from_relation
 from django.core.files.base import ContentFile
@@ -627,7 +633,7 @@ class SupportViewSet(GenericViewSet):
         range = {}
         updated_range_at = request.data.pop("updated_at__range", None)
         if updated_range_at:
-            range["updated_range__at"] = date_formater(updated_range_at)
+            range["updated_at__range"] = date_formater(updated_range_at)
         try:
             data = (
                 SupportTicket.objects.select_related(
@@ -713,7 +719,12 @@ class DatahubDatasetsViewSet(GenericViewSet):
         """POST method: create action to save an object by sending a POST request"""
         if not csv_and_xlsx_file_validatation(request.data.get(Constants.SAMPLE_DATASET)):
             return Response(
-                {Constants.SAMPLE_DATASET: ["Invalid Sample dataset file (or) Atleast 5 rows should be available. please upload valid file"]}, 400
+                {
+                    Constants.SAMPLE_DATASET: [
+                        "Invalid Sample dataset file (or) Atleast 5 rows should be available. please upload valid file"
+                    ]
+                },
+                400,
             )
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
