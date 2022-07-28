@@ -183,7 +183,7 @@ class ParticipantDatasetsViewSet(GenericViewSet):
     def dataset_filters(self, request, *args, **kwargs):
         """This function get the filter args in body. based on the filter args orm filters the data."""
         data = request.data
-        org_id = data.pop(Constants.ORG_ID, None)
+        org_id = data.pop(Constants.ORG_ID, "")
         user_id = data.pop(Constants.USER_ID, "")
         exclude = {Constants.USER_MAP_USER: user_id} if org_id else {}
         filters = {Constants.USER_MAP_ORGANIZATION: org_id} if org_id else {Constants.USER_MAP_USER: user_id}
@@ -215,10 +215,10 @@ class ParticipantDatasetsViewSet(GenericViewSet):
     def filters_data(self, request, *args, **kwargs):
         """This function provides the filters data"""
         data = request.data
-        others = data.pop(Constants.OTHERS)
-        user_id = data.pop(Constants.USER_ID)
-        filters = {Constants.USER_MAP_USER: user_id} if user_id and not others else {}
-        exclude = {Constants.USER_MAP_USER: user_id} if others else {}
+        org_id = data.pop(Constants.ORG_ID, "")
+        user_id = data.pop(Constants.USER_ID, "")
+        exclude = {Constants.USER_MAP_USER: user_id} if org_id else {}
+        filters = {Constants.USER_MAP_ORGANIZATION: org_id} if org_id else {Constants.USER_MAP_USER: user_id}
         try:
             geography = (
                 Datasets.objects.all()

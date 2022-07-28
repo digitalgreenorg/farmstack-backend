@@ -789,7 +789,7 @@ class DatahubDatasetsViewSet(GenericViewSet):
     def dataset_filters(self, request, *args, **kwargs):
         """This function get the filter args in body. based on the filter args orm filters the data."""
         data = request.data
-        others = data.pop(Constants.OTHERS)
+        others = data.pop(Constants.OTHERS, "")
         user_id = data.pop(Constants.USER_ID)
         filters = {Constants.USER_MAP_USER: user_id} if user_id and not others else {}
         exclude = {Constants.USER_MAP_USER: user_id} if others else {}
@@ -821,7 +821,7 @@ class DatahubDatasetsViewSet(GenericViewSet):
     def filters_data(self, request, *args, **kwargs):
         """This function provides the filters data"""
         data = request.data
-        others = data.pop(Constants.OTHERS)
+        others = data.pop(Constants.OTHERS, "")
         user_id = data.pop(Constants.USER_ID)
         filters = {Constants.USER_MAP_USER: user_id} if user_id and not others else {}
         exclude = {Constants.USER_MAP_USER: user_id} if others else {}

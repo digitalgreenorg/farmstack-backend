@@ -316,7 +316,6 @@ class VerifyLoginOTPViewset(GenericViewSet):
                     {"message": "OTP expired verify again!"},
                     status=status.HTTP_401_UNAUTHORIZED,
                 )
-
         except Exception as e:
             LOGGER.warning(e)
 
