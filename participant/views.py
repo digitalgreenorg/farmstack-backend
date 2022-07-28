@@ -166,8 +166,19 @@ class ParticipantDatasetsViewSet(GenericViewSet):
 
     def update(self, request, *args, **kwargs):
         """PUT method: update or send a PUT request on an object of the Product model"""
+        data = request.data
+        if data.get(Constants.SAMPLE_DATASET):
+            if not csv_and_xlsx_file_validatation(data.get(Constants.SAMPLE_DATASET)):
+                return Response(
+                    {
+                        Constants.SAMPLE_DATASET: [
+                            "Invalid Sample dataset file (or) Atleast 5 rows should be available. please upload valid file"
+                        ]
+                    },
+                    400,
+                )
         instance = self.get_object()
-        serializer = self.get_serializer(instance, data=request.data, partial=True)
+        serializer = self.get_serializer(instance, data=data, partial=True)
         serializer.is_valid(raise_exception=True)
         self.perform_create(serializer)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
