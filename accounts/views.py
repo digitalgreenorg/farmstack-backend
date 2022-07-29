@@ -185,7 +185,7 @@ class ResendOTPViewset(GenericViewSet):
             if not user:
                 return Response(
                     {"email": "User not registered"},
-                    status=status.HTTP_400_BAD_REQUEST,
+                    status=status.HTTP_401_UNAUTHORIZED,
                 )
 
             # check if user is suspended
@@ -194,9 +194,9 @@ class ResendOTPViewset(GenericViewSet):
                     return Response(
                         {
                             "email": email,
-                            "message": "Your account is suspended, please try after some time",
+                            "message": "Maximum attempts taken, please retry after some time"
                         },
-                        status=status.HTTP_401_UNAUTHORIZED,
+                        status=status.HTTP_403_FORBIDDEN,
                     )
 
             gen_key = login_helper.generateKey()
@@ -256,15 +256,8 @@ class VerifyLoginOTPViewset(GenericViewSet):
         user_map = UserOrganizationMap.objects.select_related("user").filter(user__email=email).first()
         user = User.objects.filter(email=email)
         user = user.first()
-        try:
-            # get current user otp object's data
-            correct_otp = int(cache.get(email)["user_otp"])
-            otp_created = cache.get(email)["updation_time"]
-            # increment the otp counter
-            otp_attempt = int(cache.get(email)["otp_attempt"]) + 1
-            # update the expiry duration of otp
-            new_duration = settings.OTP_DURATION - (datetime.datetime.now().second - otp_created.second)
 
+        try:
             # check if user is suspended
             if cache.get(user.id) is not None:
                 if cache.get(user.id)["email"] == email and cache.get(user.id)["cache_type"] == "user_suspension":
@@ -276,60 +269,77 @@ class VerifyLoginOTPViewset(GenericViewSet):
                         status=status.HTTP_403_FORBIDDEN,
                     )
 
-            # On successful validation generate JWT tokens
-            if correct_otp == int(otp_entered) and cache.get(email)["email"] == email:
-                cache.delete(email)
-                refresh = RefreshToken.for_user(user)
-                return Response(
-                    {
-                        "user": user.id,
-                        "user_map": user_map.id if user_map else None,
-                        "org_id": user_map.organization_id if user_map else None,
-                        "email": user.email,
-                        "status": user.status,
-                        "on_boarded": user.on_boarded,
-                        "role": str(user.role),
-                        "role_id": str(user.role_id),
-                        "refresh": str(refresh),
-                        "access": str(refresh.access_token),
-                        "message": "Successfully logged in!",
-                    },
-                    status=status.HTTP_201_CREATED,
-                )
+            elif cache.get(user.id) is None:
+                if cache.get(email) is not None:
+                    # get current user otp object's data
+                    user_otp = cache.get(email)
+                    correct_otp = user_otp["email"] if user_otp else None
+                    otp_created = cache.get(email)["updation_time"] if user_otp else None
+                    # increment the otp counter
+                    otp_attempt = int(cache.get(email)["otp_attempt"]) + 1 if user_otp else None
+                    # update the expiry duration of otp
+                    new_duration = settings.OTP_DURATION - (datetime.datetime.now().second - otp_created.second) if user_otp else None
 
-            elif correct_otp != int(otp_entered) or cache.get(email)["email"] != email:
-                # check for otp limit
-                if cache.get(email)["otp_attempt"] < int(settings.OTP_LIMIT):
-                    # update the user otp data in cache
-                    login_helper.set_user_otp(email, correct_otp, new_duration, otp_attempt)
-                    print(cache.get(email))
+                    # On successful validation generate JWT tokens
+                    if correct_otp == int(otp_entered) and cache.get(email)["email"] == email:
+                        cache.delete(email)
+                        refresh = RefreshToken.for_user(user)
+                        return Response(
+                            {
+                                "user": user.id,
+                                "user_map": user_map.id if user_map else None,
+                                "org_id": user_map.organization_id if user_map else None,
+                                "email": user.email,
+                                "status": user.status,
+                                "on_boarded": user.on_boarded,
+                                "role": str(user.role),
+                                "role_id": str(user.role_id),
+                                "refresh": str(refresh),
+                                "access": str(refresh.access_token),
+                                "message": "Successfully logged in!",
+                            },
+                            status=status.HTTP_201_CREATED,
+                        )
 
-                    return Response(
-                        {
-                            "message": "Invalid OTP, remaining attempts left: "
-                            + str((int(settings.OTP_LIMIT) - int(otp_attempt)) + 1)
-                        },
-                        status=status.HTTP_401_UNAUTHORIZED,
-                    )
-                else:
-                    # On maximum invalid OTP attempts set user status to False
-                    cache.delete(email)
-                    login_helper.user_suspension(user.id, email)
-                    # user.status = False
-                    # user.save()
+                    elif correct_otp != int(otp_entered)  or cache.get(email)["email"] != email:
+                        # check for otp limit
+                        if cache.get(email)["otp_attempt"] < int(settings.OTP_LIMIT):
+                            # update the user otp data in cache
+                            login_helper.set_user_otp(email, correct_otp, new_duration, otp_attempt)
+                            print(cache.get(email))
 
-                    return Response(
-                        {"message": "Maximum attempts taken, please retry after some time"},
-                        status=status.HTTP_403_FORBIDDEN,
-                    )
-            # check otp expiration
-            elif cache.get(email) is None:
-                return Response(
-                    {"message": "OTP expired verify again!"},
-                    status=status.HTTP_401_UNAUTHORIZED,
-                )
+                            return Response(
+                                {
+                                    "message": "Invalid OTP, remaining attempts left: "
+                                    + str((int(settings.OTP_LIMIT) - int(otp_attempt)) + 1)
+                                },
+                                status=status.HTTP_401_UNAUTHORIZED,
+                            )
+                        else:
+                            # On maximum invalid OTP attempts set user status to False
+                            cache.delete(email)
+                            login_helper.user_suspension(user.id, email)
+                            # user.status = False
+                            # user.save()
+
+                            return Response(
+                                        {
+                                            "email": email,
+                                            "message": "Maximum attempts taken, please retry after some time"
+                                        },
+                                        status=status.HTTP_403_FORBIDDEN,
+                                    )
+                    # check otp expiration
+                    elif cache.get(email) is None:
+                        return Response(
+                            {"message": "OTP expired verify again!"},
+                            status=status.HTTP_401_UNAUTHORIZED,
+                        )
 
         except Exception as e:
-            LOGGER.warning(e)
+            LOGGER.error(e)
+            print("Please click on resend OTP and enter the new OTP")
 
-        return Response({"message": "Not allowed"}, status=status.HTTP_400_BAD_REQUEST)
+        return Response({"message": "Please click on resend OTP and enter the new OTP"}, 
+                        status=status.HTTP_403_FORBIDDEN,
+                        )
