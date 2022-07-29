@@ -111,7 +111,7 @@ class LoginViewset(GenericViewSet):
             if not user:
                 return Response(
                     {"email": "User not registered"},
-                    status=status.HTTP_400_BAD_REQUEST,
+                    status=status.HTTP_401_UNAUTHORIZED,
                 )
 
             # check if user is suspended
@@ -122,7 +122,7 @@ class LoginViewset(GenericViewSet):
                             "email": email,
                             "message": "Your account is suspended, please try after some time",
                         },
-                        status=status.HTTP_401_UNAUTHORIZED,
+                        status=status.HTTP_403_FORBIDDEN,
                     )
 
             # generate and send OTP to the the user
