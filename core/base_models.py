@@ -10,7 +10,8 @@ def auto_str(cls):
 
     cls.__str__ = __str__
     return cls
-    
+
+
 class TimeStampMixin(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

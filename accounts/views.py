@@ -192,10 +192,7 @@ class ResendOTPViewset(GenericViewSet):
             if cache.get(user.id) is not None:
                 if cache.get(user.id)["email"] == email and cache.get(user.id)["cache_type"] == "user_suspension":
                     return Response(
-                        {
-                            "email": email,
-                            "message": "Maximum attempts taken, please retry after some time"
-                        },
+                        {"email": email, "message": "Maximum attempts taken, please retry after some time"},
                         status=status.HTTP_403_FORBIDDEN,
                     )
 
@@ -262,10 +259,7 @@ class VerifyLoginOTPViewset(GenericViewSet):
             if cache.get(user.id) is not None:
                 if cache.get(user.id)["email"] == email and cache.get(user.id)["cache_type"] == "user_suspension":
                     return Response(
-                        {
-                            "email": email,
-                            "message": "Maximum attempts taken, please retry after some time"
-                        },
+                        {"email": email, "message": "Maximum attempts taken, please retry after some time"},
                         status=status.HTTP_403_FORBIDDEN,
                     )
 
@@ -278,7 +272,11 @@ class VerifyLoginOTPViewset(GenericViewSet):
                     # increment the otp counter
                     otp_attempt = int(cache.get(email)["otp_attempt"]) + 1 if user_otp else None
                     # update the expiry duration of otp
-                    new_duration = settings.OTP_DURATION - (datetime.datetime.now().second - otp_created.second) if user_otp else None
+                    new_duration = (
+                        settings.OTP_DURATION - (datetime.datetime.now().second - otp_created.second)
+                        if user_otp
+                        else None
+                    )
 
                     # On successful validation generate JWT tokens
                     if correct_otp == int(otp_entered) and cache.get(email)["email"] == email:
@@ -301,7 +299,7 @@ class VerifyLoginOTPViewset(GenericViewSet):
                             status=status.HTTP_201_CREATED,
                         )
 
-                    elif correct_otp != int(otp_entered)  or cache.get(email)["email"] != email:
+                    elif correct_otp != int(otp_entered) or cache.get(email)["email"] != email:
                         # check for otp limit
                         if cache.get(email)["otp_attempt"] < int(settings.OTP_LIMIT):
                             # update the user otp data in cache
@@ -323,12 +321,9 @@ class VerifyLoginOTPViewset(GenericViewSet):
                             # user.save()
 
                             return Response(
-                                        {
-                                            "email": email,
-                                            "message": "Maximum attempts taken, please retry after some time"
-                                        },
-                                        status=status.HTTP_403_FORBIDDEN,
-                                    )
+                                {"email": email, "message": "Maximum attempts taken, please retry after some time"},
+                                status=status.HTTP_403_FORBIDDEN,
+                            )
                     # check otp expiration
                     elif cache.get(email) is None:
                         return Response(
@@ -340,6 +335,7 @@ class VerifyLoginOTPViewset(GenericViewSet):
             LOGGER.error(e)
             print("Please click on resend OTP and enter the new OTP")
 
-        return Response({"message": "Please click on resend OTP and enter the new OTP"}, 
-                        status=status.HTTP_403_FORBIDDEN,
-                        )
+        return Response(
+            {"message": "Please click on resend OTP and enter the new OTP"},
+            status=status.HTTP_403_FORBIDDEN,
+        )
