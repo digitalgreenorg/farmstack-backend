@@ -267,15 +267,13 @@ class VerifyLoginOTPViewset(GenericViewSet):
                 if cache.get(email) is not None:
                     # get current user otp object's data
                     user_otp = cache.get(email)
-                    correct_otp = user_otp["email"] if user_otp else None
-                    otp_created = cache.get(email)["updation_time"] if user_otp else None
+                    correct_otp = int(user_otp["user_otp"])
+                    otp_created = user_otp["updation_time"]
                     # increment the otp counter
-                    otp_attempt = int(cache.get(email)["otp_attempt"]) + 1 if user_otp else None
+                    otp_attempt = int(user_otp["otp_attempt"]) + 1
                     # update the expiry duration of otp
                     new_duration = (
                         settings.OTP_DURATION - (datetime.datetime.now().second - otp_created.second)
-                        if user_otp
-                        else None
                     )
 
                     # On successful validation generate JWT tokens
