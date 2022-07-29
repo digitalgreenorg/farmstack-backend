@@ -232,17 +232,17 @@ class ParticipantDatasetsViewSet(GenericViewSet):
         filters = {Constants.USER_MAP_ORGANIZATION: org_id} if org_id else {Constants.USER_MAP_USER: user_id}
         try:
             geography = (
-                Datasets.objects.all()
+                Datasets.objects.all().select_related(Constants.USER_MAP_ORGANIZATION)
                 .values_list(Constants.GEOGRAPHY, flat=True)
                 .distinct()
-                .filter(**filters)
+                .filter(**filters, status=True, user_map__user__role_id=3)
                 .exclude(geography__isnull=True, geography__exact="", **exclude )
             )
             crop_detail = (
-                Datasets.objects.all()
+                Datasets.objects.all().select_related(Constants.USER_MAP_ORGANIZATION)
                 .values_list(Constants.CROP_DETAIL, flat=True)
-                .distinct()
-                .filter(**filters)
+                .distinct() 
+                .filter(**filters, status=True, user_map__user__role_id=3)
                 .exclude(crop_detail__isnull=True, crop_detail__exact="", **exclude )
             )
         except Exception as error:  # type: ignore
