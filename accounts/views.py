@@ -264,6 +264,18 @@ class VerifyLoginOTPViewset(GenericViewSet):
             otp_attempt = int(cache.get(email)["otp_attempt"]) + 1
             # update the expiry duration of otp
             new_duration = settings.OTP_DURATION - (datetime.datetime.now().second - otp_created.second)
+
+            # check if user is suspended
+            if cache.get(user.id) is not None:
+                if cache.get(user.id)["email"] == email and cache.get(user.id)["cache_type"] == "user_suspension":
+                    return Response(
+                        {
+                            "email": email,
+                            "message": "Maximum attempts taken, please retry after some time"
+                        },
+                        status=status.HTTP_403_FORBIDDEN,
+                    )
+
             # On successful validation generate JWT tokens
             if correct_otp == int(otp_entered) and cache.get(email)["email"] == email:
                 cache.delete(email)

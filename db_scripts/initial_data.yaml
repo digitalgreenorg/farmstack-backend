@@ -75,7 +75,7 @@
   fields:
     created_at: "2022-07-01 05:29:55.463786"
     updated_at: "2022-07-01 05:29:55.464100"
-    first_name: "Jayashankar"
+    first_name: "Jayasankar"
     email: "jayasankar@digitalgreen.org"
     status: True
     role: 1
@@ -93,7 +93,7 @@
   fields:
     created_at: "2022-07-01 05:30:55.463786"
     updated_at: "2022-07-01 05:30:55.464100"
-    first_name: "Gautam"
+    first_name: "Preeti"
     email: "preeti@digitalgreen.org"
     status: True
     role: 1
@@ -102,8 +102,26 @@
   fields:
     created_at: "2022-07-01 05:30:55.463786"
     updated_at: "2022-07-01 05:30:55.464100"
-    first_name: "Gautam"
+    first_name: "Razak"
     email: "razak@digitalgreen.org"
+    status: True
+    role: 1
+- model: accounts.User
+  pk: "c99e6cab-c0b9-4c49-ac60-c6c2d6c8f5b3"
+  fields:
+    created_at: "2022-07-01 05:30:55.463786"
+    updated_at: "2022-07-01 05:30:55.464100"
+    first_name: "Ramaskanda"
+    email: "ramaskanda@digitalgreen.org"
+    status: True
+    role: 1
+- model: accounts.User
+  pk: "6a153a20-e6f0-4978-a1a4-ea8918d8f167"
+  fields:
+    created_at: "2022-07-01 05:30:55.463786"
+    updated_at: "2022-07-01 05:30:55.464100"
+    first_name: "Kanhaiya"
+    email: "kanhaiya@digitalgreen.org"
     status: True
     role: 1
 
