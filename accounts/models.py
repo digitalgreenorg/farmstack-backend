@@ -40,9 +40,9 @@ class UserRole(models.Model):
 
     ROLES = (
         ("ADMIN", "ADMIN"),
+        ("TEAM MEMBER", "TEAM MEMBER"),
         ("PARTICIPANT ROOT", "PARTICIPANT ROOT"),
         ("PARTICIPANT TEAM MEMBER", "PARTICIPANT TEAM MEMBER"),
-        ("TEAM MEMBER", "TEAM MEMBER"),
         ("GUEST", "GUEST"),
     )
 
