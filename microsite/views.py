@@ -1,3 +1,12 @@
+import logging
+from core.utils import (
+    DefaultPagination,
+    CustomPagination,
+    Utils,
+    csv_and_xlsx_file_validatation,
+    date_formater,
+    read_contents_from_csv_or_xlsx_file,
+)
 from django.shortcuts import render
 from accounts.models import User, UserRole
 from core.constants import Constants
@@ -8,18 +17,14 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.viewsets import GenericViewSet
 
-
-class DefaultPagination(pagination.PageNumberPagination):
-    """
-    Configure Pagination
-    """
-    page_size = 5
+LOGGER = logging.getLogger(__name__)
 
 
 class OrganizationMicrositeViewSet(GenericViewSet):
     """Organization viewset for microsite"""
+    permission_classes = []
 
-    @action(detail=False, methods=["get"], permission_classes=[])
+    @action(detail=False, methods=["get"])
     def admin_organization(self, request):
         """GET method: retrieve an object of Organization using User ID of the User (IMPORTANT: Using USER ID instead of Organization ID)"""
         user_obj = User.objects.filter(role_id=1).first()
@@ -41,15 +46,37 @@ class OrganizationMicrositeViewSet(GenericViewSet):
 class DatasetsMicrositeViewSet(GenericViewSet):
     """Datasets viewset for microsite"""
     serializer_class = DatasetsMicrositeSerializer
-    queryset = Datasets.objects.all()
-    pagination_class = DefaultPagination
+    pagination_class = CustomPagination
+    permission_classes = []
 
     def list(self, request):
         """GET method: retrieve a list of dataset objects"""
-        page = self.paginate_queryset(self.queryset)
+        dataset_queryset = Datasets.objects.filter(status=True).all()
+        page = self.paginate_queryset(dataset_queryset)
         if page is not None:
             serializer = self.get_serializer(page, many=True)
             return self.get_paginated_response(serializer.data)
-
         serializer = self.get_serializer(self.queryset, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
+
+    @action(detail=False, methods=["post"])
+    def dataset_filters(self, request, *args, **kwargs):
+        """This function get the filter args in body. based on the filter args orm filters the data."""
+        data = request.data
+        range = {}
+        created_at__range = request.data.pop(Constants.CREATED_AT__RANGE, None)
+        if created_at__range:
+            range[Constants.CREATED_AT__RANGE] = date_formater(created_at__range)
+        try:
+            data = (
+                Datasets.objects.filter(status=True, **data, **range)
+                .order_by(Constants.UPDATED_AT)
+                .all()
+            )
+        except Exception as error:  # type: ignore
+            LOGGER.error("Error while filtering the datasets. ERROR: %s", error)
+            return Response(f"Invalid filter fields: {list(request.data.keys())}", status=500)
+
+        page = self.paginate_queryset(data)
+        serializer = DatasetsMicrositeSerializer(page, many=True)
+        return self.get_paginated_response(serializer.data)
