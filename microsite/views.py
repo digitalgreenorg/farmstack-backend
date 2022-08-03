@@ -51,8 +51,16 @@ class DatasetsMicrositeViewSet(GenericViewSet):
 
     def list(self, request):
         """GET method: retrieve a list of dataset objects"""
-        dataset_queryset = Datasets.objects.filter(status=True).all()
-        page = self.paginate_queryset(dataset_queryset)
+        dataset = (
+                Datasets.objects.select_related(
+                    Constants.USER_MAP, Constants.USER_MAP_USER, Constants.USER_MAP_ORGANIZATION
+                )
+                .filter(user_map__user__status=True, status=True)
+                .order_by(Constants.UPDATED_AT)
+                .all()
+            )
+
+        page = self.paginate_queryset(dataset)
         if page is not None:
             serializer = self.get_serializer(page, many=True)
             return self.get_paginated_response(serializer.data)
