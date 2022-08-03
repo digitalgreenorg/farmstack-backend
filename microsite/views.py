@@ -87,7 +87,7 @@ class DatasetsMicrositeViewSet(GenericViewSet):
         serializer = DatasetsMicrositeSerializer(page, many=True)
         return self.get_paginated_response(serializer.data)
 
-    @action(detail=False, methods=["post"])
+    @action(detail=False, methods=["get"])
     def filters_data(self, request, *args, **kwargs):
         """This function provides the filters data"""
         try:
