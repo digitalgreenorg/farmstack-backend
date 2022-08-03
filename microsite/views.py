@@ -12,7 +12,7 @@ from django.shortcuts import render
 from accounts.models import User, UserRole
 from core.constants import Constants
 from datahub.models import Organization, Datasets, UserOrganizationMap
-from microsite.serializers import OrganizationMicrositeSerializer, DatasetsMicrositeSerializer
+from microsite.serializers import OrganizationMicrositeSerializer, DatasetsMicrositeSerializer, ContactFormSerializer
 from rest_framework import pagination, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
@@ -29,10 +29,10 @@ class OrganizationMicrositeViewSet(GenericViewSet):
     @action(detail=False, methods=["get"])
     def admin_organization(self, request):
         """GET method: retrieve an object of Organization using User ID of the User (IMPORTANT: Using USER ID instead of Organization ID)"""
-        user_obj = User.objects.filter(role_id=1).first()
+        datahub_admin = User.objects.filter(role_id=1).first()
         user_org_queryset = UserOrganizationMap.objects.prefetch_related(
             Constants.USER, Constants.ORGANIZATION
-        ).filter(user=user_obj.id)
+        ).filter(user=datahub_admin.id)
 
         if not user_org_queryset:
             data = {Constants.ORGANIZATION: None}
@@ -125,3 +125,28 @@ class DatasetsMicrositeViewSet(GenericViewSet):
             data[Constants.CONTENT] = read_contents_from_csv_or_xlsx_file(data.get(Constants.SAMPLE_DATASET))
             return Response(data, status=status.HTTP_200_OK)
         return Response({}, status=status.HTTP_200_OK)
+
+
+class ContactFormViewSet(GenericViewSet):
+    """Contact Form for guest users to mail queries or application to become participant on datahub"""
+
+    serializer_class = ContactFormSerializer
+    permission_classes = []
+
+    def create(self, request):
+        """POST method to create a query and mail it to the datahub admin"""
+        datahub_admin = [User.objects.filter(role_id=1).first().email]
+        # datahub_admin = [request.data["datahub_admin"]]
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        # render email from query_email template
+        email_render = render(request, "query_email.html", serializer.data)
+        mail_body = email_render.content.decode("utf-8")
+        Utils().send_email(
+            to_email=datahub_admin,
+            content=mail_body,
+            subject=serializer.data["subject"],
+        )
+
+        return Response({"Message": "Your query is submitted! Thank you."}, status=status.HTTP_200_OK)
