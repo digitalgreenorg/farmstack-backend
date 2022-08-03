@@ -1,5 +1,4 @@
-import datetime
-import logging
+import datetime, logging
 from asyncio import exceptions
 from asyncio.log import logger
 
@@ -272,9 +271,7 @@ class VerifyLoginOTPViewset(GenericViewSet):
                     # increment the otp counter
                     otp_attempt = int(user_otp["otp_attempt"]) + 1
                     # update the expiry duration of otp
-                    new_duration = (
-                        settings.OTP_DURATION - (datetime.datetime.now().second - otp_created.second)
-                    )
+                    new_duration = settings.OTP_DURATION - (datetime.datetime.now().second - otp_created.second)
 
                     # On successful validation generate JWT tokens
                     if correct_otp == int(otp_entered) and cache.get(email)["email"] == email:

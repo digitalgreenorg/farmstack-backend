@@ -65,6 +65,7 @@ INSTALLED_APPS = [
     "accounts",
     "datahub",
     "participant",
+    "microsite",
 ]
 # Use nose to run all tests
 TEST_RUNNER = "django_nose.NoseTestSuiteRunner"
