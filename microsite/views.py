@@ -87,6 +87,27 @@ class DatasetsMicrositeViewSet(GenericViewSet):
         serializer = DatasetsMicrositeSerializer(page, many=True)
         return self.get_paginated_response(serializer.data)
 
+    @action(detail=False, methods=["post"])
+    def filters_data(self, request, *args, **kwargs):
+        """This function provides the filters data"""
+        try:
+            geography = (
+                Datasets.objects.all()
+                .values_list(Constants.GEOGRAPHY, flat=True)
+                .distinct()
+                .exclude(geography__isnull=True, geography__exact="")
+            )
+            crop_detail = (
+                Datasets.objects.all()
+                .values_list(Constants.CROP_DETAIL, flat=True)
+                .distinct()
+                .exclude(crop_detail__isnull=True, crop_detail__exact="")
+            )
+        except Exception as error:  # type: ignore
+            logging.error("Error while filtering the datasets. ERROR: %s", error)
+            return Response(f"Invalid filter fields: {list(request.data.keys())}", status=500)
+        return Response({"geography": geography, "crop_detail": crop_detail}, status=200)
+
     def retrieve(self, request, pk):
         """GET method: retrieve an object or instance of the Product model"""
         data = Datasets.objects.select_related(
