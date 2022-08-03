@@ -41,3 +41,15 @@ class DatasetsMicrositeSerializer(serializers.ModelSerializer):
 
         model = Datasets
         exclude = ["user_map", "created_at", "updated_at"]
+
+
+class ContactFormSerializer(serializers.Serializer):
+    """Contact Form serilizer for microsite guest users or visitors"""
+
+    SUBJECT_CHOICES = (("Become a Participant", "become_participant"), ("Other queries", "other_queries"))
+    first_name = serializers.CharField()
+    last_name = serializers.CharField()
+    email = serializers.EmailField()
+    contact_number = serializers.CharField()
+    subject = serializers.ChoiceField(choices=SUBJECT_CHOICES)
+    describe_query = serializers.CharField()
