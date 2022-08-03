@@ -1,5 +1,4 @@
-from accounts.models import User, UserRole
-from accounts.serializers import UserSerializer
+from accounts.models import User
 from datahub.models import Organization, Datasets
 from rest_framework import serializers
 
@@ -34,4 +33,4 @@ class DatasetsMicrositeSerializer(serializers.ModelSerializer):
     class Meta:
         """_summary_"""
         model = Datasets
-        exclude = ["id", "user_map", "created_at", "updated_at"]
+        exclude = ["user_map", "created_at", "updated_at"]
