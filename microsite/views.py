@@ -7,6 +7,7 @@ from core.utils import (
     date_formater,
     read_contents_from_csv_or_xlsx_file,
 )
+from django.db.models import Q
 from django.shortcuts import render
 from accounts.models import User, UserRole
 from core.constants import Constants
@@ -88,3 +89,18 @@ class DatasetsMicrositeViewSet(GenericViewSet):
         page = self.paginate_queryset(data)
         serializer = DatasetsMicrositeSerializer(page, many=True)
         return self.get_paginated_response(serializer.data)
+
+    def retrieve(self, request, pk):
+        """GET method: retrieve an object or instance of the Product model"""
+        data = Datasets.objects.select_related(
+                Constants.USER_MAP,
+                Constants.USER_MAP_USER,
+                Constants.USER_MAP_ORGANIZATION,
+            ).filter(Q(user_map__user__status=True, status=True, id=pk) & (Q(user_map__user__role=1) | Q(user_map__user__role=3)))
+
+        serializer = DatasetsMicrositeSerializer(data, many=True)
+        if serializer.data:
+            data = serializer.data[0]
+            data[Constants.CONTENT] = read_contents_from_csv_or_xlsx_file(data.get(Constants.SAMPLE_DATASET))
+            return Response(data, status=status.HTTP_200_OK)
+        return Response({}, status=status.HTTP_200_OK)
