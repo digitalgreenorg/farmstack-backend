@@ -1,5 +1,6 @@
+from core.utils import Constants
 from accounts.models import User
-from datahub.models import Organization, Datasets
+from datahub.models import Organization, Datasets, DatahubDocuments
 from rest_framework import serializers
 
 
@@ -55,3 +56,17 @@ class ContactFormSerializer(serializers.Serializer):
     contact_number = serializers.CharField()
     subject = serializers.CharField()
     describe_query = serializers.CharField()
+
+
+class PolicyDocumentSerializer(serializers.ModelSerializer):
+    """PolicyDocumentSerializer class"""
+
+    governing_law = serializers.CharField()
+    privacy_policy = serializers.CharField()
+    tos = serializers.CharField()
+    limitations_of_liabilities = serializers.CharField()
+    warranty = serializers.CharField()
+
+    class Meta:
+        model = DatahubDocuments
+        fields = Constants.ALL

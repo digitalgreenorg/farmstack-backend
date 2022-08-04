@@ -7,21 +7,24 @@ from core.utils import (
     date_formater,
     read_contents_from_csv_or_xlsx_file,
 )
+from django.conf import settings
 from django.db.models import Q
 from django.shortcuts import render
 from accounts.models import User, UserRole
 from core.constants import Constants
-from datahub.models import Organization, Datasets, UserOrganizationMap
+from datahub.models import Organization, Datasets, UserOrganizationMap, DatahubDocuments
 from microsite.serializers import (
     OrganizationMicrositeSerializer,
     DatasetsMicrositeSerializer,
     ContactFormSerializer,
     UserSerializer,
+    PolicyDocumentSerializer,
 )
 from rest_framework import status
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.viewsets import GenericViewSet
+from utils import file_operations
 
 LOGGER = logging.getLogger(__name__)
 
@@ -185,6 +188,40 @@ class ContactFormViewSet(GenericViewSet):
             )
 
             return Response({"Message": "Your query is submitted! Thank you."}, status=status.HTTP_200_OK)
+
+        except Exception as error:
+            LOGGER.error(error, exc_info=True)
+            return Response({}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+class DocumentsMicrositeViewSet(GenericViewSet):
+    """View for uploading all the datahub documents and content"""
+
+    serializer_class = PolicyDocumentSerializer
+    queryset = DatahubDocuments.objects.all()
+    permission_classes = []
+
+    @action(detail=False, methods=["get"])
+    def legal_documents(self, request):
+        """GET method: retrieve an object or instance of the Product model"""
+        try:
+            file_paths = file_operations.file_path(settings.DOCUMENTS_URL)
+            datahub_obj = DatahubDocuments.objects.first()
+
+            if not datahub_obj and not file_paths:
+                data = {"Content": None, "Documents": None}
+                return Response(data, status=status.HTTP_200_OK)
+            elif not datahub_obj:
+                data = {"Content": None, "Documents": file_paths}
+                return Response(data, status=status.HTTP_200_OK)
+            elif datahub_obj and not file_paths:
+                documents_serializer = PolicyDocumentSerializer(datahub_obj)
+                data = {"Content": documents_serializer.data, "Documents": None}
+                return Response(data, status=status.HTTP_200_OK)
+            elif datahub_obj and file_paths:
+                documents_serializer = PolicyDocumentSerializer(datahub_obj)
+                data = {"Content": documents_serializer.data, "Documents": file_paths}
+                return Response(data, status=status.HTTP_200_OK)
 
         except Exception as error:
             LOGGER.error(error, exc_info=True)
