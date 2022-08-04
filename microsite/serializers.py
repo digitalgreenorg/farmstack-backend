@@ -13,20 +13,20 @@ class OrganizationMicrositeSerializer(serializers.ModelSerializer):
         exclude = ["id", "created_at", "updated_at"]
 
 
-class UserDatasetSerializer(serializers.ModelSerializer):
+class UserSerializer(serializers.ModelSerializer):
     """User serializer for Datasets of microsite"""
 
     class Meta:
         """_summary_"""
 
         model = User
-        fields = ["first_name", "email", "phone_number"]
+        fields = ["first_name", "last_name", "email", "phone_number"]
 
 
 class DatasetsMicrositeSerializer(serializers.ModelSerializer):
     """Datasets Serializer for microsite"""
 
-    user = UserDatasetSerializer(
+    user = UserSerializer(
         read_only=False,
         required=False,
         allow_null=True,
@@ -40,7 +40,7 @@ class DatasetsMicrositeSerializer(serializers.ModelSerializer):
         """_summary_"""
 
         model = Datasets
-        exclude = ["user_map", "created_at", "updated_at"]
+        exclude = ["user_map"]
 
 
 class ContactFormSerializer(serializers.Serializer):
