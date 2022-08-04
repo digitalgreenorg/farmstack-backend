@@ -773,6 +773,10 @@ class DatahubDatasetsViewSet(GenericViewSet):
     def update(self, request, *args, **kwargs):
         """PUT method: update or send a PUT request on an object of the Product model"""
         data = request.data
+        print(data)
+
+        data = {key: value for key, value in data.items() if value != "null" and value !=""}
+        print(data)
         if data.get(Constants.SAMPLE_DATASET):
             if not csv_and_xlsx_file_validatation(data.get(Constants.SAMPLE_DATASET)):
                 return Response(
@@ -832,7 +836,7 @@ class DatahubDatasetsViewSet(GenericViewSet):
     def filters_data(self, request, *args, **kwargs):
         """This function provides the filters data"""
         data = request.data
-        others = data.pop(Constants.OTHERS, "")
+        others = data.pop(Constants.OTHERS, None)
         user_id = data.pop(Constants.USER_ID)
         filters = {Constants.USER_MAP_USER: user_id} if user_id and not others else {}
         exclude = {Constants.USER_MAP_USER: user_id} if others else {}
@@ -841,16 +845,21 @@ class DatahubDatasetsViewSet(GenericViewSet):
                 Datasets.objects.all()
                 .values_list(Constants.GEOGRAPHY, flat=True)
                 .distinct()
-                .filter(**filters)
-                .exclude(geography__isnull=True, geography__exact="", **exclude)
+                .filter(status=True, **filters)
+                .exclude(geography="null")
+                .exclude(geography__isnull=True)
+                .exclude(geography="", **exclude)
             )
             crop_detail = (
                 Datasets.objects.all()
                 .values_list(Constants.CROP_DETAIL, flat=True)
                 .distinct()
-                .filter(**filters)
-                .exclude(crop_detail__isnull=True, crop_detail__exact="", **exclude)
+                .filter(status=True, **filters)
+                .exclude(crop_detail="null")
+                .exclude(crop_detail__isnull=True)
+                .exclude(crop_detail="", **exclude)
             )
+            print(crop_detail.query)
         except Exception as error:  # type: ignore
             logging.error("Error while filtering the datasets. ERROR: %s", error)
             return Response(f"Invalid filter fields: {list(request.data.keys())}", status=500)

@@ -75,7 +75,7 @@
   fields:
     created_at: "2022-07-01 05:29:55.463786"
     updated_at: "2022-07-01 05:29:55.464100"
-    first_name: "Jayasankar"
+    first_name: "Jayashankar"
     email: "jayasankar@digitalgreen.org"
     status: True
     role: 1
@@ -88,12 +88,13 @@
     email: "gautam@digitalgreen.org"
     status: True
     role: 1
+
 - model: accounts.User
   pk: "fa156187-0941-4e5c-b6d1-cd5dd7570227"
   fields:
     created_at: "2022-07-01 05:30:55.463786"
     updated_at: "2022-07-01 05:30:55.464100"
-    first_name: "Preeti"
+    first_name: "Gautam"
     email: "preeti@digitalgreen.org"
     status: True
     role: 1
@@ -102,380 +103,26 @@
   fields:
     created_at: "2022-07-01 05:30:55.463786"
     updated_at: "2022-07-01 05:30:55.464100"
-    first_name: "Razak"
+    first_name: "Gautam"
+    email: "preeti@digitalgreen.org"
+    status: True
+    role: 1
+- model: accounts.User
+  pk: "fa156187-0941-4e5c-b6d1-cd5dd7570227"
+  fields:
+    created_at: "2022-07-01 05:30:55.463786"
+    updated_at: "2022-07-01 05:30:55.464100"
+    first_name: "Gautam"
     email: "razak@digitalgreen.org"
     status: True
     role: 1
+
 - model: accounts.User
-  pk: "c99e6cab-c0b9-4c49-ac60-c6c2d6c8f5b3"
+  pk: "f8a24929-ab2c-44f0-bd3c-664db4522ef2
   fields:
     created_at: "2022-07-01 05:30:55.463786"
     updated_at: "2022-07-01 05:30:55.464100"
-    first_name: "Ramaskanda"
-    email: "ramaskanda@digitalgreen.org"
+    first_name: "Gautam"
+    email: "razak@digitalgreen.org"
     status: True
-    role: 1
-- model: accounts.User
-  pk: "6a153a20-e6f0-4978-a1a4-ea8918d8f167"
-  fields:
-    created_at: "2022-07-01 05:30:55.463786"
-    updated_at: "2022-07-01 05:30:55.464100"
-    first_name: "Kanhaiya"
-    email: "kanhaiya@digitalgreen.org"
-    status: True
-    role: 1
-
-- model: accounts.User
-  pk: "5686c915-7a03-4c01-bca4-f0f969a5ab5d"
-  fields:
-    created_at: "2022-07-01 05:21:55.463786"
-    updated_at: "2022-07-01 05:21:55.464100"
-    email: "vignesh+1@digitalgreen.org"
-    role: 1
-- model: accounts.User
-  pk: "3f894ed5-dde7-4c36-8b1b-861fcaa0297a"
-  fields:
-    created_at: "2022-07-01 05:21:55.463786"
-    updated_at: "2022-07-01 05:21:55.464100"
-    email: "vignesh+2@digitalgreen.org"
-    role: 1
-- model: accounts.User
-  pk: "3f824ed5-dde7-4c36-8b1b-861fcaa0297a"
-  fields:
-    created_at: "2022-07-01 05:21:55.463786"
-    updated_at: "2022-07-01 05:21:55.464100"
-    email: "vignesh+3@digitalgreen.org"
-    role: 1
-- model: accounts.User
-  pk: "90f416de-d55f-41b8-afe1-b3dedfefd838"
-  fields:
-    created_at: "2022-07-01 05:21:55.463786"
-    updated_at: "2022-07-01 05:21:55.464100"
-    email: "vignesh+4@digitalgreen.org"
-    role: 1
-- model: accounts.User
-  pk: "86ffcbf3-b472-4df5-803e-29838fee7bc7"
-  fields:
-    created_at: "2022-07-01 05:21:55.463786"
-    updated_at: "2022-07-01 05:21:55.464100"
-    email: "vignesh+5@digitalgreen.org"
-    role: 1
-- model: accounts.User
-  pk: "eb5a31b5-c14c-4ec1-8ccc-0730a7a16546"
-  fields:
-    created_at: "2022-07-01 05:21:55.463786"
-    updated_at: "2022-07-01 05:21:55.464100"
-    email: "vignesh+6@digitalgreen.org"
-    role: 1
-- model: accounts.User
-  pk: "36852f06-5584-48ef-b744-2c4b907cba1c"
-  fields:
-    created_at: "2022-07-01 05:21:55.463786"
-    updated_at: "2022-07-01 05:21:55.464100"
-    email: "vignesh+7@digitalgreen.org"
-    role: 1
-- model: accounts.User
-  pk: "01cc58e7-b887-4c9e-b2c2-a5440f7c5864"
-  fields:
-    created_at: "2022-07-01 05:21:55.463786"
-    updated_at: "2022-07-01 05:21:55.464100"
-    email: "vignesh+8@digitalgreen.org"
-    role: 1
-- model: accounts.User
-  pk: "3ad9d73f-c1d4-467d-973e-9b2d6ec0afcb"
-  fields:
-    created_at: "2022-07-01 05:21:55.463786"
-    updated_at: "2022-07-01 05:21:55.464100"
-    email: "vignesh+9@digitalgreen.org"
-    role: 1
-- model: accounts.User
-  pk: "c57156b5-18a7-45d1-8ecd-ffeb55f20c0c"
-  fields:
-    created_at: "2022-07-01 05:21:55.463786"
-    updated_at: "2022-07-01 05:21:55.464100"
-    email: "vignesh+10@digitalgreen.org"
-    role: 1
-
-- model: accounts.User
-  pk: "18d962a6-02a4-4fa3-ae3f-dace1dfdd66a"
-  fields:
-    created_at: "2022-07-01 05:21:55.463786"
-    updated_at: "2022-07-01 05:21:55.464100"
-    email: "fatema+1@digitalgreen.org"
-    role: 1
-- model: accounts.User
-  pk: "03fa570d-30c4-4827-bc8a-6d1cbec9226f"
-  fields:
-    created_at: "2022-07-01 05:21:55.463786"
-    updated_at: "2022-07-01 05:21:55.464100"
-    email: "fatema+2@digitalgreen.org"
-    role: 1
-- model: accounts.User
-  pk: "01cc58e7-b887-4c9e-b2c2-a5440f7c5864"
-  fields:
-    created_at: "2022-07-01 05:21:55.463786"
-    updated_at: "2022-07-01 05:21:55.464100"
-    email: "fatema+3@digitalgreen.org"
-    role: 1
-- model: accounts.User
-  pk: "b563f91b-787f-4465-a73e-bb604c3f01a8"
-  fields:
-    created_at: "2022-07-01 05:21:55.463786"
-    updated_at: "2022-07-01 05:21:55.464100"
-    email: "fatema+4@digitalgreen.org"
-    role: 1
-- model: accounts.User
-  pk: "bcd2e90e-1c6c-49b5-bd2e-361247ad390c"
-  fields:
-    created_at: "2022-07-01 05:21:55.463786"
-    updated_at: "2022-07-01 05:21:55.464100"
-    email: "fatema+5@digitalgreen.org"
-    role: 1
-- model: accounts.User
-  pk: "5a012929-94c9-464a-a236-1fedecbc3565"
-  fields:
-    created_at: "2022-07-01 05:21:55.463786"
-    updated_at: "2022-07-01 05:21:55.464100"
-    email: "fatema+6@digitalgreen.org"
-    role: 1
-- model: accounts.User
-  pk: "9212d497-65d7-425d-b764-50ee0ce96628"
-  fields:
-    created_at: "2022-07-01 05:21:55.463786"
-    updated_at: "2022-07-01 05:21:55.464100"
-    email: "fatema+7@digitalgreen.org"
-    role: 1
-- model: accounts.User
-  pk: "46eca4b0-45f5-4b65-9cd0-dd90620f1fa9"
-  fields:
-    created_at: "2022-07-01 05:21:55.463786"
-    updated_at: "2022-07-01 05:21:55.464100"
-    email: "fatema+8@digitalgreen.org"
-    role: 1
-- model: accounts.User
-  pk: "e1d07b0a-ad0c-449b-84cc-4048d300abb1"
-  fields:
-    created_at: "2022-07-01 05:21:55.463786"
-    updated_at: "2022-07-01 05:21:55.464100"
-    email: "fatema+9@digitalgreen.org"
-    role: 1
-- model: accounts.User
-  pk: "d034d40c-6f84-4ecd-ae83-465c4a95107a"
-  fields:
-    created_at: "2022-07-01 05:21:55.463786"
-    updated_at: "2022-07-01 05:21:55.464100"
-    email: "fatema+10@digitalgreen.org"
-    role: 1
-
-- model: accounts.User
-  pk: "f6966a79-1212-4b5c-81db-2a95d12df6f2"
-  fields:
-    created_at: "2022-07-01 05:21:55.463786"
-    updated_at: "2022-07-01 05:21:55.464100"
-    email: "shruthimonika+1@digitalgreen.org"
-    role: 1
-- model: accounts.User
-  pk: "79613c0a-727f-400e-9d94-ab54ceb7faaf"
-  fields:
-    created_at: "2022-07-01 05:21:55.463786"
-    updated_at: "2022-07-01 05:21:55.464100"
-    email: "shruthimonika+2@digitalgreen.org"
-    role: 1
-- model: accounts.User
-  pk: "a6f41411-aa1a-4957-90a1-cf94cb3a9c2f"
-  fields:
-    created_at: "2022-07-01 05:21:55.463786"
-    updated_at: "2022-07-01 05:21:55.464100"
-    email: "shruthimonika+3@digitalgreen.org"
-    role: 1
-- model: accounts.User
-  pk: "bd7c82f9-ba44-4be6-b0dc-d14721dd6ddd"
-  fields:
-    created_at: "2022-07-01 05:21:55.463786"
-    updated_at: "2022-07-01 05:21:55.464100"
-    email: "shruthimonika+4@digitalgreen.org"
-    role: 1
-- model: accounts.User
-  pk: "34fd47ef-f8d4-4eb9-a2cb-ed2f894f8651"
-  fields:
-    created_at: "2022-07-01 05:21:55.463786"
-    updated_at: "2022-07-01 05:21:55.464100"
-    email: "shruthimonika+5@digitalgreen.org"
-    role: 1
-- model: accounts.User
-  pk: "14cef7c0-2559-4dec-ab85-577088e1d452"
-  fields:
-    created_at: "2022-07-01 05:21:55.463786"
-    updated_at: "2022-07-01 05:21:55.464100"
-    email: "shruthimonika+6@digitalgreen.org"
-    role: 1
-- model: accounts.User
-  pk: "bd174608-57fc-4f7b-9a71-cae102472673"
-  fields:
-    created_at: "2022-07-01 05:21:55.463786"
-    updated_at: "2022-07-01 05:21:55.464100"
-    email: "shruthimonika+7@digitalgreen.org"
-    role: 1
-- model: accounts.User
-  pk: "b8c90f14-198e-4d37-8d57-0e4f3fe8f04e"
-  fields:
-    created_at: "2022-07-01 05:21:55.463786"
-    updated_at: "2022-07-01 05:21:55.464100"
-    email: "shruthimonika+8@digitalgreen.org"
-    role: 1
-- model: accounts.User
-  pk: "4bca488d-b1b1-479b-a31f-00ad8fbbb861"
-  fields:
-    created_at: "2022-07-01 05:21:55.463786"
-    updated_at: "2022-07-01 05:21:55.464100"
-    email: "shruthimonika+9@digitalgreen.org"
-    role: 1
-- model: accounts.User
-  pk: "86aa61b3-6992-4af1-82f8-6103583e2cd2"
-  fields:
-    created_at: "2022-07-01 05:21:55.463786"
-    updated_at: "2022-07-01 05:21:55.464100"
-    email: "shruthimonika+10@digitalgreen.org"
-    role: 1
-
-- model: accounts.User
-  pk: "f76ebbb1-5bc0-455f-b053-6d222ff78fa1"
-  fields:
-    created_at: "2022-07-01 05:21:55.463786"
-    updated_at: "2022-07-01 05:21:55.464100"
-    email: "ramaskanda+1@digitalgreen.org"
-    role: 1
-- model: accounts.User
-  pk: "c57287b6-fc8e-472c-b300-10e8bf8f2c71"
-  fields:
-    created_at: "2022-07-01 05:21:55.463786"
-    updated_at: "2022-07-01 05:21:55.464100"
-    email: "ramaskanda+2@digitalgreen.org"
-    role: 1
-- model: accounts.User
-  pk: "7400f787-702a-4dfa-be0b-64262110333f"
-  fields:
-    created_at: "2022-07-01 05:21:55.463786"
-    updated_at: "2022-07-01 05:21:55.464100"
-    email: "ramaskanda+3@digitalgreen.org"
-    role: 1
-- model: accounts.User
-  pk: "8c0e6747-5250-42eb-896f-64074a77a8b4"
-  fields:
-    created_at: "2022-07-01 05:21:55.463786"
-    updated_at: "2022-07-01 05:21:55.464100"
-    email: "ramaskanda+4@digitalgreen.org"
-    role: 1
-- model: accounts.User
-  pk: "b6b61d74-eb7a-43e2-8d83-c1e04ac804eb"
-  fields:
-    created_at: "2022-07-01 05:21:55.463786"
-    updated_at: "2022-07-01 05:21:55.464100"
-    email: "ramaskanda+5@digitalgreen.org"
-    role: 1
-- model: accounts.User
-  pk: "62d1a4a2-d683-4faf-89f7-056fe53036cd"
-  fields:
-    created_at: "2022-07-01 05:21:55.463786"
-    updated_at: "2022-07-01 05:21:55.464100"
-    email: "ramaskanda+6@digitalgreen.org"
-    role: 1
-- model: accounts.User
-  pk: "215e2f54-8f0d-4f2a-a91b-60b1486353f8"
-  fields:
-    created_at: "2022-07-01 05:21:55.463786"
-    updated_at: "2022-07-01 05:21:55.464100"
-    email: "ramaskanda+7@digitalgreen.org"
-    role: 1
-- model: accounts.User
-  pk: "aa775db6-04d9-40c0-8dfe-4f316425641e"
-  fields:
-    created_at: "2022-07-01 05:21:55.463786"
-    updated_at: "2022-07-01 05:21:55.464100"
-    email: "ramaskanda+8@digitalgreen.org"
-    role: 1
-- model: accounts.User
-  pk: "abf813da-4b00-492b-9103-94d5fdd55ce4"
-  fields:
-    created_at: "2022-07-01 05:21:55.463786"
-    updated_at: "2022-07-01 05:21:55.464100"
-    email: "ramaskanda+9@digitalgreen.org"
-    role: 1
-- model: accounts.User
-  pk: "a717511c-0105-4109-8260-fbfb846416f3"
-  fields:
-    created_at: "2022-07-01 05:21:55.463786"
-    updated_at: "2022-07-01 05:21:55.464100"
-    email: "ramaskanda+10@digitalgreen.org"
-    role: 1
-
-- model: accounts.User
-  pk: "9cd01764-8a09-4768-8e2f-9a8a67208686"
-  fields:
-    created_at: "2022-07-01 05:21:55.463786"
-    updated_at: "2022-07-01 05:21:55.464100"
-    email: "jashwanth+1@digitalgreen.org"
-    role: 1
-- model: accounts.User
-  pk: "fd8127d1-e90a-4671-b001-c6ab4cbc7919"
-  fields:
-    created_at: "2022-07-01 05:21:55.463786"
-    updated_at: "2022-07-01 05:21:55.464100"
-    email: "jashwanth+2@digitalgreen.org"
-    role: 1
-- model: accounts.User
-  pk: "ac9c0c2d-452a-46a4-b1a3-f8bfbe04d0a2"
-  fields:
-    created_at: "2022-07-01 05:21:55.463786"
-    updated_at: "2022-07-01 05:21:55.464100"
-    email: "jashwanth+3@digitalgreen.org"
-    role: 1
-- model: accounts.User
-  pk: "028dc649-8e49-4918-b59a-e7481ff75737"
-  fields:
-    created_at: "2022-07-01 05:21:55.463786"
-    updated_at: "2022-07-01 05:21:55.464100"
-    email: "jashwanth+4@digitalgreen.org"
-    role: 1
-- model: accounts.User
-  pk: "ee14d669-44f6-4980-88fa-35d6e24a6800"
-  fields:
-    created_at: "2022-07-01 05:21:55.463786"
-    updated_at: "2022-07-01 05:21:55.464100"
-    email: "jashwanth+5@digitalgreen.org"
-    role: 1
-- model: accounts.User
-  pk: "47e9402b-fd2f-4bf2-889f-7e638f3609e1"
-  fields:
-    created_at: "2022-07-01 05:21:55.463786"
-    updated_at: "2022-07-01 05:21:55.464100"
-    email: "jashwanth+6@digitalgreen.org"
-    role: 1
-- model: accounts.User
-  pk: "e8c1c7cc-0b16-440e-9010-fdb44a46c242"
-  fields:
-    created_at: "2022-07-01 05:21:55.463786"
-    updated_at: "2022-07-01 05:21:55.464100"
-    email: "jashwanth+7@digitalgreen.org"
-    role: 1
-- model: accounts.User
-  pk: "aa775db6-04d9-40c0-8dfe-4f316425641e"
-  fields:
-    created_at: "2022-07-01 05:21:55.463786"
-    updated_at: "2022-07-01 05:21:55.464100"
-    email: "jashwanth+8@digitalgreen.org"
-    role: 1
-- model: accounts.User
-  pk: "abf813da-4b00-492b-9103-94d5fdd55ce4"
-  fields:
-    created_at: "2022-07-01 05:21:55.463786"
-    updated_at: "2022-07-01 05:21:55.464100"
-    email: "jashwanth+9@digitalgreen.org"
-    role: 1
-- model: accounts.User
-  pk: "a717511c-0105-4109-8260-fbfb846416f3"
-  fields:
-    created_at: "2022-07-01 05:21:55.463786"
-    updated_at: "2022-07-01 05:21:55.464100"
-    email: "jashwanth+10@digitalgreen.org"
     role: 1
