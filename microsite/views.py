@@ -135,18 +135,24 @@ class ContactFormViewSet(GenericViewSet):
 
     def create(self, request):
         """POST method to create a query and mail it to the datahub admin"""
-        datahub_admin = [User.objects.filter(role_id=1).first().email]
         # datahub_admin = [request.data["datahub_admin"]]
+        datahub_admin = [User.objects.filter(role_id=1).first().email]
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
-        # render email from query_email template
-        email_render = render(request, "query_email.html", serializer.data)
-        mail_body = email_render.content.decode("utf-8")
-        Utils().send_email(
-            to_email=datahub_admin,
-            content=mail_body,
-            subject=serializer.data["subject"],
-        )
+        try:
+            # render email from query_email template
+            email_render = render(request, "query_email.html", serializer.data)
+            mail_body = email_render.content.decode("utf-8")
+            Utils().send_email(
+                to_email=datahub_admin,
+                content=mail_body,
+                subject=serializer.data["subject"],
+            )
 
-        return Response({"Message": "Your query is submitted! Thank you."}, status=status.HTTP_200_OK)
+            return Response({"Message": "Your query is submitted! Thank you."}, status=status.HTTP_200_OK)
+
+        except Exception as error:
+            LOGGER.error(error)
+
+        return Response({"Message": "Error in sending query"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

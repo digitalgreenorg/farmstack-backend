@@ -46,10 +46,12 @@ class DatasetsMicrositeSerializer(serializers.ModelSerializer):
 class ContactFormSerializer(serializers.Serializer):
     """Contact Form serilizer for microsite guest users or visitors"""
 
-    SUBJECT_CHOICES = (("Become a Participant", "become_participant"), ("Other queries", "other_queries"))
+    # SUBJECT_CHOICES = (("Become a Participant", "become_participant"), ("Other queries", "other_queries"))
+    # subject = serializers.ChoiceField(choices=SUBJECT_CHOICES)
+
     first_name = serializers.CharField()
     last_name = serializers.CharField()
     email = serializers.EmailField()
     contact_number = serializers.CharField()
-    subject = serializers.ChoiceField(choices=SUBJECT_CHOICES)
+    subject = serializers.CharField()
     describe_query = serializers.CharField()
