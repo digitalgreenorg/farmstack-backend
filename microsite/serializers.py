@@ -1,5 +1,6 @@
+from core.utils import Constants
 from accounts.models import User
-from datahub.models import Organization, Datasets
+from datahub.models import Organization, Datasets, DatahubDocuments
 from rest_framework import serializers
 
 
@@ -13,20 +14,20 @@ class OrganizationMicrositeSerializer(serializers.ModelSerializer):
         exclude = ["id", "created_at", "updated_at"]
 
 
-class UserDatasetSerializer(serializers.ModelSerializer):
+class UserSerializer(serializers.ModelSerializer):
     """User serializer for Datasets of microsite"""
 
     class Meta:
         """_summary_"""
 
         model = User
-        fields = ["first_name", "email", "phone_number"]
+        fields = ["first_name", "last_name", "email", "phone_number"]
 
 
 class DatasetsMicrositeSerializer(serializers.ModelSerializer):
     """Datasets Serializer for microsite"""
 
-    user = UserDatasetSerializer(
+    user = UserSerializer(
         read_only=False,
         required=False,
         allow_null=True,
@@ -40,4 +41,32 @@ class DatasetsMicrositeSerializer(serializers.ModelSerializer):
         """_summary_"""
 
         model = Datasets
-        exclude = ["user_map", "created_at", "updated_at"]
+        exclude = ["user_map"]
+
+
+class ContactFormSerializer(serializers.Serializer):
+    """Contact Form serilizer for microsite guest users or visitors"""
+
+    # SUBJECT_CHOICES = (("Become a Participant", "become_participant"), ("Other queries", "other_queries"))
+    # subject = serializers.ChoiceField(choices=SUBJECT_CHOICES)
+
+    first_name = serializers.CharField()
+    last_name = serializers.CharField()
+    email = serializers.EmailField()
+    contact_number = serializers.CharField()
+    subject = serializers.CharField()
+    describe_query = serializers.CharField()
+
+
+class PolicyDocumentSerializer(serializers.ModelSerializer):
+    """PolicyDocumentSerializer class"""
+
+    governing_law = serializers.CharField()
+    privacy_policy = serializers.CharField()
+    tos = serializers.CharField()
+    limitations_of_liabilities = serializers.CharField()
+    warranty = serializers.CharField()
+
+    class Meta:
+        model = DatahubDocuments
+        fields = Constants.ALL
