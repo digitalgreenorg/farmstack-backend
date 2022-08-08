@@ -40,15 +40,15 @@ class UserRole(models.Model):
 
     ROLES = (
         ("ADMIN", "ADMIN"),
+        ("TEAM MEMBER", "TEAM MEMBER"),
         ("PARTICIPANT ROOT", "PARTICIPANT ROOT"),
         ("PARTICIPANT TEAM MEMBER", "PARTICIPANT TEAM MEMBER"),
-        ("TEAM MEMBER", "TEAM MEMBER"),
         ("GUEST", "GUEST"),
     )
 
     # id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     id = models.IntegerField(primary_key=True)
-    role_name = models.CharField(max_length=255, null=True, blank=True, choices=ROLES)
+    role_name = models.CharField(max_length=255, choices=ROLES)
 
     def __str__(self):
         return self.role_name
@@ -85,8 +85,6 @@ class User(AbstractBaseUser, TimeStampMixin):
     role = models.ForeignKey(
         UserRole,
         max_length=255,
-        null=True,
-        blank=True,
         on_delete=models.PROTECT,
     )
     profile_picture = models.FileField(

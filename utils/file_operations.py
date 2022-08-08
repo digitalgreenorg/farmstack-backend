@@ -30,7 +30,7 @@ def file_path(destination):
         for root, dirs, files in os.walk(destination):
             file_paths = {os.path.splitext(os.path.basename(file))[0]: root + file for file in files}
             # file_paths = {file: root + file for file in files}
-            print(file_paths)
+            # print(file_paths)
             return file_paths
     except Exception as e:
         LOGGER.error(e)
@@ -65,7 +65,7 @@ def get_file_name(file, output_file):
     try:
         file_type = str(file).split(".")[1]
         file_name = output_file + "." + file_type
-        print(file_name)
+        # print(file_name)
         return file_name
     except Exception as e:
         LOGGER.error(e)
@@ -78,7 +78,7 @@ def get_css_attributes(css_path, css_attribute):
             sheet = cssutils.css.CSSStyleSheet()
             sheet.cssText = css.read()
             css_attribute_value = sheet.cssRules[0].style[css_attribute]
-            print(css_attribute_value)
+            # print(css_attribute_value)
         return css_attribute_value
     except Exception as e:
         LOGGER.error(e)

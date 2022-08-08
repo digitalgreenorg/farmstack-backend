@@ -70,8 +70,8 @@ def replace_query_param(url, key, val, req):
     """
     (scheme, netloc, path, query, fragment) = parse.urlsplit(str(url))
     netloc = req.META.get("HTTP_HOST")
-    scheme = "http" if "localhost" in netloc else "https"  # type: ignore
-    path = path if "localhost" in netloc else "/be" + path  # type: ignore
+    scheme = "http" if "localhost" in netloc or "127.0.0.1" in netloc else "https"  # type: ignore
+    path = path if "localhost" in netloc or "127.0.0.1" in netloc else "/be" + path  # type: ignore
     query_dict = parse.parse_qs(query, keep_blank_values=True)
     query_dict[str(key)] = [str(val)]
     query = parse.urlencode(sorted(list(query_dict.items())), doseq=True)
@@ -85,8 +85,8 @@ def remove_query_param(url, key, req):
     """
     (scheme, netloc, path, query, fragment) = parse.urlsplit(str(url))
     netloc = req.META.get("HTTP_HOST")
-    scheme = "http" if "localhost" in netloc else "https"
-    path = path if "localhost" in netloc else "/be" + path
+    scheme = "http" if "localhost" in netloc or "127.0.0.1" in netloc else "https"  # type: ignore
+    path = path if "localhost" in netloc or "127.0.0.1" in netloc else "/be" + path  # type: ignore
     # netloc = "datahubtest.farmstack.co"
     query_dict = parse.parse_qs(query, keep_blank_values=True)
     query_dict.pop(key, None)
@@ -166,9 +166,7 @@ def read_contents_from_csv_or_xlsx_file(file_path):
         if file_path.endswith(".xlsx") or file_path.endswith(".xls"):
             content = pd.read_excel("." + file_path, header=0).head(2) if file_path else dataframe
         else:
-            content = (
-                pd.read_csv("." + file_path, encoding="unicode_escape", header=0).head(2) if file_path else dataframe
-            )
+            content = pd.read_csv("." + file_path, header=0).head(2) if file_path else dataframe
         content = content.fillna("")
     except Exception as error:
         logging.error("Invalid file ERROR: %s", error)

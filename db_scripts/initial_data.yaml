@@ -133,3 +133,13 @@
     department: "e459f452-2b4b-4129-ba8b-1e1180c87888"
     created_at: "2022-07-01 05:30:55.463786"
     updated_at: "2022-07-01 05:30:55.464100"
+
+- model: accounts.User
+  pk: "f8a24929-ab2c-44f0-bd3c-664db4522ef2
+  fields:
+    created_at: "2022-07-01 05:30:55.463786"
+    updated_at: "2022-07-01 05:30:55.464100"
+    first_name: "Gautam"
+    email: "razak@digitalgreen.org"
+    status: True
+    role: 1

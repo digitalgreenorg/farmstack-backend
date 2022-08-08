@@ -1,20 +1,26 @@
-import json
+import json, binascii, os
 from calendar import c
 from urllib import response
 from uuid import uuid4
 
 import pytest
+from django.shortcuts import render
 from _pytest.monkeypatch import MonkeyPatch
+from django.db import models
 from accounts.models import User, UserManager, UserRole
 from datahub.models import Datasets, Organization, UserOrganizationMap
 from datahub.views import ParticipantViewSet
 from django.test import Client, TestCase
-from django.urls import reverse
+from django.test.client import encode_multipart
+
+# from django.urls import reverse
 from participant.models import SupportTicket
 from requests import request
 from requests_toolbelt.multipart.encoder import MultipartEncoder
-from rest_framework import serializers
+from rest_framework import serializers, status
 from rest_framework.response import Response
+from rest_framework.test import APIClient, APITestCase, APIRequestFactory
+from rest_framework.reverse import reverse
 
 valid_data = {
     "email": "ugeshbasa4ss5@digitalgreen.org",
@@ -648,3 +654,162 @@ class TestDatahubDatasetsViews(TestCase):
         response = self.client.post(url, data, secure=True)
         assert response.json() == "Invalid filter fields: ['category__innnn']"
         assert response.status_code == 500
+
+
+class OrganizationTestViews(TestCase):
+    """_summary_
+
+    Args:
+        TestCase (_type_): _description_
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.client = APIClient()
+        cls.organization_url = reverse("organization-list")
+        cls.user_role = UserRole.objects.create(id=1, role_name="datahub_admin")
+        cls.user_data = {"email": "test_team_member@farmstack.co", "role": "1"}
+        cls.address = {"street": "4th Main", "city": "Bengaluru", "country": "India", "pincode": "53789"}
+
+    def test_organization_post_add_org(self):
+        user_obj = User.objects.create(email="test_user@email.com", role=self.user_role)
+        org_data = {
+            "user_id": str(user_obj.id),
+            "email": "test_team_member@farmstack.co",
+            "name": "Test Org",
+            "org_email": "test_org@email.com",
+            "address": json.dumps(self.address),
+            "phone_number": "+91123456789",
+            "org_description": "Organization description ....",
+        }
+
+        response = self.client.post(self.organization_url, org_data)
+        print("RESPONSEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE")
+        print(response.data)
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(Organization.objects.count(), 1)
+
+    def test_organization_post_add_invalid_org(self):
+        """_summary_"""
+        user_obj = User.objects.create(email="test_user@email.com", role=self.user_role)
+
+        org_data = {
+            "user_id": str(user_obj.id),
+            "email": "test_team_member@farmstack.co",
+            "name": "",
+            "org_email": "",
+            "address": "",
+            "phone_number": "+91123456789",
+            "org_description": "",
+        }
+
+        response = self.client.post(self.organization_url, org_data)
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        assert response.json() == {
+            "name": ["This field may not be blank."],
+            "org_email": ["This field may not be blank."],
+            "address": ["Value must be valid JSON."],
+        }
+
+    def test_organization_put_update_valid_org(self):
+        user_obj = User.objects.create(email="test_user@email.com", role=self.user_role)
+        org_data = {
+            "user_id": str(user_obj.id),
+            "email": "test_team_member@farmstack.co",
+            "name": "Test Org",
+            "org_email": "test_org@email.com",
+            "address": json.dumps(self.address),
+            "phone_number": "+91123456789",
+            "org_description": "Organization description ....",
+        }
+        response = self.client.post(self.organization_url, org_data)
+
+        address = {"street": "8th Main", "city": "Banglore", "country": "India", "pincode": "53789"}
+        updated_org_data = {
+            "name": "Test Organization",
+            "org_email": "test_organization@email.com",
+            "address": json.dumps(address),
+            "phone_number": "+91923456789",
+            "org_description": "Organization description UPDATED ....",
+            "logo": open("datahub/tests/test_data/pro.png", "rb"),
+        }
+
+        organization_url = reverse("organization-detail", kwargs={"pk": user_obj.id})
+        response = self.client.put(
+            organization_url,
+            updated_org_data,
+            content_type="multipart/form-data; boundary=00252461d3ab8ff5c25834e0bffd6f70",
+        )
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+
+    def test_organization_put_update_invalid_data(self):
+        """_summary_"""
+        user_obj = User.objects.create(email="test_user@email.com", role=self.user_role)
+        org_data = {
+            "user_id": str(user_obj.id),
+            "email": "test_team_member@farmstack.co",
+            "name": "Test Org",
+            "org_email": "test_org@email.com",
+            "address": json.dumps(self.address),
+            "phone_number": "+91123456789",
+            "org_description": "Organization description ....",
+        }
+        response = self.client.post(self.organization_url, org_data)
+
+        updated_org_data = {
+            "name": "",
+            "org_email": "",
+            "address": "",
+            "phone_number": "",
+            "org_description": "",
+            "logo": "",
+        }
+        organization_url = reverse("organization-detail", kwargs={"pk": user_obj.id})
+        response = self.client.put(
+            organization_url,
+            updated_org_data,
+            content_type="multipart/form-data; boundary=00252461d3ab8ff5c25834e0bffd6f70",
+        )
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+
+class TeamMemberTestCase(APITestCase):
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.client = APIClient()
+        cls.team_member_url = reverse("team_member-list")
+        cls.user_role = UserRole.objects.create(id=2, role_name="datahub_team_member")
+        cls.user_data = {"email": "test_team_member@farmstack.co", "role": "2"}
+
+    def test_team_member_post_add_valid_user(self):
+        user_obj = User.objects.create(email="test_user@email.com", role=self.user_role)
+        response = self.client.post(self.team_member_url, self.user_data)
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(User.objects.count(), 2)
+
+    def test_team_member_post_add_invalid_user(self):
+        User.objects.create(email="test_user@email.com", role=self.user_role)
+        self.user_data = {"email": "email"}
+        response = self.client.post(self.team_member_url, self.user_data)
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        # assert response.json() == {
+        #      "email": ["This field may not be blank."],
+        #      "role": ["This field may not be blank."],
+        #     }
+
+        # self.assertJSONEqual(json.loads(response.content), error_response)
+
+    def test_team_member_put_update_valid_data(self):
+        user_obj = User.objects.create(email="test_user@email.com", role=self.user_role)
+        self.team_member_url = reverse("team_member-detail", kwargs={"pk": user_obj.id})
+        response = self.client.put(self.team_member_url, self.user_data)
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+
+    def test_team_member_put_update_invalid_data(self):
+        user_obj = User.objects.create(email="test_user@email.com", role=self.user_role)
+        user_data = {"email": "email", "role": ""}
+        self.team_member_url = reverse("team_member-detail", kwargs={"pk": user_obj.id})
+        response = self.client.put(self.team_member_url, user_data)
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)

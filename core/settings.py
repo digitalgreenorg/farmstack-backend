@@ -65,6 +65,7 @@ INSTALLED_APPS = [
     "accounts",
     "datahub",
     "participant",
+    "microsite",
 ]
 # Use nose to run all tests
 TEST_RUNNER = "django_nose.NoseTestSuiteRunner"
@@ -212,6 +213,7 @@ REST_FRAMEWORK = {
     #     "rest_framework.permissions.IsAuthenticated"
     # ],  # Un comment this to enable authentication
     "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
+    "EXCEPTION_HANDLER": "rest_framework.views.exception_handler",
 }
 
 SIMPLE_JWT = {
@@ -269,21 +271,25 @@ LOGGING = {
         # information regarding filters
     },
     "formatters": {
-        "Simple_Format": {
-            "format": "{levelname} {message}",
-            "style": "{",
-        }
+        # "Simple_Format": {
+        #     "format": "{levelname} {message}",
+        #     "style": "{",
+        # }
+        "with_datetime": {
+            "format": "[%(asctime)s] [%(levelname)-s] %(lineno)-4s%(name)-15s %(message)s",
+        },
     },
     "handlers": {
         "file": {
             "level": "DEBUG",
             "class": "logging.FileHandler",
             "filename": "./logs/log_file.log",
-            "formatter": "Simple_Format",
+            "formatter": "with_datetime",
         },
         "console": {
             "level": "DEBUG",
             "class": "logging.StreamHandler",
+            "formatter": "with_datetime",
         },
     },
     "loggers": {

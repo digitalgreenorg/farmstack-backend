@@ -56,6 +56,7 @@ from datahub.serializers import (
     TeamMemberUpdateSerializer,
     UserOrganizationCreateSerializer,
     UserOrganizationMapSerializer,
+    DatasetUpdateSerializer,
 )
 
 LOGGER = logging.getLogger(__name__)
@@ -772,8 +773,20 @@ class DatahubDatasetsViewSet(GenericViewSet):
 
     def update(self, request, *args, **kwargs):
         """PUT method: update or send a PUT request on an object of the Product model"""
+        data = request.data
+        data = {key: value for key, value in data.items() if value != "null"}
+        if data.get(Constants.SAMPLE_DATASET):
+            if not csv_and_xlsx_file_validatation(data.get(Constants.SAMPLE_DATASET)):
+                return Response(
+                    {
+                        Constants.SAMPLE_DATASET: [
+                            "Invalid Sample dataset file (or) Atleast 5 rows should be available. please upload valid file"
+                        ]
+                    },
+                    400,
+                )
         instance = self.get_object()
-        serializer = self.get_serializer(instance, data=request.data, partial=True)
+        serializer = DatasetUpdateSerializer(instance, data=data, partial=True)
         serializer.is_valid(raise_exception=True)
         self.perform_create(serializer)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
@@ -789,7 +802,7 @@ class DatahubDatasetsViewSet(GenericViewSet):
     def dataset_filters(self, request, *args, **kwargs):
         """This function get the filter args in body. based on the filter args orm filters the data."""
         data = request.data
-        others = data.pop(Constants.OTHERS)
+        others = data.pop(Constants.OTHERS, "")
         user_id = data.pop(Constants.USER_ID)
         filters = {Constants.USER_MAP_USER: user_id} if user_id and not others else {}
         exclude = {Constants.USER_MAP_USER: user_id} if others else {}
@@ -821,7 +834,7 @@ class DatahubDatasetsViewSet(GenericViewSet):
     def filters_data(self, request, *args, **kwargs):
         """This function provides the filters data"""
         data = request.data
-        others = data.pop(Constants.OTHERS)
+        others = data.pop(Constants.OTHERS, None)
         user_id = data.pop(Constants.USER_ID)
         filters = {Constants.USER_MAP_USER: user_id} if user_id and not others else {}
         exclude = {Constants.USER_MAP_USER: user_id} if others else {}
@@ -830,16 +843,21 @@ class DatahubDatasetsViewSet(GenericViewSet):
                 Datasets.objects.all()
                 .values_list(Constants.GEOGRAPHY, flat=True)
                 .distinct()
-                .filter(**filters)
-                .exclude(geography__isnull=True, geography__exact="", **exclude)
+                .filter(status=True, **filters)
+                .exclude(geography="null")
+                .exclude(geography__isnull=True)
+                .exclude(geography="", **exclude)
             )
             crop_detail = (
                 Datasets.objects.all()
                 .values_list(Constants.CROP_DETAIL, flat=True)
                 .distinct()
-                .filter(**filters)
-                .exclude(crop_detail__isnull=True, crop_detail__exact="", **exclude)
+                .filter(status=True, **filters)
+                .exclude(crop_detail="null")
+                .exclude(crop_detail__isnull=True)
+                .exclude(crop_detail="", **exclude)
             )
+            print(crop_detail.query)
         except Exception as error:  # type: ignore
             logging.error("Error while filtering the datasets. ERROR: %s", error)
             return Response(f"Invalid filter fields: {list(request.data.keys())}", status=500)

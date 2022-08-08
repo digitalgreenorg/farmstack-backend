@@ -228,6 +228,19 @@ class DatasetSerializer(serializers.ModelSerializer):
         ]
 
 
+class DatasetUpdateSerializer(serializers.ModelSerializer):
+    """_summary_
+
+    Args:
+        serializers (_type_): _description_
+    """
+
+    class Meta:
+        """_summary_"""
+
+        model = Datasets
+        fields = Constants.ALL
+
 class DatahubDatasetsDetailSerializer(serializers.ModelSerializer):
     user_id = serializers.PrimaryKeyRelatedField(
         queryset=models.User.objects.all(), required=True, source="user_map.user"

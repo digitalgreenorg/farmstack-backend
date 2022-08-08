@@ -194,8 +194,19 @@ class ParticipantDatasetsViewSet(GenericViewSet):
 
     def update(self, request, *args, **kwargs):
         """PUT method: update or send a PUT request on an object of the Product model"""
+        data = request.data
+        if data.get(Constants.SAMPLE_DATASET):
+            if not csv_and_xlsx_file_validatation(data.get(Constants.SAMPLE_DATASET)):
+                return Response(
+                    {
+                        Constants.SAMPLE_DATASET: [
+                            "Invalid Sample dataset file (or) Atleast 5 rows should be available. please upload valid file"
+                        ]
+                    },
+                    400,
+                )
         instance = self.get_object()
-        serializer = self.get_serializer(instance, data=request.data, partial=True)
+        serializer = self.get_serializer(instance, data=data, partial=True)
         serializer.is_valid(raise_exception=True)
         self.perform_create(serializer)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
@@ -211,7 +222,7 @@ class ParticipantDatasetsViewSet(GenericViewSet):
     def dataset_filters(self, request, *args, **kwargs):
         """This function get the filter args in body. based on the filter args orm filters the data."""
         data = request.data
-        org_id = data.pop(Constants.ORG_ID, None)
+        org_id = data.pop(Constants.ORG_ID, "")
         user_id = data.pop(Constants.USER_ID, "")
         exclude = {Constants.USER_MAP_USER: user_id} if org_id else {}
         filters = {Constants.USER_MAP_ORGANIZATION: org_id} if org_id else {Constants.USER_MAP_USER: user_id}
@@ -243,24 +254,28 @@ class ParticipantDatasetsViewSet(GenericViewSet):
     def filters_data(self, request, *args, **kwargs):
         """This function provides the filters data"""
         data = request.data
-        others = data.pop(Constants.OTHERS)
-        user_id = data.pop(Constants.USER_ID)
-        filters = {Constants.USER_MAP_USER: user_id} if user_id and not others else {}
-        exclude = {Constants.USER_MAP_USER: user_id} if others else {}
+        org_id = data.pop(Constants.ORG_ID, "")
+        user_id = data.pop(Constants.USER_ID, "")
+        exclude = {Constants.USER_MAP_USER: user_id} if org_id else {}
+        filters = {Constants.USER_MAP_ORGANIZATION: org_id} if org_id else {Constants.USER_MAP_USER: user_id}
         try:
             geography = (
-                Datasets.objects.all()
+                Datasets.objects.all().select_related(Constants.USER_MAP_ORGANIZATION)
                 .values_list(Constants.GEOGRAPHY, flat=True)
                 .distinct()
-                .filter(**filters)
-                .exclude(geography__isnull=True, geography__exact="", **exclude)
+                .filter(**filters, status=True, user_map__user__role_id=3)
+                .exclude(geography="null")
+                .exclude(geography__isnull=True)
+                .exclude(geography="", **exclude)
             )
             crop_detail = (
-                Datasets.objects.all()
+                Datasets.objects.all().select_related(Constants.USER_MAP_ORGANIZATION)
                 .values_list(Constants.CROP_DETAIL, flat=True)
-                .distinct()
-                .filter(**filters)
-                .exclude(crop_detail__isnull=True, crop_detail__exact="", **exclude)
+                .distinct() 
+                .filter(**filters, status=True, user_map__user__role_id=3)
+                .exclude(crop_detail="null")
+                .exclude(crop_detail__isnull=True)
+                .exclude(crop_detail="", **exclude)
             )
         except Exception as error:  # type: ignore
             logging.error("Error while filtering the datasets. ERROR: %s", error)
