@@ -8,7 +8,13 @@ from datahub.serializers import (
 )
 from rest_framework import serializers
 
-from participant.models import SupportTicket
+from participant.models import (
+    Connectors,
+    ConnectorsMap,
+    Department,
+    Project,
+    SupportTicket,
+)
 
 
 class TicketSupportSerializer(serializers.ModelSerializer):
@@ -140,3 +146,90 @@ class ParticipantDatasetsSerializer(serializers.ModelSerializer):
             "crop_detail",
             "age_of_date",
         ]
+
+
+class DepartmentSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Department
+        exclude = Constants.EXCLUDE_DATES
+
+
+class DepartmentListSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Department
+        fields = ["id", "department_name"]
+
+
+class ProjectSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Project
+        exclude = Constants.EXCLUDE_DATES
+
+
+class ProjectListSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Project
+        fields = ["id", "project_name"]
+
+
+class ConnectorsSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Connectors
+        fields = Constants.ALL
+
+
+class ConnectorsListSerializer(serializers.ModelSerializer):
+
+    department = DepartmentSerializer(required=False, allow_null=True, read_only=True, source="project.department")
+    Project = ProjectSerializer(required=False, allow_null=True, read_only=True, source="project")
+
+    class Meta:
+        model = Connectors
+        # exclude = Constants.EXCLUDE_DATES
+        fields = Constants.ALL
+
+
+class ConnectorsRetriveSerializer(serializers.ModelSerializer):
+    class DatasetSerializer(serializers.ModelSerializer):
+        class Meta:
+            model = Datasets
+            fields = ["id", "name", "description"]
+
+    department_details = DepartmentSerializer(
+        required=False, allow_null=True, read_only=True, source="project.department"
+    )
+    project_details = ProjectSerializer(required=False, allow_null=True, read_only=True, source="project")
+    dataset_details = DatasetSerializer(required=False, allow_null=True, read_only=True, source="dataset")
+    user_id = serializers.PrimaryKeyRelatedField(
+        queryset=models.User.objects.all(), allow_null=True, required=False, source="dataset.user_map.user"
+    )
+
+    class Meta:
+        model = Connectors
+        # exclude = Constants.EXCLUDE_DATES
+        fields = Constants.ALL
+
+
+class ConnectorsConsumerRelationSerializer(serializers.ModelSerializer):
+    connectors = ConnectorsSerializer(required=False, allow_null=True, read_only=True, source="consumer")
+
+    class Meta:
+        model = ConnectorsMap
+        # exclude = Constants.EXCLUDE_DATES
+        fields = Constants.ALL
+
+
+class ConnectorsProviderRelationSerializer(serializers.ModelSerializer):
+    connectors = ConnectorsSerializer(required=False, allow_null=True, read_only=True, source="provider")
+
+    class Meta:
+        model = ConnectorsMap
+        # exclude = Constants.EXCLUDE_DATES
+        fields = Constants.ALL
+
+
+class ConnectorsMapSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ConnectorsMap
+        # exclude = Constants.EXCLUDE_DATES
+        fields = Constants.ALL
