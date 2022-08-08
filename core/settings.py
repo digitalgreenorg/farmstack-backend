@@ -194,6 +194,7 @@ ORGANIZATION_IMAGES_URL = "organizations/logos/"
 ISSUE_ATTACHEMENT_URL = "users/tickets/"
 SOLUCTION_ATTACHEMENT_URL = "users/tickets/soluctions/"
 SAMPLE_DATASETS_URL = "users/datasets/sample_data/"
+CONNECTORS_CERTIFICATE_URL = "users/connectors/certificates/"
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/4.0/ref/settings/#default-auto-field
