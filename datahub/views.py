@@ -410,35 +410,32 @@ class DocumentSaveView(GenericViewSet):
     serializer_class = PolicyDocumentSerializer
     queryset = DatahubDocuments.objects.all()
 
-    def list(self, request, *args, **kwargs):
-        """GET method: query all the list of objects from the Product model"""
-        queryset = self.filter_queryset(self.get_queryset())
-        serializer = self.get_serializer(queryset, many=True)
-        return Response(serializer.data, status=status.HTTP_200_OK)
-
-    def retrieve(self, request, pk):
+    @action(detail=False, methods=["get"])
+    def get(self, request):
         """GET method: retrieve an object or instance of the Product model"""
         file_paths = file_operations.file_path(settings.DOCUMENTS_URL)
-        datahub_obj = DatahubDocuments.objects.filter(id=pk)
-
+        datahub_obj = DatahubDocuments.objects.first()
         try:
+            file_paths = file_operations.file_path(settings.DOCUMENTS_URL)
+            datahub_obj = DatahubDocuments.objects.first()
+
             if not datahub_obj and not file_paths:
-                data = {"Content": "null", "Documents": "null"}
+                data = {"Content": None, "Documents": None}
                 return Response(data, status=status.HTTP_200_OK)
             elif not datahub_obj:
-                data = {"Content": "null", "Documents": file_paths}
+                data = {"Content": None, "Documents": file_paths}
                 return Response(data, status=status.HTTP_200_OK)
             elif datahub_obj and not file_paths:
-                documents_serializer = PolicyDocumentSerializer(datahub_obj.first())
-                data = {"Content": documents_serializer.data, "Documents": "null"}
+                documents_serializer = PolicyDocumentSerializer(datahub_obj)
+                data = {"Content": documents_serializer.data, "Documents": None}
                 return Response(data, status=status.HTTP_200_OK)
             elif datahub_obj and file_paths:
-                documents_serializer = PolicyDocumentSerializer(datahub_obj.first())
+                documents_serializer = PolicyDocumentSerializer(datahub_obj)
                 data = {"Content": documents_serializer.data, "Documents": file_paths}
                 return Response(data, status=status.HTTP_200_OK)
 
         except Exception as e:
-            LOGGER.error(e)
+            LOGGER.error(e, exc_info=True)
 
         return Response({}, status=status.HTTP_404_NOT_FOUND)
 
@@ -455,10 +452,12 @@ class DocumentSaveView(GenericViewSet):
                 status=status.HTTP_201_CREATED,
             )
 
-    def update(self, request, *args, **kwargs):
+    @action(detail=False, methods=["get"])
+    def put(self, request, *args, **kwargs):
         """Saves the document content and files"""
-        instance = self.get_object()
-        serializer = self.get_serializer(instance, data=request.data)
+        # instance = self.get_object()
+        datahub_obj = DatahubDocuments.objects.first()
+        serializer = self.get_serializer(datahub_obj, data=request.data)
         serializer.is_valid(raise_exception=True)
 
         with transaction.atomic():
