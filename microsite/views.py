@@ -97,9 +97,9 @@ class DatasetsMicrositeViewSet(GenericViewSet):
         """This function get the filter args in body. based on the filter args orm filters the data."""
         data = request.data
         range = {}
-        created_at__range = request.data.pop(Constants.CREATED_AT__RANGE, None)
-        if created_at__range:
-            range[Constants.CREATED_AT__RANGE] = date_formater(created_at__range)
+        updated_at__range = request.data.pop(Constants.UPDATED_AT__RANGE, None)
+        if updated_at__range:
+            range[Constants.UPDATED_AT__RANGE] = date_formater(updated_at__range)
         try:
             data = (
                 Datasets.objects.filter(status=True, approval_status="approved", **data, **range)
