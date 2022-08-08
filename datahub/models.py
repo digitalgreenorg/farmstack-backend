@@ -1,4 +1,5 @@
 import uuid
+from email.mime import application
 
 from accounts.models import User
 from core.base_models import TimeStampMixin

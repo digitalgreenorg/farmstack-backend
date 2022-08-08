@@ -11,6 +11,7 @@ class Constants:
     USER_ORGANIZATION_MAP = "userorganizationmap"
     USER_MAP = "user_map"
     USER_MAP_USER = "user_map__user"
+    DATASETS = "datasets"
     USER_MAP_ORGANIZATION = "user_map__organization"
     USER_ID = "user_id"
     UPDATED_AT = "updated_at"
@@ -36,3 +37,5 @@ class Constants:
     UPDATED_AT__RANGE = "updated_at__range"
     GEOGRAPHY = "geography"
     CROP_DETAIL = "crop_detail"
+    PROJECT = "project"
+    DEPARTMENT = "department"

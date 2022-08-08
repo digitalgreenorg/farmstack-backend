@@ -116,3 +116,20 @@
     email: "razak@digitalgreen.org"
     status: True
     role: 1
+
+- model: participant.department
+  pk: "e459f452-2b4b-4129-ba8b-1e1180c87888"
+  fields:
+    department_name: "default"
+    status: True
+    created_at: "2022-07-01 05:30:55.463786"
+    updated_at: "2022-07-01 05:30:55.464100"
+
+- model: participant.project
+  pk: "3526bd39-4514-43fe-bbc4-ee0980bde252"
+  fields:
+    project_name: "default"
+    status: True
+    department: "e459f452-2b4b-4129-ba8b-1e1180c87888"
+    created_at: "2022-07-01 05:30:55.463786"
+    updated_at: "2022-07-01 05:30:55.464100"
