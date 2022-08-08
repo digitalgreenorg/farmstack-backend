@@ -95,14 +95,14 @@ class Datasets(TimeStampMixin):
     name = models.CharField(max_length=255, unique=True)
     description = models.CharField(max_length=500)
     category = models.JSONField()
-    geography = models.CharField(max_length=255)
-    crop_detail = models.CharField(max_length=255, null=True)  # field should update
+    geography = models.CharField(max_length=255, blank=True)
+    crop_detail = models.CharField(max_length=255, null=True, blank=True)  # field should update
     constantly_update = models.BooleanField(default=False)
-    age_of_date = models.CharField(max_length=255, null=True)
-    data_capture_start = models.DateTimeField(null=True)
-    data_capture_end = models.DateTimeField(null=True)
-    dataset_size = models.CharField(max_length=255, null=True)
-    connector_availability = models.CharField(max_length=255, null=True)
+    age_of_date = models.CharField(max_length=255, null=True, blank=True)
+    data_capture_start = models.DateTimeField(null=True, blank=True)
+    data_capture_end = models.DateTimeField(null=True, blank=True)
+    dataset_size = models.CharField(max_length=255, null=True, blank=True)
+    connector_availability = models.CharField(max_length=255, null=True, blank=True)
     sample_dataset = models.FileField(
         upload_to=settings.SAMPLE_DATASETS_URL,
         blank=True,
@@ -111,4 +111,4 @@ class Datasets(TimeStampMixin):
     status = models.BooleanField(default=True)
     approval_status = models.CharField(max_length=255, null=True, choices=APPROVAL_STATUS, default="for_review")
     is_enabled = models.BooleanField(default=True)
-    remarks = models.CharField(max_length=1000, null=True)
+    remarks = models.CharField(max_length=1000, null=True, blank=True)
