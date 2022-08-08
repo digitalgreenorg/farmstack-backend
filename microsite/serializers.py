@@ -58,8 +58,8 @@ class ContactFormSerializer(serializers.Serializer):
     describe_query = serializers.CharField()
 
 
-class PolicyDocumentSerializer(serializers.ModelSerializer):
-    """PolicyDocumentSerializer class"""
+class LegalDocumentSerializer(serializers.ModelSerializer):
+    """Legal DocumentSerializer class"""
 
     governing_law = serializers.CharField()
     privacy_policy = serializers.CharField()

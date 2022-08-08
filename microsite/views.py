@@ -18,7 +18,7 @@ from microsite.serializers import (
     DatasetsMicrositeSerializer,
     ContactFormSerializer,
     UserSerializer,
-    PolicyDocumentSerializer,
+    LegalDocumentSerializer,
 )
 from rest_framework import status
 from rest_framework.decorators import action
@@ -121,13 +121,13 @@ class DatasetsMicrositeViewSet(GenericViewSet):
         """This function provides the filters data"""
         try:
             geography = (
-                Datasets.objects.all()
+                Datasets.objects.filter(approval_status='approved')
                 .values_list(Constants.GEOGRAPHY, flat=True)
                 .distinct()
                 .exclude(geography__isnull=True, geography__exact="")
             )
             crop_detail = (
-                Datasets.objects.all()
+                Datasets.objects.filter(approval_status='approved')
                 .values_list(Constants.CROP_DETAIL, flat=True)
                 .distinct()
                 .exclude(crop_detail__isnull=True, crop_detail__exact="")
@@ -197,7 +197,7 @@ class ContactFormViewSet(GenericViewSet):
 class DocumentsMicrositeViewSet(GenericViewSet):
     """View for uploading all the datahub documents and content"""
 
-    serializer_class = PolicyDocumentSerializer
+    serializer_class = LegalDocumentSerializer
     queryset = DatahubDocuments.objects.all()
     permission_classes = []
 
