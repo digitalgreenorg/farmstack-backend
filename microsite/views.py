@@ -215,11 +215,11 @@ class DocumentsMicrositeViewSet(GenericViewSet):
                 data = {"Content": None, "Documents": file_paths}
                 return Response(data, status=status.HTTP_200_OK)
             elif datahub_obj and not file_paths:
-                documents_serializer = PolicyDocumentSerializer(datahub_obj)
+                documents_serializer = LegalDocumentSerializer(datahub_obj)
                 data = {"Content": documents_serializer.data, "Documents": None}
                 return Response(data, status=status.HTTP_200_OK)
             elif datahub_obj and file_paths:
-                documents_serializer = PolicyDocumentSerializer(datahub_obj)
+                documents_serializer = LegalDocumentSerializer(datahub_obj)
                 data = {"Content": documents_serializer.data, "Documents": file_paths}
                 return Response(data, status=status.HTTP_200_OK)
 
