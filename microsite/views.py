@@ -80,7 +80,7 @@ class DatasetsMicrositeViewSet(GenericViewSet):
             Datasets.objects.select_related(
                 Constants.USER_MAP, Constants.USER_MAP_USER, Constants.USER_MAP_ORGANIZATION
             )
-            .filter(user_map__user__status=True, status=True, approval_status="approved")
+            .filter(Q(user_map__user__status=True, status=True, approval_status="approved") | Q(user_map__user__status=True, user_map__user__role_id=1, status=True))
             .order_by(Constants.UPDATED_AT)
             .all()
         )
