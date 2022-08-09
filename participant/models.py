@@ -101,7 +101,7 @@ class Connectors(TimeStampMixin):
     )
     usage_policy = models.CharField(max_length=255)
     status = models.BooleanField(default=True)
-    certificate_status = models.CharField(max_length=255, default="install_certificate")
+    connector_status = models.CharField(max_length=255, default="install certificate")
 
 
 @auto_str
@@ -111,5 +111,5 @@ class ConnectorsMap(TimeStampMixin):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     provider = models.ForeignKey(Connectors, on_delete=models.PROTECT, related_name="provider")
     consumer = models.ForeignKey(Connectors, on_delete=models.PROTECT, related_name="consumer", null=True)
-    connector_pair_status = models.CharField(max_length=255, default="awaiting_for_approval")
+    connector_pair_status = models.CharField(max_length=255, default="awaiting for approval")
     status = models.BooleanField(default=True)

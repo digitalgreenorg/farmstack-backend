@@ -1,6 +1,7 @@
 import logging
+import subprocess
 from struct import unpack
-
+import requests
 import pandas as pd
 from accounts.models import User
 from core.constants import Constants
@@ -44,6 +45,8 @@ from participant.serializers import (
     ProjectListSerializer,
     ProjectSerializer,
     TicketSupportSerializer,
+    ParticipantDatasetsDropDownSerializer,
+    ConnectorListSerializer,
 )
 
 
@@ -173,6 +176,24 @@ class ParticipantDatasetsViewSet(GenericViewSet):
         participant_serializer = ParticipantDatasetsSerializer(page, many=True)
         return self.get_paginated_response(participant_serializer.data)
 
+    @action(detail=False, methods=["get"])
+    def list_of_datasets(self, request, *args, **kwargs):
+        """GET method: query all the list of objects from the Product model"""
+        data = []
+        user_id = request.query_params.get(Constants.USER_ID, "")
+        filters = {Constants.USER_MAP_USER: user_id}
+        if filters:
+            data = (
+                Datasets.objects.select_related(
+                    Constants.USER_MAP, Constants.USER_MAP_USER, Constants.USER_MAP_ORGANIZATION
+                )
+                .filter(user_map__user__status=True, status=True, **filters)
+                .order_by(Constants.UPDATED_AT)
+                .all()
+            )
+        participant_serializer = ParticipantDatasetsDropDownSerializer(data, many=True)
+        return Response(participant_serializer.data, status=status.HTTP_200_OK)
+
     def retrieve(self, request, pk):
         """GET method: retrieve an object or instance of the Product model"""
         data = (
@@ -237,7 +258,7 @@ class ParticipantDatasetsViewSet(GenericViewSet):
                     Constants.USER_MAP_USER,
                     Constants.USER_MAP_ORGANIZATION,
                 )
-                .filter(user_map__status=True, status=True, **data, **filters, **cretated_range)
+                .filter(user_map__user__status=True, status=True, **data, **filters, **cretated_range)
                 .exclude(**exclude)
                 .order_by(Constants.UPDATED_AT)
                 .all()
@@ -306,7 +327,19 @@ class ParticipantConnectorsViewSet(GenericViewSet):
 
     def create(self, request, *args, **kwargs):
         """POST method: create action to save an object by sending a POST request"""
-        serializer = self.get_serializer(data=request.data, partial=True)
+        setattr(request.data, '_mutable', True)
+        data = request.data
+        docker_image = data.get("docker_image_url")
+        try:
+            docker = docker_image.split(":")
+            response = requests.get(f"https://hub.docker.com/v2/repositories/{docker[0]}/tags/{docker[1]}")
+            images = response.json().get("images", [{}])
+            hash = [image.get("digest", "") for image in images if image.get("architecture") == "amd64"]
+            data["usage_policy"] = hash[0].split(":")[1].strip()
+        except Exception as error:
+            logging.error("Error while fetching the hash value. ERROR: %s", error)
+            return Response({"docker_image_url": [f"Invalid docker Image: {docker_image}"]}, status=400)
+        serializer = self.get_serializer(data=data, partial=True)
         serializer.is_valid(raise_exception=True)
         self.perform_create(serializer)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
@@ -394,38 +427,48 @@ class ParticipantConnectorsViewSet(GenericViewSet):
             return Response(f"Invalid filter fields: {list(request.data.keys())}", status=500)
 
         page = self.paginate_queryset(data)
-        participant_serializer = ParticipantDatasetsSerializer(page, many=True)
+        participant_serializer = ConnectorsListSerializer(page, many=True)
         return self.get_paginated_response(participant_serializer.data)
 
     @action(detail=False, methods=["post"])
-    def connectors_data(self, request, *args, **kwargs):
+    def filters_data(self, request, *args, **kwargs):
         """This function provides the filters data"""
         data = request.data
         user_id = data.pop(Constants.USER_ID)
         filters = {"dataset__user_map__user": user_id} if user_id else {}
         try:
             projects = (
-                Connectors.objects.select_related("dataset", "dataset__user_map")
-                .values_list("project_name", flat=True)
+                Connectors.objects.select_related("dataset", "project", "dataset__user_map")
+                .values_list("project__project_name", flat=True)
                 .distinct()
                 .filter(dataset__status=True, status=True, **filters)
-                .exclude(project_name__isnull=True, project_name__exact="")
+                .exclude(project__project_name__isnull=True, project__project_name__exact="")
             )
             departments = (
-                Connectors.objects.select_related("dataset", "dataset__user_map")
-                .values_list("project_name", flat=True)
+                Connectors.objects.select_related("dataset", "project", "project__department" "dataset__user_map")
+                .values_list("project__department__department_name", flat=True)
                 .distinct()
                 .filter(dataset__status=True, status=True, **filters)
-                .exclude(department_name__isnull=True, department_name__exact="")
+                .exclude(project__department__department_name__isnull=True, project__department__department_name__exact="")
             )
+            datasests = Datasets.objects.all().select_related("user_map", "user_map__user").filter(user_map__user=user_id,
+             user_map__user__status=True, status=True)
+            is_datset_present = True if datasests else False
         except Exception as error:  # type: ignore
             logging.error("Error while filtering the datasets. ERROR: %s", error)
             return Response(f"Invalid filter fields: {list(request.data.keys())}", status=500)
         return Response(
-            {"projects": list(projects).append("default"), "departments": list(departments).append("default")},
+            {"projects": list(projects), "departments": list(departments), "is_dataset_present": is_datset_present},
             status=200,
         )
 
+    @action(detail=False, methods=["get"])
+    def get_connectors(self, request, *args, **kwargs):
+        dataset_id = request.query_params.get("dataset_id", "")
+        data = Connectors.objects.all().filter(dataset=dataset_id, status=True,
+         connector_status__in=["unpaired",  "request recieved for approval"], connector_type="provider")
+        connector_serializer = ConnectorListSerializer(data, many=True)
+        return Response(connector_serializer.data, status=200)
 
 class ParticipantConnectorsMapViewSet(GenericViewSet):
     """
@@ -452,15 +495,43 @@ class ParticipantConnectorsMapViewSet(GenericViewSet):
         """POST method: create action to save an object by sending a POST request"""
         serializer = self.get_serializer(data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
+        provider = request.data.get("provider")
+        consumer = request.data.get("consumer")
+        provider_obj = Connectors.objects.get(id=provider)
+        provider_obj.connector_status = "request recieved for approval"
+        consumer_obj = Connectors.objects.get(id=consumer)
+        consumer_obj.connector_status = "awaiting for approval"
+        self.perform_create(provider_obj)
+        self.perform_create(consumer_obj)
         self.perform_create(serializer)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
     def update(self, request, *args, **kwargs):
         """PUT method: update or send a PUT request on an object of the Product model"""
         instance = self.get_object()
+        provider_obj = Connectors.objects.get(id=instance.provider.id)
+        consumer_obj = Connectors.objects.get(id=instance.consumer.id)
         serializer = self.get_serializer(instance, data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
         self.perform_create(serializer)
+        if request.data.get("connector_pair_status") == 'paired':
+            connectors_map = ConnectorsMap.objects.all().filter(provider=instance.provider.id, connector_pair_status="awaiting_for_approval")
+            provider_obj.connector_status = "paired"
+            consumer_obj.connector_status = "paired"
+            for data in connectors_map:
+                data.connector_pair_status = "rejected"
+                self.perform_create(data)
+
+        if request.data.get("connector_pair_status") == 'rejected':
+            if ConnectorsMap.objects.all().filter(provider=instance.provider.id, connector_pair_status="awaiting_for_approval"):               
+                provider_obj.connector_status = "awaiting for approval"
+            if ConnectorsMap.objects.all().filter(provider=instance.provider.id, connector_pair_status="paired"):
+                provider_obj.connector_status = "paired"
+            else:
+                provider_obj.connector_status = "unpaired"
+            consumer_obj.connector_status = "rejected"
+        self.perform_create(provider_obj)
+        self.perform_create(consumer_obj)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
     def destroy(self, request, pk):

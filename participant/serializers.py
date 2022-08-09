@@ -180,8 +180,8 @@ class ConnectorsSerializer(serializers.ModelSerializer):
 
 class ConnectorsListSerializer(serializers.ModelSerializer):
 
-    department = DepartmentSerializer(required=False, allow_null=True, read_only=True, source="project.department")
-    Project = ProjectSerializer(required=False, allow_null=True, read_only=True, source="project")
+    department_details = DepartmentSerializer(required=False, allow_null=True, read_only=True, source="project.department")
+    project_details = ProjectSerializer(required=False, allow_null=True, read_only=True, source="project")
 
     class Meta:
         model = Connectors
@@ -194,12 +194,16 @@ class ConnectorsRetriveSerializer(serializers.ModelSerializer):
         class Meta:
             model = Datasets
             fields = ["id", "name", "description"]
-
+    class OrganizationConnectorSerializer(serializers.ModelSerializer):
+        class Meta:
+            model = Organization
+            fields = ["id", "name", "website"]
     department_details = DepartmentSerializer(
         required=False, allow_null=True, read_only=True, source="project.department"
     )
     project_details = ProjectSerializer(required=False, allow_null=True, read_only=True, source="project")
     dataset_details = DatasetSerializer(required=False, allow_null=True, read_only=True, source="dataset")
+    organization_details= OrganizationConnectorSerializer(required=False, allow_null=True, read_only=True, source="dataset.user_map.organization")
     user_id = serializers.PrimaryKeyRelatedField(
         queryset=models.User.objects.all(), allow_null=True, required=False, source="dataset.user_map.user"
     )
@@ -233,3 +237,13 @@ class ConnectorsMapSerializer(serializers.ModelSerializer):
         model = ConnectorsMap
         # exclude = Constants.EXCLUDE_DATES
         fields = Constants.ALL
+
+class ParticipantDatasetsDropDownSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Datasets
+        fields=["id", "name"]
+
+class ConnectorListSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Connectors
+        fields=["id", "connector_name"]
