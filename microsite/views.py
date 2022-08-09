@@ -80,7 +80,10 @@ class DatasetsMicrositeViewSet(GenericViewSet):
             Datasets.objects.select_related(
                 Constants.USER_MAP, Constants.USER_MAP_USER, Constants.USER_MAP_ORGANIZATION
             )
-            .filter(Q(user_map__user__status=True, status=True, approval_status="approved") | Q(user_map__user__status=True, user_map__user__role_id=1, status=True))
+            .filter(
+                Q(user_map__user__status=True, status=True, approval_status="approved")
+                | Q(user_map__user__status=True, user_map__user__role_id=1, status=True)
+            )
             .order_by(Constants.UPDATED_AT)
             .all()
         )
@@ -102,7 +105,10 @@ class DatasetsMicrositeViewSet(GenericViewSet):
             range[Constants.UPDATED_AT__RANGE] = date_formater(updated_at__range)
         try:
             data = (
-                Datasets.objects.filter(status=True, approval_status="approved", **data, **range)
+                Datasets.objects.filter(
+                    Q(status=True, approval_status="approved", **data, **range)
+                    | Q(user_map__user__role_id=1, status=True, **data, **range)
+                )
                 .order_by(Constants.UPDATED_AT)
                 .all()
             )
@@ -121,13 +127,13 @@ class DatasetsMicrositeViewSet(GenericViewSet):
         """This function provides the filters data"""
         try:
             geography = (
-                Datasets.objects.filter(approval_status='approved')
+                Datasets.objects.filter(approval_status="approved")
                 .values_list(Constants.GEOGRAPHY, flat=True)
                 .distinct()
                 .exclude(geography__isnull=True, geography__exact="")
             )
             crop_detail = (
-                Datasets.objects.filter(approval_status='approved')
+                Datasets.objects.filter(approval_status="approved")
                 .values_list(Constants.CROP_DETAIL, flat=True)
                 .distinct()
                 .exclude(crop_detail__isnull=True, crop_detail__exact="")
