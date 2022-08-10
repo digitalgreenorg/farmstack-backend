@@ -39,6 +39,7 @@ class OrganizationMicrositeViewSet(GenericViewSet):
         """GET method: retrieve an object of Organization using User ID of the User (IMPORTANT: Using USER ID instead of Organization ID)"""
         try:
             datahub_admin = User.objects.filter(role_id=1)
+
             if not datahub_admin:
                 data = {Constants.USER: None, "message": ["Datahub admin not Found."]}
                 return Response(data, status=status.HTTP_200_OK)
@@ -65,6 +66,36 @@ class OrganizationMicrositeViewSet(GenericViewSet):
         except Exception as error:
             LOGGER.error(error, exc_info=True)
             return Response({}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+class DatahubThemeMicrositeViewSet(GenericViewSet):
+    permission_classes = []
+
+    @action(detail=False, methods=["get"])
+    def theme(self, request):
+        """retrieves Datahub Theme attributes"""
+        file_paths = file_operations.file_path(settings.THEME_URL)
+        css_path = settings.CSS_ROOT + settings.CSS_FILE_NAME
+        data = {}
+
+        try:
+            css_attribute = file_operations.get_css_attributes(css_path, "background-color")
+
+            if not css_path and not file_paths:
+                data = {"hero_image": None, "css": None}
+            elif not css_path:
+                data = {"hero_image": file_paths, "css": None}
+            elif css_path and not file_paths:
+                data = {"hero_image": None, "css": {"btnBackground": css_attribute}}
+            elif css_path and file_paths:
+                data = {"hero_image": file_paths, "css": {"btnBackground": css_attribute}}
+
+            return Response(data, status=status.HTTP_200_OK)
+
+        except Exception as e:
+            LOGGER.error(e)
+
+        return Response({}, status=status.HTTP_400_BAD_REQUEST)
 
 
 class DatasetsMicrositeViewSet(GenericViewSet):
@@ -127,13 +158,13 @@ class DatasetsMicrositeViewSet(GenericViewSet):
         """This function provides the filters data"""
         try:
             geography = (
-                Datasets.objects.filter(approval_status="approved")
+                Datasets.objects.filter(Q(approval_status="approved") | Q(user_map__user__role_id=1))
                 .values_list(Constants.GEOGRAPHY, flat=True)
                 .distinct()
                 .exclude(geography__isnull=True, geography__exact="")
             )
             crop_detail = (
-                Datasets.objects.filter(approval_status="approved")
+                Datasets.objects.filter(Q(approval_status="approved") | Q(user_map__user__role_id=1))
                 .values_list(Constants.CROP_DETAIL, flat=True)
                 .distinct()
                 .exclude(crop_detail__isnull=True, crop_detail__exact="")
