@@ -51,10 +51,10 @@ class ContactFormSerializer(serializers.Serializer):
     # subject = serializers.ChoiceField(choices=SUBJECT_CHOICES)
 
     first_name = serializers.CharField()
-    last_name = serializers.CharField()
+    last_name = serializers.CharField(required=False)
     email = serializers.EmailField()
     contact_number = serializers.CharField()
-    subject = serializers.CharField()
+    subject = serializers.CharField(required=False)
     describe_query = serializers.CharField()
 
 
