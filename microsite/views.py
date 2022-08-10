@@ -127,13 +127,13 @@ class DatasetsMicrositeViewSet(GenericViewSet):
         """This function provides the filters data"""
         try:
             geography = (
-                Datasets.objects.filter(approval_status="approved")
+                Datasets.objects.filter(Q(approval_status="approved") | Q(user_map__user__role_id=1))
                 .values_list(Constants.GEOGRAPHY, flat=True)
                 .distinct()
                 .exclude(geography__isnull=True, geography__exact="")
             )
             crop_detail = (
-                Datasets.objects.filter(approval_status="approved")
+                Datasets.objects.filter(Q(approval_status="approved") | Q(user_map__user__role_id=1))
                 .values_list(Constants.CROP_DETAIL, flat=True)
                 .distinct()
                 .exclude(crop_detail__isnull=True, crop_detail__exact="")
