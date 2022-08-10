@@ -12,6 +12,7 @@ from core.utils import (
     date_formater,
     read_contents_from_csv_or_xlsx_file,
 )
+from django.db.models.functions import Lower
 from datahub.models import Datasets, Organization, UserOrganizationMap
 from django.db.models import Q
 from rest_framework import pagination, status
@@ -47,6 +48,8 @@ from participant.serializers import (
     TicketSupportSerializer,
     ParticipantDatasetsDropDownSerializer,
     ConnectorListSerializer,
+    ConnectorsMapConsumerRetriveSerializer,
+    ConnectorsMapProviderRetriveSerializer
 )
 
 
@@ -365,27 +368,29 @@ class ParticipantConnectorsViewSet(GenericViewSet):
     def retrieve(self, request, pk):
         """GET method: retrieve an object or instance of the Product model"""
         data = (
-            Connectors.objects.select_related("dataset", "dataset__user_map", "dataset__user_map__user")
+            Connectors.objects.select_related("dataset", "dataset__user_map", "dataset__user_map__user", "dataset__user_map__organization")
             .filter(dataset__user_map__user__status=True, dataset__status=True, status=True, id=pk)
             .all()
         )
         participant_serializer = ConnectorsRetriveSerializer(data, many=True)
         if participant_serializer.data:
             data = participant_serializer.data[0]
-            if data.get("connector_type") == "provider":
+            if data.get("connector_type") == "Provider":
                 relation = (
-                    ConnectorsMap.objects.select_related("consumer")
+                    ConnectorsMap.objects.select_related("consumer", "consumer__dataset", "consumer__project",
+                      "consumer__project__department", "consumer__dataset__user_map__organization")
                     .filter(status=True, provider=pk, consumer__status=True)
                     .all()
                 )
-                relation_serializer = ConnectorsConsumerRelationSerializer(relation, many=True)
+                relation_serializer = ConnectorsMapConsumerRetriveSerializer(relation, many=True)
             else:
                 relation = (
-                    ConnectorsMap.objects.select_related("provider")
+                    ConnectorsMap.objects.select_related("provider", "provider__dataset", "provider__project",
+                     "provider__project__department", "provider__dataset__user_map__organization")
                     .filter(status=True, consumer=pk, provider__status=True)
                     .all()
                 )
-                relation_serializer = ConnectorsProviderRelationSerializer(relation, many=True)
+                relation_serializer = ConnectorsMapProviderRetriveSerializer(relation, many=True)
             data["relation"] = relation_serializer.data
             return Response(data, status=status.HTTP_200_OK)
         return Response({}, status=status.HTTP_200_OK)
@@ -466,7 +471,7 @@ class ParticipantConnectorsViewSet(GenericViewSet):
     def get_connectors(self, request, *args, **kwargs):
         dataset_id = request.query_params.get("dataset_id", "")
         data = Connectors.objects.all().filter(dataset=dataset_id, status=True,
-         connector_status__in=["unpaired",  "request recieved for approval"], connector_type="provider")
+         connector_status__in=["unpaired",  "pairing request received"], connector_type="Provider")
         connector_serializer = ConnectorListSerializer(data, many=True)
         return Response(connector_serializer.data, status=200)
 
@@ -498,7 +503,7 @@ class ParticipantConnectorsMapViewSet(GenericViewSet):
         provider = request.data.get("provider")
         consumer = request.data.get("consumer")
         provider_obj = Connectors.objects.get(id=provider)
-        provider_obj.connector_status = "request recieved for approval"
+        provider_obj.connector_status = "pairing request received"
         consumer_obj = Connectors.objects.get(id=consumer)
         consumer_obj.connector_status = "awaiting for approval"
         self.perform_create(provider_obj)
@@ -509,29 +514,34 @@ class ParticipantConnectorsMapViewSet(GenericViewSet):
     def update(self, request, *args, **kwargs):
         """PUT method: update or send a PUT request on an object of the Product model"""
         instance = self.get_object()
-        provider_obj = Connectors.objects.get(id=instance.provider.id)
-        consumer_obj = Connectors.objects.get(id=instance.consumer.id)
+        provider_obj = Connectors.objects.get(id=instance.provider)
+        consumer_obj = Connectors.objects.get(id=instance.consumer)
         serializer = self.get_serializer(instance, data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
-        self.perform_create(serializer)
-        if request.data.get("connector_pair_status") == 'paired':
-            connectors_map = ConnectorsMap.objects.all().filter(provider=instance.provider.id, connector_pair_status="awaiting_for_approval")
-            provider_obj.connector_status = "paired"
-            consumer_obj.connector_status = "paired"
-            for data in connectors_map:
-                data.connector_pair_status = "rejected"
-                self.perform_create(data)
-
-        if request.data.get("connector_pair_status") == 'rejected':
-            if ConnectorsMap.objects.all().filter(provider=instance.provider.id, connector_pair_status="awaiting_for_approval"):               
-                provider_obj.connector_status = "awaiting for approval"
-            if ConnectorsMap.objects.all().filter(provider=instance.provider.id, connector_pair_status="paired"):
-                provider_obj.connector_status = "paired"
-            else:
-                provider_obj.connector_status = "unpaired"
-            consumer_obj.connector_status = "rejected"
-        self.perform_create(provider_obj)
-        self.perform_create(consumer_obj)
+        if request.data.get("connector_pair_status") == "rejected":
+            connectors = Connectors.objects.get(id=instance.consumer)
+            connectors.connector_status = "rejected"
+            self.perform_create(connectors)
+            if not ConnectorsMap.objects.all().filter(provider=instance.provider, connector_pair_status="awaiting for approval"):
+                connectors = Connectors.objects.get(id=instance.provider)
+                connectors.connector_status = "unpaired" 
+                self.perform_create(connectors)
+        if request.data.get("connector_pair_status") == "paired":
+            consumer_connectors = Connectors.objects.get(id=instance.consumer)
+            provider_connectors = Connectors.objects.get(id=instance.provider)
+            provider_connectors.connector_status = "paired"
+            consumer_connectors.connector_status = "paired"
+            self.perform_create(consumer_connectors)
+            self.perform_create(provider_connectors)
+            rejection_needed_connectors = ConnectorsMap.objects.all().filter(provider=instance.provider.id, 
+            connector_pair_status="awaiting for approval").exclude(consumer=instance.consumer)
+            if rejection_needed_connectors:
+                for map_connectors in rejection_needed_connectors:
+                    map_connectors.connector_status = "rejected" 
+                    connectors = Connectors.objects.get(id=map_connectors.consumer)
+                    map_connectors.connector_status = "rejected" 
+                    self.perform_create(connectors)
+                    self.perform_create(map_connectors)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
     def destroy(self, request, pk):
