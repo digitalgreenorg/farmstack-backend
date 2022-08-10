@@ -80,7 +80,7 @@
     status: True
     role: 1
 - model: accounts.User
-  pk: "fa156187-0941-4e5c-b6d1-cd5dd7570227"
+  pk: "f36cf2ad-7caa-4891-a1ee-2668459102a9"
   fields:
     created_at: "2022-07-01 05:30:55.463786"
     updated_at: "2022-07-01 05:30:55.464100"
@@ -88,7 +88,6 @@
     email: "gautam@digitalgreen.org"
     status: True
     role: 1
-
 - model: accounts.User
   pk: "fa156187-0941-4e5c-b6d1-cd5dd7570227"
   fields:
@@ -103,8 +102,17 @@
   fields:
     created_at: "2022-07-01 05:30:55.463786"
     updated_at: "2022-07-01 05:30:55.464100"
-    first_name: "Gautam"
+    first_name: "Razak"
     email: "razak@digitalgreen.org"
+    status: True
+    role: 1
+- model: accounts.User
+  pk: "29c350d4-3180-4f48-8218-5c7040e04d35"
+  fields:
+    created_at: "2022-07-01 05:30:55.463786"
+    updated_at: "2022-07-01 05:30:55.464100"
+    first_name: "Vineet"
+    email: "vineet@digitalgreen.org"
     status: True
     role: 1
 
