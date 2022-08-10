@@ -17,7 +17,6 @@ from datahub.views import (
     ParticipantViewSet,
     SupportViewSet,
     TeamMemberViewSet,
-    DatahubDashboard,
 )
 
 router = DefaultRouter()
@@ -30,7 +29,6 @@ router.register("save_documents", DocumentSaveView, basename=Constants.SAVE_DOCU
 router.register("theme", DatahubThemeView, basename=Constants.THEME)
 router.register(r"support", SupportViewSet, basename=Constants.SUPPORT_TICKETS)
 router.register(r"datasets", DatahubDatasetsViewSet, basename=Constants.DATAHUB_DATASETS)
-router.register(r"", DatahubDashboard, basename="dash")
 
 
 urlpatterns = [
