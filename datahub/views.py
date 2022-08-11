@@ -416,9 +416,6 @@ class DocumentSaveView(GenericViewSet):
         file_paths = file_operations.file_path(settings.DOCUMENTS_URL)
         datahub_obj = DatahubDocuments.objects.first()
         try:
-            file_paths = file_operations.file_path(settings.DOCUMENTS_URL)
-            datahub_obj = DatahubDocuments.objects.first()
-
             if not datahub_obj and not file_paths:
                 data = {"Content": None, "Documents": None}
                 return Response(data, status=status.HTTP_200_OK)
@@ -462,7 +459,7 @@ class DocumentSaveView(GenericViewSet):
 
         with transaction.atomic():
             serializer.save()
-            file_operations.files_move(settings.TEMP_FILE_PATH, settings.STATIC_ROOT)
+            file_operations.files_move(settings.TEMP_FILE_PATH, settings.DOCUMENTS_ROOT)
             return Response(
                 {"message": "Documents and content updated!"},
                 status=status.HTTP_201_CREATED,
@@ -861,3 +858,20 @@ class DatahubDatasetsViewSet(GenericViewSet):
             logging.error("Error while filtering the datasets. ERROR: %s", error)
             return Response(f"Invalid filter fields: {list(request.data.keys())}", status=500)
         return Response({"geography": geography, "crop_detail": crop_detail}, status=200)
+
+
+class DatahubDashboard(GenericViewSet):
+    """Datahub Dashboard viewset"""
+
+    @action(detail=False, methods=['get'])
+    def dashboard(self, request):
+        """Retrieve datahub dashboard details"""
+        total_participants = User.objects.filter(role_id=3, status=True).count()
+        total_datasets = Datasets.objects.select_related("user_map", "user_map__user", "user_map__organization").filter(user_map__user__status=True, status=True).order_by("updated_at").count()
+        active_connectors = ""      # fill this later
+
+        datasets = Datasets.objects.order_by('category').filter(status=True).values()
+        datasets.values_list("category")
+
+        data = {"total_participants": total_participants, "total_datasets": total_datasets, "active_connectors": active_connectors}
+        return Response(data, status=status.HTTP_200_OK)
