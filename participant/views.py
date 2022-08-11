@@ -363,13 +363,13 @@ class ParticipantConnectorsViewSet(GenericViewSet):
         """GET method: query all the list of objects from the Product model"""
         data = []
         user_id = request.query_params.get(Constants.USER_ID, "")
-        filters = {"dataset__user_map__user": user_id} if user_id else {}
+        filters = {"user_map__user": user_id} if user_id else {}
         if filters:
             data = (
-                Connectors.objects.select_related(
-                    "dataset", "dataset__user_map", Constants.PROJECT, "project__department"
+                Connectors.objects.select_related("dataset"
+                    "user_map", Constants.PROJECT, "project__department"
                 )
-                .filter(dataset__user_map__user__status=True, dataset__status=True, status=True, **filters)
+                .filter(user_map__user__status=True, dataset__status=True, status=True, **filters)
                 .order_by(Constants.UPDATED_AT).reverse()
                 .all()
             )
@@ -381,9 +381,9 @@ class ParticipantConnectorsViewSet(GenericViewSet):
         """GET method: retrieve an object or instance of the Product model"""
         data = (
             Connectors.objects.select_related(
-                "dataset", "dataset__user_map", "dataset__user_map__user", "dataset__user_map__organization"
+                "dataset", "user_map", "user_map__user", "user_map__organization"
             )
-            .filter(dataset__user_map__user__status=True, dataset__status=True, status=True, id=pk)
+            .filter(user_map__user__status=True, dataset__status=True, status=True, id=pk)
             .all()
         )
         participant_serializer = ConnectorsRetriveSerializer(data, many=True)
@@ -396,7 +396,7 @@ class ParticipantConnectorsViewSet(GenericViewSet):
                         "consumer__dataset",
                         "consumer__project",
                         "consumer__project__department",
-                        "consumer__dataset__user_map__organization",
+                        "consumer__user_map__organization",
                     )
                     .filter(status=True, provider=pk, consumer__status=True, connector_pair_status__in=["paired", "awaiting for approval"])
                     .all()
@@ -409,7 +409,7 @@ class ParticipantConnectorsViewSet(GenericViewSet):
                         "provider__dataset",
                         "provider__project",
                         "provider__project__department",
-                        "provider__dataset__user_map__organization",
+                        "provider__user_map__organization",
                     )
                     .filter(status=True, consumer=pk, provider__status=True, connector_pair_status__in=["paired", "awaiting for approval"])
                     .all()
@@ -439,15 +439,15 @@ class ParticipantConnectorsViewSet(GenericViewSet):
         """This function get the filter args in body. based on the filter args orm filters the data."""
         data = request.data
         user_id = data.pop(Constants.USER_ID, "")
-        filters = {"dataset__user_map__user": user_id} if user_id else {}
+        filters = {"user_map__user": user_id} if user_id else {}
         cretated_range = {}
         created_at__range = request.data.pop(Constants.CREATED_AT__RANGE, None)
         if created_at__range:
             cretated_range[Constants.CREATED_AT__RANGE] = date_formater(created_at__range)
         try:
             data = (
-                Connectors.objects.select_related("dataset", "dataset__user_map")
-                .filter(status=True, **data, **filters, **cretated_range)
+                Connectors.objects.select_related("dataset", "user_map", "project", "project__department")
+                .filter(status=True, dataset__status=True, **data, **filters, **cretated_range)
                 .order_by(Constants.UPDATED_AT).reverse()
                 .all()
             )
@@ -464,10 +464,10 @@ class ParticipantConnectorsViewSet(GenericViewSet):
         """This function provides the filters data"""
         data = request.data
         user_id = data.pop(Constants.USER_ID)
-        filters = {"dataset__user_map__user": user_id} if user_id else {}
+        filters = {"user_map__user": user_id} if user_id else {}
         try:
             projects = (
-                Connectors.objects.select_related("dataset", "project", "dataset__user_map")
+                Connectors.objects.select_related("dataset", "project", "user_map")
                 .values_list("project__project_name", flat=True)
                 .distinct()
                 .filter(dataset__status=True, status=True, **filters)

@@ -87,6 +87,7 @@ class Connectors(TimeStampMixin):
     """Connectors model of all the users"""
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    user_map = models.ForeignKey(UserOrganizationMap, on_delete=models.PROTECT, null=True)
     project = models.ForeignKey(Project, on_delete=models.PROTECT, null=True)
     dataset = models.ForeignKey(Datasets, on_delete=models.PROTECT)
     connector_name = models.CharField(max_length=255, unique=True)

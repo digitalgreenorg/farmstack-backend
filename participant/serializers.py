@@ -203,9 +203,9 @@ class ConnectorsRetriveSerializer(serializers.ModelSerializer):
     )
     project_details = ProjectSerializer(required=False, allow_null=True, read_only=True, source="project")
     dataset_details = DatasetSerializer(required=False, allow_null=True, read_only=True, source="dataset")
-    organization_details= OrganizationConnectorSerializer(required=False, allow_null=True, read_only=True, source="dataset.user_map.organization")
+    organization_details= OrganizationConnectorSerializer(required=False, allow_null=True, read_only=True, source="user_map.organization")
     user_id = serializers.PrimaryKeyRelatedField(
-        queryset=models.User.objects.all(), allow_null=True, required=False, source="dataset.user_map.user"
+        queryset=models.User.objects.all(), allow_null=True, required=False, source="user_map.user"
     )
 
     class Meta:
@@ -227,9 +227,9 @@ class ConnectorsMapProviderRetriveSerializer(serializers.ModelSerializer):
     )
     project_details = ProjectSerializer(required=False, allow_null=True, read_only=True, source="provider.project")
     dataset_details = DatasetSerializer(required=False, allow_null=True, read_only=True, source="provider.dataset")
-    organization_details= OrganizationConnectorSerializer(required=False, allow_null=True, read_only=True, source="provider.dataset.user_map.organization")
+    organization_details= OrganizationConnectorSerializer(required=False, allow_null=True, read_only=True, source="provider.user_map.organization")
     user_id = serializers.PrimaryKeyRelatedField(
-        queryset=models.User.objects.all(), allow_null=True, required=False, source="provider.dataset.user_map.user"
+        queryset=models.User.objects.all(), allow_null=True, required=False, source="provider.user_map.user"
     )
     connector_details = ConnectorsSerializer(required=False, allow_null=True, read_only=True, source="provider")
     class Meta:
@@ -251,9 +251,9 @@ class ConnectorsMapConsumerRetriveSerializer(serializers.ModelSerializer):
     )
     project_details = ProjectSerializer(required=False, allow_null=True, read_only=True, source="consumer.project")
     dataset_details = DatasetSerializer(required=False, allow_null=True, read_only=True, source="consumer.dataset")
-    organization_details= OrganizationConnectorSerializer(required=False, allow_null=True, read_only=True, source="consumer.dataset.user_map.organization")
+    organization_details= OrganizationConnectorSerializer(required=False, allow_null=True, read_only=True, source="consumer.user_map.organization")
     user_id = serializers.PrimaryKeyRelatedField(
-        queryset=models.User.objects.all(), allow_null=True, required=False, source="consumer.dataset.user_map.user"
+        queryset=models.User.objects.all(), allow_null=True, required=False, source="consumer.user_map.user"
     )
     connector_details = ConnectorsSerializer(required=False, allow_null=True, read_only=True, source="consumer")
 
