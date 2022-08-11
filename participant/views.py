@@ -514,35 +514,53 @@ class ParticipantConnectorsMapViewSet(GenericViewSet):
     def update(self, request, *args, **kwargs):
         """PUT method: update or send a PUT request on an object of the Product model"""
         instance = self.get_object()
-        provider_obj = Connectors.objects.get(id=instance.provider)
-        consumer_obj = Connectors.objects.get(id=instance.consumer)
+        provider_obj = Connectors.objects.get(id=instance.provider.id)
+        consumer_obj = Connectors.objects.get(id=instance.consumer.id)
         serializer = self.get_serializer(instance, data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
         if request.data.get("connector_pair_status") == "rejected":
-            connectors = Connectors.objects.get(id=instance.consumer)
+            connectors = Connectors.objects.get(id=instance.consumer.id)
             connectors.connector_status = "rejected"
             self.perform_create(connectors)
-            if not ConnectorsMap.objects.all().filter(provider=instance.provider, connector_pair_status="awaiting for approval"):
-                connectors = Connectors.objects.get(id=instance.provider)
+            if not ConnectorsMap.objects.all().filter(provider=instance.provider.id, connector_pair_status="awaiting for approval").exclude(id=instance.id):
+                connectors = Connectors.objects.get(id=instance.provider.id)
                 connectors.connector_status = "unpaired" 
                 self.perform_create(connectors)
-        if request.data.get("connector_pair_status") == "paired":
-            consumer_connectors = Connectors.objects.get(id=instance.consumer)
-            provider_connectors = Connectors.objects.get(id=instance.provider)
+        elif request.data.get("connector_pair_status") == "paired":
+            consumer_connectors = Connectors.objects.get(id=instance.consumer.id)
+            provider_connectors = Connectors.objects.get(id=instance.provider.id)
             provider_connectors.connector_status = "paired"
             consumer_connectors.connector_status = "paired"
             self.perform_create(consumer_connectors)
             self.perform_create(provider_connectors)
             rejection_needed_connectors = ConnectorsMap.objects.all().filter(provider=instance.provider.id, 
-            connector_pair_status="awaiting for approval").exclude(consumer=instance.consumer)
+            connector_pair_status="awaiting for approval").exclude(id=instance.id)
             if rejection_needed_connectors:
                 for map_connectors in rejection_needed_connectors:
-                    map_connectors.connector_status = "rejected" 
-                    connectors = Connectors.objects.get(id=map_connectors.consumer)
-                    map_connectors.connector_status = "rejected" 
-                    self.perform_create(connectors)
+                    map_connectors.connector_pair_status = "rejected" 
+                    map_connectors_consumer = Connectors.objects.get(id=map_connectors.consumer.id)
+                    map_connectors_consumer.connector_status = "rejected" 
                     self.perform_create(map_connectors)
+                    self.perform_create(map_connectors_consumer)
+        elif request.data.get("connector_pair_status") == "unpaired":
+            consumer_connectors = Connectors.objects.get(id=instance.consumer.id)
+            provider_connectors = Connectors.objects.get(id=instance.provider.id)
+            provider_connectors.connector_status = "unpaired"
+            consumer_connectors.connector_status = "unpaired"
+            self.perform_create(consumer_connectors)
+            self.perform_create(provider_connectors)
+        self.perform_create(serializer)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
+    
+    def retrieve(self, request, pk):
+        """GET method: retrieve an object or instance of the Product model"""
+        data = (
+            ConnectorsMap.objects.filter(id=pk).all()
+        )
+        participant_serializer = ConnectorsMapSerializer(data, many=True)
+        if participant_serializer.data:
+            return Response(participant_serializer.data[0], status=status.HTTP_200_OK)
+        return Response([], status=status.HTTP_200_OK)
 
     def destroy(self, request, pk):
         """DELETE method: delete an object"""
