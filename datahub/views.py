@@ -459,7 +459,7 @@ class DocumentSaveView(GenericViewSet):
 
         with transaction.atomic():
             serializer.save()
-            file_operations.files_move(settings.TEMP_FILE_PATH, settings.STATIC_ROOT)
+            file_operations.files_move(settings.TEMP_FILE_PATH, settings.DOCUMENTS_ROOT)
             return Response(
                 {"message": "Documents and content updated!"},
                 status=status.HTTP_201_CREATED,
