@@ -46,6 +46,7 @@ from datahub.serializers import (
     DatahubDatasetsSerializer,
     DatahubThemeSerializer,
     DatasetSerializer,
+    DatasetUpdateSerializer,
     DropDocumentSerializer,
     OrganizationSerializer,
     ParticipantSerializer,
@@ -56,7 +57,6 @@ from datahub.serializers import (
     TeamMemberUpdateSerializer,
     UserOrganizationCreateSerializer,
     UserOrganizationMapSerializer,
-    DatasetUpdateSerializer,
 )
 
 LOGGER = logging.getLogger(__name__)
@@ -772,6 +772,7 @@ class DatahubDatasetsViewSet(GenericViewSet):
 
     def update(self, request, *args, **kwargs):
         """PUT method: update or send a PUT request on an object of the Product model"""
+        setattr(request.data, "_mutable", True)
         data = request.data
         data = {key: value for key, value in data.items() if value != "null"}
         if data.get(Constants.SAMPLE_DATASET):
@@ -784,6 +785,9 @@ class DatahubDatasetsViewSet(GenericViewSet):
                     },
                     400,
                 )
+        category = data.get(Constants.CATEGORY)
+        if category:
+            data[Constants.CATEGORY] = json.loads(category) if isinstance(category, str) else category
         instance = self.get_object()
         serializer = DatasetUpdateSerializer(instance, data=data, partial=True)
         serializer.is_valid(raise_exception=True)

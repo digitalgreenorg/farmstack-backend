@@ -39,3 +39,4 @@ class Constants:
     CROP_DETAIL = "crop_detail"
     PROJECT = "project"
     DEPARTMENT = "department"
+    CATEGORY = "category"

@@ -1,8 +1,11 @@
+import json
 import logging
 import subprocess
+from sre_compile import isstring
 from struct import unpack
-import requests
+
 import pandas as pd
+import requests
 from accounts.models import User
 from core.constants import Constants
 from core.utils import (
@@ -12,9 +15,9 @@ from core.utils import (
     date_formater,
     read_contents_from_csv_or_xlsx_file,
 )
-from django.db.models.functions import Lower
 from datahub.models import Datasets, Organization, UserOrganizationMap
 from django.db.models import Q
+from django.db.models.functions import Lower
 from rest_framework import pagination, status
 from rest_framework.decorators import action
 from rest_framework.parsers import JSONParser
@@ -31,8 +34,11 @@ from participant.models import (
     SupportTicket,
 )
 from participant.serializers import (
+    ConnectorListSerializer,
     ConnectorsConsumerRelationSerializer,
     ConnectorsListSerializer,
+    ConnectorsMapConsumerRetriveSerializer,
+    ConnectorsMapProviderRetriveSerializer,
     ConnectorsMapSerializer,
     ConnectorsProviderRelationSerializer,
     ConnectorsRetriveSerializer,
@@ -41,15 +47,12 @@ from participant.serializers import (
     DepartmentListSerializer,
     DepartmentSerializer,
     ParticipantDatasetsDetailSerializer,
+    ParticipantDatasetsDropDownSerializer,
     ParticipantDatasetsSerializer,
     ParticipantSupportTicketSerializer,
     ProjectListSerializer,
     ProjectSerializer,
     TicketSupportSerializer,
-    ParticipantDatasetsDropDownSerializer,
-    ConnectorListSerializer,
-    ConnectorsMapConsumerRetriveSerializer,
-    ConnectorsMapProviderRetriveSerializer
 )
 
 
@@ -218,6 +221,7 @@ class ParticipantDatasetsViewSet(GenericViewSet):
 
     def update(self, request, *args, **kwargs):
         """PUT method: update or send a PUT request on an object of the Product model"""
+        setattr(request.data, "_mutable", True)
         data = request.data
         if data.get(Constants.SAMPLE_DATASET):
             if not csv_and_xlsx_file_validatation(data.get(Constants.SAMPLE_DATASET)):
@@ -229,6 +233,9 @@ class ParticipantDatasetsViewSet(GenericViewSet):
                     },
                     400,
                 )
+        category = data.get(Constants.CATEGORY)
+        if category:
+            data[Constants.CATEGORY] = json.loads(category) if isinstance(category, str) else category
         instance = self.get_object()
         serializer = self.get_serializer(instance, data=data, partial=True)
         serializer.is_valid(raise_exception=True)
@@ -284,7 +291,8 @@ class ParticipantDatasetsViewSet(GenericViewSet):
         filters = {Constants.USER_MAP_ORGANIZATION: org_id} if org_id else {Constants.USER_MAP_USER: user_id}
         try:
             geography = (
-                Datasets.objects.all().select_related(Constants.USER_MAP_ORGANIZATION)
+                Datasets.objects.all()
+                .select_related(Constants.USER_MAP_ORGANIZATION)
                 .values_list(Constants.GEOGRAPHY, flat=True)
                 .distinct()
                 .filter(**filters, status=True, user_map__user__role_id=3)
@@ -293,9 +301,10 @@ class ParticipantDatasetsViewSet(GenericViewSet):
                 .exclude(geography="", **exclude)
             )
             crop_detail = (
-                Datasets.objects.all().select_related(Constants.USER_MAP_ORGANIZATION)
+                Datasets.objects.all()
+                .select_related(Constants.USER_MAP_ORGANIZATION)
                 .values_list(Constants.CROP_DETAIL, flat=True)
-                .distinct() 
+                .distinct()
                 .filter(**filters, status=True, user_map__user__role_id=3)
                 .exclude(crop_detail="null")
                 .exclude(crop_detail__isnull=True)
@@ -330,7 +339,7 @@ class ParticipantConnectorsViewSet(GenericViewSet):
 
     def create(self, request, *args, **kwargs):
         """POST method: create action to save an object by sending a POST request"""
-        setattr(request.data, '_mutable', True)
+        setattr(request.data, "_mutable", True)
         data = request.data
         docker_image = data.get("docker_image_url")
         try:
@@ -368,7 +377,9 @@ class ParticipantConnectorsViewSet(GenericViewSet):
     def retrieve(self, request, pk):
         """GET method: retrieve an object or instance of the Product model"""
         data = (
-            Connectors.objects.select_related("dataset", "dataset__user_map", "dataset__user_map__user", "dataset__user_map__organization")
+            Connectors.objects.select_related(
+                "dataset", "dataset__user_map", "dataset__user_map__user", "dataset__user_map__organization"
+            )
             .filter(dataset__user_map__user__status=True, dataset__status=True, status=True, id=pk)
             .all()
         )
@@ -377,16 +388,26 @@ class ParticipantConnectorsViewSet(GenericViewSet):
             data = participant_serializer.data[0]
             if data.get("connector_type") == "Provider":
                 relation = (
-                    ConnectorsMap.objects.select_related("consumer", "consumer__dataset", "consumer__project",
-                      "consumer__project__department", "consumer__dataset__user_map__organization")
+                    ConnectorsMap.objects.select_related(
+                        "consumer",
+                        "consumer__dataset",
+                        "consumer__project",
+                        "consumer__project__department",
+                        "consumer__dataset__user_map__organization",
+                    )
                     .filter(status=True, provider=pk, consumer__status=True)
                     .all()
                 )
                 relation_serializer = ConnectorsMapConsumerRetriveSerializer(relation, many=True)
             else:
                 relation = (
-                    ConnectorsMap.objects.select_related("provider", "provider__dataset", "provider__project",
-                     "provider__project__department", "provider__dataset__user_map__organization")
+                    ConnectorsMap.objects.select_related(
+                        "provider",
+                        "provider__dataset",
+                        "provider__project",
+                        "provider__project__department",
+                        "provider__dataset__user_map__organization",
+                    )
                     .filter(status=True, consumer=pk, provider__status=True)
                     .all()
                 )
@@ -454,10 +475,15 @@ class ParticipantConnectorsViewSet(GenericViewSet):
                 .values_list("project__department__department_name", flat=True)
                 .distinct()
                 .filter(dataset__status=True, status=True, **filters)
-                .exclude(project__department__department_name__isnull=True, project__department__department_name__exact="")
+                .exclude(
+                    project__department__department_name__isnull=True, project__department__department_name__exact=""
+                )
             )
-            datasests = Datasets.objects.all().select_related("user_map", "user_map__user").filter(user_map__user=user_id,
-             user_map__user__status=True, status=True)
+            datasests = (
+                Datasets.objects.all()
+                .select_related("user_map", "user_map__user")
+                .filter(user_map__user=user_id, user_map__user__status=True, status=True)
+            )
             is_datset_present = True if datasests else False
         except Exception as error:  # type: ignore
             logging.error("Error while filtering the datasets. ERROR: %s", error)
@@ -470,10 +496,15 @@ class ParticipantConnectorsViewSet(GenericViewSet):
     @action(detail=False, methods=["get"])
     def get_connectors(self, request, *args, **kwargs):
         dataset_id = request.query_params.get("dataset_id", "")
-        data = Connectors.objects.all().filter(dataset=dataset_id, status=True,
-         connector_status__in=["unpaired",  "pairing request received"], connector_type="Provider")
+        data = Connectors.objects.all().filter(
+            dataset=dataset_id,
+            status=True,
+            connector_status__in=["unpaired", "pairing request received"],
+            connector_type="Provider",
+        )
         connector_serializer = ConnectorListSerializer(data, many=True)
         return Response(connector_serializer.data, status=200)
+
 
 class ParticipantConnectorsMapViewSet(GenericViewSet):
     """
@@ -522,9 +553,13 @@ class ParticipantConnectorsMapViewSet(GenericViewSet):
             connectors = Connectors.objects.get(id=instance.consumer.id)
             connectors.connector_status = "rejected"
             self.perform_create(connectors)
-            if not ConnectorsMap.objects.all().filter(provider=instance.provider.id, connector_pair_status="awaiting for approval").exclude(id=instance.id):
+            if (
+                not ConnectorsMap.objects.all()
+                .filter(provider=instance.provider.id, connector_pair_status="awaiting for approval")
+                .exclude(id=instance.id)
+            ):
                 connectors = Connectors.objects.get(id=instance.provider.id)
-                connectors.connector_status = "unpaired" 
+                connectors.connector_status = "unpaired"
                 self.perform_create(connectors)
         elif request.data.get("connector_pair_status") == "paired":
             consumer_connectors = Connectors.objects.get(id=instance.consumer.id)
@@ -533,13 +568,16 @@ class ParticipantConnectorsMapViewSet(GenericViewSet):
             consumer_connectors.connector_status = "paired"
             self.perform_create(consumer_connectors)
             self.perform_create(provider_connectors)
-            rejection_needed_connectors = ConnectorsMap.objects.all().filter(provider=instance.provider.id, 
-            connector_pair_status="awaiting for approval").exclude(id=instance.id)
+            rejection_needed_connectors = (
+                ConnectorsMap.objects.all()
+                .filter(provider=instance.provider.id, connector_pair_status="awaiting for approval")
+                .exclude(id=instance.id)
+            )
             if rejection_needed_connectors:
                 for map_connectors in rejection_needed_connectors:
-                    map_connectors.connector_pair_status = "rejected" 
+                    map_connectors.connector_pair_status = "rejected"
                     map_connectors_consumer = Connectors.objects.get(id=map_connectors.consumer.id)
-                    map_connectors_consumer.connector_status = "rejected" 
+                    map_connectors_consumer.connector_status = "rejected"
                     self.perform_create(map_connectors)
                     self.perform_create(map_connectors_consumer)
         elif request.data.get("connector_pair_status") == "unpaired":
@@ -551,12 +589,10 @@ class ParticipantConnectorsMapViewSet(GenericViewSet):
             self.perform_create(provider_connectors)
         self.perform_create(serializer)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
-    
+
     def retrieve(self, request, pk):
         """GET method: retrieve an object or instance of the Product model"""
-        data = (
-            ConnectorsMap.objects.filter(id=pk).all()
-        )
+        data = ConnectorsMap.objects.filter(id=pk).all()
         participant_serializer = ConnectorsMapSerializer(data, many=True)
         if participant_serializer.data:
             return Response(participant_serializer.data[0], status=status.HTTP_200_OK)
