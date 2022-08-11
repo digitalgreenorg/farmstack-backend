@@ -91,7 +91,7 @@ class Connectors(TimeStampMixin):
     dataset = models.ForeignKey(Datasets, on_delete=models.PROTECT)
     connector_name = models.CharField(max_length=255, unique=True)
     connector_type = models.CharField(max_length=255)
-    connector_description = models.CharField(max_length=500, null=True, blank=True,)
+    connector_description = models.CharField(max_length=500, null=True, blank=True)
     docker_image_url = models.CharField(max_length=255)
     application_port = models.IntegerField()
     certificate = models.FileField(

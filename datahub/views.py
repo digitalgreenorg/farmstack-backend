@@ -639,7 +639,7 @@ class SupportViewSet(GenericViewSet):
                     Constants.USER_MAP_ORGANIZATION,
                 )
                 .filter(user_map__user__status=True, **request.data, **range)
-                .order_by(Constants.UPDATED_AT)
+                .order_by(Constants.UPDATED_AT).reverse()
                 .all()
             )
         except django.core.exceptions.FieldError as error:  # type: ignore
@@ -667,7 +667,7 @@ class SupportViewSet(GenericViewSet):
                 Constants.USER_MAP_ORGANIZATION,
             )
             .filter(user_map__user__status=True, **request.GET)
-            .order_by(Constants.UPDATED_AT)
+            .order_by(Constants.UPDATED_AT).reverse()
             .all()
         )
         page = self.paginate_queryset(data)
@@ -742,7 +742,7 @@ class DatahubDatasetsViewSet(GenericViewSet):
                 )
                 .filter(user_map__user__status=True, status=True, **filters)
                 .exclude(**exclude)
-                .order_by(Constants.UPDATED_AT)
+                .order_by(Constants.UPDATED_AT).reverse()
                 .all()
             )
         page = self.paginate_queryset(data)
@@ -820,6 +820,7 @@ class DatahubDatasetsViewSet(GenericViewSet):
                 .filter(status=True, **data, **filters, **range)
                 .exclude(**exclude)
                 .order_by(Constants.UPDATED_AT)
+                .reverse()
                 .all()
             )
         except Exception as error:  # type: ignore
@@ -857,7 +858,6 @@ class DatahubDatasetsViewSet(GenericViewSet):
                 .exclude(crop_detail__isnull=True)
                 .exclude(crop_detail="", **exclude)
             )
-            print(crop_detail.query)
         except Exception as error:  # type: ignore
             logging.error("Error while filtering the datasets. ERROR: %s", error)
             return Response(f"Invalid filter fields: {list(request.data.keys())}", status=500)

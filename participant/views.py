@@ -92,7 +92,7 @@ class ParticipantSupportViewSet(GenericViewSet):
                 Constants.USER_MAP, Constants.USER_MAP_USER, Constants.USER_MAP_ORGANIZATION
             )
             .filter(user_map__user__status=True, user_map__user=user_id)
-            .order_by(Constants.UPDATED_AT)
+            .order_by(Constants.UPDATED_AT).reverse()
             .all()
         )
         page = self.paginate_queryset(data)
@@ -175,7 +175,7 @@ class ParticipantDatasetsViewSet(GenericViewSet):
                 )
                 .filter(user_map__user__status=True, status=True, **filters)
                 .exclude(**exclude)
-                .order_by(Constants.UPDATED_AT)
+                .order_by(Constants.UPDATED_AT).reverse()
                 .all()
             )
         page = self.paginate_queryset(data)
@@ -187,16 +187,15 @@ class ParticipantDatasetsViewSet(GenericViewSet):
         """GET method: query all the list of objects from the Product model"""
         data = []
         user_id = request.query_params.get(Constants.USER_ID, "")
-        filters = {Constants.USER_MAP_USER: user_id}
-        if filters:
-            data = (
-                Datasets.objects.select_related(
-                    Constants.USER_MAP, Constants.USER_MAP_USER, Constants.USER_MAP_ORGANIZATION
-                )
-                .filter(user_map__user__status=True, status=True, **filters)
-                .order_by(Constants.UPDATED_AT)
-                .all()
+        filters = {Constants.USER_MAP_USER: user_id} if user_id else {}
+        data = (
+            Datasets.objects.select_related(
+                Constants.USER_MAP, Constants.USER_MAP_USER, Constants.USER_MAP_ORGANIZATION
             )
+            .filter(user_map__user__status=True, status=True, **filters)
+            .order_by(Constants.UPDATED_AT).reverse()
+            .all()
+        )
         participant_serializer = ParticipantDatasetsDropDownSerializer(data, many=True)
         return Response(participant_serializer.data, status=status.HTTP_200_OK)
 
@@ -269,8 +268,9 @@ class ParticipantDatasetsViewSet(GenericViewSet):
                     Constants.USER_MAP_ORGANIZATION,
                 )
                 .filter(user_map__user__status=True, status=True, **data, **filters, **cretated_range)
+                .filter(user_map__user__role_id=3)
                 .exclude(**exclude)
-                .order_by(Constants.UPDATED_AT)
+                .order_by(Constants.UPDATED_AT).reverse()
                 .all()
             )
         except Exception as error:  # type: ignore
@@ -285,30 +285,33 @@ class ParticipantDatasetsViewSet(GenericViewSet):
     def filters_data(self, request, *args, **kwargs):
         """This function provides the filters data"""
         data = request.data
-        org_id = data.pop(Constants.ORG_ID, "")
-        user_id = data.pop(Constants.USER_ID, "")
+        org_id = data.pop(Constants.ORG_ID, None)
+        user_id = data.pop(Constants.USER_ID, None)
         exclude = {Constants.USER_MAP_USER: user_id} if org_id else {}
         filters = {Constants.USER_MAP_ORGANIZATION: org_id} if org_id else {Constants.USER_MAP_USER: user_id}
+        print(exclude)
+        print(filters)
         try:
             geography = (
                 Datasets.objects.all()
-                .select_related(Constants.USER_MAP_ORGANIZATION)
+                .select_related(Constants.USER_MAP_ORGANIZATION, Constants.USER_MAP_USER)
                 .values_list(Constants.GEOGRAPHY, flat=True)
-                .distinct()
-                .filter(**filters, status=True, user_map__user__role_id=3)
-                .exclude(geography="null")
-                .exclude(geography__isnull=True)
-                .exclude(geography="", **exclude)
+                .filter(user_map__user__status=True, status=True, **filters)
+                .filter(user_map__user__role_id=3)
+                .exclude(geography="")
+                .exclude(**exclude)
+                .all().distinct()
             )
             crop_detail = (
                 Datasets.objects.all()
-                .select_related(Constants.USER_MAP_ORGANIZATION)
+                .select_related(Constants.USER_MAP_ORGANIZATION, Constants.USER_MAP_USER)
                 .values_list(Constants.CROP_DETAIL, flat=True)
-                .distinct()
-                .filter(**filters, status=True, user_map__user__role_id=3)
-                .exclude(crop_detail="null")
-                .exclude(crop_detail__isnull=True)
-                .exclude(crop_detail="", **exclude)
+                .filter(user_map__user__status=True, status=True, **filters)
+                .filter(user_map__user__role_id=3)
+                .exclude(crop_detail="")
+                .exclude(**exclude)
+                .all().distinct()
+
             )
         except Exception as error:  # type: ignore
             logging.error("Error while filtering the datasets. ERROR: %s", error)
@@ -367,7 +370,7 @@ class ParticipantConnectorsViewSet(GenericViewSet):
                     "dataset", "dataset__user_map", Constants.PROJECT, "project__department"
                 )
                 .filter(dataset__user_map__user__status=True, dataset__status=True, status=True, **filters)
-                .order_by(Constants.UPDATED_AT)
+                .order_by(Constants.UPDATED_AT).reverse()
                 .all()
             )
         page = self.paginate_queryset(data)
@@ -395,7 +398,7 @@ class ParticipantConnectorsViewSet(GenericViewSet):
                         "consumer__project__department",
                         "consumer__dataset__user_map__organization",
                     )
-                    .filter(status=True, provider=pk, consumer__status=True)
+                    .filter(status=True, provider=pk, consumer__status=True, connector_pair_status__in=["paired", "awaiting for approval"])
                     .all()
                 )
                 relation_serializer = ConnectorsMapConsumerRetriveSerializer(relation, many=True)
@@ -408,7 +411,7 @@ class ParticipantConnectorsViewSet(GenericViewSet):
                         "provider__project__department",
                         "provider__dataset__user_map__organization",
                     )
-                    .filter(status=True, consumer=pk, provider__status=True)
+                    .filter(status=True, consumer=pk, provider__status=True, connector_pair_status__in=["paired", "awaiting for approval"])
                     .all()
                 )
                 relation_serializer = ConnectorsMapProviderRetriveSerializer(relation, many=True)
@@ -445,7 +448,7 @@ class ParticipantConnectorsViewSet(GenericViewSet):
             data = (
                 Connectors.objects.select_related("dataset", "dataset__user_map")
                 .filter(status=True, **data, **filters, **cretated_range)
-                .order_by(Constants.UPDATED_AT)
+                .order_by(Constants.UPDATED_AT).reverse()
                 .all()
             )
         except Exception as error:  # type: ignore
@@ -649,7 +652,7 @@ class ParticipantDepatrmentViewSet(GenericViewSet):
         filters = {Constants.ORGANIZATION: org_id} if org_id else {}
         data = (
             Department.objects.filter(Q(status=True, **filters) | Q(department_name="default"))
-            .order_by(Constants.UPDATED_AT)
+            .order_by(Constants.UPDATED_AT).reverse()
             .all()
         )
         department_serializer = DepartmentListSerializer(data, many=True)
@@ -706,7 +709,7 @@ class ParticipantProjectViewSet(GenericViewSet):
         filters = {Constants.DEPARTMENT: department} if department else {}
         data = (
             Project.objects.filter(Q(status=True, **filters) | Q(project_name="default"))
-            .order_by(Constants.UPDATED_AT)
+            .order_by(Constants.UPDATED_AT).reverse()
             .all()
         )
         project_serializer = ProjectListSerializer(data, many=True)
