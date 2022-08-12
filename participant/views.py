@@ -645,6 +645,12 @@ class ParticipantDepatrmentViewSet(GenericViewSet):
         self.perform_create(serializer)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
+    def retrieve(self, request, pk):
+        """GET method: retrieve an object or instance of the Product model"""
+        queryset = self.get_object()
+        serializer = self.serializer_class(queryset)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
     def list(self, request, *args, **kwargs):
         """GET method: query all the list of objects from the Product model"""
         data = []
