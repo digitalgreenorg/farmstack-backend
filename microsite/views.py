@@ -221,7 +221,7 @@ class ContactFormViewSet(GenericViewSet):
             Utils().send_email(
                 to_email=datahub_admin,
                 content=mail_body,
-                subject=serializer.data["subject"],
+                subject=serializer.data.get("subject", Constants.DATAHUB),
             )
 
             return Response({"Message": "Your query is submitted! Thank you."}, status=status.HTTP_200_OK)
@@ -243,17 +243,18 @@ class DocumentsMicrositeViewSet(GenericViewSet):
         """GET method: retrieve an object or instance of the Product model"""
         try:
             file_paths = file_operations.file_path(settings.DOCUMENTS_URL)
-            datahub_obj = DatahubDocuments.objects.first()
+            datahub_obj = DatahubDocuments.objects.last()
+            documents = {Constants.GOVERNING_LAW: None, Constants.PRIVACY_POLICY: None, Constants.TOS: None, Constants.LIMITATIONS_OF_LIABILITIES: None, Constants.WARRANTY: None}
 
             if not datahub_obj and not file_paths:
-                data = {"Content": None, "Documents": None}
+                data = {"Content": None, "Documents": documents}
                 return Response(data, status=status.HTTP_200_OK)
             elif not datahub_obj:
                 data = {"Content": None, "Documents": file_paths}
                 return Response(data, status=status.HTTP_200_OK)
             elif datahub_obj and not file_paths:
                 documents_serializer = LegalDocumentSerializer(datahub_obj)
-                data = {"Content": documents_serializer.data, "Documents": None}
+                data = {"Content": documents_serializer.data, "Documents": documents}
                 return Response(data, status=status.HTTP_200_OK)
             elif datahub_obj and file_paths:
                 documents_serializer = LegalDocumentSerializer(datahub_obj)
