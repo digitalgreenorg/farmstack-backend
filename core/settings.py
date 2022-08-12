@@ -118,8 +118,8 @@ DATABASES = {
         "NAME": os.environ.get("POSTGRES_NAME"),
         "USER": os.environ.get("POSTGRES_USER"),
         "PASSWORD": os.environ.get("POSTGRES_PASSWORD"),
-        "HOST": "datahubdev.farmstack.co",
-        "PORT": os.environ.get("POST"),
+        "HOST": "datahubtest.farmstack.co",
+        "PORT": os.environ.get("PORT"),
         "OPTIONS": {
             "client_encoding": "UTF8",
         },

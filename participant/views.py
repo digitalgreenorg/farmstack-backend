@@ -260,8 +260,6 @@ class ParticipantDatasetsViewSet(GenericViewSet):
         created_at__range = request.data.pop(Constants.CREATED_AT__RANGE, None)
         if created_at__range:
             cretated_range[Constants.CREATED_AT__RANGE] = date_formater(created_at__range)
-        print(filters)
-        print(exclude)
         try:
             data = (
                 Datasets.objects.select_related(
