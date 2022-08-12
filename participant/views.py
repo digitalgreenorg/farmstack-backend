@@ -1,5 +1,6 @@
 import json
 import logging
+import os
 import subprocess
 from sre_compile import isstring
 from struct import unpack
@@ -742,7 +743,7 @@ class ParticipantProjectViewSet(GenericViewSet):
 
 def get_ports():
     """This function give the ports for the connectors"""
-    with open("ports.json", "r") as openfile:
+    with open("./ports.json", "r") as openfile:
         ports_object = json.load(openfile)
     provider_core = int(ports_object.get(Constants.PROVIDER_CORE)) + 1
     consumer_core = int(ports_object.get(Constants.CONSUMER_CORE)) + 1
@@ -754,6 +755,6 @@ def get_ports():
         Constants.CONSUMER_APP: consumer_app,
         Constants.PROVIDER_APP: provider_app,
     }
-    with open("ports.json", "w") as outfile:
+    with open("./ports.json", "w") as outfile:
         json.dump(new_ports, outfile)
     return new_ports
