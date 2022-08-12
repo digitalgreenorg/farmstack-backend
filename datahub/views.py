@@ -495,8 +495,8 @@ class DatahubThemeView(GenericViewSet):
 
     def create(self, request, *args, **kwargs):
         """generates the override css for datahub"""
-        user = User.objects.filter(email=request.data.get("email", ""))
-        user = user.first()
+        # user = User.objects.filter(email=request.data.get("email", ""))
+        # user = user.first()
         data = {}
 
         try:
@@ -535,8 +535,8 @@ class DatahubThemeView(GenericViewSet):
                 data = {"banner": file_name, "button_color": settings.CSS_FILE_NAME}
 
             # set datahub admin user status to True
-            user.on_boarded = True
-            user.save()
+            # user.on_boarded = True
+            # user.save()
             return Response(data, status=status.HTTP_201_CREATED)
 
         except Exception as error:
