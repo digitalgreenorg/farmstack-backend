@@ -257,15 +257,17 @@ class ParticipantDatasetsViewSet(GenericViewSet):
         """This function get the filter args in body. based on the filter args orm filters the data."""
         data = request.data
         org_id = data.pop(Constants.ORG_ID, "")
-        user_id = data.pop(Constants.USER_ID, "")
-        exclude = {Constants.USER_MAP_USER: user_id} if org_id else {}
-        filters = {Constants.USER_MAP_ORGANIZATION: org_id} if org_id else {Constants.USER_MAP_USER: user_id}
+        others = data.pop(Constants.OTHERS, "")
+        exclude, filters = {}, {}
+        if others:
+            exclude = {Constants.USER_MAP_ORGANIZATION: org_id}
+            filters = {Constants.APPROVAL_STATUS: Constants.APPROVED}
+        else:
+            filters = {Constants.USER_MAP_ORGANIZATION: org_id}
         cretated_range = {}
         created_at__range = request.data.pop(Constants.CREATED_AT__RANGE, None)
         if created_at__range:
             cretated_range[Constants.CREATED_AT__RANGE] = date_formater(created_at__range)
-        print(filters)
-        print(exclude)
         try:
             data = (
                 Datasets.objects.select_related(
@@ -274,7 +276,6 @@ class ParticipantDatasetsViewSet(GenericViewSet):
                     Constants.USER_MAP_ORGANIZATION,
                 )
                 .filter(user_map__user__status=True, status=True, **data, **filters, **cretated_range)
-                .filter(user_map__user__role_id=3)
                 .exclude(**exclude)
                 .order_by(Constants.UPDATED_AT)
                 .reverse()
@@ -292,17 +293,20 @@ class ParticipantDatasetsViewSet(GenericViewSet):
     def filters_data(self, request, *args, **kwargs):
         """This function provides the filters data"""
         data = request.data
-        org_id = data.pop(Constants.ORG_ID, None)
-        user_id = data.pop(Constants.USER_ID, None)
-        exclude = {Constants.USER_MAP_USER: user_id} if org_id else {}
-        filters = {Constants.USER_MAP_ORGANIZATION: org_id} if org_id else {Constants.USER_MAP_USER: user_id}
+        org_id = data.pop(Constants.ORG_ID, "")
+        others = data.pop(Constants.OTHERS, "")
+        exclude, filters = {}, {}
+        if others:
+            exclude = {Constants.USER_MAP_ORGANIZATION: org_id}
+            filters = {Constants.APPROVAL_STATUS: Constants.APPROVED}
+        else:
+            filters = {Constants.USER_MAP_ORGANIZATION: org_id}
         try:
             geography = (
                 Datasets.objects.all()
                 .select_related(Constants.USER_MAP_ORGANIZATION, Constants.USER_MAP_USER)
                 .values_list(Constants.GEOGRAPHY, flat=True)
                 .filter(user_map__user__status=True, status=True, **filters)
-                .filter(user_map__user__role_id=3)
                 .exclude(geography="")
                 .exclude(**exclude)
                 .all()
@@ -313,7 +317,6 @@ class ParticipantDatasetsViewSet(GenericViewSet):
                 .select_related(Constants.USER_MAP_ORGANIZATION, Constants.USER_MAP_USER)
                 .values_list(Constants.CROP_DETAIL, flat=True)
                 .filter(user_map__user__status=True, status=True, **filters)
-                .filter(user_map__user__role_id=3)
                 .exclude(crop_detail="")
                 .exclude(**exclude)
                 .all()

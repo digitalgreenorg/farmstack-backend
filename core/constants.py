@@ -1,3 +1,6 @@
+from ..datahub.models import APPROVAL_STATUS
+
+
 class Constants:
     CONTENT = "content"
     USER = "user"
@@ -50,3 +53,5 @@ class Constants:
     TOS = "tos"
     LIMITATIONS_OF_LIABILITIES = "limitations_of_liabilities"
     WARRANTY = "warranty"
+    APPROVAL_STATUS = "approval_status"
+    APPROVED = "approved"
