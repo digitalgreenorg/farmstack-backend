@@ -221,7 +221,7 @@ class ContactFormViewSet(GenericViewSet):
             Utils().send_email(
                 to_email=datahub_admin,
                 content=mail_body,
-                subject=serializer.data["subject"],
+                subject=serializer.data.get("subject", Constants.DATAHUB),
             )
 
             return Response({"Message": "Your query is submitted! Thank you."}, status=status.HTTP_200_OK)
