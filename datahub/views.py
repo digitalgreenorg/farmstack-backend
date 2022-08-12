@@ -399,7 +399,6 @@ class DropDocumentView(GenericViewSet):
 
         return Response({}, status=status.HTTP_400_BAD_REQUEST)
 
-
     @action(detail=False, methods=["delete"])
     def delete(self, request):
         """remove the dropped documents"""
@@ -660,7 +659,8 @@ class SupportViewSet(GenericViewSet):
                     Constants.USER_MAP_ORGANIZATION,
                 )
                 .filter(user_map__user__status=True, **request.data, **range)
-                .order_by(Constants.UPDATED_AT).reverse()
+                .order_by(Constants.UPDATED_AT)
+                .reverse()
                 .all()
             )
         except django.core.exceptions.FieldError as error:  # type: ignore
@@ -688,7 +688,8 @@ class SupportViewSet(GenericViewSet):
                 Constants.USER_MAP_ORGANIZATION,
             )
             .filter(user_map__user__status=True, **request.GET)
-            .order_by(Constants.UPDATED_AT).reverse()
+            .order_by(Constants.UPDATED_AT)
+            .reverse()
             .all()
         )
         page = self.paginate_queryset(data)
@@ -763,7 +764,8 @@ class DatahubDatasetsViewSet(GenericViewSet):
                 )
                 .filter(user_map__user__status=True, status=True, **filters)
                 .exclude(**exclude)
-                .order_by(Constants.UPDATED_AT).reverse()
+                .order_by(Constants.UPDATED_AT)
+                .reverse()
                 .all()
             )
         page = self.paginate_queryset(data)
@@ -823,11 +825,14 @@ class DatahubDatasetsViewSet(GenericViewSet):
     def dataset_filters(self, request, *args, **kwargs):
         """This function get the filter args in body. based on the filter args orm filters the data."""
         data = request.data
+        org_id = data.pop(Constants.ORG_ID, "")
         others = data.pop(Constants.OTHERS, "")
-        user_id = data.pop(Constants.USER_ID)
-        filters = {Constants.USER_MAP_USER: user_id} if user_id and not others else {}
-        exclude = {Constants.USER_MAP_USER: user_id} if others else {}
-        range = {}
+        exclude, filters, range = {}, {}, {}
+        if others:
+            exclude = {Constants.USER_MAP_ORGANIZATION: org_id}
+            filters = {Constants.APPROVAL_STATUS: Constants.APPROVED}
+        else:
+            filters = {Constants.USER_MAP_ORGANIZATION: org_id}
         created_at__range = request.data.pop(Constants.CREATED_AT__RANGE, None)
         if created_at__range:
             range[Constants.CREATED_AT__RANGE] = date_formater(created_at__range)
@@ -856,10 +861,14 @@ class DatahubDatasetsViewSet(GenericViewSet):
     def filters_data(self, request, *args, **kwargs):
         """This function provides the filters data"""
         data = request.data
-        others = data.pop(Constants.OTHERS, None)
-        user_id = data.pop(Constants.USER_ID)
-        filters = {Constants.USER_MAP_USER: user_id} if user_id and not others else {}
-        exclude = {Constants.USER_MAP_USER: user_id} if others else {}
+        org_id = data.pop(Constants.ORG_ID, "")
+        others = data.pop(Constants.OTHERS, "")
+        exclude, filters = {}, {}
+        if others:
+            exclude = {Constants.USER_MAP_ORGANIZATION: org_id}
+            filters = {Constants.APPROVAL_STATUS: Constants.APPROVED}
+        else:
+            filters = {Constants.USER_MAP_ORGANIZATION: org_id}
         try:
             geography = (
                 Datasets.objects.all()
@@ -888,15 +897,24 @@ class DatahubDatasetsViewSet(GenericViewSet):
 class DatahubDashboard(GenericViewSet):
     """Datahub Dashboard viewset"""
 
-    @action(detail=False, methods=['get'])
+    @action(detail=False, methods=["get"])
     def dashboard(self, request):
         """Retrieve datahub dashboard details"""
         total_participants = User.objects.filter(role_id=3, status=True).count()
-        total_datasets = Datasets.objects.select_related("user_map", "user_map__user", "user_map__organization").filter(user_map__user__status=True, status=True).order_by("updated_at").count()
-        active_connectors = ""      # fill this later
+        total_datasets = (
+            Datasets.objects.select_related("user_map", "user_map__user", "user_map__organization")
+            .filter(user_map__user__status=True, status=True)
+            .order_by("updated_at")
+            .count()
+        )
+        active_connectors = ""  # fill this later
 
-        datasets = Datasets.objects.order_by('category').filter(status=True).values()
+        datasets = Datasets.objects.order_by("category").filter(status=True).values()
         datasets.values_list("category")
 
-        data = {"total_participants": total_participants, "total_datasets": total_datasets, "active_connectors": active_connectors}
+        data = {
+            "total_participants": total_participants,
+            "total_datasets": total_datasets,
+            "active_connectors": active_connectors,
+        }
         return Response(data, status=status.HTTP_200_OK)
