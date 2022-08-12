@@ -144,43 +144,47 @@ class OrganizationViewSet(GenericViewSet):
 
     def create(self, request, *args, **kwargs):
         """POST method: create action to save an organization object using User ID (IMPORTANT: Using USER ID instead of Organization ID)"""
-        user_queryset = User.objects.filter(id=request.data["user_id"])
-        if not user_queryset:
-            return Response({"message": "User is not available"}, status=status.HTTP_400_BAD_REQUEST)
+        try:
+            user_queryset = User.objects.filter(id=request.data["user_id"])
+            if not user_queryset:
+                return Response({"message": "User is not available"}, status=status.HTTP_400_BAD_REQUEST)
 
-        org_queryset = list(Organization.objects.filter(org_email=request.data["org_email"]).values())
-        # check if the user is mapped to the organization
-        user_org_queryset = UserOrganizationMap.objects.filter(user_id=user_queryset.first().id)
+            org_queryset = list(Organization.objects.filter(org_email=request.data["org_email"]).values())
+            # check if the user is mapped to the organization
+            user_org_queryset = UserOrganizationMap.objects.filter(user_id=user_queryset.first().id)
 
-        if not user_org_queryset:
-            with transaction.atomic():
-                serializer = OrganizationSerializer(data=request.data, partial=True)
-                serializer.is_valid(raise_exception=True)
-                org_queryset = self.perform_create(serializer)
+            if not user_org_queryset:
+                with transaction.atomic():
+                    serializer = OrganizationSerializer(data=request.data, partial=True)
+                    serializer.is_valid(raise_exception=True)
+                    org_queryset = self.perform_create(serializer)
 
-                user_org_serializer = UserOrganizationMapSerializer(
-                    data={
-                        Constants.USER: user_queryset.first().id,
-                        Constants.ORGANIZATION: org_queryset.id,
-                    }
-                )
-                user_org_serializer.is_valid(raise_exception=True)
-                self.perform_create(user_org_serializer)
+                    user_org_serializer = UserOrganizationMapSerializer(
+                        data={
+                            Constants.USER: user_queryset.first().id,
+                            Constants.ORGANIZATION: org_queryset.id,
+                        }
+                    )
+                    user_org_serializer.is_valid(raise_exception=True)
+                    self.perform_create(user_org_serializer)
+                    return Response(
+                        {
+                            "user_map": user_org_serializer.data.get("id"),
+                            "org_id": org_queryset.id,
+                            "user_id": user_queryset.first().id,
+                        },
+                        status=status.HTTP_201_CREATED,
+                    )
+
+            elif user_org_queryset:
+                # print("USER ID:" + str(user_queryset.first().id))
+                # print("ORG_ID mapped to user: " + str(user_org_queryset.first().organization_id))
                 return Response(
-                    {
-                        "user_map": user_org_serializer.data.get("id"),
-                        "org_id": org_queryset.id,
-                        "user_id": user_queryset.first().id,
-                    },
-                    status=status.HTTP_201_CREATED,
+                    {"message": "User is already associated with an organization"}, status=status.HTTP_400_BAD_REQUEST
                 )
 
-        elif user_org_queryset:
-            # print("USER ID:" + str(user_queryset.first().id))
-            # print("ORG_ID mapped to user: " + str(user_org_queryset.first().organization_id))
-            return Response(
-                {"message": "User is already associated with an organization"}, status=status.HTTP_400_BAD_REQUEST
-            )
+        except Exception as error:
+            LOGGER.error(error, exc_info=True)
 
         return Response({}, status=status.HTTP_400_BAD_REQUEST)
 
@@ -378,16 +382,23 @@ class DropDocumentView(GenericViewSet):
 
     def create(self, request, *args, **kwargs):
         """Saves the document files in temp location before saving"""
-        serializer = self.get_serializer(data=request.data, partial=True)
-        serializer.is_valid(raise_exception=True)
+        try:
+            serializer = self.get_serializer(data=request.data, partial=True)
+            serializer.is_valid(raise_exception=True)
 
-        # get file, file name & type from the form-data
-        key = list(request.data.keys())[0]
-        file = serializer.validated_data[key]
-        file_type = serializer.validated_data[key].content_type.split("/")[1]
-        file_name = str(key) + "." + file_type
-        file_operations.file_save(file, file_name, settings.TEMP_FILE_PATH)
-        return Response({key: "uploading in progress..."}, status=status.HTTP_201_CREATED)
+            # get file, file name & type from the form-data
+            key = list(request.data.keys())[0]
+            file = serializer.validated_data[key]
+            file_type = serializer.validated_data[key].content_type.split("/")[1]
+            file_name = str(key) + "." + file_type
+            file_operations.file_save(file, file_name, settings.TEMP_FILE_PATH)
+            return Response({key: "uploading in progress..."}, status=status.HTTP_201_CREATED)
+
+        except Exception as error:
+            LOGGER.error(error, exc_info=True)
+
+        return Response({}, status=status.HTTP_400_BAD_REQUEST)
+
 
     @action(detail=False, methods=["delete"])
     def delete(self, request):
@@ -395,11 +406,10 @@ class DropDocumentView(GenericViewSet):
         try:
             key = list(request.data.keys())[0]
             file_operations.remove_files(request.data[key], settings.TEMP_FILE_PATH)
-
             return Response({}, status=status.HTTP_204_NO_CONTENT)
 
-        except Exception as e:
-            LOGGER.error(e)
+        except Exception as error:
+            LOGGER.error(error, exc_info=True)
 
         return Response({}, status=status.HTTP_400_BAD_REQUEST)
 
@@ -413,9 +423,10 @@ class DocumentSaveView(GenericViewSet):
     @action(detail=False, methods=["get"])
     def get(self, request):
         """GET method: retrieve an object or instance of the Product model"""
-        file_paths = file_operations.file_path(settings.DOCUMENTS_URL)
-        datahub_obj = DatahubDocuments.objects.first()
         try:
+            file_paths = file_operations.file_path(settings.DOCUMENTS_URL)
+            datahub_obj = DatahubDocuments.objects.last()
+
             if not datahub_obj and not file_paths:
                 data = {"Content": None, "Documents": None}
                 return Response(data, status=status.HTTP_200_OK)
@@ -431,39 +442,49 @@ class DocumentSaveView(GenericViewSet):
                 data = {"Content": documents_serializer.data, "Documents": file_paths}
                 return Response(data, status=status.HTTP_200_OK)
 
-        except Exception as e:
-            LOGGER.error(e, exc_info=True)
+        except Exception as error:
+            LOGGER.error(error, exc_info=True)
 
         return Response({}, status=status.HTTP_404_NOT_FOUND)
 
     def create(self, request, *args, **kwargs):
-        serializer = self.get_serializer(data=request.data, partial=True)
-        serializer.is_valid(raise_exception=True)
+        try:
+            serializer = self.get_serializer(data=request.data, partial=True)
+            serializer.is_valid(raise_exception=True)
 
-        with transaction.atomic():
-            serializer.save()
-            # save the document files
-            file_operations.files_move(settings.TEMP_FILE_PATH, settings.DOCUMENTS_ROOT)
-            return Response(
-                {"message": "Documents and content saved!"},
-                status=status.HTTP_201_CREATED,
-            )
+            with transaction.atomic():
+                serializer.save()
+                # save the document files
+                file_operations.files_move(settings.TEMP_FILE_PATH, settings.DOCUMENTS_ROOT)
+                return Response(
+                    {"message": "Documents and content saved!"},
+                    status=status.HTTP_201_CREATED,
+                )
+        except Exception as error:
+            LOGGER.error(error, exc_info=True)
+
+        return Response({}, status=status.HTTP_400_BAD_REQUEST)
 
     @action(detail=False, methods=["get"])
     def put(self, request, *args, **kwargs):
         """Saves the document content and files"""
-        # instance = self.get_object()
-        datahub_obj = DatahubDocuments.objects.first()
-        serializer = self.get_serializer(datahub_obj, data=request.data)
-        serializer.is_valid(raise_exception=True)
+        try:
+            # instance = self.get_object()
+            datahub_obj = DatahubDocuments.objects.last()
+            serializer = self.get_serializer(datahub_obj, data=request.data)
+            serializer.is_valid(raise_exception=True)
 
-        with transaction.atomic():
-            serializer.save()
-            file_operations.files_move(settings.TEMP_FILE_PATH, settings.DOCUMENTS_ROOT)
-            return Response(
-                {"message": "Documents and content updated!"},
-                status=status.HTTP_201_CREATED,
-            )
+            with transaction.atomic():
+                serializer.save()
+                file_operations.files_move(settings.TEMP_FILE_PATH, settings.DOCUMENTS_ROOT)
+                return Response(
+                    {"message": "Documents and content updated!"},
+                    status=status.HTTP_201_CREATED,
+                )
+        except Exception as error:
+            LOGGER.error(error, exc_info=True)
+
+        return Response({}, status=status.HTTP_400_BAD_REQUEST)
 
 
 class DatahubThemeView(GenericViewSet):
@@ -518,8 +539,8 @@ class DatahubThemeView(GenericViewSet):
             user.save()
             return Response(data, status=status.HTTP_201_CREATED)
 
-        except Exception as e:
-            LOGGER.error(e)
+        except Exception as error:
+            LOGGER.error(error, exc_info=True)
 
         return Response({}, status=status.HTTP_400_BAD_REQUEST)
 
@@ -545,8 +566,8 @@ class DatahubThemeView(GenericViewSet):
 
             return Response(data, status=status.HTTP_200_OK)
 
-        except Exception as e:
-            LOGGER.error(e)
+        except Exception as error:
+            LOGGER.error(error, exc_info=True)
 
         return Response({}, status=status.HTTP_400_BAD_REQUEST)
 
@@ -591,7 +612,7 @@ class DatahubThemeView(GenericViewSet):
             return Response(data, status=status.HTTP_201_CREATED)
 
         except exceptions as error:
-            LOGGER.error(error)
+            LOGGER.error(error, exc_info=True)
 
         return Response({}, status=status.HTTP_400_BAD_REQUEST)
 

@@ -195,7 +195,7 @@ class ParticipantDatasetsViewSet(GenericViewSet):
             Datasets.objects.select_related(
                 Constants.USER_MAP, Constants.USER_MAP_USER, Constants.USER_MAP_ORGANIZATION
             )
-            .filter(user_map__user__status=True, status=True, **filters)
+            .filter(user_map__user__status=True, status=True, approval_status="approved", **filters)
             .order_by(Constants.UPDATED_AT)
             .reverse()
             .all()
@@ -264,6 +264,8 @@ class ParticipantDatasetsViewSet(GenericViewSet):
         created_at__range = request.data.pop(Constants.CREATED_AT__RANGE, None)
         if created_at__range:
             cretated_range[Constants.CREATED_AT__RANGE] = date_formater(created_at__range)
+        print(filters)
+        print(exclude)
         try:
             data = (
                 Datasets.objects.select_related(
@@ -294,8 +296,6 @@ class ParticipantDatasetsViewSet(GenericViewSet):
         user_id = data.pop(Constants.USER_ID, None)
         exclude = {Constants.USER_MAP_USER: user_id} if org_id else {}
         filters = {Constants.USER_MAP_ORGANIZATION: org_id} if org_id else {Constants.USER_MAP_USER: user_id}
-        print(exclude)
-        print(filters)
         try:
             geography = (
                 Datasets.objects.all()
@@ -660,6 +660,12 @@ class ParticipantDepatrmentViewSet(GenericViewSet):
         serializer.is_valid(raise_exception=True)
         self.perform_create(serializer)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+    def retrieve(self, request, pk):
+        """GET method: retrieve an object or instance of the Product model"""
+        queryset = self.get_object()
+        serializer = self.serializer_class(queryset)
+        return Response(serializer.data, status=status.HTTP_200_OK)
 
     def list(self, request, *args, **kwargs):
         """GET method: query all the list of objects from the Product model"""
