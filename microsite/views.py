@@ -158,23 +158,21 @@ class DatasetsMicrositeViewSet(GenericViewSet):
         """This function provides the filters data"""
         try:
             geography = (
-                Datasets.objects.filter(Q(approval_status="approved", status=True) | Q(user_map__user__role_id=1))
+                Datasets.objects.filter(Q(approval_status="approved", status=True) | Q(user_map__user__role_id=1, status=True))
                 .values_list(Constants.GEOGRAPHY, flat=True)
                 .distinct()
                 .exclude(geography__isnull=True, geography__exact="")
             )
             crop_detail = (
-                Datasets.objects.filter(Q(approval_status="approved", status=True) | Q(user_map__user__role_id=1))
+                Datasets.objects.filter(Q(approval_status="approved", status=True) | Q(user_map__user__role_id=1, status=True))
                 .values_list(Constants.CROP_DETAIL, flat=True)
                 .distinct()
                 .exclude(crop_detail__isnull=True, crop_detail__exact="")
             )
 
         except Exception as error:  # type: ignore
-            LOGGER.error("Error while filtering the datasets. ERROR: %s", error, exc_info=True)
-            return Response(
-                f"Invalid filter fields: {list(request.data.keys())}", status=status.HTTP_500_INTERNAL_SERVER_ERROR
-            )
+            LOGGER.error(error, exc_info=True)
+            return Response({}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
         return Response({"geography": geography, "crop_detail": crop_detail}, status=status.HTTP_200_OK)
 
