@@ -40,3 +40,8 @@ class Constants:
     PROJECT = "project"
     DEPARTMENT = "department"
     DATAHUB = "datahub"
+    GOVERNING_LAW = "governing_law"
+    PRIVACY_POLICY = "privacy_policy"
+    TOS = "tos"
+    LIMITATIONS_OF_LIABILITIES = "limitations_of_liabilities"
+    WARRANTY = "warranty"
