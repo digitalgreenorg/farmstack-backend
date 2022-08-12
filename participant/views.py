@@ -92,7 +92,8 @@ class ParticipantSupportViewSet(GenericViewSet):
                 Constants.USER_MAP, Constants.USER_MAP_USER, Constants.USER_MAP_ORGANIZATION
             )
             .filter(user_map__user__status=True, user_map__user=user_id)
-            .order_by(Constants.UPDATED_AT).reverse()
+            .order_by(Constants.UPDATED_AT)
+            .reverse()
             .all()
         )
         page = self.paginate_queryset(data)
@@ -175,7 +176,8 @@ class ParticipantDatasetsViewSet(GenericViewSet):
                 )
                 .filter(user_map__user__status=True, status=True, **filters)
                 .exclude(**exclude)
-                .order_by(Constants.UPDATED_AT).reverse()
+                .order_by(Constants.UPDATED_AT)
+                .reverse()
                 .all()
             )
         page = self.paginate_queryset(data)
@@ -193,7 +195,8 @@ class ParticipantDatasetsViewSet(GenericViewSet):
                 Constants.USER_MAP, Constants.USER_MAP_USER, Constants.USER_MAP_ORGANIZATION
             )
             .filter(user_map__user__status=True, status=True, **filters)
-            .order_by(Constants.UPDATED_AT).reverse()
+            .order_by(Constants.UPDATED_AT)
+            .reverse()
             .all()
         )
         participant_serializer = ParticipantDatasetsDropDownSerializer(data, many=True)
@@ -270,7 +273,8 @@ class ParticipantDatasetsViewSet(GenericViewSet):
                 .filter(user_map__user__status=True, status=True, **data, **filters, **cretated_range)
                 .filter(user_map__user__role_id=3)
                 .exclude(**exclude)
-                .order_by(Constants.UPDATED_AT).reverse()
+                .order_by(Constants.UPDATED_AT)
+                .reverse()
                 .all()
             )
         except Exception as error:  # type: ignore
@@ -300,7 +304,8 @@ class ParticipantDatasetsViewSet(GenericViewSet):
                 .filter(user_map__user__role_id=3)
                 .exclude(geography="")
                 .exclude(**exclude)
-                .all().distinct()
+                .all()
+                .distinct()
             )
             crop_detail = (
                 Datasets.objects.all()
@@ -310,8 +315,8 @@ class ParticipantDatasetsViewSet(GenericViewSet):
                 .filter(user_map__user__role_id=3)
                 .exclude(crop_detail="")
                 .exclude(**exclude)
-                .all().distinct()
-
+                .all()
+                .distinct()
             )
         except Exception as error:  # type: ignore
             logging.error("Error while filtering the datasets. ERROR: %s", error)
@@ -366,11 +371,10 @@ class ParticipantConnectorsViewSet(GenericViewSet):
         filters = {"user_map__user": user_id} if user_id else {}
         if filters:
             data = (
-                Connectors.objects.select_related("dataset"
-                    "user_map", Constants.PROJECT, "project__department"
-                )
+                Connectors.objects.select_related("dataset" "user_map", Constants.PROJECT, "project__department")
                 .filter(user_map__user__status=True, dataset__status=True, status=True, **filters)
-                .order_by(Constants.UPDATED_AT).reverse()
+                .order_by(Constants.UPDATED_AT)
+                .reverse()
                 .all()
             )
         page = self.paginate_queryset(data)
@@ -380,9 +384,7 @@ class ParticipantConnectorsViewSet(GenericViewSet):
     def retrieve(self, request, pk):
         """GET method: retrieve an object or instance of the Product model"""
         data = (
-            Connectors.objects.select_related(
-                "dataset", "user_map", "user_map__user", "user_map__organization"
-            )
+            Connectors.objects.select_related("dataset", "user_map", "user_map__user", "user_map__organization")
             .filter(user_map__user__status=True, dataset__status=True, status=True, id=pk)
             .all()
         )
@@ -398,7 +400,12 @@ class ParticipantConnectorsViewSet(GenericViewSet):
                         "consumer__project__department",
                         "consumer__user_map__organization",
                     )
-                    .filter(status=True, provider=pk, consumer__status=True, connector_pair_status__in=["paired", "awaiting for approval"])
+                    .filter(
+                        status=True,
+                        provider=pk,
+                        consumer__status=True,
+                        connector_pair_status__in=["paired", "awaiting for approval"],
+                    )
                     .all()
                 )
                 relation_serializer = ConnectorsMapConsumerRetriveSerializer(relation, many=True)
@@ -411,7 +418,12 @@ class ParticipantConnectorsViewSet(GenericViewSet):
                         "provider__project__department",
                         "provider__user_map__organization",
                     )
-                    .filter(status=True, consumer=pk, provider__status=True, connector_pair_status__in=["paired", "awaiting for approval"])
+                    .filter(
+                        status=True,
+                        consumer=pk,
+                        provider__status=True,
+                        connector_pair_status__in=["paired", "awaiting for approval"],
+                    )
                     .all()
                 )
                 relation_serializer = ConnectorsMapProviderRetriveSerializer(relation, many=True)
@@ -448,7 +460,8 @@ class ParticipantConnectorsViewSet(GenericViewSet):
             data = (
                 Connectors.objects.select_related("dataset", "user_map", "project", "project__department")
                 .filter(status=True, dataset__status=True, **data, **filters, **cretated_range)
-                .order_by(Constants.UPDATED_AT).reverse()
+                .order_by(Constants.UPDATED_AT)
+                .reverse()
                 .all()
             )
         except Exception as error:  # type: ignore
@@ -565,6 +578,7 @@ class ParticipantConnectorsMapViewSet(GenericViewSet):
                 connectors.connector_status = "unpaired"
                 self.perform_create(connectors)
         elif request.data.get("connector_pair_status") == "paired":
+            ports = get_ports()
             consumer_connectors = Connectors.objects.get(id=instance.consumer.id)
             provider_connectors = Connectors.objects.get(id=instance.provider.id)
             provider_connectors.connector_status = "paired"
@@ -583,6 +597,7 @@ class ParticipantConnectorsMapViewSet(GenericViewSet):
                     map_connectors_consumer.connector_status = "rejected"
                     self.perform_create(map_connectors)
                     self.perform_create(map_connectors_consumer)
+            serializer.ports = ports
         elif request.data.get("connector_pair_status") == "unpaired":
             consumer_connectors = Connectors.objects.get(id=instance.consumer.id)
             provider_connectors = Connectors.objects.get(id=instance.provider.id)
@@ -652,7 +667,8 @@ class ParticipantDepatrmentViewSet(GenericViewSet):
         filters = {Constants.ORGANIZATION: org_id} if org_id else {}
         data = (
             Department.objects.filter(Q(status=True, **filters) | Q(department_name="default"))
-            .order_by(Constants.UPDATED_AT).reverse()
+            .order_by(Constants.UPDATED_AT)
+            .reverse()
             .all()
         )
         department_serializer = DepartmentListSerializer(data, many=True)
@@ -709,7 +725,8 @@ class ParticipantProjectViewSet(GenericViewSet):
         filters = {Constants.DEPARTMENT: department} if department else {}
         data = (
             Project.objects.filter(Q(status=True, **filters) | Q(project_name="default"))
-            .order_by(Constants.UPDATED_AT).reverse()
+            .order_by(Constants.UPDATED_AT)
+            .reverse()
             .all()
         )
         project_serializer = ProjectListSerializer(data, many=True)
@@ -721,3 +738,22 @@ class ParticipantProjectViewSet(GenericViewSet):
         product.status = False
         self.perform_create(product)
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+def get_ports():
+    """This function give the ports for the connectors"""
+    with open("ports.json", "r") as openfile:
+        ports_object = json.load(openfile)
+    provider_core = int(ports_object.get(Constants.PROVIDER_CORE)) + 1
+    consumer_core = int(ports_object.get(Constants.CONSUMER_CORE)) + 1
+    provider_app = int(ports_object.get(Constants.PROVIDER_APP)) + 1
+    consumer_app = int(ports_object.get(Constants.CONSUMER_APP)) + 1
+    new_ports = {
+        Constants.PROVIDER_CORE: provider_core,
+        Constants.CONSUMER_CORE: consumer_core,
+        Constants.CONSUMER_APP: consumer_app,
+        Constants.PROVIDER_APP: provider_app,
+    }
+    with open("ports.json", "w") as outfile:
+        json.dump(new_ports, outfile)
+    return new_ports

@@ -40,3 +40,7 @@ class Constants:
     PROJECT = "project"
     DEPARTMENT = "department"
     CATEGORY = "category"
+    PROVIDER_CORE = "provider_core"
+    CONSUMER_CORE = "consumer_core"
+    CONSUMER_APP = "consumer_app"
+    PROVIDER_APP = "provider_app"
