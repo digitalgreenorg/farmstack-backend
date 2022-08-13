@@ -828,13 +828,11 @@ class DatahubDatasetsViewSet(GenericViewSet):
         org_id = data.pop(Constants.ORG_ID, "")
         others = data.pop(Constants.OTHERS, "")
         user_id = data.pop(Constants.USER_ID, "")
-
         exclude, filters, range = {}, {}, {}
         if others:
-            exclude = {Constants.USER_MAP_ORGANIZATION: org_id}
-            filters = {Constants.APPROVAL_STATUS: Constants.APPROVED}
+            exclude = {Constants.USER_MAP_ORGANIZATION: org_id} if org_id else {}
         else:
-            filters = {Constants.USER_MAP_ORGANIZATION: org_id}
+            filters = {Constants.USER_MAP_ORGANIZATION: org_id} if org_id else {}
         created_at__range = request.data.pop(Constants.CREATED_AT__RANGE, None)
         if created_at__range:
             range[Constants.CREATED_AT__RANGE] = date_formater(created_at__range)
@@ -868,10 +866,10 @@ class DatahubDatasetsViewSet(GenericViewSet):
         user_id = data.pop(Constants.USER_ID, "")
         exclude, filters = {}, {}
         if others:
-            exclude = {Constants.USER_MAP_ORGANIZATION: org_id}
+            exclude = {Constants.USER_MAP_ORGANIZATION: org_id} if org_id else {}
             filters = {Constants.APPROVAL_STATUS: Constants.APPROVED}
         else:
-            filters = {Constants.USER_MAP_ORGANIZATION: org_id}
+            filters = {Constants.USER_MAP_ORGANIZATION: org_id} if org_id else {}
         try:
             geography = (
                 Datasets.objects
