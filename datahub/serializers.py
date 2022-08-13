@@ -146,7 +146,7 @@ class DatahubThemeSerializer(serializers.Serializer):
         validators=[validate_file_size, validate_image_type], required=False, allow_null=True
     )
     button_color = serializers.CharField(required=False, allow_null=True)
-    email = serializers.EmailField()
+    # email = serializers.EmailField()
 
 
 class TeamMemberListSerializer(serializers.Serializer):
