@@ -258,6 +258,8 @@ class ParticipantDatasetsViewSet(GenericViewSet):
         data = request.data
         org_id = data.pop(Constants.ORG_ID, "")
         others = data.pop(Constants.OTHERS, "")
+        user_id = data.pop(Constants.USER_ID, "")
+
         exclude, filters = {}, {}
         if others:
             exclude = {Constants.USER_MAP_ORGANIZATION: org_id}
@@ -295,6 +297,7 @@ class ParticipantDatasetsViewSet(GenericViewSet):
         data = request.data
         org_id = data.pop(Constants.ORG_ID, "")
         others = data.pop(Constants.OTHERS, "")
+        user_id = data.pop(Constants.USER_ID, "")
         exclude, filters = {}, {}
         if others:
             exclude = {Constants.USER_MAP_ORGANIZATION: org_id}

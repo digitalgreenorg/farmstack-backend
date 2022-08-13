@@ -827,6 +827,8 @@ class DatahubDatasetsViewSet(GenericViewSet):
         data = request.data
         org_id = data.pop(Constants.ORG_ID, "")
         others = data.pop(Constants.OTHERS, "")
+        user_id = data.pop(Constants.USER_ID, "")
+
         exclude, filters, range = {}, {}, {}
         if others:
             exclude = {Constants.USER_MAP_ORGANIZATION: org_id}
@@ -863,6 +865,7 @@ class DatahubDatasetsViewSet(GenericViewSet):
         data = request.data
         org_id = data.pop(Constants.ORG_ID, "")
         others = data.pop(Constants.OTHERS, "")
+        user_id = data.pop(Constants.USER_ID, "")
         exclude, filters = {}, {}
         if others:
             exclude = {Constants.USER_MAP_ORGANIZATION: org_id}
@@ -871,22 +874,26 @@ class DatahubDatasetsViewSet(GenericViewSet):
             filters = {Constants.USER_MAP_ORGANIZATION: org_id}
         try:
             geography = (
-                Datasets.objects.all()
+                Datasets.objects
                 .values_list(Constants.GEOGRAPHY, flat=True)
-                .distinct()
                 .filter(status=True, **filters)
                 .exclude(geography="null")
                 .exclude(geography__isnull=True)
-                .exclude(geography="", **exclude)
+                .exclude(geography="")
+                .exclude(**exclude)
+                .all()
+                .distinct()
             )
             crop_detail = (
-                Datasets.objects.all()
+                Datasets.objects
                 .values_list(Constants.CROP_DETAIL, flat=True)
-                .distinct()
                 .filter(status=True, **filters)
                 .exclude(crop_detail="null")
                 .exclude(crop_detail__isnull=True)
-                .exclude(crop_detail="", **exclude)
+                .exclude(crop_detail="")
+                .exclude(**exclude)
+                .all()
+                .distinct()
             )
         except Exception as error:  # type: ignore
             logging.error("Error while filtering the datasets. ERROR: %s", error)
