@@ -389,7 +389,7 @@ class DropDocumentView(GenericViewSet):
             # get file, file name & type from the form-data
             key = list(request.data.keys())[0]
             file = serializer.validated_data[key]
-            file_type = str(file).split(".")[1]
+            file_type = str(file).split(".")[-1]
             file_name = str(key) + "." + file_type
             file_operations.file_save(file, file_name, settings.TEMP_FILE_PATH)
             return Response({key: [f"{file_name} uploading in progress ..."]}, status=status.HTTP_201_CREATED)
