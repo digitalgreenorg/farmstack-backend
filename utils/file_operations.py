@@ -37,16 +37,30 @@ def file_path(destination):
 
 def files_move(source, destination):
     """Move files or dirs"""
-    print("MOVING")
-    print(source, destination)
     try:
-        # save the new files
+        # check for uploading files and get file keys to be replaced
+        file_keys = []
         for root, dirs, files in os.walk(source):
             print(root, files)
+            for file in files:
+                file_keys.append(file.split(".")[0])
+            print("file keys in temp: ", file_keys)
+
+        # remove the same files if found in destination
+        for root, dirs, files in os.walk(destination):
+            print(root, files)
+            for file in files:
+                if file.split(".")[0] in file_keys:
+                    os.remove(destination+file)
+                    print("removing file: ", destination+file)
+
+        # save or replace it with new files
+        for root, dirs, files in os.walk(source):
             for file in files:
                 shutil.copy(root + file, destination)
                 os.remove(root + file)      # remove temp files
                 print("file moved to", destination+file)
+
     except Exception as error:
         LOGGER.error(error, exc_info=True)
 
