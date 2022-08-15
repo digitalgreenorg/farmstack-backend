@@ -39,6 +39,7 @@ jobs:
       - name: Build and push
         uses: docker/build-push-action@v3
         with:
-          context: "{{defaultContext}}:datahub-api"
+          context: .
+          file: Dockerfile
           push: true
-          tags: farmstack/datahub-backend:latest
+          tags: farmstack/datahub-be:test
