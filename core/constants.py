@@ -1,6 +1,3 @@
-from ..datahub.models import APPROVAL_STATUS
-
-
 class Constants:
     CONTENT = "content"
     USER = "user"

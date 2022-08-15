@@ -382,17 +382,17 @@ class DropDocumentView(GenericViewSet):
 
     def create(self, request, *args, **kwargs):
         """Saves the document files in temp location before saving"""
-        try:
-            serializer = self.get_serializer(data=request.data, partial=True)
-            serializer.is_valid(raise_exception=True)
+        serializer = self.get_serializer(data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
 
+        try:
             # get file, file name & type from the form-data
             key = list(request.data.keys())[0]
             file = serializer.validated_data[key]
-            file_type = serializer.validated_data[key].content_type.split("/")[1]
+            file_type = str(file).split(".")[1]
             file_name = str(key) + "." + file_type
             file_operations.file_save(file, file_name, settings.TEMP_FILE_PATH)
-            return Response({key: "uploading in progress..."}, status=status.HTTP_201_CREATED)
+            return Response({key: [f"{file_name} uploading in progress ..."]}, status=status.HTTP_201_CREATED)
 
         except Exception as error:
             LOGGER.error(error, exc_info=True)
@@ -404,7 +404,7 @@ class DropDocumentView(GenericViewSet):
         """remove the dropped documents"""
         try:
             key = list(request.data.keys())[0]
-            file_operations.remove_files(request.data[key], settings.TEMP_FILE_PATH)
+            file_operations.remove_files(key, settings.TEMP_FILE_PATH)
             return Response({}, status=status.HTTP_204_NO_CONTENT)
 
         except Exception as error:
