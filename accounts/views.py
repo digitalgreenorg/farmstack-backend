@@ -1,8 +1,14 @@
 import datetime, logging
+from asyncio import exceptions
+from asyncio.log import logger
 
+from core.constants import Constants
+from core.utils import Utils
+from datahub.models import UserOrganizationMap
 from django.conf import settings
 from django.core.cache import cache
 from rest_framework import serializers, status
+from rest_framework.decorators import action, permission_classes
 from rest_framework.parsers import FileUploadParser, MultiPartParser
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -11,17 +17,16 @@ from rest_framework_simplejwt.tokens import RefreshToken
 
 from accounts.models import User
 from accounts.serializers import (
+    LoginSerializer,
     UserCreateSerializer,
     UserUpdateSerializer,
-    LoginSerializer,
 )
-
-from core.utils import Utils
 from utils import login_helper
 
 LOGGER = logging.getLogger(__name__)
 
 
+@permission_classes([])
 class RegisterViewset(GenericViewSet):
     """RegisterViewset for users to register"""
 
@@ -50,22 +55,22 @@ class RegisterViewset(GenericViewSet):
             status=status.HTTP_201_CREATED,
         )
 
-    def list(self, request, *args, **kwargs):
-        """GET method: query all the list of objects from the Product model"""
-        queryset = self.filter_queryset(self.get_queryset())
-        page = self.paginate_queryset(queryset)
-        if page is not None:
-            serializer = self.get_serializer(page, many=True)
-            return self.get_paginated_response(serializer.data)
+    # def list(self, request, *args, **kwargs):
+    #     """GET method: query all the list of objects from the Product model"""
+    #     queryset = self.filter_queryset(self.get_queryset())
+    #     page = self.paginate_queryset(queryset)
+    #     if page is not None:
+    #         serializer = self.get_serializer(page, many=True)
+    #         return self.get_paginated_response(serializer.data)
 
-        serializer = self.get_serializer(queryset, many=True)
-        return Response(serializer.data, status=status.HTTP_200_OK)
+    #     serializer = self.get_serializer(queryset, many=True)
+    #     return Response(serializer.data, status=status.HTTP_200_OK)
 
     def retrieve(self, request, pk):
         """GET method: retrieve an object or instance of the Product model"""
         user = self.get_object()
-        # serializer = self.get_serializer(user)
-        serializer = UserUpdateSerializer(user)
+        serializer = self.get_serializer(user)
+        # serializer = UserUpdateSerializer(user)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
     def update(self, request, *args, **kwargs):
@@ -87,6 +92,7 @@ class RegisterViewset(GenericViewSet):
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
+@permission_classes([])
 class LoginViewset(GenericViewSet):
     """LoginViewset for users to register"""
 
@@ -104,7 +110,7 @@ class LoginViewset(GenericViewSet):
             if not user:
                 return Response(
                     {"email": "User not registered"},
-                    status=status.HTTP_400_BAD_REQUEST,
+                    status=status.HTTP_401_UNAUTHORIZED,
                 )
 
             # check if user is suspended
@@ -115,7 +121,7 @@ class LoginViewset(GenericViewSet):
                             "email": email,
                             "message": "Your account is suspended, please try after some time",
                         },
-                        status=status.HTTP_401_UNAUTHORIZED,
+                        status=status.HTTP_403_FORBIDDEN,
                     )
 
             # generate and send OTP to the the user
@@ -145,7 +151,22 @@ class LoginViewset(GenericViewSet):
 
         return Response({}, status=status.HTTP_400_BAD_REQUEST)
 
+    @action(detail=False, methods=["post"])
+    def onboarded(self, request):
+        """This method makes the user on-boarded"""
+        try:
+            user = User.objects.get(id=request.data.get(Constants.USER_ID, ""))
+        except Exception as error:
+            LOGGER.error("Invalid user id: %s", error)
+            return Response(["Invalid User id"], 400)
+        if User:
+            user.on_boarded = request.data.get("on_boarded", True)
+            user.save()
+            return Response(status=status.HTTP_204_NO_CONTENT)
+        return Response(["Invalid User id"], 400)
 
+
+@permission_classes([])
 class ResendOTPViewset(GenericViewSet):
     """ResendOTPViewset for users to register"""
 
@@ -163,35 +184,42 @@ class ResendOTPViewset(GenericViewSet):
             if not user:
                 return Response(
                     {"email": "User not registered"},
-                    status=status.HTTP_400_BAD_REQUEST,
+                    status=status.HTTP_401_UNAUTHORIZED,
                 )
 
             # check if user is suspended
             if cache.get(user.id) is not None:
                 if cache.get(user.id)["email"] == email and cache.get(user.id)["cache_type"] == "user_suspension":
                     return Response(
-                        {
-                            "email": email,
-                            "message": "Your account is suspended, please try after some time",
-                        },
-                        status=status.HTTP_401_UNAUTHORIZED,
+                        {"email": email, "message": "Maximum attempts taken, please retry after some time"},
+                        status=status.HTTP_403_FORBIDDEN,
                     )
 
-            # get current user otp attempt
-            otp_attempt = int(cache.get(email)["otp_attempt"])
-
-            # generate and send OTP to the the user
             gen_key = login_helper.generateKey()
-            otp = gen_key.returnValue()["OTP"]
-            Utils().send_email(
-                to_email=email,
-                content=f"Your OTP is {otp}",
-                subject=f"Your account verification OTP",
-            )
 
-            # assign OTP to the user using cache
-            login_helper.set_user_otp(email, otp, settings.OTP_DURATION, otp_attempt)
-            print(cache.get(email))
+            # update the current attempts of OTP
+            if cache.get(email):
+                otp = gen_key.returnValue()["OTP"]
+                Utils().send_email(
+                    to_email=email,
+                    content=f"Your OTP is {otp}",
+                    subject=f"Your account verification OTP",
+                )
+
+                otp_attempt = int(cache.get(email)["otp_attempt"])
+                login_helper.set_user_otp(email, otp, settings.OTP_DURATION, otp_attempt)
+                print(cache.get(email))
+
+            # generate a new attempts of OTP
+            elif not cache.get(email):
+                otp = gen_key.returnValue()["OTP"]
+                Utils().send_email(
+                    to_email=email,
+                    content=f"Your OTP is {otp}",
+                    subject=f"Your account verification OTP",
+                )
+
+                login_helper.set_user_otp(email, otp, settings.OTP_DURATION)
 
             return Response(
                 {
@@ -208,6 +236,7 @@ class ResendOTPViewset(GenericViewSet):
         return Response({}, status=status.HTTP_400_BAD_REQUEST)
 
 
+@permission_classes([])
 class VerifyLoginOTPViewset(GenericViewSet):
     """User verification with OTP"""
 
@@ -219,68 +248,89 @@ class VerifyLoginOTPViewset(GenericViewSet):
         serializer.is_valid(raise_exception=True)
         email = serializer.validated_data["email"]
         otp_entered = serializer.validated_data["otp"]
+        # user = User.objects.filter(user__email=email).select_related()
+        user_map = UserOrganizationMap.objects.select_related("user").filter(user__email=email).first()
         user = User.objects.filter(email=email)
         user = user.first()
 
         try:
-            # get current user otp object's data
-            correct_otp = int(cache.get(email)["user_otp"])
-            otp_created = cache.get(email)["updation_time"]
-            # increment the otp counter
-            otp_attempt = int(cache.get(email)["otp_attempt"]) + 1
-            # update the expiry duration of otp
-            new_duration = settings.OTP_DURATION - (datetime.datetime.now().second - otp_created.second)
-
-            # On successful validation generate JWT tokens
-            if correct_otp == int(otp_entered) and cache.get(email)["email"] == email:
-                cache.delete(email)
-                refresh = RefreshToken.for_user(user)
-                return Response(
-                    {
-                        "user": user.id,
-                        "email": user.email,
-                        "status": user.status,
-                        "role": str(user.role),
-                        "refresh": str(refresh),
-                        "access": str(refresh.access_token),
-                        "message": "Successfully logged in!",
-                    },
-                    status=status.HTTP_201_CREATED,
-                )
-
-            elif correct_otp != int(otp_entered) or cache.get(email)["email"] != email:
-                # check for otp limit
-                if cache.get(email)["otp_attempt"] < int(settings.OTP_LIMIT):
-                    # update the user otp data in cache
-                    login_helper.set_user_otp(email, correct_otp, new_duration, otp_attempt)
-                    print(cache.get(email))
-
+            # check if user is suspended
+            if cache.get(user.id) is not None:
+                if cache.get(user.id)["email"] == email and cache.get(user.id)["cache_type"] == "user_suspension":
                     return Response(
-                        {
-                            "message": "Invalid OTP, remaining attempts left: "
-                            + str((int(settings.OTP_LIMIT) - int(otp_attempt)) + 1)
-                        },
-                        status=status.HTTP_401_UNAUTHORIZED,
-                    )
-                else:
-                    # On maximum invalid OTP attempts set user status to False
-                    cache.delete(email)
-                    login_helper.user_suspension(user.id, email)
-                    # user.status = False
-                    # user.save()
-
-                    return Response(
-                        {"message": "Maximum attempts taken, please retry after some time"},
+                        {"email": email, "message": "Maximum attempts taken, please retry after some time"},
                         status=status.HTTP_403_FORBIDDEN,
                     )
-            # check otp expiration
-            elif cache.get(email) is None:
-                return Response(
-                    {"message": "OTP expired verify again!"},
-                    status=status.HTTP_401_UNAUTHORIZED,
-                )
+
+            elif cache.get(user.id) is None:
+                if cache.get(email) is not None:
+                    # get current user otp object's data
+                    user_otp = cache.get(email)
+                    correct_otp = int(user_otp["user_otp"])
+                    otp_created = user_otp["updation_time"]
+                    # increment the otp counter
+                    otp_attempt = int(user_otp["otp_attempt"]) + 1
+                    # update the expiry duration of otp
+                    new_duration = settings.OTP_DURATION - (datetime.datetime.now().second - otp_created.second)
+
+                    # On successful validation generate JWT tokens
+                    if correct_otp == int(otp_entered) and cache.get(email)["email"] == email:
+                        cache.delete(email)
+                        refresh = RefreshToken.for_user(user)
+                        return Response(
+                            {
+                                "user": user.id,
+                                "user_map": user_map.id if user_map else None,
+                                "org_id": user_map.organization_id if user_map else None,
+                                "email": user.email,
+                                "status": user.status,
+                                "on_boarded": user.on_boarded,
+                                "role": str(user.role),
+                                "role_id": str(user.role_id),
+                                "refresh": str(refresh),
+                                "access": str(refresh.access_token),
+                                "message": "Successfully logged in!",
+                            },
+                            status=status.HTTP_201_CREATED,
+                        )
+
+                    elif correct_otp != int(otp_entered) or cache.get(email)["email"] != email:
+                        # check for otp limit
+                        if cache.get(email)["otp_attempt"] < int(settings.OTP_LIMIT):
+                            # update the user otp data in cache
+                            login_helper.set_user_otp(email, correct_otp, new_duration, otp_attempt)
+                            print(cache.get(email))
+
+                            return Response(
+                                {
+                                    "message": "Invalid OTP, remaining attempts left: "
+                                    + str((int(settings.OTP_LIMIT) - int(otp_attempt)) + 1)
+                                },
+                                status=status.HTTP_401_UNAUTHORIZED,
+                            )
+                        else:
+                            # On maximum invalid OTP attempts set user status to False
+                            cache.delete(email)
+                            login_helper.user_suspension(user.id, email)
+                            # user.status = False
+                            # user.save()
+
+                            return Response(
+                                {"email": email, "message": "Maximum attempts taken, please retry after some time"},
+                                status=status.HTTP_403_FORBIDDEN,
+                            )
+                    # check otp expiration
+                    elif cache.get(email) is None:
+                        return Response(
+                            {"message": "OTP expired verify again!"},
+                            status=status.HTTP_401_UNAUTHORIZED,
+                        )
 
         except Exception as e:
-            LOGGER.warning(e)
+            LOGGER.error(e)
+            print("Please click on resend OTP and enter the new OTP")
 
-        return Response({"message": "Not allowed"}, status=status.HTTP_400_BAD_REQUEST)
+        return Response(
+            {"message": "Please click on resend OTP and enter the new OTP"},
+            status=status.HTTP_403_FORBIDDEN,
+        )

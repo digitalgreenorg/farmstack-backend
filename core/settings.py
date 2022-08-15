@@ -12,8 +12,8 @@ https://docs.djangoproject.com/en/4.0/ref/settings/
 
 import collections
 import os
-from pathlib import Path
 from datetime import timedelta
+from pathlib import Path
 
 collections.Callable = collections.abc.Callable
 
@@ -36,10 +36,10 @@ ALLOWED_HOSTS = ["*"]
 # Use nose to run all tests
 TEST_RUNNER = "django_nose.NoseTestSuiteRunner"
 
-# Tell nose to measure coverage on the 'foo' and 'bar' apps
+# Tell nose to measure coverage on the datahub, accounts, core and participants apps
 NOSE_ARGS = [
     "--cover-html",
-    "--cover-package=datahub,accounts,core",
+    "--cover-package=datahub,accounts,core, participants",
 ]
 # Application definition
 
@@ -65,6 +65,15 @@ INSTALLED_APPS = [
     "accounts",
     "datahub",
     "participant",
+    "microsite",
+]
+# Use nose to run all tests
+TEST_RUNNER = "django_nose.NoseTestSuiteRunner"
+
+# Tell nose to measure coverage on the 'foo' and 'bar' apps
+NOSE_ARGS = [
+    "--with-coverage",
+    "--cover-package=datahub,participant",
 ]
 
 MIDDLEWARE = [
@@ -104,18 +113,21 @@ WSGI_APPLICATION = "core.wsgi.application"
 # https://docs.djangoproject.com/en/4.0/ref/settings/#databases
 
 DATABASES = {
-    # "default": {
-    #     "ENGINE": os.environ.get("SQL_ENGINE", "django.db.backends.postgresql"),
-    #     "NAME": os.environ.get("SQL_DATABASE", "farm_stack"),
-    #     "USER": os.environ.get("SQL_USER", "farm_stack"),
-    #     "PASSWORD": os.environ.get("SQL_PASSWORD", "farm_stack"),
-    #     "HOST": os.environ.get("SQL_HOST", "db"),
-    #     "PORT": os.environ.get("SQL_PORT", "5432"),
-    # }
     "default": {
-        "ENGINE": "django.db.backends.sqlite3",
-        "NAME": BASE_DIR / "db.sqlite3",
+        "ENGINE": "django.db.backends.postgresql",
+        "NAME": os.environ.get("POSTGRES_NAME"),
+        "USER": os.environ.get("POSTGRES_USER"),
+        "PASSWORD": os.environ.get("POSTGRES_PASSWORD"),
+        "HOST": "datahubtest.farmstack.co",
+        "PORT": os.environ.get("PORT"),
+        "OPTIONS": {
+            "client_encoding": "UTF8",
+        },
     }
+    # "default": {
+    #     "ENGINE": "django.db.backends.sqlite3",
+    #     "NAME": BASE_DIR / "db.sqlite3",
+    # }
 }
 
 
@@ -153,24 +165,36 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/4.0/howto/static-files/
 
-STATIC_ROOT = os.path.join(BASE_DIR, "static/")
+STATIC_ROOT = os.path.join(BASE_DIR, "static")
 STATIC_URL = "static/"
 
 MEDIA_ROOT = os.path.join(BASE_DIR, "media")
 MEDIA_URL = "media/"
+
+STATICFILES_DIRS = [
+    os.path.join(BASE_DIR, "media/"),
+]
+
+if not os.path.exists(STATIC_URL):
+    os.makedirs(STATIC_URL)  # create the content directory
+
+DOCUMENTS_ROOT = os.path.join(BASE_DIR, "media/documents/")
+DOCUMENTS_URL = "media/documents/"
+if not os.path.exists(DOCUMENTS_ROOT):
+    os.makedirs(DOCUMENTS_ROOT)  # create the temp directory
+
+THEME_ROOT = os.path.join(BASE_DIR, "media/theme/")
+THEME_URL = "media/theme/"
+# if not os.path.exists(THEME_ROOT):
+#     os.makedirs(THEME_ROOT)  # create the temp directory
 
 PROFILE_PICTURES_ROOT = os.path.join(MEDIA_URL, "users")
 PROFILE_PICTURES_URL = "users/profile_pictures/"
 ORGANIZATION_IMAGES_URL = "organizations/logos/"
 ISSUE_ATTACHEMENT_URL = "users/tickets/"
 SOLUCTION_ATTACHEMENT_URL = "users/tickets/soluctions/"
-
-# ORGANIZATION_IMAGES_ROOT = os.path.join(MEDIA_URL, "organizations")
-# ORGANIZATION_IMAGES_URL = "organizations/logos/"
-CONTENT_URL = "content/"
-
-if not os.path.exists(STATIC_URL):
-    os.makedirs(STATIC_URL)  # create the content directory
+SAMPLE_DATASETS_URL = "users/datasets/sample_data/"
+CONNECTORS_CERTIFICATE_URL = "users/connectors/certificates/"
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/4.0/ref/settings/#default-auto-field
@@ -182,8 +206,14 @@ AUTH_USER_MODEL = "accounts.User"
 REST_FRAMEWORK = {
     "DEFAULT_FILTER_BACKENDS": ["django_filters.rest_framework.DjangoFilterBackend"],
     "DEFAULT_AUTHENTICATION_CLASSES": ("rest_framework_simplejwt.authentication.JWTAuthentication",),
-    "DEFAULT_PERMISSION_CLASSES": [],
+    "DEFAULT_PERMISSION_CLASSES": [
+        "rest_framework.permissions.AllowAny"
+    ],  #  Comment this line for test, stage and prod environments
+    # "DEFAULT_PERMISSION_CLASSES": [
+    #     "rest_framework.permissions.IsAuthenticated"
+    # ],  # Un comment this to enable authentication
     "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
+    "EXCEPTION_HANDLER": "rest_framework.views.exception_handler",
 }
 
 SIMPLE_JWT = {
@@ -200,7 +230,6 @@ SIMPLE_JWT = {
 # Email configuration
 SENDGRID_API_KEY = os.environ.get("SENDGRID_API_KEY", "send_grid_key")
 EMAIL_HOST_USER = os.environ.get("EMAIL_HOST_USER", "email_host_user")
-
 USE_X_FORWARDED_HOST = True
 
 # User OTP config
@@ -242,21 +271,25 @@ LOGGING = {
         # information regarding filters
     },
     "formatters": {
-        "Simple_Format": {
-            "format": "{levelname} {message}",
-            "style": "{",
-        }
+        # "Simple_Format": {
+        #     "format": "{levelname} {message}",
+        #     "style": "{",
+        # }
+        "with_datetime": {
+            "format": "[%(asctime)s] [%(levelname)-s] %(lineno)-4s%(name)-15s %(message)s",
+        },
     },
     "handlers": {
         "file": {
             "level": "DEBUG",
             "class": "logging.FileHandler",
             "filename": "./logs/log_file.log",
-            "formatter": "Simple_Format",
+            "formatter": "with_datetime",
         },
         "console": {
             "level": "DEBUG",
             "class": "logging.StreamHandler",
+            "formatter": "with_datetime",
         },
     },
     "loggers": {
@@ -284,6 +317,12 @@ FILE_TYPES_ALLOWED = ["pdf", "doc", "docx"]
 IMAGE_TYPES_ALLOWED = ["jpg", "jpeg", "png"]
 TEMP_FILE_PATH = "/tmp/datahub/"
 CSS_FILE_NAME = "override.css"
+
+CSS_ROOT = os.path.join(BASE_DIR, "media/theme/css/")
+CSS_URL = "media/theme/css/"
+
+if not os.path.exists(CSS_ROOT):
+    os.makedirs(CSS_ROOT)  # create the temp directory
 
 if not os.path.exists(TEMP_FILE_PATH):
     os.makedirs(TEMP_FILE_PATH)  # create the temp directory

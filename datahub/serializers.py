@@ -7,19 +7,15 @@ from accounts.serializers import (
     UserRoleSerializer,
     UserSerializer,
 )
-from rest_framework import serializers
 from core.constants import Constants
-
-from datahub.models import DatahubDocuments, Organization, UserOrganizationMap
-from datahub.models import Organization, UserOrganizationMap, DatahubDocuments
-
+from rest_framework import serializers
 from utils.validators import (
     validate_document_type,
     validate_file_size,
     validate_image_type,
 )
 
-from datahub.models import DatahubDocuments, Organization, UserOrganizationMap
+from datahub.models import DatahubDocuments, Datasets, Organization, UserOrganizationMap
 
 
 class OrganizationRetriveSerializer(serializers.ModelSerializer):
@@ -88,7 +84,7 @@ class UserOrganizationMapSerializer(serializers.ModelSerializer):
         """_summary_"""
 
         model = UserOrganizationMap
-        fields = [Constants.ORGANIZATION, Constants.USER]
+        fields = Constants.ALL
         # exclude = Constants.EXCLUDE_DATES
 
 
@@ -132,9 +128,9 @@ class DropDocumentSerializer(serializers.Serializer):
 class PolicyDocumentSerializer(serializers.ModelSerializer):
     """PolicyDocumentSerializer class"""
 
+    governing_law = serializers.CharField()
     privacy_policy = serializers.CharField()
     tos = serializers.CharField()
-    governing_law = serializers.CharField()
     limitations_of_liabilities = serializers.CharField()
     warranty = serializers.CharField()
 
@@ -150,7 +146,7 @@ class DatahubThemeSerializer(serializers.Serializer):
         validators=[validate_file_size, validate_image_type], required=False, allow_null=True
     )
     button_color = serializers.CharField(required=False, allow_null=True)
-    email = serializers.EmailField()
+    # email = serializers.EmailField()
 
 
 class TeamMemberListSerializer(serializers.Serializer):
@@ -168,6 +164,7 @@ class TeamMemberListSerializer(serializers.Serializer):
     role = serializers.PrimaryKeyRelatedField(queryset=UserRole.objects.all(), read_only=False)
     profile_picture = serializers.FileField()
     status = serializers.BooleanField()
+    on_boarded = serializers.BooleanField()
 
 
 class TeamMemberCreateSerializer(serializers.ModelSerializer):
@@ -177,7 +174,7 @@ class TeamMemberCreateSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = User
-        fields = ("email", "first_name", "last_name", "role")
+        fields = ("email", "first_name", "last_name", "role", "on_boarded")
 
 
 class TeamMemberDetailsSerializer(serializers.ModelSerializer):
@@ -187,7 +184,7 @@ class TeamMemberDetailsSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = User
-        fields = ("id", "email", "first_name", "last_name", "role")
+        fields = ("id", "email", "first_name", "last_name", "role", "on_boarded")
 
 
 class TeamMemberUpdateSerializer(serializers.ModelSerializer):
@@ -197,4 +194,98 @@ class TeamMemberUpdateSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = User
-        fields = ("id", "email", "first_name", "last_name", "role")
+        fields = ("id", "email", "first_name", "last_name", "role", "on_boarded")
+
+
+class DatasetSerializer(serializers.ModelSerializer):
+    """_summary_
+
+    Args:
+        serializers (_type_): _description_
+    """
+
+    class Meta:
+        """_summary_"""
+
+        model = Datasets
+        fields = [
+            "user_map",
+            "name",
+            "description",
+            "category",
+            "geography",
+            "crop_detail",
+            "constantly_update",
+            "dataset_size",
+            "connector_availability",
+            "age_of_date",
+            "sample_dataset",
+            "data_capture_start",
+            "data_capture_end",
+            "remarks",
+            "is_enabled",
+            "approval_status",
+        ]
+
+
+class DatasetUpdateSerializer(serializers.ModelSerializer):
+    """_summary_
+
+    Args:
+        serializers (_type_): _description_
+    """
+
+    class Meta:
+        """_summary_"""
+
+        model = Datasets
+        fields = Constants.ALL
+
+class DatahubDatasetsDetailSerializer(serializers.ModelSerializer):
+    user_id = serializers.PrimaryKeyRelatedField(
+        queryset=models.User.objects.all(), required=True, source="user_map.user"
+    )
+    organization_id = serializers.PrimaryKeyRelatedField(
+        queryset=Organization.objects.all(), allow_null=True, required=False, source="user_map.organization"
+    )
+    user = UserSerializer(
+        read_only=False,
+        required=False,
+        allow_null=True,
+        source="user_map.user",
+    )
+    organization = OrganizationRetriveSerializer(
+        required=False, allow_null=True, read_only=True, source="user_map.organization"
+    )
+
+    class Meta:
+        model = Datasets
+        exclude = Constants.EXCLUDE_DATES
+
+
+class DatahubDatasetsSerializer(serializers.ModelSerializer):
+    class OrganizationDatsetsListRetriveSerializer(serializers.ModelSerializer):
+        class Meta:
+            model = Organization
+            fields = ["org_email", "org_description", "name", "logo", "address", "phone_number"]
+
+    class UserDatasetSerializer(serializers.ModelSerializer):
+        class Meta:
+            model = User
+            fields = ["last_name", "first_name", "email"]
+
+    user_id = serializers.PrimaryKeyRelatedField(
+        queryset=models.User.objects.all(), required=True, source="user_map.user"
+    )
+    organization_id = serializers.PrimaryKeyRelatedField(
+        queryset=Organization.objects.all(), allow_null=True, required=False, source="user_map.organization"
+    )
+
+    organization = OrganizationDatsetsListRetriveSerializer(
+        required=False, allow_null=True, read_only=True, source="user_map.organization"
+    )
+    user = UserDatasetSerializer(required=False, allow_null=True, read_only=True, source="user_map.user")
+
+    class Meta:
+        model = Datasets
+        fields = Constants.ALL

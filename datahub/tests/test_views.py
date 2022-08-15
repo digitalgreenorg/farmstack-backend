@@ -1,20 +1,26 @@
-import json
+import json, binascii, os
 from calendar import c
 from urllib import response
 from uuid import uuid4
 
 import pytest
+from django.shortcuts import render
 from _pytest.monkeypatch import MonkeyPatch
+from django.db import models
 from accounts.models import User, UserManager, UserRole
-from datahub.models import Organization, UserOrganizationMap
+from datahub.models import Datasets, Organization, UserOrganizationMap
 from datahub.views import ParticipantViewSet
 from django.test import Client, TestCase
-from django.urls import reverse
+from django.test.client import encode_multipart
+
+# from django.urls import reverse
 from participant.models import SupportTicket
 from requests import request
 from requests_toolbelt.multipart.encoder import MultipartEncoder
-from rest_framework import serializers
+from rest_framework import serializers, status
 from rest_framework.response import Response
+from rest_framework.test import APIClient, APITestCase, APIRequestFactory
+from rest_framework.reverse import reverse
 
 valid_data = {
     "email": "ugeshbasa4ss5@digitalgreen.org",
@@ -395,3 +401,415 @@ class SupportTestViews(TestCase):
     def test_participant_support_get_list_filter_error(self):
         response = self.client.post(self.support_url + "filters_tickets/", {"statuuus": "open"}, secure=True)
         assert response.status_code == 400
+
+
+datasets_valid_data = {
+    "name": "chilli datasets",
+    "description": "description",
+    "category": "soil_data",
+    "geography": "tpt",
+    "crop_detail": "chilli",
+    "constantly_update": False,
+    "age_of_date": "3",
+    "dataset_size": "155K",
+    "connector_availability": "available",
+    # "sample_dataset": open("datasets/tests/test_data/pro.csv", "rb"),
+}
+datasets_dump_data = {
+    "name": "dump datasets",
+    "description": "dump description",
+    "category": "soil_data",
+    "geography": "tpt",
+    "crop_detail": "chilli",
+    "constantly_update": False,
+    "age_of_date": "3",
+    "dataset_size": "155K",
+    "connector_availability": "available",
+    # "sample_dataset": open("datasets/tests/test_data/pro.csv", "rb"),
+}
+datasets_invalid_data = {
+    "constantly_update": False,
+    "age_of_date": "3",
+    "dataset_size": "155K",
+    "connector_availability": "available",
+    # "sample_dataset": open("datasets/tests/test_data/pro.csv", "rb"),
+}
+datasets_update_data = {
+    "geography": "bglor",
+    "crop_detail": "green chilli",
+    "constantly_update": False,
+    "age_of_date": "12",
+    "dataset_size": "255k",
+}
+
+
+class TestDatahubDatasetsViews(TestCase):
+    """_summary_
+
+    Args:
+        TestCase (_type_): _description_
+    """
+
+    def setUp(self) -> None:
+        self.client = Client()
+        self.datasets_url = reverse("datahub_datasets-list")
+        self.monkeypatch = MonkeyPatch()
+        UserRole.objects.create(role_name="datahub_admin")
+        UserRole.objects.create(role_name="datahub_team_member")
+        UserRole.objects.create(role_name="datahub_participant_root")
+        UserRole.objects.create(role_name="datahub_participant_member")
+
+        User.objects.create(
+            email="ugeshbasa45@digitalgreen.org",
+            first_name="ugesh",
+            last_name="nani",
+            role=UserRole.objects.get(role_name="datahub_participant_root"),
+            phone_number="9985750356",
+            profile_picture="sasas",
+            subscription="aaaa",
+        )
+        User.objects.create(
+            email="ugeshbasa_member@digitalgreen.org",
+            first_name="ugesh",
+            last_name="nani",
+            role=UserRole.objects.get(role_name="datahub_participant_member"),
+            phone_number="9985750356",
+            profile_picture="sasas",
+            subscription="aaaa",
+        )
+        User.objects.create(
+            email="ugeshbasa_member2@digitalgreen.org",
+            first_name="ugesh",
+            last_name="nani",
+            role=UserRole.objects.get(role_name="datahub_participant_member"),
+            phone_number="9985750356",
+            profile_picture="sasas",
+            subscription="aaaa",
+        )
+        Organization.objects.create(
+            org_email="bglordg@digitalgreen.org",
+            name="digitalgreen",
+            phone_number="9985750356",
+            website="website.com",
+            address=json.dumps({"city": "Banglore"}),
+        )
+        # Test model str class
+        UserOrganizationMap.objects.create(
+            user=User.objects.get(email="ugeshbasa_member@digitalgreen.org"),
+            organization=Organization.objects.get(org_email="bglordg@digitalgreen.org"),
+        )
+        UserOrganizationMap.objects.create(
+            user=User.objects.get(email="ugeshbasa45@digitalgreen.org"),
+            organization=Organization.objects.get(org_email="bglordg@digitalgreen.org"),
+        )
+        user_map = UserOrganizationMap.objects.create(
+            user=User.objects.get(email="ugeshbasa_member2@digitalgreen.org"),
+            organization=Organization.objects.get(org_email="bglordg@digitalgreen.org"),
+        )
+        Datasets.objects.create(user_map=UserOrganizationMap.objects.get(id=user_map.id), **datasets_dump_data)
+        self.user_map_id = user_map.id
+
+    def test_datahub_datasets_invalid(self):
+        """_summary_"""
+        datasets_invalid_data["user_map"] = self.user_map_id
+        response = self.client.post(self.datasets_url, datasets_invalid_data, secure=True)
+        assert response.status_code == 400
+        assert response.json() == {
+            "name": ["This field is required."],
+            "description": ["This field is required."],
+            "category": ["This field is required."],
+            "geography": ["This field is required."],
+        }
+
+    def test_datahub_root_datasets_valid(self):
+        """_summary_"""
+        user_id = UserOrganizationMap.objects.get(user=User.objects.get(email="ugeshbasa45@digitalgreen.org").id).id
+        datasets_valid_data["user_map"] = user_id
+        datasets_valid_data["name"] = "root_name"
+        response = self.client.post(self.datasets_url, datasets_valid_data, secure=True)
+
+        assert response.status_code == 201
+        assert response.json().get("name") == datasets_valid_data.get("name")
+        assert response.json().get("category") == datasets_valid_data.get("category")
+        assert response.json().get("geography") == datasets_valid_data.get("geography")
+        assert response.json().get("geography") == datasets_valid_data.get("geography")
+        datasets_dump_data["user_map"] = self.user_map_id
+        response = self.client.post(self.datasets_url, datasets_dump_data, secure=True)
+        assert response.status_code == 201
+
+    def test_datahub_member2_datasets_valid(self):
+        """_summary_"""
+        user_id = UserOrganizationMap.objects.get(
+            user_id=User.objects.get(email="ugeshbasa_member@digitalgreen.org").id
+        ).id
+        datasets_valid_data["user_map"] = user_id
+        response = self.client.post(self.datasets_url, datasets_valid_data, secure=True)
+        assert response.status_code == 201
+        assert response.json().get("name") == datasets_valid_data.get("name")
+        assert response.json().get("category") == datasets_valid_data.get("category")
+        assert response.json().get("geography") == datasets_valid_data.get("geography")
+        assert response.json().get("geography") == datasets_valid_data.get("geography")
+
+    def test_datahub_datasets_get_list(self):
+        user_id = User.objects.get(email="ugeshbasa_member2@digitalgreen.org").id
+        response = self.client.get(self.datasets_url, {"user_id": user_id}, secure=True)
+        data = response.json()
+        assert response.status_code == 200
+        assert data.get("count") == 1
+        assert len(data.get("results")) == 1
+        assert list(data.get("results")[0].get("organization").keys()) == [
+            "org_email",
+            "org_description",
+            "name",
+            "logo",
+        ]
+        assert data.get("results")[0].get("user") == None
+
+    def test_datahub_datasets_get_list_with_organization(self):
+        org_id = Organization.objects.get(org_email="bglordg@digitalgreen.org").id
+        response = self.client.get(self.datasets_url, {"org_id": org_id}, secure=True)
+        data = response.json()
+        assert response.status_code == 200
+        assert data.get("count") == 1
+        assert len(data.get("results")) == 1
+
+    def test_datahub_datasets_update_details(self):
+        id = Datasets.objects.get(name="dump datasets").id
+        print(id)
+        datasets_update_data["user_map"] = self.user_map_id
+        response = self.client.put(
+            self.datasets_url + str(id) + "/",
+            datasets_update_data,
+            secure=True,
+            content_type="application/json",
+        )
+        assert response.status_code == 201
+        assert response.json().get("name") == datasets_dump_data.get("name")
+        assert response.json().get("dataset_size") == datasets_update_data.get("dataset_size")
+        assert response.json().get("geography") == datasets_update_data.get("geography")
+
+    def test_datahub_datasets_update_error(self):
+        response = self.client.put(
+            self.datasets_url + str(uuid4()) + "/",
+            datasets_update_data,
+            secure=True,
+            content_type="application/json",
+        )
+        data = response.json()
+        assert response.status_code == 404
+        assert data == {"detail": "Not found."}
+
+    def test_datahub_datasets_after_update(self):
+        response = self.client.get(self.datasets_url, secure=True)
+        data = response.json()
+        assert response.status_code == 200
+        assert data.get("count") == 1
+        assert len(data.get("results")) == 1
+        org_id = Organization.objects.get(org_email="bglordg@digitalgreen.org").id
+        response = self.client.get(self.datasets_url, {"org_id": org_id}, secure=True)
+        data = response.json()
+        assert response.status_code == 200
+        assert data.get("count") == 1
+        assert len(data.get("results")) == 1
+        assert data.get("results")[0].get("name") == "dump datasets"
+        assert data.get("results")[0].get("category") == datasets_dump_data.get("category")
+        assert data.get("results")[0].get("geography") == datasets_dump_data.get("geography")
+
+    def test_datahub_datasets_details_empty(self):
+        url = self.datasets_url + str(uuid4()) + "/"
+        response = self.client.get(url, secure=True)
+        data = response.json()
+        assert response.status_code == 200
+        assert data == {}
+
+    def test_datahub_datasets_details(self):
+        id = Datasets.objects.get(name=datasets_dump_data.get("name")).id
+        url = self.datasets_url + str(id) + "/"
+        response = self.client.get(url, secure=True)
+        assert response.status_code == 200
+        assert response.json().get("name") == datasets_dump_data.get("name")
+        assert response.json().get("category") == datasets_dump_data.get("category")
+        assert response.json().get("geography") == datasets_dump_data.get("geography")
+        assert response.json().get("organization").get("org_email") == "bglordg@digitalgreen.org"
+
+    def test_datahub_datasest_deleate(self):
+        id = Datasets.objects.get(name="dump datasets").id
+        response = self.client.delete(self.datasets_url + str(id) + "/", secure=True)
+        assert response.status_code == 204
+
+    def test_datahub_datasest_filter(self):
+        url = self.datasets_url + "filters_tickets/"
+        data = {"category__in": [datasets_dump_data.get("category"), datasets_update_data.get("category")]}
+        response = self.client.post(url, data, secure=True)
+        data = response.json().get("results")[0]
+        assert response.status_code == 200
+        assert data.get("name") == datasets_dump_data.get("name")
+        assert data.get("category") == datasets_dump_data.get("category")
+        assert data.get("geography") == datasets_dump_data.get("geography")
+        assert data.get("organization").get("org_email") == "bglordg@digitalgreen.org"
+
+    def test_datahub_datasest_filter_error(self):
+        url = self.datasets_url + "filters_tickets/"
+        data = {"category__innnn": [datasets_dump_data.get("category"), datasets_update_data.get("category")]}
+        response = self.client.post(url, data, secure=True)
+        assert response.json() == "Invalid filter fields: ['category__innnn']"
+        assert response.status_code == 500
+
+
+class OrganizationTestViews(TestCase):
+    """_summary_
+
+    Args:
+        TestCase (_type_): _description_
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.client = APIClient()
+        cls.organization_url = reverse("organization-list")
+        cls.user_role = UserRole.objects.create(id=1, role_name="datahub_admin")
+        cls.user_data = {"email": "test_team_member@farmstack.co", "role": "1"}
+        cls.address = {"street": "4th Main", "city": "Bengaluru", "country": "India", "pincode": "53789"}
+
+    def test_organization_post_add_org(self):
+        user_obj = User.objects.create(email="test_user@email.com", role=self.user_role)
+        org_data = {
+            "user_id": str(user_obj.id),
+            "email": "test_team_member@farmstack.co",
+            "name": "Test Org",
+            "org_email": "test_org@email.com",
+            "address": json.dumps(self.address),
+            "phone_number": "+91123456789",
+            "org_description": "Organization description ....",
+        }
+
+        response = self.client.post(self.organization_url, org_data)
+        print("RESPONSEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE")
+        print(response.data)
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(Organization.objects.count(), 1)
+
+    def test_organization_post_add_invalid_org(self):
+        """_summary_"""
+        user_obj = User.objects.create(email="test_user@email.com", role=self.user_role)
+
+        org_data = {
+            "user_id": str(user_obj.id),
+            "email": "test_team_member@farmstack.co",
+            "name": "",
+            "org_email": "",
+            "address": "",
+            "phone_number": "+91123456789",
+            "org_description": "",
+        }
+
+        response = self.client.post(self.organization_url, org_data)
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        assert response.json() == {
+            "name": ["This field may not be blank."],
+            "org_email": ["This field may not be blank."],
+            "address": ["Value must be valid JSON."],
+        }
+
+    def test_organization_put_update_valid_org(self):
+        user_obj = User.objects.create(email="test_user@email.com", role=self.user_role)
+        org_data = {
+            "user_id": str(user_obj.id),
+            "email": "test_team_member@farmstack.co",
+            "name": "Test Org",
+            "org_email": "test_org@email.com",
+            "address": json.dumps(self.address),
+            "phone_number": "+91123456789",
+            "org_description": "Organization description ....",
+        }
+        response = self.client.post(self.organization_url, org_data)
+
+        address = {"street": "8th Main", "city": "Banglore", "country": "India", "pincode": "53789"}
+        updated_org_data = {
+            "name": "Test Organization",
+            "org_email": "test_organization@email.com",
+            "address": json.dumps(address),
+            "phone_number": "+91923456789",
+            "org_description": "Organization description UPDATED ....",
+            "logo": open("datahub/tests/test_data/pro.png", "rb"),
+        }
+
+        organization_url = reverse("organization-detail", kwargs={"pk": user_obj.id})
+        response = self.client.put(
+            organization_url,
+            updated_org_data,
+            content_type="multipart/form-data; boundary=00252461d3ab8ff5c25834e0bffd6f70",
+        )
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+
+    def test_organization_put_update_invalid_data(self):
+        """_summary_"""
+        user_obj = User.objects.create(email="test_user@email.com", role=self.user_role)
+        org_data = {
+            "user_id": str(user_obj.id),
+            "email": "test_team_member@farmstack.co",
+            "name": "Test Org",
+            "org_email": "test_org@email.com",
+            "address": json.dumps(self.address),
+            "phone_number": "+91123456789",
+            "org_description": "Organization description ....",
+        }
+        response = self.client.post(self.organization_url, org_data)
+
+        updated_org_data = {
+            "name": "",
+            "org_email": "",
+            "address": "",
+            "phone_number": "",
+            "org_description": "",
+            "logo": "",
+        }
+        organization_url = reverse("organization-detail", kwargs={"pk": user_obj.id})
+        response = self.client.put(
+            organization_url,
+            updated_org_data,
+            content_type="multipart/form-data; boundary=00252461d3ab8ff5c25834e0bffd6f70",
+        )
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+
+class TeamMemberTestCase(APITestCase):
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.client = APIClient()
+        cls.team_member_url = reverse("team_member-list")
+        cls.user_role = UserRole.objects.create(id=2, role_name="datahub_team_member")
+        cls.user_data = {"email": "test_team_member@farmstack.co", "role": "2"}
+
+    def test_team_member_post_add_valid_user(self):
+        user_obj = User.objects.create(email="test_user@email.com", role=self.user_role)
+        response = self.client.post(self.team_member_url, self.user_data)
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(User.objects.count(), 2)
+
+    def test_team_member_post_add_invalid_user(self):
+        User.objects.create(email="test_user@email.com", role=self.user_role)
+        self.user_data = {"email": "email"}
+        response = self.client.post(self.team_member_url, self.user_data)
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        # assert response.json() == {
+        #      "email": ["This field may not be blank."],
+        #      "role": ["This field may not be blank."],
+        #     }
+
+        # self.assertJSONEqual(json.loads(response.content), error_response)
+
+    def test_team_member_put_update_valid_data(self):
+        user_obj = User.objects.create(email="test_user@email.com", role=self.user_role)
+        self.team_member_url = reverse("team_member-detail", kwargs={"pk": user_obj.id})
+        response = self.client.put(self.team_member_url, self.user_data)
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+
+    def test_team_member_put_update_invalid_data(self):
+        user_obj = User.objects.create(email="test_user@email.com", role=self.user_role)
+        user_data = {"email": "email", "role": ""}
+        self.team_member_url = reverse("team_member-detail", kwargs={"pk": user_obj.id})
+        response = self.client.put(self.team_member_url, user_data)
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
