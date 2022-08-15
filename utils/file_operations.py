@@ -21,33 +21,34 @@ def file_save(source_file, file_name, destination):
         else:
             fs.save(destination + file_name, source_file)
             return "saved"
-    except Exception as e:
-        LOGGER.error(e)
+    except Exception as error:
+        LOGGER.error(error, exc_info=True)
 
 
 def file_path(destination):
     try:
         for root, dirs, files in os.walk(destination):
             file_paths = {os.path.splitext(os.path.basename(file))[0]: root + file for file in files}
-            # file_paths = {file: root + file for file in files}
-            # print(file_paths)
+            print(file_paths)
             return file_paths
-    except Exception as e:
-        LOGGER.error(e)
+    except Exception as error:
+        LOGGER.error(error, exc_info=True)
 
 
 def files_move(source, destination):
     """Move files or dirs"""
+    print("MOVING")
+    print(source, destination)
     try:
+        # save the new files
         for root, dirs, files in os.walk(source):
+            print(root, files)
             for file in files:
-                # shutil.move(root + file, destination)
-                print("file source", root+file)
                 shutil.copy(root + file, destination)
-                os.remove(root + file)
-                print("file moved", destination+file)
-    except Exception as e:
-        LOGGER.error(e)
+                os.remove(root + file)      # remove temp files
+                print("file moved to", destination+file)
+    except Exception as error:
+        LOGGER.error(error, exc_info=True)
 
 
 def remove_files(file_key, destination):
@@ -57,9 +58,10 @@ def remove_files(file_key, destination):
         for root, dirs, files in os.walk(destination):
             for file in files:
                 if file.split(".")[0] == file_key:
+                    print("deleting: ", root+file)
                     fs.delete(root + file)
-    except Exception as e:
-        LOGGER.error(e)
+    except Exception as error:
+        LOGGER.error(error, exc_info=True)
 
 
 def get_file_name(file, output_file):
@@ -69,8 +71,8 @@ def get_file_name(file, output_file):
         file_name = output_file + "." + file_type
         # print(file_name)
         return file_name
-    except Exception as e:
-        LOGGER.error(e)
+    except Exception as error:
+        LOGGER.error(error, exc_info=True)
 
 
 def get_css_attributes(css_path, css_attribute):
@@ -82,5 +84,6 @@ def get_css_attributes(css_path, css_attribute):
             css_attribute_value = sheet.cssRules[0].style[css_attribute]
             # print(css_attribute_value)
         return css_attribute_value
-    except Exception as e:
-        LOGGER.error(e)
+    except Exception as error:
+        LOGGER.error(error, exc_info=True)
+
