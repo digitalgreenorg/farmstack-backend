@@ -452,9 +452,11 @@ class ParticipantConnectorsViewSet(GenericViewSet):
     def destroy(self, request, pk):
         """DELETE method: delete an object"""
         product = self.get_object()
-        product.status = False
-        self.perform_create(product)
-        return Response(status=status.HTTP_204_NO_CONTENT)
+        if product.connector_status in [Constants.UNPAIRED, Constants.REJECTED]:
+            product.status = False
+            self.perform_create(product)
+            return Response(status=status.HTTP_204_NO_CONTENT)
+        return Response(["Connector status should be either unpaired or rejected to delete"], status=400)
 
     @action(detail=False, methods=["post"])
     def connectors_filters(self, request, *args, **kwargs):
