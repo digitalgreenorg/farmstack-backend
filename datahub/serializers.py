@@ -293,7 +293,24 @@ class DatahubDatasetsSerializer(serializers.ModelSerializer):
 
 
 class RecentSupportTicketSerializer(serializers.ModelSerializer):
-    support_tickets = SupportTicket.objects.order_by('updated_at')[1:4].values_list()
+    class OrganizationRetriveSerializer(serializers.ModelSerializer):
+        class Meta:
+            model = Organization
+            fields = ["id", "org_email", "name"]
+
+    class UserSerializer(serializers.ModelSerializer):
+        class Meta:
+            model = User
+            fields = ["id", "first_name", "last_name", "email"]
+
+    organization = OrganizationRetriveSerializer(
+            allow_null=True, required=False, read_only=True, source="user_map.organization"
+            )
+
+    participant = UserSerializer(
+            allow_null=True, required=False, read_only=True, source="user_map.user"
+            )
+
     class Meta:
         model = SupportTicket
-        fields = ["subject", "category", "updated_at"]
+        fields = ["subject", "category", "updated_at", "organization", "participant"]

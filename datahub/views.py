@@ -57,6 +57,7 @@ from datahub.serializers import (
     UserOrganizationCreateSerializer,
     UserOrganizationMapSerializer,
     DatasetUpdateSerializer,
+    RecentSupportTicketSerializer,
 )
 
 LOGGER = logging.getLogger(__name__)
@@ -883,13 +884,16 @@ class DatahubDashboard(GenericViewSet):
                     categories_dict[key] += 1
 
 
-        open_support_tickets = SupportTicket.objects.filter(status='open').count()
-        closed_support_tickets = SupportTicket.objects.filter(status='closed').count()
-        hold_support_tickets = SupportTicket.objects.filter(status='hold').count()
+        open_support_tickets = SupportTicket.objects.filter(status="open").count()
+        closed_support_tickets = SupportTicket.objects.filter(status="closed").count()
+        hold_support_tickets = SupportTicket.objects.filter(status="hold").count()
 
-        recent_tickets = SupportTicket.objects.order_by('updated_at')[1:4].values_list('subject', 'category', 'updated_at')
+        # retrieve 3 recent support tickets
+        recent_tickets_queryset = SupportTicket.objects.order_by("updated_at")[1:4]
+        recent_tickets = RecentSupportTicketSerializer(recent_tickets_queryset, many=True)
+        print(recent_tickets.data)
 
-        support_tickets = {"open_requests": open_support_tickets, "closed_requests": closed_support_tickets, "hold_requests": hold_support_tickets, "recent_tickets": recent_tickets}
+        support_tickets = {"open_requests": open_support_tickets, "closed_requests": closed_support_tickets, "hold_requests": hold_support_tickets, "recent_tickets": recent_tickets.data}
 
         data = {"total_participants": total_participants, "total_datasets": total_datasets, "active_connectors": active_connectors, "categories": categories_dict, "support_tickets": support_tickets}
         return Response(data, status=status.HTTP_200_OK)
