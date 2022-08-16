@@ -57,6 +57,7 @@ from datahub.serializers import (
     TeamMemberUpdateSerializer,
     UserOrganizationCreateSerializer,
     UserOrganizationMapSerializer,
+    RecentSupportTicketSerializer,
 )
 
 LOGGER = logging.getLogger(__name__)
@@ -914,12 +915,28 @@ class DatahubDashboard(GenericViewSet):
         )
         active_connectors = ""  # fill this later
 
-        datasets = Datasets.objects.order_by("category").filter(status=True).values()
-        datasets.values_list("category")
+        datasets = Datasets.objects.filter(status=True).values_list("category")
+        categories = set()
+        for data in datasets:
+            for element in data[0].keys():
+                categories.add(element)
 
-        data = {
-            "total_participants": total_participants,
-            "total_datasets": total_datasets,
-            "active_connectors": active_connectors,
-        }
+        categories_dict = {key:0 for key in categories}
+        for data in datasets:
+            for key,value in data[0].items():
+                if value == True:
+                    categories_dict[key] += 1
+
+        open_support_tickets = SupportTicket.objects.filter(status="open").count()
+        closed_support_tickets = SupportTicket.objects.filter(status="closed").count()
+        hold_support_tickets = SupportTicket.objects.filter(status="hold").count()
+
+        # retrieve 3 recent support tickets
+        recent_tickets_queryset = SupportTicket.objects.order_by("updated_at")[1:4]
+        recent_tickets = RecentSupportTicketSerializer(recent_tickets_queryset, many=True)
+        print(recent_tickets.data)
+
+        support_tickets = {"open_requests": open_support_tickets, "closed_requests": closed_support_tickets, "hold_requests": hold_support_tickets, "recent_tickets": recent_tickets.data}
+
+        data = {"total_participants": total_participants, "total_datasets": total_datasets, "active_connectors": active_connectors, "categories": categories_dict, "support_tickets": support_tickets}
         return Response(data, status=status.HTTP_200_OK)

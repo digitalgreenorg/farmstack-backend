@@ -7,7 +7,7 @@ from accounts.serializers import (
     UserRoleSerializer,
     UserSerializer,
 )
-from participant.models import Connectors
+from participant.models import SupportTicket, Connectors
 from core.constants import Constants
 from rest_framework import serializers
 from utils.validators import (
@@ -299,3 +299,27 @@ class DatahubDatasetsSerializer(serializers.ModelSerializer):
     class Meta:
         model = Datasets
         fields = Constants.ALL
+
+
+class RecentSupportTicketSerializer(serializers.ModelSerializer):
+    class OrganizationRetriveSerializer(serializers.ModelSerializer):
+        class Meta:
+            model = Organization
+            fields = ["id", "org_email", "name"]
+
+    class UserSerializer(serializers.ModelSerializer):
+        class Meta:
+            model = User
+            fields = ["id", "first_name", "last_name", "email"]
+
+    organization = OrganizationRetriveSerializer(
+            allow_null=True, required=False, read_only=True, source="user_map.organization"
+            )
+
+    participant = UserSerializer(
+            allow_null=True, required=False, read_only=True, source="user_map.user"
+            )
+
+    class Meta:
+        model = SupportTicket
+        fields = ["subject", "category", "updated_at", "organization", "participant"]
