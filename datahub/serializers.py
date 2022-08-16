@@ -7,6 +7,7 @@ from accounts.serializers import (
     UserRoleSerializer,
     UserSerializer,
 )
+from participant.models import Connectors
 from core.constants import Constants
 from rest_framework import serializers
 from utils.validators import (
@@ -113,6 +114,15 @@ class ParticipantSerializer(serializers.ModelSerializer):
     class Meta:
         model = UserOrganizationMap
         exclude = Constants.EXCLUDE_DATES
+
+    dataset_count = serializers.SerializerMethodField(method_name="get_dataset_count")
+    connector_count = serializers.SerializerMethodField(method_name="get_connector_count")
+
+    def get_dataset_count(self, user_org_map):
+        return Datasets.objects.filter(user_map__user=user_org_map.user.id).count()
+
+    def get_connector_count(self, user_org_map):
+        return Connectors.objects.filter(user_map__user=user_org_map.user.id).count()
 
 
 class DropDocumentSerializer(serializers.Serializer):
