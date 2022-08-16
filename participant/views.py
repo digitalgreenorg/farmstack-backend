@@ -447,15 +447,16 @@ class ParticipantConnectorsViewSet(GenericViewSet):
         setattr(request.data, "_mutable", True)
         data = request.data
         docker_image = data.get(Constants.DOCKER_IMAGE_URL)
-        try:
-            docker = docker_image.split(":")
-            response = requests.get(f"https://hub.docker.com/v2/repositories/{docker[0]}/tags/{docker[1]}")
-            images = response.json().get(Constants.IMAGES, [{}])
-            hash = [image.get(Constants.DIGEST, "") for image in images if image.get("architecture") == "amd64"]
-            data[Constants.USAGE_POLICY] = hash[0].split(":")[1].strip()
-        except Exception as error:
-            logging.error("Error while fetching the hash value. ERROR: %s", error)
-            return Response({Constants.DOCKER_IMAGE_URL: [f"Invalid docker Image: {docker_image}"]}, status=400)
+        if docker_image:
+            try:
+                docker = docker_image.split(":")
+                response = requests.get(f"https://hub.docker.com/v2/repositories/{docker[0]}/tags/{docker[1]}")
+                images = response.json().get(Constants.IMAGES, [{}])
+                hash = [image.get(Constants.DIGEST, "") for image in images if image.get("architecture") == "amd64"]
+                data[Constants.USAGE_POLICY] = hash[0].split(":")[1].strip()
+            except Exception as error:
+                logging.error("Error while fetching the hash value. ERROR: %s", error)
+                return Response({Constants.DOCKER_IMAGE_URL: [f"Invalid docker Image: {docker_image}"]}, status=400)
         serializer = self.get_serializer(instance, data=data, partial=True)
         serializer.is_valid(raise_exception=True)
         self.perform_create(serializer)
@@ -584,9 +585,14 @@ class ParticipantConnectorsMapViewSet(GenericViewSet):
         provider_obj = Connectors.objects.get(id=provider)
         consumer_obj = Connectors.objects.get(id=consumer)
         if provider_obj.connector_status == Constants.PAIRED:
-            return Response([f"Provider connector ({({provider_obj.connector_name}) }) is already paired with another connector"], 400)
+            return Response(
+                [f"Provider connector ({({provider_obj.connector_name}) }) is already paired with another connector"],
+                400,
+            )
         elif consumer_obj.connector_status == Constants.PAIRED:
-            return Response([f"Consumer connector ({consumer_obj.connector_name}) is already paired with another connector"], 400)
+            return Response(
+                [f"Consumer connector ({consumer_obj.connector_name}) is already paired with another connector"], 400
+            )
         consumer_obj.connector_status = Constants.AWAITING_FOR_APPROVAL
         provider_obj.connector_status = Constants.PAIRING_REQUEST_RECIEVED
         self.perform_create(provider_obj)
@@ -616,9 +622,19 @@ class ParticipantConnectorsMapViewSet(GenericViewSet):
             consumer_connectors = Connectors.objects.get(id=instance.consumer.id)
             provider_connectors = Connectors.objects.get(id=instance.provider.id)
             if provider_connectors.connector_status == Constants.PAIRED:
-                return Response([f"Provider connector ({({provider_connectors.connector_name}) }) is already paired with another connector"], 400)
+                return Response(
+                    [
+                        f"Provider connector ({({provider_connectors.connector_name}) }) is already paired with another connector"
+                    ],
+                    400,
+                )
             elif consumer_connectors.connector_status == Constants.PAIRED:
-                return Response([f"Consumer connector ({consumer_connectors.connector_name}) is already paired with another connector"], 400)
+                return Response(
+                    [
+                        f"Consumer connector ({consumer_connectors.connector_name}) is already paired with another connector"
+                    ],
+                    400,
+                )
             provider_connectors.connector_status = Constants.PAIRED
             consumer_connectors.connector_status = Constants.PAIRED
             self.perform_create(consumer_connectors)
