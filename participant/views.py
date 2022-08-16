@@ -570,9 +570,13 @@ class ParticipantConnectorsMapViewSet(GenericViewSet):
         provider = request.data.get(Constants.PROVIDER)
         consumer = request.data.get(Constants.CONSUMER)
         provider_obj = Connectors.objects.get(id=provider)
-        provider_obj.connector_status = Constants.PAIRING_REQUEST_RECIEVED
         consumer_obj = Connectors.objects.get(id=consumer)
+        if provider_obj.connector_status == Constants.PAIRED:
+            return Response([f"Provider connector ({({provider_connectors.connector_name}) }) is already paired with another connector"], 400)
+        elif consumer_obj.connector_status == Constants.PAIRED:
+            return Response([f"Consumer connector ({consumer_connectors.connector_name}) is already paired with another connector"], 400)
         consumer_obj.connector_status = Constants.AWAITING_FOR_APPROVAL
+        provider_obj.connector_status = Constants.PAIRING_REQUEST_RECIEVED
         self.perform_create(provider_obj)
         self.perform_create(consumer_obj)
         self.perform_create(serializer)
