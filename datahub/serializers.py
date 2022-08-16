@@ -7,6 +7,7 @@ from accounts.serializers import (
     UserRoleSerializer,
     UserSerializer,
 )
+from participant.models import SupportTicket
 from core.constants import Constants
 from rest_framework import serializers
 from utils.validators import (
@@ -289,3 +290,10 @@ class DatahubDatasetsSerializer(serializers.ModelSerializer):
     class Meta:
         model = Datasets
         fields = Constants.ALL
+
+
+class RecentSupportTicketSerializer(serializers.ModelSerializer):
+    support_tickets = SupportTicket.objects.order_by('updated_at')[1:4].values_list()
+    class Meta:
+        model = SupportTicket
+        fields = ["subject", "category", "updated_at"]
