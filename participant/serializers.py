@@ -157,7 +157,7 @@ class DepartmentSerializer(serializers.ModelSerializer):
 class DepartmentListSerializer(serializers.ModelSerializer):
     class Meta:
         model = Department
-        fields = ["id", "department_name"]
+        exclude = Constants.EXCLUDE_DATES
 
 
 class ProjectSerializer(serializers.ModelSerializer):

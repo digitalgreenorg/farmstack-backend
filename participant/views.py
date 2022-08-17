@@ -716,9 +716,11 @@ class ParticipantDepatrmentViewSet(GenericViewSet):
 
     def retrieve(self, request, pk):
         """GET method: retrieve an object or instance of the Product model"""
-        queryset = self.get_object()
-        serializer = self.serializer_class(queryset)
-        return Response(serializer.data, status=status.HTTP_200_OK)
+        queryset = Department.objects.filter(status=True, id=pk)
+        if queryset:
+            serializer = self.serializer_class(queryset, many=True)
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        return Response({"detail": "Not Found"}, status=status.HTTP_404_NOT_FOUND)
 
     def list(self, request, *args, **kwargs):
         """GET method: query all the list of objects from the Product model"""
