@@ -736,6 +736,8 @@ class DatahubDatasetsViewSet(GenericViewSet):
 
     def create(self, request, *args, **kwargs):
         """POST method: create action to save an object by sending a POST request"""
+        setattr(request.data, "_mutable", True)
+        data = request.data
         if not csv_and_xlsx_file_validatation(request.data.get(Constants.SAMPLE_DATASET)):
             return Response(
                 {
@@ -745,7 +747,8 @@ class DatahubDatasetsViewSet(GenericViewSet):
                 },
                 400,
             )
-        serializer = self.get_serializer(data=request.data)
+        data[Constants.APPROVAL_STATUS] = Constants.APPROVED
+        serializer = self.get_serializer(data=data)
         serializer.is_valid(raise_exception=True)
         self.perform_create(serializer)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
