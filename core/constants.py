@@ -84,3 +84,6 @@ class Constants:
     CONNECTOR_PAIR_STATUS = "connector_pair_status"
     REJECTED = "rejected"
     DEFAULT = "default"
+    ACTIVE = "Active"
+    NOT_ACTIVE = "Not Active"
+    RECENTLY_ACTIVE = "Recently Active"
