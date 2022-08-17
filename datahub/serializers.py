@@ -121,10 +121,10 @@ class ParticipantSerializer(serializers.ModelSerializer):
     connector_count = serializers.SerializerMethodField(method_name="get_connector_count")
 
     def get_dataset_count(self, user_org_map):
-        return Datasets.objects.filter(user_map__user=user_org_map.user.id).count()
+        return Datasets.objects.filter(status=True, user_map__user=user_org_map.user.id).count()
 
     def get_connector_count(self, user_org_map):
-        return Connectors.objects.filter(user_map__user=user_org_map.user.id).count()
+        return Connectors.objects.filter(status=True, user_map__user=user_org_map.user.id).count()
 
 
 class DropDocumentSerializer(serializers.Serializer):
@@ -336,11 +336,11 @@ class RecentConnectorListSerializer(serializers.ModelSerializer):
     activity = serializers.SerializerMethodField(method_name="get_activity")
 
     def get_dataset_count(self, connectors_queryset):
-        return Datasets.objects.filter(user_map__user=connectors_queryset.user_map.user_id).count()
+        return Datasets.objects.filter(status=True, user_map__user=connectors_queryset.user_map.user_id).count()
 
     def get_activity(self, connectors_queryset):
         try:
-            if Connectors.objects.filter(user_map__id=connectors_queryset.user_map.id).first().status == True:
+            if Connectors.objects.filter(status=True, user_map__id=connectors_queryset.user_map.id).first().status == True:
                 return Constants.ACTIVE
             else:
                 return Constants.NOT_ACTIVE

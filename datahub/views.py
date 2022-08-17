@@ -147,19 +147,24 @@ class OrganizationViewSet(GenericViewSet):
     def create(self, request, *args, **kwargs):
         """POST method: create action to save an organization object using User ID (IMPORTANT: Using USER ID instead of Organization ID)"""
         try:
-            user_queryset = User.objects.filter(id=request.data["user_id"])
+            user_queryset = User.objects.filter(id=request.data.get("user_id", None))
             if not user_queryset:
-                return Response({"message": "User is not available"}, status=status.HTTP_400_BAD_REQUEST)
+                return Response({"message": ["User is not available"]}, status=status.HTTP_400_BAD_REQUEST)
 
-            org_queryset = list(Organization.objects.filter(org_email=request.data["org_email"]).values())
-            # check if the user is mapped to the organization
+            org_queryset = Organization.objects.filter(org_email=request.data.get("org_email", None))
             user_org_queryset = UserOrganizationMap.objects.filter(user_id=user_queryset.first().id)
 
-            if not user_org_queryset:
+            if user_org_queryset:
+                return Response(
+                        {"message": ["User is already associated with an organization"]}, status=status.HTTP_400_BAD_REQUEST
+                )
+
+            elif not org_queryset and not user_org_queryset:
                 with transaction.atomic():
-                    serializer = OrganizationSerializer(data=request.data, partial=True)
-                    serializer.is_valid(raise_exception=True)
-                    org_queryset = self.perform_create(serializer)
+                    # create organization and userorganizationmap object
+                    org_serializer = OrganizationSerializer(data=request.data, partial=True)
+                    org_serializer.is_valid(raise_exception=True)
+                    org_queryset = self.perform_create(org_serializer)
 
                     user_org_serializer = UserOrganizationMapSerializer(
                         data={
@@ -169,26 +174,24 @@ class OrganizationViewSet(GenericViewSet):
                     )
                     user_org_serializer.is_valid(raise_exception=True)
                     self.perform_create(user_org_serializer)
-                    return Response(
-                        {
-                            "user_map": user_org_serializer.data.get("id"),
-                            "org_id": org_queryset.id,
-                            "user_id": user_queryset.first().id,
-                        },
-                        status=status.HTTP_201_CREATED,
-                    )
+                    return Response(org_serializer.data, status=status.HTTP_201_CREATED)
 
-            elif user_org_queryset:
-                # print("USER ID:" + str(user_queryset.first().id))
-                # print("ORG_ID mapped to user: " + str(user_org_queryset.first().organization_id))
-                return Response(
-                    {"message": "User is already associated with an organization"}, status=status.HTTP_400_BAD_REQUEST
-                )
+            elif org_queryset and not user_org_queryset:
+                with transaction.atomic():
+                    # map user to org by creating userorganizationmap object
+                    user_org_serializer = UserOrganizationMapSerializer(
+                        data={
+                            Constants.USER: user_queryset.first().id,
+                            Constants.ORGANIZATION: org_queryset.first().id,
+                        }
+                    )
+                    user_org_serializer.is_valid(raise_exception=True)
+                    self.perform_create(user_org_serializer)
+                    return Response(user_org_serializer.data, status=status.HTTP_201_CREATED)
 
         except Exception as error:
             LOGGER.error(error, exc_info=True)
-
-        return Response({}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({}, status=status.HTTP_400_BAD_REQUEST)
 
     def list(self, request, *args, **kwargs):
         """GET method: query the list of Organization objects"""
