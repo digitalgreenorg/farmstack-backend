@@ -26,7 +26,7 @@ from django.core.files.base import ContentFile
 from django.db import transaction
 from django.db.models import DEFERRED, F, Q
 from drf_braces.mixins import MultipleSerializersViewMixin
-from participant.models import SupportTicket
+from participant.models import SupportTicket, Connectors
 from participant.serializers import (
     ParticipantSupportTicketSerializer,
     TicketSupportSerializer,
@@ -58,6 +58,7 @@ from datahub.serializers import (
     UserOrganizationCreateSerializer,
     UserOrganizationMapSerializer,
     RecentSupportTicketSerializer,
+    RecentConnectorListSerializer,
 )
 
 LOGGER = logging.getLogger(__name__)
@@ -902,41 +903,56 @@ class DatahubDatasetsViewSet(GenericViewSet):
 
 class DatahubDashboard(GenericViewSet):
     """Datahub Dashboard viewset"""
+    pagination_class = CustomPagination
 
     @action(detail=False, methods=["get"])
     def dashboard(self, request):
         """Retrieve datahub dashboard details"""
-        total_participants = User.objects.filter(role_id=3, status=True).count()
-        total_datasets = (
-            Datasets.objects.select_related("user_map", "user_map__user", "user_map__organization")
-            .filter(user_map__user__status=True, status=True)
-            .order_by("updated_at")
-            .count()
-        )
-        active_connectors = ""  # fill this later
+        try:
+            total_participants = User.objects.filter(role_id=3, status=True).count()
+            total_datasets = (
+                Datasets.objects.select_related("user_map", "user_map__user", "user_map__organization")
+                .filter(user_map__user__status=True, status=True)
+                .order_by("updated_at")
+                .count()
+            )
+            # write a function to compute data exchange
+            active_connectors = Connectors.objects.filter(status=True).count()
+            total_data_exchange = {"total_data": 50, "unit": "Gbs"}
 
-        datasets = Datasets.objects.filter(status=True).values_list("category")
-        categories = set()
-        for data in datasets:
-            for element in data[0].keys():
-                categories.add(element)
+            datasets = Datasets.objects.filter(status=True).values_list("category")
+            categories = set()
+            categories_dict = {}
+            for data in datasets:
+                for element in data[0].keys():
+                    categories.add(element)
 
-        categories_dict = {key:0 for key in categories}
-        for data in datasets:
-            for key,value in data[0].items():
-                if value == True:
-                    categories_dict[key] += 1
+            categories_dict = {key:0 for key in categories}
+            for data in datasets:
+                for key,value in data[0].items():
+                    if value == True:
+                        categories_dict[key] += 1
 
-        open_support_tickets = SupportTicket.objects.filter(status="open").count()
-        closed_support_tickets = SupportTicket.objects.filter(status="closed").count()
-        hold_support_tickets = SupportTicket.objects.filter(status="hold").count()
 
-        # retrieve 3 recent support tickets
-        recent_tickets_queryset = SupportTicket.objects.order_by("updated_at")[1:4]
-        recent_tickets = RecentSupportTicketSerializer(recent_tickets_queryset, many=True)
-        print(recent_tickets.data)
+            open_support_tickets = SupportTicket.objects.filter(status="open").count()
+            closed_support_tickets = SupportTicket.objects.filter(status="closed").count()
+            hold_support_tickets = SupportTicket.objects.filter(status="hold").count()
 
-        support_tickets = {"open_requests": open_support_tickets, "closed_requests": closed_support_tickets, "hold_requests": hold_support_tickets, "recent_tickets": recent_tickets.data}
+            # retrieve 3 recent support tickets
+            recent_tickets_queryset = SupportTicket.objects.order_by("updated_at")[0:3]
+            recent_tickets_serializer = RecentSupportTicketSerializer(recent_tickets_queryset, many=True)
+            support_tickets = {"open_requests": open_support_tickets, "closed_requests": closed_support_tickets, "hold_requests": hold_support_tickets, "recent_tickets": recent_tickets_serializer.data}
 
-        data = {"total_participants": total_participants, "total_datasets": total_datasets, "active_connectors": active_connectors, "categories": categories_dict, "support_tickets": support_tickets}
-        return Response(data, status=status.HTTP_200_OK)
+            # retrieve 3 recent updated connectors
+            # connectors_queryset = Connectors.objects.order_by("updated_at")[0:3]
+            connectors_queryset = Connectors.objects.order_by("updated_at").all()
+            connector_pages = self.paginate_queryset(connectors_queryset)               # paginaged connectors list
+            connectors_serializer = RecentConnectorListSerializer(connector_pages, many=True)
+
+            data = {"total_participants": total_participants, "total_datasets": total_datasets, "active_connectors": active_connectors, "total_data_exchange": total_data_exchange, "categories": categories_dict, "support_tickets": support_tickets, "connectors": self.get_paginated_response(connectors_serializer.data).data}
+            return Response(data, status=status.HTTP_200_OK)
+
+        except Exception as error:
+            LOGGER.error(error, exc_info=True)
+            return Response({}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
