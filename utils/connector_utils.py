@@ -125,13 +125,13 @@ def read_modify_templates(provider, consumer, ports):
     )
     provider_yaml_template["services"]["core"]["volumes"][4] = "%s:%s" % (
         os.path.join(
-            settings.CONNECTOR_STATICS,
+            "~/connector_configs/static_configs",
             ("%s-settings.mapdb") % (provider.connector_name),
         ),
         "/root/etc/settings.mapdb",
     )
     provider_yaml_template["services"]["core"]["volumes"][6] = "%s:%s" % (
-        provider_xml_file.name,
+        "~/connector_configs/%s.xml" % (provider.connector_name),
         "/root/deploy/provider.xml",
     )
     provider_yaml_template["services"]["core"]["ports"][0] = "%s:%s" % (
@@ -152,13 +152,13 @@ def read_modify_templates(provider, consumer, ports):
     # consumer_yaml_template["services"]["core"]["volumes"][2] = "**** NEW SETTINGS.mapdb *****"
     consumer_yaml_template["services"]["core"]["volumes"][4] = "%s:%s" % (
         os.path.join(
-            settings.CONNECTOR_STATICS,
-            ("%s-settings.mapdb") % (provider.connector_name),
+            "~/connector_configs/static_configs",
+            ("%s-settings.mapdb") % (consumer.connector_name),
         ),
         "/root/etc/settings.mapdb",
     )
     consumer_yaml_template["services"]["core"]["volumes"][6] = "%s:%s" % (
-        consumer_xml_file.name,
+        "~/connector_configs/%s.xml" % (consumer.connector_name),
         "/root/deploy/consumer.xml",
     )
     consumer_yaml_template["services"]["core"]["ports"][0] = "%s:%s" % (
