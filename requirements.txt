@@ -1,108 +1,87 @@
-asgiref @ file:///Users/waseem/Library/Caches/pypoetry/artifacts/cf/65/18/1451154a3ac6f8e749a6f7485ce77472fc1b339d4696f7a4cb816ac781/asgiref-3.5.2-py3-none-any.whl
-astroid @ file:///Users/waseem/Library/Caches/pypoetry/artifacts/7a/4c/76/6f0219a7d9e264f7e4f20822213a3be5c893a220b3a046c9c0de103d01/astroid-2.11.6-py3-none-any.whl
-attrs @ file:///Users/waseem/Library/Caches/pypoetry/artifacts/5b/25/94/5d165cd3190cb7dfdc98de86c28e8131fc6e19d83a504412664abffec0/attrs-21.4.0-py2.py3-none-any.whl
-black==22.6.0
-CacheControl==0.12.11
-cachy==0.3.0
-certifi==2022.5.18.1
-cffi==1.15.1
-charset-normalizer @ file:///Users/waseem/Library/Caches/pypoetry/artifacts/2b/25/ee/fa64b49cb44c9c392acf26e69ee8314d3b386932de86a9945f4ad2e633/charset_normalizer-2.0.12-py3-none-any.whl
-cleo==0.8.1
-click @ file:///Users/waseem/Library/Caches/pypoetry/artifacts/9d/ca/2f/bc3cc4a294e96f355d01d24ac6fefdde4c6286f9f63b7ce1c91d5f0c22/click-8.1.3-py3-none-any.whl
-clikit==0.6.2
-coreapi @ file:///Users/waseem/Library/Caches/pypoetry/artifacts/a1/d2/42/9daa39a9a9b2daf74f734f46589930a09bad232e4aff2d1813be140030/coreapi-2.3.3-py2.py3-none-any.whl
-coreschema @ file:///Users/waseem/Library/Caches/pypoetry/artifacts/2b/b3/80/cfb6d6f90067a445f8c35c6ceb512abd82fe36cad196e787db866129e0/coreschema-0.0.4.tar.gz
-coverage==6.4.2
-crashtest==0.3.1
-cryptography==37.0.2
-cssutils==2.4.2
-dateutils @ file:///Users/waseem/Library/Caches/pypoetry/artifacts/44/1b/85/3799f49cb074540c7d37ac0d4ad0378004f0b3404441f150eaeae3ccd1/dateutils-0.6.12-py2.py3-none-any.whl
-dill @ file:///Users/waseem/Library/Caches/pypoetry/artifacts/13/a5/36/21c6d1c1d4c78a73087204a2472278a2fced7dccd85d3cef47b8b5519a/dill-0.3.5.1-py2.py3-none-any.whl
-distlib==0.3.4
-Django @ file:///Users/waseem/Library/Caches/pypoetry/artifacts/a6/d5/44/a73a4b49c4cbffbdd99a218d4139258260dc4ee675f9541492b8eea759/Django-4.0.5-py3-none-any.whl
-django-cors-headers @ file:///Users/waseem/Library/Caches/pypoetry/artifacts/1c/b6/8a/01e7baaeb53a1449fcf88c2af9c238006af1e92922fe90b13c8c0a2579/django_cors_headers-3.13.0-py3-none-any.whl
-django-debug-toolbar==3.5.0
-django-environ==0.9.0
-django-extensions @ file:///Users/waseem/Library/Caches/pypoetry/artifacts/0d/65/85/4da0ae6bae7e2a476d39dce1713d309f0aec4445ce2032439e5b90bbf4/django_extensions-3.1.5-py3-none-any.whl
-django-filter==22.1
-django-nose @ file:///Users/waseem/Library/Caches/pypoetry/artifacts/87/45/d8/0ebbc563c3aef4e9351369a7bc54b33862a80e6d1a38f6ad94c3154261/django_nose-1.4.7-py2.py3-none-any.whl
-django-rest-framework-braces @ file:///Users/waseem/Library/Caches/pypoetry/artifacts/83/ef/63/26ff2c4c075f0b16c123a52c959227189326a28fac06a6d2ca92e89d28/django_rest_framework_braces-0.3.4-py2.py3-none-any.whl
-djangorestframework @ file:///Users/waseem/Library/Caches/pypoetry/artifacts/4a/0e/8b/eb31ad1f5a8d0aef287e2de8aeed7d250803677468c74b0abd296678b8/djangorestframework-3.13.1-py3-none-any.whl
-djangorestframework-simplejwt @ file:///Users/waseem/Library/Caches/pypoetry/artifacts/b0/9a/ca/5e8cc2954d3628a4f31d46712ee4e3804093bc0aa0573e92b55f6ed363/djangorestframework_simplejwt-5.2.0-py3-none-any.whl
-drf-spectacular @ file:///Users/waseem/Library/Caches/pypoetry/artifacts/d8/67/6f/1be2ef2377605cadb561f47fc3d2a4789fd6b9c52b4a54c15127cd7aba/drf_spectacular-0.22.1-py3-none-any.whl
-drf-spectacular-sidecar==2022.7.1
-drf-yasg @ file:///Users/waseem/Library/Caches/pypoetry/artifacts/29/ab/97/7e0b36792ae4427acbe5d78d8442bd592d77021892ec1138e9824b9111/drf_yasg-1.20.0-py2.py3-none-any.whl
-et-xmlfile==1.1.0
-filelock==3.7.1
-html5lib==1.1
-idna @ file:///Users/waseem/Library/Caches/pypoetry/artifacts/d5/04/80/9c17fd3240a37d12ff2ef042b0306aeb1abd2d8b95f150fd60be938352/idna-3.3-py3-none-any.whl
-importlib-metadata==4.11.4
-inflection @ file:///Users/waseem/Library/Caches/pypoetry/artifacts/2f/ed/82/68adaa9865195edc03da6786b66cc708b169265e333e239c28b11e9a4d/inflection-0.5.1-py2.py3-none-any.whl
-iniconfig @ file:///Users/waseem/Library/Caches/pypoetry/artifacts/fa/b0/c6/10cfac68c9e6de9d2a1678366ca89fd9292b362c1760dbe758e41691cb/iniconfig-1.1.1-py2.py3-none-any.whl
-isort @ file:///Users/waseem/Library/Caches/pypoetry/artifacts/9d/c0/d5/617ee6ec6b065b9a3c8c3f7a0b06604f1a47738904535923554e135a7d/isort-5.10.1-py3-none-any.whl
-itypes @ file:///Users/waseem/Library/Caches/pypoetry/artifacts/ad/65/69/17a3a1ab828578556a7d79b3dbe47228126257b8630b5306752f7ace76/itypes-1.2.0-py2.py3-none-any.whl
-jeepney==0.8.0
-Jinja2 @ file:///Users/waseem/Library/Caches/pypoetry/artifacts/03/94/a8/08397f6fc37e01c8e8b6a33b514be99392ee894e8bff66c3a428238373/Jinja2-3.1.2-py3-none-any.whl
-jsonschema==4.6.1
-keyring==23.5.1
-lazy-object-proxy @ file:///Users/waseem/Library/Caches/pypoetry/artifacts/8f/f1/65/bda1d13c558a37b176eb02d6febc7df9c29f87a9d4f3957a6600f9f490/lazy-object-proxy-1.7.1.tar.gz
-lockfile==0.12.2
-MarkupSafe @ file:///Users/waseem/Library/Caches/pypoetry/artifacts/dc/8c/1b/2e50a3eb5b47c79ee9fe9f430817eb7940638caef8ed314c52efba57f4/MarkupSafe-2.1.1-cp39-cp39-macosx_10_9_universal2.whl
-mccabe @ file:///Users/waseem/Library/Caches/pypoetry/artifacts/55/c8/90/13b9930158ea6f8556dc549fd07ca894cbf0316f5f2f1da02d29d19f85/mccabe-0.7.0-py2.py3-none-any.whl
-msgpack==1.0.4
-mypy-extensions @ file:///Users/waseem/Library/Caches/pypoetry/artifacts/92/45/bf/1807ce854ff668d92602207a37bfa9316def2a3f257bd03c4c5be4bc9b/mypy_extensions-0.4.3-py2.py3-none-any.whl
-nose @ file:///Users/waseem/Library/Caches/pypoetry/artifacts/b5/b1/8f/5fbd1a530e0e3aba59acb3e1db61335765aeed92946c390a1f01c063b1/nose-1.3.7-py3-none-any.whl
-numpy==1.23.2
-openpyxl==3.0.10
-packaging==20.9
-pandas==1.4.3
-pastel==0.2.1
-pathspec @ file:///Users/waseem/Library/Caches/pypoetry/artifacts/0a/67/21/620031f7f2938bad77b057a68a4c2a334542a7402a3214ed48690caf8c/pathspec-0.9.0-py2.py3-none-any.whl
-pexpect==4.8.0
-Pillow==9.2.0
-pkginfo==1.8.2
-platformdirs @ file:///Users/waseem/Library/Caches/pypoetry/artifacts/83/58/96/835da8aa874177dfb0972a329248843eaf921c6b27b096e4572ae2b171/platformdirs-2.5.2-py3-none-any.whl
-pluggy @ file:///Users/waseem/Library/Caches/pypoetry/artifacts/81/78/ca/13f743a3628faf5a0b7f021efb45f2193acba3a13663d498f6b34bf02e/pluggy-1.0.0-py2.py3-none-any.whl
-poetry==1.1.13
-poetry-core==1.0.8
-psycopg2==2.9.3
-psycopg2-binary==2.9.3
-ptyprocess==0.7.0
-py @ file:///Users/waseem/Library/Caches/pypoetry/artifacts/b3/5c/47/ba5a596e01a2b61fa2daa6a438252483ad8c04e6c99e5dc22eaf8a489a/py-1.11.0-py2.py3-none-any.whl
-pyaml @ file:///Users/waseem/Library/Caches/pypoetry/artifacts/7e/7d/06/766c74d661465e7fe2565df02a0afb45b9e3cdee6a086f072dc1c4d55c/pyaml-21.10.1-py2.py3-none-any.whl
+aniso8601==7.0.0
+appdirs==1.4.4
+asgiref==3.5.0
+astroid==2.8.5
+attrs==21.4.0
+autobahn==22.2.2
+Automat==20.2.0
+backports.entry-points-selectable==1.1.1
+black==22.3.0
+certifi==2020.12.5
+cffi==1.15.0
+channels==3.0.4
+chardet==4.0.0
+click==8.0.4
+constantly==15.1.0
+coreapi==2.3.3
+coreschema==0.0.4
+cryptography==36.0.2
+daphne==3.0.2
+distlib==0.3.1
+Django==3.2
+django-cors-headers==3.10.0
+django-rest-swagger==2.2.0
+djangorestframework==3.12.4
+docker==5.0.3
+filelock==3.3.2
+graphene==2.1.9
+graphene-django==2.15.0
+graphql-core==2.3.2
+graphql-relay==2.0.1
+hyperlink==21.0.0
+idna==2.10
+incremental==21.3.0
+isort==5.10.1
+itypes==1.2.0
+Jinja2==2.11.3
+jsonfield==3.1.0
+kafka-python==2.0.2
+lazy-object-proxy==1.6.0
+MarkupSafe==1.1.1
+mccabe==0.6.1
+mypy-extensions==0.4.3
+openapi-codec==1.3.2
+pathspec==0.9.0
+pip==22.2.2
+pipenv==2021.5.29
+platformdirs==2.4.0
+promise==2.3
+protobuf==4.21.4
+psutil==5.9.0
+pyasn1==0.4.8
+pyasn1-modules==0.2.8
 pycparser==2.21
-pydantic==1.9.2
-PyJWT @ file:///Users/waseem/Library/Caches/pypoetry/artifacts/39/57/a7/ae4702380e15e84fee1f72eff6ef08d9557fd582df0153e98c4511ff3f/PyJWT-2.4.0-py3-none-any.whl
-pylev==1.4.0
-pylint==2.14.4
-pyotp @ file:///Users/waseem/Library/Caches/pypoetry/artifacts/6e/98/6f/14ef7be76532b5241e93ba11552e206ddfcd2ffaa29b182565a140f0bc/pyotp-2.6.0-py2.py3-none-any.whl
-pyparsing @ file:///Users/waseem/Library/Caches/pypoetry/artifacts/c9/49/7b/434b2668226040d1097efcdddb802b28d05b02854b659ac17913a9a90c/pyparsing-3.0.9-py3-none-any.whl
-pyrsistent @ file:///Users/waseem/Library/Caches/pypoetry/artifacts/ac/b9/91/5537851e7b073c4e7e179532808ccc8840afbb6840049107369c96d72c/pyrsistent-0.18.1-cp39-cp39-macosx_10_9_universal2.whl
-pytest @ file:///Users/waseem/Library/Caches/pypoetry/artifacts/a6/1c/db/e6f5a63ca07ec1971c4169e071b56ba077ceaf0abc2f69b803f2adcb2c/pytest-7.1.2-py3-none-any.whl
-python-dateutil @ file:///Users/waseem/Library/Caches/pypoetry/artifacts/53/f8/2a/7d63ce15df7386e9536e83413453f8aa845b47fb425f05c4ca2fb231c3/python_dateutil-2.8.2-py2.py3-none-any.whl
-python-http-client @ file:///Users/waseem/Library/Caches/pypoetry/artifacts/31/f7/dd/35f74e343c30df96340c47e759b23d3e1f4010051000a8dff1646d8051/python_http_client-3.3.7-py3-none-any.whl
-python-on-whales==0.52.0
-pytz @ file:///Users/waseem/Library/Caches/pypoetry/artifacts/fb/60/46/e704d81037c87ab74c6677ae79ab43dda85c31e3ae38f53c44486b593a/pytz-2022.1-py2.py3-none-any.whl
-PyYAML @ file:///Users/waseem/Library/Caches/pypoetry/artifacts/25/f8/94/db44e9f8b70128654237804ee65af3166919186df60f85823aac5d4e1d/PyYAML-6.0-cp39-cp39-macosx_11_0_arm64.whl
-requests==2.27.1
-requests-toolbelt==0.9.1
-ruamel.yaml @ file:///Users/waseem/Library/Caches/pypoetry/artifacts/7c/2c/48/111028a9e95097a5ff404a2dc3c1990c911bec7802cb01366c06a9919d/ruamel.yaml-0.17.21-py3-none-any.whl
-ruamel.yaml.clib @ file:///Users/waseem/Library/Caches/pypoetry/artifacts/96/d5/b6/72f00db0a4086a02f3bf1abeb7d91641469cf902d77e1ea878e5a8c2de/ruamel.yaml.clib-0.2.6.tar.gz
-SecretStorage==3.3.2
-sendgrid @ file:///Users/waseem/Library/Caches/pypoetry/artifacts/cb/ae/d9/c42a0c0462e0859505c691f75ce93301a6dd81ccd1d5cb62d52274a5b7/sendgrid-6.9.7-py3-none-any.whl
-shellingham==1.4.0
-six @ file:///Users/waseem/Library/Caches/pypoetry/artifacts/08/9f/47/c16ae03035fc69eaf100ea39657a49baaeef714e25a52575710c34cd48/six-1.16.0-py2.py3-none-any.whl
-sqlparse @ file:///Users/waseem/Library/Caches/pypoetry/artifacts/ea/fd/ba/117a876397913faee210ef8bac93829e22ad9232662e656971383c0718/sqlparse-0.4.2-py3-none-any.whl
-starkbank-ecdsa @ file:///Users/waseem/Library/Caches/pypoetry/artifacts/d3/50/00/05f4c7d4040b9c20c1689c1cc2a175b25aa621f597d6cf69beb4df37b9/starkbank-ecdsa-2.0.3.tar.gz
-tomli @ file:///Users/waseem/Library/Caches/pypoetry/artifacts/73/7c/d9/9f2752fc5b05f9176c6f3adc6484be1cec75a68925b8c5fe39d6493a07/tomli-2.0.1-py3-none-any.whl
-tomlkit @ file:///Users/waseem/Library/Caches/pypoetry/artifacts/78/45/2b/cb55c388b26ce709aba9e5b71d409b8ab9abb9a63967962880612201e5/tomlkit-0.11.0-py3-none-any.whl
-tqdm==4.64.0
-typer==0.6.1
-typing_extensions @ file:///Users/waseem/Library/Caches/pypoetry/artifacts/42/92/dc/6b3758ddcb04f4bd6dd7af2fddeb1de89e3a962846c5221285fa39a33d/typing_extensions-4.2.0-py3-none-any.whl
-uritemplate @ file:///Users/waseem/Library/Caches/pypoetry/artifacts/1a/e2/cb/249c8899e583da59e638cdc64c159f34786ab2c1c72e980c6c12d824fd/uritemplate-4.1.1-py2.py3-none-any.whl
-urllib3 @ file:///Users/waseem/Library/Caches/pypoetry/artifacts/86/4a/ad/37e91024d94f8218fc54b1fbb58b71888f53c1636daeb28593fa254ed2/urllib3-1.26.9-py2.py3-none-any.whl
-virtualenv==20.14.1
-webencodings==0.5.1
-wrapt @ file:///Users/waseem/Library/Caches/pypoetry/artifacts/15/18/97/8af8380912cc00a32d78aad8889ed92c3b147bae92a8b9772d75599c87/wrapt-1.14.1-cp39-cp39-macosx_11_0_arm64.whl
+pydantic==1.9.0
+pylint==2.11.1
+pyOpenSSL==22.0.0
+python-http-client==3.3.7
+python-on-whales==0.40.0
+pytz==2021.1
+PyYAML==5.4.1
+requests==2.25.1
+Rx==1.6.1
+sendgrid==6.9.7
+service-identity==21.1.0
+setuptools==63.3.0
+simplejson==3.17.2
+singledispatch==3.7.0
+six==1.16.0
+sqlparse==0.4.1
+starkbank-ecdsa==2.0.3
+text-unidecode==1.3
+toml==0.10.2
+tomli==2.0.1
+tqdm==4.63.1
+Twisted==22.2.0
+txaio==22.2.1
+typer==0.4.0
+typing_extensions==4.1.1
+uritemplate==3.0.1
+urllib3==1.26.4
+virtualenv==20.10.0
+virtualenv-clone==0.5.4
+websocket-client==1.3.1
+wheel==0.37.1
+wrapt==1.13.3
 xmltodict==0.13.0
-zipp==3.8.0
+zope.interface==5.4.0
