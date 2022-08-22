@@ -101,8 +101,8 @@ def read_modify_templates(provider, consumer, ports):
     # YAML Files.
     # copy the settings.mapdb file.
     shutil.copy(
-        os.path.join(settings.CONNECTOR_STATICS, "settings.mapdb"),
-        ("%s-settings.mapdb") % (provider.connector_name.replace(" ", "")),
+        os.path.join(settings.CONNECTOR_TEMPLATE_STATICS, "settings.mapdb"),
+        os.path.join(settings.CONNECTOR_STATICS, ("%s-settings.mapdb") % (provider.connector_name.replace(" ", ""))),
     )
 
     shutil.copy(
