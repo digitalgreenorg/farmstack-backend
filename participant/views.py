@@ -689,10 +689,10 @@ class ParticipantDepatrmentViewSet(GenericViewSet):
     def retrieve(self, request, pk):
         """GET method: retrieve an object or instance of the Product model"""
         queryset = Department.objects.filter(status=True, id=pk)
-        if queryset:
-            serializer = self.serializer_class(queryset, many=True)
+        serializer = self.serializer_class(queryset, many=True)
+        if serializer.data:
             return Response(serializer.data, status=status.HTTP_200_OK)
-        return Response({"detail": "Not Found"}, status=status.HTTP_404_NOT_FOUND)
+        return Response([], status=status.HTTP_200_OK)
 
     def list(self, request, *args, **kwargs):
         """GET method: query all the list of objects from the Product model"""
@@ -705,8 +705,9 @@ class ParticipantDepatrmentViewSet(GenericViewSet):
             .reverse()
             .all()
         )
-        department_serializer = DepartmentListSerializer(data, many=True)
-        return Response(department_serializer.data, status=200)
+        page = self.paginate_queryset(data)
+        department_serializer = DepartmentListSerializer(page, many=True)
+        return self.get_paginated_response(department_serializer.data)
 
     def destroy(self, request, pk):
         """DELETE method: delete an object"""
