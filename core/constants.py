@@ -84,3 +84,4 @@ class Constants:
     CONNECTOR_PAIR_STATUS = "connector_pair_status"
     REJECTED = "rejected"
     DEFAULT = "default"
+    MAX_FILE_SIZE = 2097152

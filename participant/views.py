@@ -26,6 +26,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.viewsets import GenericViewSet, ViewSet
 from uritemplate import partial
+from utils.connector_utils import generate_xml_yaml
 
 from participant.models import (
     Connectors,
@@ -594,9 +595,10 @@ class ParticipantConnectorsMapViewSet(GenericViewSet):
                 connectors.connector_status = Constants.UNPAIRED
                 self.perform_create(connectors)
         elif request.data.get(Constants.CONNECTOR_PAIR_STATUS) == Constants.PAIRED:
-            ports = get_ports()
+            # ports = get_ports()
             consumer_connectors = Connectors.objects.get(id=instance.consumer.id)
             provider_connectors = Connectors.objects.get(id=instance.provider.id)
+            run_containers(provider_connectors, consumer_connectors)
             provider_connectors.connector_status = Constants.PAIRED
             consumer_connectors.connector_status = Constants.PAIRED
             self.perform_create(consumer_connectors)
@@ -760,22 +762,3 @@ class ParticipantProjectViewSet(GenericViewSet):
         product.status = False
         self.perform_create(product)
         return Response(status=status.HTTP_204_NO_CONTENT)
-
-
-def get_ports():
-    """This function give the ports for the connectors"""
-    with open("./ports.json", "r") as openfile:
-        ports_object = json.load(openfile)
-    provider_core = int(ports_object.get(Constants.PROVIDER_CORE)) + 1
-    consumer_core = int(ports_object.get(Constants.CONSUMER_CORE)) + 1
-    provider_app = int(ports_object.get(Constants.PROVIDER_APP)) + 1
-    consumer_app = int(ports_object.get(Constants.CONSUMER_APP)) + 1
-    new_ports = {
-        Constants.PROVIDER_CORE: provider_core,
-        Constants.CONSUMER_CORE: consumer_core,
-        Constants.CONSUMER_APP: consumer_app,
-        Constants.PROVIDER_APP: provider_app,
-    }
-    with open("./ports.json", "w") as outfile:
-        json.dump(new_ports, outfile)
-    return new_ports
