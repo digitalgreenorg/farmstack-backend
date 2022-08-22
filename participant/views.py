@@ -26,7 +26,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.viewsets import GenericViewSet, ViewSet
 from uritemplate import partial
-from utils.connector_utils import generate_xml_yaml
+from utils.connector_utils import run_containers
 
 from participant.models import (
     Connectors,

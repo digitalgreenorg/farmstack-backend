@@ -107,36 +107,68 @@ def read_modify_templates(provider, consumer, ports):
 
     shutil.copy(
         os.path.join(settings.CONNECTOR_TEMPLATE_STATICS, "settings.mapdb"),
-        os.path.join(settings.CONNECTOR_STATICS,("%s-settings.mapdb") % (consumer.connector_name.replace(" ", "")),
+        os.path.join(settings.CONNECTOR_STATICS, ("%s-settings.mapdb") % (consumer.connector_name.replace(" ", ""))),
     )
 
-    provider_yaml_template["services"]["core"]["volumes"][2] = "- %s:%s" %((os.path.join(settings.BASE_DIR, provider.certificate)),"/root/etc/provider-keystore.p12")
-    provider_yaml_template["services"]["core"]["volumes"][4] = "- %s:%s" %(os.path.join(settings.CONNECTOR_STATICS,("%s-settings.mapdb") % (provider.connector_name.replace(" ", "")), "/root/etc/settings.mapdb"))
-    provider_yaml_template["services"]["core"]["volumes"][6] = "- %s:%s" %(provider_xml_file, "/root/deploy/provider.xml")
+    # XML file paths.
+    provider_xml_file = open("%s.xml" % (os.path.join(settings.CONNECTOR_CONFIGS, provider.connector_name)), "w")
+    consumer_xml_file = open("%s.xml" % (os.path.join(settings.CONNECTOR_CONFIGS, consumer.connector_name)), "w")
+
+    provider_yaml_template["services"]["core"]["volumes"][2] = "- %s:%s" % (
+        (os.path.join(settings.BASE_DIR, provider.certificate)),
+        "/root/etc/provider-keystore.p12",
+    )
+    provider_yaml_template["services"]["core"]["volumes"][4] = "- %s:%s" % (
+        os.path.join(
+            settings.CONNECTOR_STATICS,
+            ("%s-settings.mapdb") % (provider.connector_name.replace(" ", "")),
+            "/root/etc/settings.mapdb",
+        )
+    )
+    provider_yaml_template["services"]["core"]["volumes"][6] = "- %s:%s" % (
+        provider_xml_file,
+        "/root/deploy/provider.xml",
+    )
     provider_yaml_template["services"]["core"]["ports"][0] = "- %s:%s" % (
         ports[Constants.PROVIDER_CORE],
         ports[Constants.PROVIDER_CORE],
     )
 
     provider_yaml_template["services"]["app"]["image"] = provider.docker_image_url
-    provider_yaml_template["services"]["app"]["ports"][0] = "- %s:%s" %(provider.application_port, provider.application_port)
+    provider_yaml_template["services"]["app"]["ports"][0] = "- %s:%s" % (
+        provider.application_port,
+        provider.application_port,
+    )
 
-    consumer_yaml_template["services"]["core"]["volumes"][2] = "- %s:%s" %(os.path.join(BASE_DIR, settings.provider.certificate),"/root/etc/consumer-keystore.p12" )
+    consumer_yaml_template["services"]["core"]["volumes"][2] = "- %s:%s" % (
+        os.path.join(settings.BASE_DIR, settings.provider.certificate),
+        "/root/etc/consumer-keystore.p12",
+    )
     # consumer_yaml_template["services"]["core"]["volumes"][2] = "**** NEW SETTINGS.mapdb *****"
-    consumer_yaml_template["services"]["core"]["volumes"][4] = "- %s:%s" %(os.path.join(settings.CONNECTOR_STATICS,("%s-settings.mapdb") % (provider.connector_name.replace(" ", "")), "/root/etc/settings.mapdb"))
-    consumer_yaml_template["services"]["core"]["volumes"][6] = "- %s:%s" %(consumer_xml_file, "/root/deploy/consumer.xml")
+    consumer_yaml_template["services"]["core"]["volumes"][4] = "- %s:%s" % (
+        os.path.join(
+            settings.CONNECTOR_STATICS,
+            ("%s-settings.mapdb") % (provider.connector_name.replace(" ", "")),
+            "/root/etc/settings.mapdb",
+        )
+    )
+    consumer_yaml_template["services"]["core"]["volumes"][6] = "- %s:%s" % (
+        consumer_xml_file,
+        "/root/deploy/consumer.xml",
+    )
     consumer_yaml_template["services"]["core"]["ports"][0] = "- %s:%s" % (
         ports[Constants.CONSUMER_CORE],
-        ports[Constants.CONSUMER_CORE]
+        ports[Constants.CONSUMER_CORE],
     )
 
     consumer_yaml_template["services"]["app"]["image"] = consumer.docker_image_url
-    consumer_yaml_template["services"]["app"]["ports"][0] = "%s:%s" %(consumer.application_port, consumer.application_port)
+    consumer_yaml_template["services"]["app"]["ports"][0] = "%s:%s" % (
+        consumer.application_port,
+        consumer.application_port,
+    )
 
     # Write the values to templates.
-    provider_xml_file = open("%s.xml" % (os.path.join(settings.CONNECTOR_CONFIGS, provider.connector_name)), "w")
     provider_yaml_file = open("%s.yaml" % (os.path.join(settings.CONNECTOR_CONFIGS, provider.connector_name)), "w")
-    consumer_xml_file = open("%s.xml" % (os.path.join(settings.CONNECTOR_CONFIGS, consumer.connector_name)), "w")
     consumer_yaml_file = open("%s.yaml" % (os.path.join(settings.CONNECTOR_CONFIGS, consumer.connector_name)), "w")
 
     xmltodict.unparse(provider_xml_template, pretty=True, output=provider_xml_file)
