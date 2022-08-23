@@ -1,7 +1,7 @@
 {
     "version": "3",
     "services": {
-      "core": {
+      "provider-core": {
         "image": "farmstack/trusted-connector",
         "tty": true,
         "stdin_open": true,
