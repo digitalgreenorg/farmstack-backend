@@ -53,7 +53,7 @@ def read_modify_templates(provider, consumer, ports):
     consumer_routes = consumer_xml_template["beans"]["camelContext"]["route"]
     # Render Provider Variables in Template.
     provider_routes[0]["from"]["@uri"] = (
-        "idscp2server://0.0.0.0:%s?sslContextParameters=#serverSslContext&amp;useIdsMessages=true&amp;tlsClientHostnameVerification=false"
+        "idscp2server://0.0.0.0:%s?sslContextParameters=#serverSslContext&useIdsMessages=true&tlsClientHostnameVerification=false"
         % (ports[Constants.PROVIDER_CORE])
     )
     provider_routes[0]["choice"]["when"][0]["setProperty"][
@@ -71,16 +71,16 @@ def read_modify_templates(provider, consumer, ports):
         consumer.connector_name,
     )
     consumer_routes[0]["to"]["@uri"] = (
-        "idscp2client://provider-core:%s?awaitResponse=true&amp;connectionShareId=%s&amp;sslContextParameters=#clientSslContext&amp;useIdsMessages=true"
+        "idscp2client://provider-core:%s?awaitResponse=true&connectionShareId=%s&sslContextParameters=#clientSslContext&useIdsMessages=true"
         % (ports[Constants.PROVIDER_CORE], consumer.connector_name)
     )
     consumer_routes[0]["choice"]["when"]["to"]["@uri"] = (
-        "idscp2client://provider-core:%s?awaitResponse=true&amp;connectionShareId=%s&amp;sslContextParameters=#clientSslContext&amp;useIdsMessages=true"
+        "idscp2client://provider-core:%s?awaitResponse=true&connectionShareId=%s&sslContextParameters=#clientSslContext&useIdsMessages=true"
         % (ports[Constants.PROVIDER_CORE], consumer.connector_name)
     )
 
     consumer_routes[1]["from"]["@uri"] = (
-        "idscp2client://provider-core:%s?awaitResponse=true&amp;connectionShareId=%s&amp;sslContextParameters=#clientSslContext&amp;useIdsMessages=true"
+        "idscp2client://provider-core:%s?awaitResponse=true&connectionShareId=%s&sslContextParameters=#clientSslContext&useIdsMessages=true"
         % (ports[Constants.PROVIDER_CORE], consumer.connector_name)
     )
     consumer_routes[1]["setProperty"]["constant"] = "https://farmstack.digitalgreen.org/%s/%s" % (
@@ -97,7 +97,7 @@ def read_modify_templates(provider, consumer, ports):
         consumer.connector_name,
     )
     consumer_routes[2]["to"]["@uri"] = (
-        "idscp2client://provider-core:%s?awaitResponse=true&amp;connectionShareId=%s&amp;sslContextParameters=#clientSslContext&amp;useIdsMessages=true"
+        "idscp2client://provider-core:%s?awaitResponse=true&connectionShareId=%s&sslContextParameters=#clientSslContext&useIdsMessages=true"
         % (ports[Constants.PROVIDER_CORE], consumer.connector_name)
     )
 
