@@ -327,21 +327,47 @@ class RecentSupportTicketSerializer(serializers.ModelSerializer):
         fields = ["id", "subject", "category", "updated_at", "organization", "user"]
 
 
-class RecentConnectorListSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Connectors
-        fields = ["id", "connector_name", "updated_at", "dataset_count", "activity"]
+# class RecentConnectorListSerializer(serializers.ModelSerializer):
+#     class Meta:
+#         model = Connectors
+#         fields = ["id", "connector_name", "updated_at", "dataset_count", "activity"]
+# 
+#     dataset_count = serializers.SerializerMethodField(method_name="get_dataset_count")
+#     activity = serializers.SerializerMethodField(method_name="get_activity")
+# 
+#     def get_dataset_count(self, connectors_queryset):
+#         return Datasets.objects.filter(status=True, user_map__user=connectors_queryset.user_map.user_id).count()
+# 
+#     def get_activity(self, connectors_queryset):
+#         try:
+#             if Connectors.objects.filter(status=True, user_map__id=connectors_queryset.user_map.id).first().status == True:
+#                 return Constants.ACTIVE
+#             else:
+#                 return Constants.NOT_ACTIVE
+#         except Exception as error:
+#             LOGGER.error(error, exc_info=True)
+# 
+#         return None
 
-    dataset_count = serializers.SerializerMethodField(method_name="get_dataset_count")
+
+class RecentDatasetListSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Datasets
+        fields = ["id", "name", "updated_at", "connector_count", "activity"]
+
+    connector_count = serializers.SerializerMethodField(method_name="get_connector_count")
     activity = serializers.SerializerMethodField(method_name="get_activity")
 
-    def get_dataset_count(self, connectors_queryset):
-        return Datasets.objects.filter(status=True, user_map__user=connectors_queryset.user_map.user_id).count()
+    def get_connector_count(self, datasets_queryset):
+        return Connectors.objects.filter(status=True, user_map__user=datasets_queryset.user_map.user_id).count()
 
-    def get_activity(self, connectors_queryset):
+    def get_activity(self, datasets_queryset):
         try:
-            if Connectors.objects.filter(status=True, user_map__id=connectors_queryset.user_map.id).first().status == True:
-                return Constants.ACTIVE
+            if Datasets.objects.filter(status=True, user_map__id=datasets_queryset.user_map.id):
+                if Datasets.objects.filter(status=True, user_map__id=datasets_queryset.user_map.id).first().status == True:
+                    return Constants.ACTIVE
+                else:
+                    return Constants.NOT_ACTIVE
             else:
                 return Constants.NOT_ACTIVE
         except Exception as error:
