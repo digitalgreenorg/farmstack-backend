@@ -615,7 +615,7 @@ class ParticipantConnectorsMapViewSet(GenericViewSet):
                     map_connectors_consumer.connector_status = Constants.REJECTED
                     self.perform_create(map_connectors)
                     self.perform_create(map_connectors_consumer)
-            serializer.ports = ports
+            # serializer.ports = ports
         elif request.data.get(Constants.CONNECTOR_PAIR_STATUS) == Constants.UNPAIRED:
             consumer_connectors = Connectors.objects.get(id=instance.consumer.id)
             provider_connectors = Connectors.objects.get(id=instance.provider.id)
