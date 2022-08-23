@@ -26,7 +26,7 @@ from django.core.files.base import ContentFile
 from django.db import transaction
 from django.db.models import DEFERRED, F, Q
 from drf_braces.mixins import MultipleSerializersViewMixin
-from participant.models import SupportTicket
+from participant.models import SupportTicket, Connectors
 from participant.serializers import (
     ParticipantSupportTicketSerializer,
     TicketSupportSerializer,
@@ -57,6 +57,8 @@ from datahub.serializers import (
     TeamMemberUpdateSerializer,
     UserOrganizationCreateSerializer,
     UserOrganizationMapSerializer,
+    RecentSupportTicketSerializer,
+    RecentConnectorListSerializer,
 )
 
 LOGGER = logging.getLogger(__name__)
@@ -145,19 +147,24 @@ class OrganizationViewSet(GenericViewSet):
     def create(self, request, *args, **kwargs):
         """POST method: create action to save an organization object using User ID (IMPORTANT: Using USER ID instead of Organization ID)"""
         try:
-            user_queryset = User.objects.filter(id=request.data["user_id"])
+            user_queryset = User.objects.filter(id=request.data.get("user_id", None))
             if not user_queryset:
-                return Response({"message": "User is not available"}, status=status.HTTP_400_BAD_REQUEST)
+                return Response({"message": ["User is not available"]}, status=status.HTTP_400_BAD_REQUEST)
 
-            org_queryset = list(Organization.objects.filter(org_email=request.data["org_email"]).values())
-            # check if the user is mapped to the organization
+            org_queryset = Organization.objects.filter(org_email=request.data.get("org_email", None))
             user_org_queryset = UserOrganizationMap.objects.filter(user_id=user_queryset.first().id)
 
-            if not user_org_queryset:
+            if user_org_queryset:
+                return Response(
+                        {"message": ["User is already associated with an organization"]}, status=status.HTTP_400_BAD_REQUEST
+                )
+
+            elif not org_queryset and not user_org_queryset:
                 with transaction.atomic():
-                    serializer = OrganizationSerializer(data=request.data, partial=True)
-                    serializer.is_valid(raise_exception=True)
-                    org_queryset = self.perform_create(serializer)
+                    # create organization and userorganizationmap object
+                    org_serializer = OrganizationSerializer(data=request.data, partial=True)
+                    org_serializer.is_valid(raise_exception=True)
+                    org_queryset = self.perform_create(org_serializer)
 
                     user_org_serializer = UserOrganizationMapSerializer(
                         data={
@@ -167,26 +174,24 @@ class OrganizationViewSet(GenericViewSet):
                     )
                     user_org_serializer.is_valid(raise_exception=True)
                     self.perform_create(user_org_serializer)
-                    return Response(
-                        {
-                            "user_map": user_org_serializer.data.get("id"),
-                            "org_id": org_queryset.id,
-                            "user_id": user_queryset.first().id,
-                        },
-                        status=status.HTTP_201_CREATED,
-                    )
+                    return Response(org_serializer.data, status=status.HTTP_201_CREATED)
 
-            elif user_org_queryset:
-                # print("USER ID:" + str(user_queryset.first().id))
-                # print("ORG_ID mapped to user: " + str(user_org_queryset.first().organization_id))
-                return Response(
-                    {"message": "User is already associated with an organization"}, status=status.HTTP_400_BAD_REQUEST
-                )
+            elif org_queryset and not user_org_queryset:
+                with transaction.atomic():
+                    # map user to org by creating userorganizationmap object
+                    user_org_serializer = UserOrganizationMapSerializer(
+                        data={
+                            Constants.USER: user_queryset.first().id,
+                            Constants.ORGANIZATION: org_queryset.first().id,
+                        }
+                    )
+                    user_org_serializer.is_valid(raise_exception=True)
+                    self.perform_create(user_org_serializer)
+                    return Response(user_org_serializer.data, status=status.HTTP_201_CREATED)
 
         except Exception as error:
             LOGGER.error(error, exc_info=True)
-
-        return Response({}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({}, status=status.HTTP_400_BAD_REQUEST)
 
     def list(self, request, *args, **kwargs):
         """GET method: query the list of Organization objects"""
@@ -382,17 +387,17 @@ class DropDocumentView(GenericViewSet):
 
     def create(self, request, *args, **kwargs):
         """Saves the document files in temp location before saving"""
-        try:
-            serializer = self.get_serializer(data=request.data, partial=True)
-            serializer.is_valid(raise_exception=True)
+        serializer = self.get_serializer(data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
 
+        try:
             # get file, file name & type from the form-data
             key = list(request.data.keys())[0]
             file = serializer.validated_data[key]
-            file_type = serializer.validated_data[key].content_type.split("/")[1]
+            file_type = str(file).split(".")[-1]
             file_name = str(key) + "." + file_type
             file_operations.file_save(file, file_name, settings.TEMP_FILE_PATH)
-            return Response({key: "uploading in progress..."}, status=status.HTTP_201_CREATED)
+            return Response({key: [f"{file_name} uploading in progress ..."]}, status=status.HTTP_201_CREATED)
 
         except Exception as error:
             LOGGER.error(error, exc_info=True)
@@ -404,7 +409,7 @@ class DropDocumentView(GenericViewSet):
         """remove the dropped documents"""
         try:
             key = list(request.data.keys())[0]
-            file_operations.remove_files(request.data[key], settings.TEMP_FILE_PATH)
+            file_operations.remove_files(key, settings.TEMP_FILE_PATH)
             return Response({}, status=status.HTTP_204_NO_CONTENT)
 
         except Exception as error:
@@ -736,6 +741,8 @@ class DatahubDatasetsViewSet(GenericViewSet):
 
     def create(self, request, *args, **kwargs):
         """POST method: create action to save an object by sending a POST request"""
+        setattr(request.data, "_mutable", True)
+        data = request.data
         if not csv_and_xlsx_file_validatation(request.data.get(Constants.SAMPLE_DATASET)):
             return Response(
                 {
@@ -745,7 +752,8 @@ class DatahubDatasetsViewSet(GenericViewSet):
                 },
                 400,
             )
-        serializer = self.get_serializer(data=request.data)
+        data[Constants.APPROVAL_STATUS] = Constants.APPROVED
+        serializer = self.get_serializer(data=data)
         serializer.is_valid(raise_exception=True)
         self.perform_create(serializer)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
@@ -901,25 +909,56 @@ class DatahubDatasetsViewSet(GenericViewSet):
 
 class DatahubDashboard(GenericViewSet):
     """Datahub Dashboard viewset"""
+    pagination_class = CustomPagination
 
     @action(detail=False, methods=["get"])
     def dashboard(self, request):
         """Retrieve datahub dashboard details"""
-        total_participants = User.objects.filter(role_id=3, status=True).count()
-        total_datasets = (
-            Datasets.objects.select_related("user_map", "user_map__user", "user_map__organization")
-            .filter(user_map__user__status=True, status=True)
-            .order_by("updated_at")
-            .count()
-        )
-        active_connectors = ""  # fill this later
+        try:
+            total_participants = User.objects.filter(role_id=3, status=True).count()
+            total_datasets = (
+                Datasets.objects.select_related("user_map", "user_map__user", "user_map__organization")
+                .filter(user_map__user__status=True, status=True)
+                .order_by("updated_at")
+                .count()
+            )
+            # write a function to compute data exchange
+            active_connectors = Connectors.objects.filter(status=True).count()
+            total_data_exchange = {"total_data": 50, "unit": "Gbs"}
 
-        datasets = Datasets.objects.order_by("category").filter(status=True).values()
-        datasets.values_list("category")
+            datasets = Datasets.objects.filter(status=True).values_list("category")
+            categories = set()
+            categories_dict = {}
+            for data in datasets:
+                for element in data[0].keys():
+                    categories.add(element)
 
-        data = {
-            "total_participants": total_participants,
-            "total_datasets": total_datasets,
-            "active_connectors": active_connectors,
-        }
-        return Response(data, status=status.HTTP_200_OK)
+            categories_dict = {key:0 for key in categories}
+            for data in datasets:
+                for key,value in data[0].items():
+                    if value == True:
+                        categories_dict[key] += 1
+
+
+            open_support_tickets = SupportTicket.objects.filter(status="open").count()
+            closed_support_tickets = SupportTicket.objects.filter(status="closed").count()
+            hold_support_tickets = SupportTicket.objects.filter(status="hold").count()
+
+            # retrieve 3 recent support tickets
+            recent_tickets_queryset = SupportTicket.objects.order_by("updated_at")[0:3]
+            recent_tickets_serializer = RecentSupportTicketSerializer(recent_tickets_queryset, many=True)
+            support_tickets = {"open_requests": open_support_tickets, "closed_requests": closed_support_tickets, "hold_requests": hold_support_tickets, "recent_tickets": recent_tickets_serializer.data}
+
+            # retrieve 3 recent updated connectors
+            # connectors_queryset = Connectors.objects.order_by("updated_at")[0:3]
+            connectors_queryset = Connectors.objects.order_by("updated_at").all()
+            connector_pages = self.paginate_queryset(connectors_queryset)               # paginaged connectors list
+            connectors_serializer = RecentConnectorListSerializer(connector_pages, many=True)
+
+            data = {"total_participants": total_participants, "total_datasets": total_datasets, "active_connectors": active_connectors, "total_data_exchange": total_data_exchange, "categories": categories_dict, "support_tickets": support_tickets, "connectors": self.get_paginated_response(connectors_serializer.data).data}
+            return Response(data, status=status.HTTP_200_OK)
+
+        except Exception as error:
+            LOGGER.error(error, exc_info=True)
+            return Response({}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+

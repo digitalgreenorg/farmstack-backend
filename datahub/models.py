@@ -7,7 +7,7 @@ from core.base_models import TimeStampMixin
 # from utils.validators import validate_file_size
 from django.conf import settings
 from django.db import models
-from utils.validators import validate_file_size
+from utils.validators import validate_file_size, validate_image_type
 
 
 def auto_str(cls):
@@ -32,17 +32,17 @@ class Organization(TimeStampMixin):
     org_email = models.CharField(max_length=255, unique=True)
     address = models.JSONField()
     phone_number = models.CharField(max_length=50, null=True, blank=True)
-    logo = models.FileField(
+    logo = models.ImageField(
         upload_to=settings.ORGANIZATION_IMAGES_URL,
         null=True,
         blank=True,
-        validators=[validate_file_size],
+        validators=[validate_file_size, validate_image_type],
     )
-    hero_image = models.FileField(
+    hero_image = models.ImageField(
         upload_to=settings.ORGANIZATION_IMAGES_URL,
         null=True,
         blank=True,
-        validators=[validate_file_size],
+        validators=[validate_file_size, validate_image_type],
     )
     org_description = models.TextField(max_length=512, null=True, blank=True)
     website = models.CharField(max_length=255, null=True, blank=True)

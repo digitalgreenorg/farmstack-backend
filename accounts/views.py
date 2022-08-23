@@ -113,6 +113,12 @@ class LoginViewset(GenericViewSet):
                     status=status.HTTP_401_UNAUTHORIZED,
                 )
 
+            elif user.status == False:
+                return Response(
+                    {"email": "User is deleted"},
+                    status=status.HTTP_401_UNAUTHORIZED,
+                )
+
             # check if user is suspended
             if cache.get(user.id) is not None:
                 if cache.get(user.id)["email"] == email and cache.get(user.id)["cache_type"] == "user_suspension":

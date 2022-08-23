@@ -445,7 +445,20 @@ class ParticipantConnectorsViewSet(GenericViewSet):
     def update(self, request, *args, **kwargs):
         """PUT method: update or send a PUT request on an object of the Product model"""
         instance = self.get_object()
-        serializer = self.get_serializer(instance, data=request.data, partial=True)
+        setattr(request.data, "_mutable", True)
+        data = request.data
+        docker_image = data.get(Constants.DOCKER_IMAGE_URL)
+        if docker_image:
+            try:
+                docker = docker_image.split(":")
+                response = requests.get(f"https://hub.docker.com/v2/repositories/{docker[0]}/tags/{docker[1]}")
+                images = response.json().get(Constants.IMAGES, [{}])
+                hash = [image.get(Constants.DIGEST, "") for image in images if image.get("architecture") == "amd64"]
+                data[Constants.USAGE_POLICY] = hash[0].split(":")[1].strip()
+            except Exception as error:
+                logging.error("Error while fetching the hash value. ERROR: %s", error)
+                return Response({Constants.DOCKER_IMAGE_URL: [f"Invalid docker Image: {docker_image}"]}, status=400)
+        serializer = self.get_serializer(instance, data=data, partial=True)
         serializer.is_valid(raise_exception=True)
         self.perform_create(serializer)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
@@ -453,9 +466,11 @@ class ParticipantConnectorsViewSet(GenericViewSet):
     def destroy(self, request, pk):
         """DELETE method: delete an object"""
         product = self.get_object()
-        product.status = False
-        self.perform_create(product)
-        return Response(status=status.HTTP_204_NO_CONTENT)
+        if product.connector_status in [Constants.UNPAIRED, Constants.REJECTED]:
+            product.status = False
+            self.perform_create(product)
+            return Response(status=status.HTTP_204_NO_CONTENT)
+        return Response(["Connector status should be either unpaired or rejected to delete"], status=400)
 
     @action(detail=False, methods=["post"])
     def connectors_filters(self, request, *args, **kwargs):
@@ -569,9 +584,18 @@ class ParticipantConnectorsMapViewSet(GenericViewSet):
         provider = request.data.get(Constants.PROVIDER)
         consumer = request.data.get(Constants.CONSUMER)
         provider_obj = Connectors.objects.get(id=provider)
-        provider_obj.connector_status = Constants.PAIRING_REQUEST_RECIEVED
         consumer_obj = Connectors.objects.get(id=consumer)
+        if provider_obj.connector_status == Constants.PAIRED:
+            return Response(
+                [f"Provider connector ({({provider_obj.connector_name}) }) is already paired with another connector"],
+                400,
+            )
+        elif consumer_obj.connector_status == Constants.PAIRED:
+            return Response(
+                [f"Consumer connector ({consumer_obj.connector_name}) is already paired with another connector"], 400
+            )
         consumer_obj.connector_status = Constants.AWAITING_FOR_APPROVAL
+        provider_obj.connector_status = Constants.PAIRING_REQUEST_RECIEVED
         self.perform_create(provider_obj)
         self.perform_create(consumer_obj)
         self.perform_create(serializer)
@@ -598,6 +622,20 @@ class ParticipantConnectorsMapViewSet(GenericViewSet):
             # ports = get_ports()
             consumer_connectors = Connectors.objects.get(id=instance.consumer.id)
             provider_connectors = Connectors.objects.get(id=instance.provider.id)
+            if provider_connectors.connector_status == Constants.PAIRED:
+                return Response(
+                    [
+                        f"Provider connector ({({provider_connectors.connector_name}) }) is already paired with another connector"
+                    ],
+                    400,
+                )
+            elif consumer_connectors.connector_status == Constants.PAIRED:
+                return Response(
+                    [
+                        f"Consumer connector ({consumer_connectors.connector_name}) is already paired with another connector"
+                    ],
+                    400,
+                )
             run_containers(provider_connectors, consumer_connectors)
             provider_connectors.connector_status = Constants.PAIRED
             consumer_connectors.connector_status = Constants.PAIRED
@@ -680,9 +718,11 @@ class ParticipantDepatrmentViewSet(GenericViewSet):
 
     def retrieve(self, request, pk):
         """GET method: retrieve an object or instance of the Product model"""
-        queryset = self.get_object()
-        serializer = self.serializer_class(queryset)
-        return Response(serializer.data, status=status.HTTP_200_OK)
+        queryset = Department.objects.filter(status=True, id=pk)
+        serializer = self.serializer_class(queryset, many=True)
+        if serializer.data:
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        return Response([], status=status.HTTP_200_OK)
 
     def list(self, request, *args, **kwargs):
         """GET method: query all the list of objects from the Product model"""
@@ -696,7 +736,23 @@ class ParticipantDepatrmentViewSet(GenericViewSet):
             .all()
         )
         department_serializer = DepartmentListSerializer(data, many=True)
-        return Response(department_serializer.data, status=200)
+        return Response(department_serializer.data, 200)
+
+    @action(detail=False, methods=['get'])
+    def department_list(self, request, *args, **kwargs):
+        """GET method: query all the list of objects from the Product model"""
+        data = []
+        org_id = request.query_params.get(Constants.ORG_ID)
+        filters = {Constants.ORGANIZATION: org_id} if org_id else {}
+        data = (
+            Department.objects.filter(Q(status=True, **filters) | Q(department_name=Constants.DEFAULT))
+            .order_by(Constants.UPDATED_AT)
+            .reverse()
+            .all()
+        )
+        page = self.paginate_queryset(data)
+        department_serializer = DepartmentListSerializer(page, many=True)
+        return self.get_paginated_response(department_serializer.data)
 
     def destroy(self, request, pk):
         """DELETE method: delete an object"""
