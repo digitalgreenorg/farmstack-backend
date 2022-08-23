@@ -71,7 +71,7 @@ def read_modify_templates(provider, consumer, ports):
         consumer.connector_name,
     )
     consumer_routes[0]["to"]["@uri"] = (
-        "idscp2client://provider-core:%s?awaitResponse=true&connectionShareId=%s&sslContextParameters=#clientSslContext&useIdsMessages=true"
+        "idscp2client://provider-core:%s?awaitResponse=true&amp;connectionShareId=%s&amp;sslContextParameters=#clientSslContext&amp;useIdsMessages=true"
         % (ports[Constants.PROVIDER_CORE], consumer.connector_name)
     )
     consumer_routes[0]["choice"]["when"]["to"]["@uri"] = (
