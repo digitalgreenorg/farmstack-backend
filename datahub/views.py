@@ -58,7 +58,7 @@ from datahub.serializers import (
     UserOrganizationCreateSerializer,
     UserOrganizationMapSerializer,
     RecentSupportTicketSerializer,
-    RecentConnectorListSerializer,
+    RecentDatasetListSerializer,
 )
 
 LOGGER = logging.getLogger(__name__)
@@ -926,19 +926,21 @@ class DatahubDashboard(GenericViewSet):
             active_connectors = Connectors.objects.filter(status=True).count()
             total_data_exchange = {"total_data": 50, "unit": "Gbs"}
 
-            datasets = Datasets.objects.filter(status=True).values_list("category")
+            datasets = Datasets.objects.filter(status=True).values_list("category", flat=True)
             categories = set()
             categories_dict = {}
+
             for data in datasets:
-                for element in data[0].keys():
-                    categories.add(element)
+                if data and type(data) == dict:
+                    for element in data.keys():
+                        categories.add(element)
 
             categories_dict = {key:0 for key in categories}
             for data in datasets:
-                for key,value in data[0].items():
-                    if value == True:
-                        categories_dict[key] += 1
-
+                if data and type(data) == dict:
+                    for key,value in data.items():
+                        if value == True:
+                            categories_dict[key] += 1
 
             open_support_tickets = SupportTicket.objects.filter(status="open").count()
             closed_support_tickets = SupportTicket.objects.filter(status="closed").count()
@@ -949,13 +951,13 @@ class DatahubDashboard(GenericViewSet):
             recent_tickets_serializer = RecentSupportTicketSerializer(recent_tickets_queryset, many=True)
             support_tickets = {"open_requests": open_support_tickets, "closed_requests": closed_support_tickets, "hold_requests": hold_support_tickets, "recent_tickets": recent_tickets_serializer.data}
 
-            # retrieve 3 recent updated connectors
-            # connectors_queryset = Connectors.objects.order_by("updated_at")[0:3]
-            connectors_queryset = Connectors.objects.order_by("updated_at").all()
-            connector_pages = self.paginate_queryset(connectors_queryset)               # paginaged connectors list
-            connectors_serializer = RecentConnectorListSerializer(connector_pages, many=True)
+            # retrieve 3 recent updated datasets
+            # datasets_queryset = Datasets.objects.order_by("updated_at")[0:3]
+            datasets_queryset = Datasets.objects.filter(status=True).order_by("updated_at").all()
+            datasets_queryset_pages = self.paginate_queryset(datasets_queryset)               # paginaged connectors list
+            datasets_serializer = RecentDatasetListSerializer(datasets_queryset_pages, many=True)
 
-            data = {"total_participants": total_participants, "total_datasets": total_datasets, "active_connectors": active_connectors, "total_data_exchange": total_data_exchange, "categories": categories_dict, "support_tickets": support_tickets, "connectors": self.get_paginated_response(connectors_serializer.data).data}
+            data = {"total_participants": total_participants, "total_datasets": total_datasets, "active_connectors": active_connectors, "total_data_exchange": total_data_exchange, "categories": categories_dict, "support_tickets": support_tickets, "datasets": self.get_paginated_response(datasets_serializer.data).data}
             return Response(data, status=status.HTTP_200_OK)
 
         except Exception as error:
