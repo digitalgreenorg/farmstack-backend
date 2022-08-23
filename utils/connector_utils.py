@@ -147,7 +147,8 @@ def read_modify_templates(provider, consumer, ports):
     )
 
     consumer_yaml_template["services"]["core"]["volumes"][2] = "%s:%s" % (
-        "~/connector_configs/static_configs/certificates/certificates/%s.xml" % % str(consumer.certificate).split("/")[-1],
+        "~/connector_configs/static_configs/certificates/certificates/%s.xml"
+        % str(consumer.certificate).split("/")[-1],
         "/root/etc/consumer-keystore.p12",
     )
     # consumer_yaml_template["services"]["core"]["volumes"][2] = "**** NEW SETTINGS.mapdb *****"
