@@ -139,8 +139,8 @@ def read_modify_templates(provider, consumer, ports):
         ports[Constants.PROVIDER_CORE],
     )
 
-    provider_yaml_template["services"]["app"]["image"] = provider.docker_image_url
-    provider_yaml_template["services"]["app"]["ports"][0] = "%s:%s" % (
+    provider_yaml_template["services"]["provider-app"]["image"] = provider.docker_image_url
+    provider_yaml_template["services"]["provider-app"]["ports"][0] = "%s:%s" % (
         provider.application_port,
         provider.application_port,
     )
@@ -166,8 +166,8 @@ def read_modify_templates(provider, consumer, ports):
         ports[Constants.CONSUMER_CORE],
     )
 
-    consumer_yaml_template["services"]["app"]["image"] = consumer.docker_image_url
-    consumer_yaml_template["services"]["app"]["ports"][0] = "%s:%s" % (
+    consumer_yaml_template["services"]["consumer-app"]["image"] = consumer.docker_image_url
+    consumer_yaml_template["services"]["consumer-app"]["ports"][0] = "%s:%s" % (
         consumer.application_port,
         consumer.application_port,
     )

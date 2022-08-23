@@ -1,4 +1,4 @@
-import uuid
+import logging
 
 from accounts import models
 from accounts.models import User, UserRole
@@ -7,6 +7,7 @@ from accounts.serializers import (
     UserRoleSerializer,
     UserSerializer,
 )
+from participant.models import SupportTicket, Connectors
 from core.constants import Constants
 from rest_framework import serializers
 from utils.validators import (
@@ -16,6 +17,8 @@ from utils.validators import (
 )
 
 from datahub.models import DatahubDocuments, Datasets, Organization, UserOrganizationMap
+
+LOGGER = logging.getLogger(__name__)
 
 
 class OrganizationRetriveSerializer(serializers.ModelSerializer):
@@ -113,6 +116,15 @@ class ParticipantSerializer(serializers.ModelSerializer):
     class Meta:
         model = UserOrganizationMap
         exclude = Constants.EXCLUDE_DATES
+
+    dataset_count = serializers.SerializerMethodField(method_name="get_dataset_count")
+    connector_count = serializers.SerializerMethodField(method_name="get_connector_count")
+
+    def get_dataset_count(self, user_org_map):
+        return Datasets.objects.filter(status=True, user_map__user=user_org_map.user.id).count()
+
+    def get_connector_count(self, user_org_map):
+        return Connectors.objects.filter(status=True, user_map__user=user_org_map.user.id).count()
 
 
 class DropDocumentSerializer(serializers.Serializer):
@@ -289,3 +301,76 @@ class DatahubDatasetsSerializer(serializers.ModelSerializer):
     class Meta:
         model = Datasets
         fields = Constants.ALL
+
+
+class RecentSupportTicketSerializer(serializers.ModelSerializer):
+    class OrganizationRetriveSerializer(serializers.ModelSerializer):
+        class Meta:
+            model = Organization
+            fields = ["id", "org_email", "name"]
+
+    class UserSerializer(serializers.ModelSerializer):
+        class Meta:
+            model = User
+            fields = ["id", "first_name", "last_name", "email", "role"]
+
+    organization = OrganizationRetriveSerializer(
+            allow_null=True, required=False, read_only=True, source="user_map.organization"
+            )
+
+    user = UserSerializer(
+            allow_null=True, required=False, read_only=True, source="user_map.user"
+            )
+
+    class Meta:
+        model = SupportTicket
+        fields = ["id", "subject", "category", "updated_at", "organization", "user"]
+
+
+# class RecentConnectorListSerializer(serializers.ModelSerializer):
+#     class Meta:
+#         model = Connectors
+#         fields = ["id", "connector_name", "updated_at", "dataset_count", "activity"]
+# 
+#     dataset_count = serializers.SerializerMethodField(method_name="get_dataset_count")
+#     activity = serializers.SerializerMethodField(method_name="get_activity")
+# 
+#     def get_dataset_count(self, connectors_queryset):
+#         return Datasets.objects.filter(status=True, user_map__user=connectors_queryset.user_map.user_id).count()
+# 
+#     def get_activity(self, connectors_queryset):
+#         try:
+#             if Connectors.objects.filter(status=True, user_map__id=connectors_queryset.user_map.id).first().status == True:
+#                 return Constants.ACTIVE
+#             else:
+#                 return Constants.NOT_ACTIVE
+#         except Exception as error:
+#             LOGGER.error(error, exc_info=True)
+# 
+#         return None
+
+
+class RecentDatasetListSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Datasets
+        fields = ["id", "name", "updated_at", "connector_count", "activity"]
+
+    connector_count = serializers.SerializerMethodField(method_name="get_connector_count")
+    activity = serializers.SerializerMethodField(method_name="get_activity")
+
+    def get_connector_count(self, datasets_queryset):
+        return Connectors.objects.filter(status=True, user_map__user=datasets_queryset.user_map.user_id).count()
+
+    def get_activity(self, datasets_queryset):
+        try:
+            if Datasets.objects.filter(status=True, user_map__id=datasets_queryset.user_map.id):
+                if Datasets.objects.filter(status=True, user_map__id=datasets_queryset.user_map.id).first().status == True:
+                    return Constants.ACTIVE
+                else:
+                    return Constants.NOT_ACTIVE
+            else:
+                return Constants.NOT_ACTIVE
+        except Exception as error:
+            LOGGER.error(error, exc_info=True)
+
+        return None

@@ -22,7 +22,7 @@
           "consumer-internal"
         ]
       },
-      "app": {
+      "provider-app": {
         "image": "farmstack/merge-csv-nodejs",
         "ports": [
           "8081:8081"

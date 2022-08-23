@@ -83,5 +83,8 @@ class Constants:
     PAIRING_REQUEST_RECIEVED = "pairing request received"
     CONNECTOR_PAIR_STATUS = "connector_pair_status"
     REJECTED = "rejected"
-    DEFAULT = "default"
+    DEFAULT = "Default"
+    ACTIVE = "Active"
+    NOT_ACTIVE = "Not Active"
+    RECENTLY_ACTIVE = "Recently Active"
     MAX_FILE_SIZE = 2097152

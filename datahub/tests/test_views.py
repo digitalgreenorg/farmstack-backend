@@ -813,3 +813,31 @@ class TeamMemberTestCase(APITestCase):
         self.team_member_url = reverse("team_member-detail", kwargs={"pk": user_obj.id})
         response = self.client.put(self.team_member_url, user_data)
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+
+class AdminDashboardTestView(TestCase):
+    """_summary_
+
+    Args:
+        TestCase (_type_): _description_
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.client = APIClient()
+        cls.organization_url = reverse("-dashboard")
+
+    def test_total_participants_greater_than_or_equal_zero(self):
+        participants_count = User.objects.filter(role_id=3, status=True).count()
+        self.assertGreaterEqual(participants_count, 0)
+
+    def test_total_datasets_greater_than_or_equal_zero(self):
+        datasets_count = (
+                Datasets.objects.select_related("user_map", "user_map__user", "user_map__organization")
+                .filter(user_map__user__status=True, status=True)
+                .order_by("updated_at")
+                .count()
+            )
+
+        self.assertGreaterEqual(datasets_count, 0)

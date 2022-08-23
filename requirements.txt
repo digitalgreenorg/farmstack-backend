@@ -66,7 +66,6 @@ platformdirs==2.5.2
 pluggy==1.0.0
 poetry==1.1.13
 poetry-core==1.0.8
-psycopg2==2.9.3
 psycopg2-binary==2.9.3
 ptyprocess==0.7.0
 py==1.11.0

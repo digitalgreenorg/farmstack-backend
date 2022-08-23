@@ -87,7 +87,7 @@ class User(AbstractBaseUser, TimeStampMixin):
         max_length=255,
         on_delete=models.PROTECT,
     )
-    profile_picture = models.FileField(
+    profile_picture = models.ImageField(
         upload_to=settings.PROFILE_PICTURES_URL,
         null=True,
         blank=True,
