@@ -119,22 +119,22 @@ def read_modify_templates(provider, consumer, ports):
     consumer_xml_file = open("%s.xml" % (os.path.join(settings.CONNECTOR_CONFIGS, consumer.connector_name)), "w")
     # print("------", type(provider.certificate), str(provider.certificate))
 
-    provider_yaml_template["services"]["core"]["volumes"][2] = "%s:%s" % (
+    provider_yaml_template["services"]["provider-core"]["volumes"][2] = "%s:%s" % (
         "~/connector_configs/static_configs/certificates/certificates/%s" % str(provider.certificate).split("/")[-1],
         "/root/etc/provider-keystore.p12",
     )
-    provider_yaml_template["services"]["core"]["volumes"][4] = "%s:%s" % (
+    provider_yaml_template["services"]["provider-core"]["volumes"][4] = "%s:%s" % (
         os.path.join(
             "~/connector_configs/static_configs",
             ("%s-settings.mapdb") % (provider.connector_name),
         ),
         "/root/etc/settings.mapdb",
     )
-    provider_yaml_template["services"]["core"]["volumes"][6] = "%s:%s" % (
+    provider_yaml_template["services"]["provider-core"]["volumes"][6] = "%s:%s" % (
         "~/connector_configs/%s.xml" % (provider.connector_name),
         "/root/deploy/provider.xml",
     )
-    provider_yaml_template["services"]["core"]["ports"][0] = "%s:%s" % (
+    provider_yaml_template["services"]["provider-core"]["ports"][0] = "%s:%s" % (
         ports[Constants.PROVIDER_CORE],
         ports[Constants.PROVIDER_CORE],
     )
@@ -145,23 +145,23 @@ def read_modify_templates(provider, consumer, ports):
         provider.application_port,
     )
 
-    consumer_yaml_template["services"]["core"]["volumes"][2] = "%s:%s" % (
+    consumer_yaml_template["services"]["consumer-core"]["volumes"][2] = "%s:%s" % (
         "~/connector_configs/static_configs/certificates/certificates/%s" % str(consumer.certificate).split("/")[-1],
         "/root/etc/consumer-keystore.p12",
     )
     # consumer_yaml_template["services"]["core"]["volumes"][2] = "**** NEW SETTINGS.mapdb *****"
-    consumer_yaml_template["services"]["core"]["volumes"][4] = "%s:%s" % (
+    consumer_yaml_template["services"]["consumer-core"]["volumes"][4] = "%s:%s" % (
         os.path.join(
             "~/connector_configs/static_configs",
             ("%s-settings.mapdb") % (consumer.connector_name),
         ),
         "/root/etc/settings.mapdb",
     )
-    consumer_yaml_template["services"]["core"]["volumes"][6] = "%s:%s" % (
+    consumer_yaml_template["services"]["consumer-core"]["volumes"][6] = "%s:%s" % (
         "~/connector_configs/%s.xml" % (consumer.connector_name),
         "/root/deploy/consumer.xml",
     )
-    consumer_yaml_template["services"]["core"]["ports"][0] = "%s:%s" % (
+    consumer_yaml_template["services"]["consumer-core"]["ports"][0] = "%s:%s" % (
         ports[Constants.CONSUMER_CORE],
         ports[Constants.CONSUMER_CORE],
     )
