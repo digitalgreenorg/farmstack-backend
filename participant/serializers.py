@@ -169,7 +169,23 @@ class ProjectSerializer(serializers.ModelSerializer):
 class ProjectListSerializer(serializers.ModelSerializer):
     class Meta:
         model = Project
-        fields = ["id", "project_name"]
+        # fields = ["id", "project_name"]
+        exclude = Constants.EXCLUDE_DATES
+
+
+class ProjectDepartmentListSerializer(serializers.ModelSerializer):
+    class DepartmentSerializer(serializers.ModelSerializer):
+        class Meta:
+            model = Department
+            fields = ["id", "department_name", "department_discription"]
+
+    department = DepartmentSerializer(
+        read_only=True,
+    )
+
+    class Meta:
+        model = Project
+        fields = ["id", "project_name", "project_discription", "department"]
 
 
 class ConnectorsSerializer(serializers.ModelSerializer):
