@@ -44,11 +44,11 @@
         "route": [
           {
             "from": {
-              "@uri": "timer://contractRequest?repeatCount=1"
+              "@uri": "timer://contractRequest?repeatCount=1&delay=20s"
             },
             "setProperty": {
               "@name": "artifactUri",
-              "constant": "https://farmstack.digitalgreen.org/videoLibraryCSV"
+              "constant": "https://farmstack.digitalgreen.org/farmstack"
             },
             "process": [
               {
@@ -89,27 +89,58 @@
             }
           },
           {
+            "@id": "consumer",
+            "from": {
+              "@uri": "idscp2client://provider-core:20001?awaitResponse=true&connectionShareId=ucConnection&sslContextParameters=#clientSslContext&useIdsMessages=true"
+            },
+            "setProperty": {
+              "@name": "artifactUri",
+              "constant": "https://farmstack.digitalgreen.org/farmstack"
+            },
+            "process": {
+              "@ref": "TypeExtractionProcessor"
+            },
+            "choice": {
+              "when": {
+                "simple": "${exchangeProperty.ids-type} == 'ResourceUpdateMessage'",
+                "log": {
+                  "@message": "### Handle ResourceUpdateMessage ###"
+                },
+                "setHeader": {
+                  "@name": "Content-Type",
+                  "constant": "application/json"
+                },
+                "to": {
+                  "@uri": "http://consumer-app:4000/post_data"
+                },
+                "removeHeader": {
+                  "@headerName": "idscp2-header"
+                },
+                "setBody": {
+                  "simple": "${null}"
+                }
+              },
+              "otherwise": {
+                "log": {
+                  "@loggingLevel": "ERROR",
+                  "@message": "Expected ArtifactResponseMessage, but received: ${body} ### Header: ### ${headers[idscp2-header]}"
+                }
+              }
+            }
+          },
+          {
             "from": {
               "@uri": "timer://contractRequest?repeatCount=1&delay=40s"
             },
             "setProperty": {
               "@name": "artifactUri",
-              "constant": "https://farmstack.digitalgreen.org/videoLibraryCSV"
+              "constant": "https://farmstack.digitalgreen.org/farmstack"
             },
             "process": {
               "@ref": "ArtifactRequestCreationProcessor"
             },
-            "to": [
-              {
-                "@uri": "idscp2client://provider-core:20001?awaitResponse=true&connectionShareId=ucConnection&sslContextParameters=#clientSslContext&useIdsMessages=true"
-              },
-              {
-                "@uri": "http://consumer-app:7005/post_data"
-              }
-            ],
-            "setHeader": {
-              "@name": "Content-Type",
-              "constant": "application/json"
+            "to": {
+              "@uri": "idscp2client://provider-core:20001?awaitResponse=true&connectionShareId=ucConnection&sslContextParameters=#clientSslContext&useIdsMessages=true"
             }
           }
         ]
