@@ -51,6 +51,7 @@ from participant.serializers import (
     ParticipantDatasetsSerializer,
     ParticipantSupportTicketSerializer,
     ProjectSerializer,
+    ProjectListSerializer,
     TicketSupportSerializer,
 )
 
@@ -778,7 +779,7 @@ class ParticipantProjectViewSet(GenericViewSet):
     def project_list(self, request, *args, **kwargs):
         """GET method: query all the list of objects from the Product model"""
         data = []
-        org_id = request.data.get(Constants.ORGANIZATION)
+        org_id = request.data.get(Constants.ORG_ID)
         filters = {Constants.DEPARTMENT_ORGANIZATION: org_id} if org_id else {}
         data = (
             Project.objects.select_related(Constants.DEPARTMENT_ORGANIZATION)
@@ -788,7 +789,7 @@ class ParticipantProjectViewSet(GenericViewSet):
             .all()
         )
         page = self.paginate_queryset(data)
-        project_serializer = ProjectSerializer(page, many=True)
+        project_serializer = ProjectListSerializer(page, many=True)
         return self.get_paginated_response(project_serializer.data)
 
     def list(self, request, *args, **kwargs):
@@ -802,7 +803,7 @@ class ParticipantProjectViewSet(GenericViewSet):
             .reverse()
             .all()
         )
-        project_serializer = ProjectSerializer(data, many=True)
+        project_serializer = ProjectListSerializer(data, many=True)
         return Response(project_serializer.data)
 
     def destroy(self, request, pk):
