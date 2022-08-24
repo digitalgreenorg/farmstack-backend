@@ -155,6 +155,12 @@ class DepartmentSerializer(serializers.ModelSerializer):
 
 
 class ProjectSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Project
+        fields = ["id", "project_name", "project_discription", "department"]
+
+
+class ProjectListSerializer(serializers.ModelSerializer):
     department = DepartmentSerializer(
         read_only=True,
     )
