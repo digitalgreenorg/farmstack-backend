@@ -54,6 +54,7 @@ from participant.serializers import (
     ParticipantSupportTicketSerializer,
     ProjectListSerializer,
     ProjectSerializer,
+    ProjectDepartmentListSerializer,
     TicketSupportSerializer,
 )
 
@@ -724,7 +725,8 @@ class ParticipantDepatrmentViewSet(GenericViewSet):
             return Response(serializer.data, status=status.HTTP_200_OK)
         return Response([], status=status.HTTP_200_OK)
 
-    def list(self, request, *args, **kwargs):
+    @action(detail=False, methods=['get'])
+    def department_list(self, request, *args, **kwargs):
         """GET method: query all the list of objects from the Product model"""
         data = []
         org_id = request.query_params.get(Constants.ORG_ID)
@@ -754,6 +756,20 @@ class ParticipantDepatrmentViewSet(GenericViewSet):
         department_serializer = DepartmentListSerializer(page, many=True)
         return self.get_paginated_response(department_serializer.data)
 
+    def list(self, request, *args, **kwargs):
+        """GET method: query all the list of objects from the Product model"""
+        data = []
+        org_id = request.query_params.get(Constants.ORG_ID)
+        filters = {Constants.ORGANIZATION: org_id} if org_id else {}
+        data = (
+            Department.objects.filter(Q(status=True, **filters) | Q(department_name=Constants.DEFAULT))
+            .order_by(Constants.UPDATED_AT)
+            .reverse()
+            .all()
+        )
+        department_serializer = DepartmentListSerializer(data, many=True)
+        return Response(department_serializer.data)
+
     def destroy(self, request, pk):
         """DELETE method: delete an object"""
         product = self.get_object()
@@ -769,7 +785,7 @@ class ParticipantProjectViewSet(GenericViewSet):
 
     parser_class = JSONParser
     serializer_class = ProjectSerializer
-    queryset = Department
+    queryset = Project
     pagination_class = CustomPagination
 
     def perform_create(self, serializer):
@@ -790,13 +806,38 @@ class ParticipantProjectViewSet(GenericViewSet):
         self.perform_create(serializer)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
-    def update(self, request, *args, **kwargs):
+    def update(self, request, pk):
         """PUT method: update or send a PUT request on an object of the Product model"""
         instance = self.get_object()
         serializer = self.get_serializer(instance, data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
         self.perform_create(serializer)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+    def retrieve(self, request, pk):
+        """GET method: retrieve an object or instance of the Product model"""
+        queryset = Project.objects.filter(status=True, id=pk)
+        serializer = self.serializer_class(queryset, many=True)
+        if serializer.data:
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        return Response([], status=status.HTTP_200_OK)
+
+    @action(detail=False, methods=['post'])
+    def project_list(self, request, *args, **kwargs):
+        """GET method: query all the list of objects from the Product model"""
+        data = []
+        org_id = request.data.get(Constants.ORGANIZATION)
+        filters = {Constants.DEPARTMENT_ORGANIZATION: org_id} if org_id else {}
+        data = (
+            Project.objects.select_related(Constants.DEPARTMENT_ORGANIZATION)
+            .filter(Q(status=True, **filters) | Q(project_name=Constants.DEFAULT))
+            .order_by(Constants.UPDATED_AT)
+            .reverse()
+            .all()
+        )
+        page = self.paginate_queryset(data)
+        project_serializer = ProjectDepartmentListSerializer(page, many=True)
+        return self.get_paginated_response(project_serializer.data)
 
     def list(self, request, *args, **kwargs):
         """GET method: query all the list of objects from the Product model"""
@@ -810,11 +851,11 @@ class ParticipantProjectViewSet(GenericViewSet):
             .all()
         )
         project_serializer = ProjectListSerializer(data, many=True)
-        return Response(project_serializer.data, status=200)
+        return Response(project_serializer.data)
 
     def destroy(self, request, pk):
         """DELETE method: delete an object"""
-        product = self.get_object()
-        product.status = False
-        self.perform_create(product)
+        project = self.get_object()
+        project.status = False
+        self.perform_create(project)
         return Response(status=status.HTTP_204_NO_CONTENT)
