@@ -160,7 +160,7 @@ class ProjectSerializer(serializers.ModelSerializer):
         fields = ["id", "project_name", "project_discription", "department"]
 
 
-class ProjectListSerializer(serializers.ModelSerializer):
+class ProjectDepartmentSerializer(serializers.ModelSerializer):
     department = DepartmentSerializer(
         read_only=True,
     )
