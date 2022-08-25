@@ -554,7 +554,6 @@ class ParticipantConnectorsViewSet(GenericViewSet):
         connector_serializer = ConnectorListSerializer(data, many=True)
         return Response(connector_serializer.data, status=200)
 
-
 class ParticipantConnectorsMapViewSet(GenericViewSet):
     """
     This class handles the participant Datsets CRUD operations.
@@ -575,7 +574,14 @@ class ParticipantConnectorsMapViewSet(GenericViewSet):
             _type_: Returns the saved details.
         """
         return serializer.save()
-
+    
+    @action(detail=False, methods=["get"])
+    def data_size(self, request, *args, **kwargs):
+        size = request.query_params.get("size", "")
+        print("**********SIZE OF DATA************************")
+        print(size)
+        return Response([], status=200)
+    
     def create(self, request, *args, **kwargs):
         """POST method: create action to save an object by sending a POST request"""
         serializer = self.get_serializer(data=request.data, partial=True)
