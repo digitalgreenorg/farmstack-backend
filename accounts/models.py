@@ -38,7 +38,6 @@ def auto_str(cls):
     cls.__str__ = __str__
     return cls
 
-@auto_str
 class UserRole(models.Model):
     """UserRole model for user roles of the datahub users
     User role mapping with id:
