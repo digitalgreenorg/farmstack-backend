@@ -45,14 +45,13 @@ from participant.serializers import (
     ConnectorsRetriveSerializer,
     ConnectorsSerializer,
     DatasetSerializer,
-    DepartmentListSerializer,
     DepartmentSerializer,
     ParticipantDatasetsDetailSerializer,
     ParticipantDatasetsDropDownSerializer,
     ParticipantDatasetsSerializer,
     ParticipantSupportTicketSerializer,
-    ProjectListSerializer,
     ProjectSerializer,
+    ProjectListSerializer,
     TicketSupportSerializer,
 )
 
@@ -716,7 +715,7 @@ class ParticipantDepatrmentViewSet(GenericViewSet):
 
     def retrieve(self, request, pk):
         """GET method: retrieve an object or instance of the Product model"""
-        queryset = Department.objects.filter(status=True, id=pk)
+        queryset = Department.objects.filter(Q(status=True, id=pk) | Q(department_name=Constants.DEFAULT, id=pk))
         serializer = self.serializer_class(queryset, many=True)
         if serializer.data:
             return Response(serializer.data, status=status.HTTP_200_OK)
@@ -735,7 +734,7 @@ class ParticipantDepatrmentViewSet(GenericViewSet):
             .all()
         )
         page = self.paginate_queryset(data)
-        department_serializer = DepartmentListSerializer(page, many=True)
+        department_serializer = DepartmentSerializer(page, many=True)
         return self.get_paginated_response(department_serializer.data)
 
     def list(self, request, *args, **kwargs):
@@ -749,7 +748,7 @@ class ParticipantDepatrmentViewSet(GenericViewSet):
             .reverse()
             .all()
         )
-        department_serializer = DepartmentListSerializer(data, many=True)
+        department_serializer = DepartmentSerializer(data, many=True)
         return Response(department_serializer.data)
 
     def destroy(self, request, pk):
@@ -767,7 +766,7 @@ class ParticipantProjectViewSet(GenericViewSet):
 
     parser_class = JSONParser
     serializer_class = ProjectSerializer
-    queryset = Department
+    queryset = Project
     pagination_class = CustomPagination
 
     def perform_create(self, serializer):
@@ -798,20 +797,21 @@ class ParticipantProjectViewSet(GenericViewSet):
 
     def retrieve(self, request, pk):
         """GET method: retrieve an object or instance of the Product model"""
-        queryset = Project.objects.filter(status=True, id=pk)
+        queryset = Project.objects.filter(Q(status=True, id=pk) | Q(project_name=Constants.DEFAULT, id=pk))
         serializer = self.serializer_class(queryset, many=True)
         if serializer.data:
             return Response(serializer.data, status=status.HTTP_200_OK)
         return Response([], status=status.HTTP_200_OK)
 
-    @action(detail=False, methods=['get'])
+    @action(detail=False, methods=['post'])
     def project_list(self, request, *args, **kwargs):
         """GET method: query all the list of objects from the Product model"""
         data = []
-        department = request.query_params.get(Constants.DEPARTMENT)
-        filters = {Constants.DEPARTMENT: department} if department else {}
+        org_id = request.data.get(Constants.ORG_ID)
+        filters = {Constants.DEPARTMENT_ORGANIZATION: org_id} if org_id else {}
         data = (
-            Project.objects.filter(Q(status=True, **filters) | Q(project_name=Constants.DEFAULT))
+            Project.objects.select_related(Constants.DEPARTMENT_ORGANIZATION)
+            .filter(Q(status=True, **filters) | Q(project_name=Constants.DEFAULT))
             .order_by(Constants.UPDATED_AT)
             .reverse()
             .all()
@@ -819,7 +819,6 @@ class ParticipantProjectViewSet(GenericViewSet):
         page = self.paginate_queryset(data)
         project_serializer = ProjectListSerializer(page, many=True)
         return self.get_paginated_response(project_serializer.data)
-
 
     def list(self, request, *args, **kwargs):
         """GET method: query all the list of objects from the Product model"""

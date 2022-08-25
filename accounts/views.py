@@ -15,9 +15,10 @@ from rest_framework.views import APIView
 from rest_framework.viewsets import GenericViewSet, ModelViewSet
 from rest_framework_simplejwt.tokens import RefreshToken
 
-from accounts.models import User
+from accounts.models import User, UserRole
 from accounts.serializers import (
     LoginSerializer,
+    OtpSerializer,
     UserCreateSerializer,
     UserUpdateSerializer,
 )
@@ -103,8 +104,11 @@ class LoginViewset(GenericViewSet):
         serializer = self.get_serializer(data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
         email = serializer.validated_data["email"]
-        user = User.objects.filter(email=email)
-        user = user.first()
+        user_obj = User.objects.filter(email=email)
+        user = user_obj.first()
+        user_role_obj = UserRole.objects.filter(role_name=request.data.get("role")) 
+        user_role = user_role_obj.first().id if user_role_obj else None
+        print(user_role)
 
         try:
             if not user:
@@ -118,6 +122,19 @@ class LoginViewset(GenericViewSet):
                     {"email": "User is deleted"},
                     status=status.HTTP_401_UNAUTHORIZED,
                 )
+
+            # check user role
+            if user_role != user.role_id:
+                message = "This email is not registered as "
+                switcher = {
+                    1: "admin",
+                    3: "participant"
+                }
+
+                message += str(switcher.get(user_role, request.data.get("role")))
+                return Response({
+                    "message": message
+                }, status=status.HTTP_401_UNAUTHORIZED)
 
             # check if user is suspended
             if cache.get(user.id) is not None:
@@ -246,7 +263,7 @@ class ResendOTPViewset(GenericViewSet):
 class VerifyLoginOTPViewset(GenericViewSet):
     """User verification with OTP"""
 
-    serializer_class = LoginSerializer
+    serializer_class = OtpSerializer
 
     def create(self, request, *args, **kwargs):
         """POST method: to verify registered users"""

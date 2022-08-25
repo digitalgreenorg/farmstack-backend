@@ -151,25 +151,23 @@ class ParticipantDatasetsSerializer(serializers.ModelSerializer):
 class DepartmentSerializer(serializers.ModelSerializer):
     class Meta:
         model = Department
-        exclude = Constants.EXCLUDE_DATES
-
-
-class DepartmentListSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Department
-        exclude = Constants.EXCLUDE_DATES
+        fields = ["id", "department_name", "department_discription"]
 
 
 class ProjectSerializer(serializers.ModelSerializer):
     class Meta:
         model = Project
-        exclude = Constants.EXCLUDE_DATES
+        fields = ["id", "project_name", "project_discription", "department"]
 
 
 class ProjectListSerializer(serializers.ModelSerializer):
+    department = DepartmentSerializer(
+        read_only=True,
+    )
+
     class Meta:
         model = Project
-        fields = ["id", "project_name"]
+        fields = ["id", "project_name", "project_discription", "department"]
 
 
 class ConnectorsSerializer(serializers.ModelSerializer):
