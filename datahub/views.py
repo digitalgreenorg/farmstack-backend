@@ -950,7 +950,7 @@ class DatahubDashboard(GenericViewSet):
 
             # retrieve 3 recent updated datasets
             # datasets_queryset = Datasets.objects.order_by("updated_at")[0:3]
-            datasets_queryset = Datasets.objects.filter(status=True).order_by("updated_at").all()
+            datasets_queryset = Datasets.objects.filter(status=True).order_by("-updated_at").all()
             datasets_queryset_pages = self.paginate_queryset(datasets_queryset)               # paginaged connectors list
             datasets_serializer = RecentDatasetListSerializer(datasets_queryset_pages, many=True)
 
