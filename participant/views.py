@@ -55,6 +55,7 @@ from participant.serializers import (
     TicketSupportSerializer,
 )
 
+LOGGER = logging.getLogger(__name__)
 
 class ParticipantSupportViewSet(GenericViewSet):
     """
@@ -769,12 +770,15 @@ class ParticipantProjectViewSet(GenericViewSet):
 
     def retrieve(self, request, pk):
         """GET method: retrieve an object or instance of the Product model"""
-        queryset = Project.objects.filter(Q(status=True, id=pk) | Q(project_name=Constants.DEFAULT, id=pk))
-        # serializer = self.serializer_class(queryset, many=True)
-        serializer = ProjectDepartmentSerializer(queryset, many=True)
-        if serializer.data:
-            return Response(serializer.data, status=status.HTTP_200_OK)
-        return Response([], status=status.HTTP_200_OK)
+        try:
+            queryset = Project.objects.filter(Q(status=True, id=pk) | Q(project_name=Constants.DEFAULT, id=pk))
+            serializer = ProjectDepartmentSerializer(queryset, many=True)
+            if serializer.data:
+                return Response(serializer.data[0], status=status.HTTP_200_OK)
+        except Exception as error:
+            LOGGER.error(error, exc_info=True)
+            return Response({"message": error}, status=status.HTTP_200_OK)
+        return Response({}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     @action(detail=False, methods=['post'])
     def project_list(self, request, *args, **kwargs):
