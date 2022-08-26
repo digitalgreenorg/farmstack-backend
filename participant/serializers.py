@@ -151,7 +151,7 @@ class ParticipantDatasetsSerializer(serializers.ModelSerializer):
 class DepartmentSerializer(serializers.ModelSerializer):
     class Meta:
         model = Department
-        fields = ["id", "department_name", "department_discription"]
+        fields = ["id", "department_name", "department_discription", "organization"]
 
 
 class ProjectSerializer(serializers.ModelSerializer):
