@@ -83,4 +83,9 @@ class UserUpdateSerializer(serializers.ModelSerializer):
 
 class LoginSerializer(serializers.Serializer):
     email = serializers.EmailField()
+    role = serializers.CharField()
+
+
+class OtpSerializer(serializers.Serializer):
+    email = serializers.EmailField()
     otp = serializers.IntegerField()
