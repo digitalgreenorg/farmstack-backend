@@ -52,10 +52,11 @@ from participant.serializers import (
     ParticipantDatasetsSerializer,
     ParticipantSupportTicketSerializer,
     ProjectSerializer,
-    ProjectListSerializer,
+    ProjectDepartmentSerializer,
     TicketSupportSerializer,
 )
 
+LOGGER = logging.getLogger(__name__)
 
 class ParticipantSupportViewSet(GenericViewSet):
     """
@@ -820,11 +821,15 @@ class ParticipantProjectViewSet(GenericViewSet):
 
     def retrieve(self, request, pk):
         """GET method: retrieve an object or instance of the Product model"""
-        queryset = Project.objects.filter(Q(status=True, id=pk) | Q(project_name=Constants.DEFAULT, id=pk))
-        serializer = self.serializer_class(queryset, many=True)
-        if serializer.data:
-            return Response(serializer.data, status=status.HTTP_200_OK)
-        return Response([], status=status.HTTP_200_OK)
+        try:
+            queryset = Project.objects.filter(Q(status=True, id=pk) | Q(project_name=Constants.DEFAULT, id=pk))
+            serializer = ProjectDepartmentSerializer(queryset, many=True)
+            if serializer.data:
+                return Response(serializer.data[0], status=status.HTTP_200_OK)
+        except Exception as error:
+            LOGGER.error(error, exc_info=True)
+            return Response({"message": error}, status=status.HTTP_200_OK)
+        return Response({}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     @action(detail=False, methods=['post'])
     def project_list(self, request, *args, **kwargs):
@@ -840,7 +845,7 @@ class ParticipantProjectViewSet(GenericViewSet):
             .all()
         )
         page = self.paginate_queryset(data)
-        project_serializer = ProjectListSerializer(page, many=True)
+        project_serializer = ProjectDepartmentSerializer(page, many=True)
         return self.get_paginated_response(project_serializer.data)
 
     def list(self, request, *args, **kwargs):
@@ -854,7 +859,7 @@ class ParticipantProjectViewSet(GenericViewSet):
             .reverse()
             .all()
         )
-        project_serializer = ProjectListSerializer(data, many=True)
+        project_serializer = ProjectDepartmentSerializer(data, many=True)
         return Response(project_serializer.data)
 
     def destroy(self, request, pk):
