@@ -739,21 +739,7 @@ class ParticipantDepatrmentViewSet(GenericViewSet):
         data = (
             # Department.objects.filter(Q(status=True, **filters) | Q(department_name=Constants.DEFAULT))
             Department.objects.filter(status=True, **filters)
-            .order_by(Constants.UPDATED_AT)
-            .reverse()
-            .all()
-        )
-        department_serializer = DepartmentListSerializer(data, many=True)
-        return Response(department_serializer.data, 200)
-
-    @action(detail=False, methods=['get'])
-    def department_list(self, request, *args, **kwargs):
-        """GET method: query all the list of objects from the Product model"""
-        data = []
-        org_id = request.query_params.get(Constants.ORG_ID)
-        filters = {Constants.ORGANIZATION: org_id} if org_id else {}
-        data = (
-            Department.objects.filter(Q(status=True, **filters) | Q(department_name=Constants.DEFAULT))
+            .exclude(department_name=Constans.DEFAULT)
             .order_by(Constants.UPDATED_AT)
             .reverse()
             .all()
@@ -761,6 +747,7 @@ class ParticipantDepatrmentViewSet(GenericViewSet):
         page = self.paginate_queryset(data)
         department_serializer = DepartmentSerializer(page, many=True)
         return self.get_paginated_response(department_serializer.data)
+
 
     def list(self, request, *args, **kwargs):
         """GET method: query all the list of objects from the Product model"""
