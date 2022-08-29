@@ -2,7 +2,7 @@
     "version": "3",
     "services": {
       "provider-core": {
-        "image": "farmstack/trusted-connector",
+        "image": "farmstack/trusted-connector:1.0.0",
         "tty": true,
         "stdin_open": true,
         "volumes": [
@@ -10,7 +10,7 @@
           "~/connector_configs/static_template_configs/allow-all-flows.pl:/root/deploy/allow-all-flows.pl",
           "../../fs-assets/etc/settings2.mapdb:/root/etc/settings.mapdb",
           "~/connector_configs/logs/consumer/:/root/log/",
-          "../../fs-assets/sample-certificates/consumer-keystore.p12:/root/etc/consumer-keystore.p12",
+          "../../fs-assets/sample-certificates/provider-keystore.p12:/root/etc/provider-keystore.p12",
           "~/connector_configs/static_template_configs/truststore.p12:/root/etc/truststore.p12",
           "./example-consumer-routes.xml:/root/deploy/example-consumer-routes.xml"
         ],
@@ -19,7 +19,7 @@
         ],
         "networks": [
           "ids-wide",
-          "consumer-internal"
+          "provider-internal"
         ]
       },
       "provider-app": {
@@ -28,7 +28,7 @@
           "8081:8081"
         ],
         "networks": [
-          "consumer-internal"
+          "provider-internal"
         ]
       }
     },
@@ -36,7 +36,7 @@
       "ids-wide": {
         "driver": "bridge"
       },
-      "consumer-internal": {
+      "provider-internal": {
         "driver": "bridge"
       }
     }

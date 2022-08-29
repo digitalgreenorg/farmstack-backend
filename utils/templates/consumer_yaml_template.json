@@ -2,7 +2,7 @@
   "version": "3",
   "services": {
     "consumer-core": {
-      "image": "farmstack/trusted-connector",
+      "image": "farmstack/trusted-connector:1.0.0",
       "tty": true,
       "stdin_open": true,
       "volumes": [
