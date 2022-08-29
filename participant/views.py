@@ -729,7 +729,8 @@ class ParticipantDepatrmentViewSet(GenericViewSet):
         org_id = request.query_params.get(Constants.ORG_ID)
         filters = {Constants.ORGANIZATION: org_id} if org_id else {}
         data = (
-            Department.objects.filter(Q(status=True, **filters) | Q(department_name=Constants.DEFAULT))
+            # Department.objects.filter(Q(status=True, **filters) | Q(department_name=Constants.DEFAULT))
+            Department.objects.filter(status=True, **filters)
             .order_by(Constants.UPDATED_AT)
             .reverse()
             .all()
@@ -816,7 +817,8 @@ class ParticipantProjectViewSet(GenericViewSet):
         filters = {Constants.DEPARTMENT_ORGANIZATION: org_id} if org_id else {}
         data = (
             Project.objects.select_related(Constants.DEPARTMENT_ORGANIZATION)
-            .filter(Q(status=True, **filters) | Q(project_name=Constants.DEFAULT))
+            # .filter(Q(status=True, **filters) | Q(project_name=Constants.DEFAULT))
+            .filter(status=True, **filters)
             .order_by(Constants.UPDATED_AT)
             .reverse()
             .all()
