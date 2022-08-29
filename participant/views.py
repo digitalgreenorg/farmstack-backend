@@ -739,7 +739,7 @@ class ParticipantDepatrmentViewSet(GenericViewSet):
         data = (
             # Department.objects.filter(Q(status=True, **filters) | Q(department_name=Constants.DEFAULT))
             Department.objects.filter(status=True, **filters)
-            .exclude(department_name=Constans.DEFAULT)
+            .exclude(department_name=Constants.DEFAULT)
             .order_by(Constants.UPDATED_AT)
             .reverse()
             .all()
