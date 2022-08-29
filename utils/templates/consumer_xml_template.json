@@ -44,7 +44,7 @@
       "route": [
         {
           "from": {
-            "@uri": "timer://contractRequest?repeatCount=1"
+            "@uri": "timer://contractRequest?repeatCount=1&delay=30s"
           },
           "setProperty": {
             "@name": "artifactUri",
@@ -56,10 +56,13 @@
           "to": {
             "@uri": "idscp2client://provider-core:8989?awaitResponse=true&connectionShareId=ucConnection&sslContextParameters=#clientSslContext&useIdsMessages=true"
           },
-          "choice": {
+          "filter":{
+            "simple": true,
             "process": {
               "@ref": "TypeExtractionProcessor"
-            },
+            }
+          },
+          "choice": {
             "when": {
               "simple": "${exchangeProperty.ids-type} == 'ContractResponseMessage'",
               "log": {
@@ -128,7 +131,7 @@
         },
         {
           "from": {
-            "@uri": "timer://contractRequest?repeatCount=1&delay=10s"
+            "@uri": "timer://contractRequest?repeatCount=1&delay=50s"
           },
           "setProperty": {
             "@name": "artifactUri",

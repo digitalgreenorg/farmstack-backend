@@ -24,23 +24,23 @@
       "bean": [
         {
           "@id": "ArtifactRequestProcessor",
-          "@class": "de.fhg.aisec.ids.camel.idscp2.processors.ArtifactRequestProcessor"
+          "@class": "de.fhg.aisec.ids.camel.processors.ArtifactRequestProcessor"
         },
         {
           "@id": "ContractRequestProcessor",
-          "@class": "de.fhg.aisec.ids.camel.idscp2.processors.ContractRequestProcessor"
+          "@class": "de.fhg.aisec.ids.camel.processors.ContractRequestProcessor"
         },
         {
           "@id": "ContractAgreementReceiverProcessor",
-          "@class": "de.fhg.aisec.ids.camel.idscp2.processors.ContractAgreementReceiverProcessor"
+          "@class": "de.fhg.aisec.ids.camel.processors.ContractAgreementReceiverProcessor"
         },
         {
           "@id": "TypeExtractionProcessor",
-          "@class": "de.fhg.aisec.ids.camel.idscp2.processors.IdsMessageTypeExtractionProcessor"
+          "@class": "de.fhg.aisec.ids.camel.processors.IdsMessageTypeExtractionProcessor"
         },
         {
           "@id": "ResourceUpdateCreationProcessor",
-          "@class": "de.fhg.aisec.ids.camel.idscp2.processors.ResourceUpdateCreationProcessor"
+          "@class": "de.fhg.aisec.ids.camel.processors.ResourceUpdateCreationProcessor"
         }
       ],
       "camelContext": {
@@ -78,7 +78,7 @@
                     "@ref": "ContractAgreementReceiverProcessor"
                   },
                   "removeHeader": {
-                    "@headerName": "idscp2-header"
+                    "@name": "idscp2-header"
                   },
                   "setBody": {
                     "simple": "${null}"
@@ -103,7 +103,7 @@
                   "@message": "### Server received unexpected message (otherwise branch): ${body} ### Header: ### ${headers[idscp2-header]}"
                 },
                 "removeHeader": {
-                  "@headerName": "idscp2-header"
+                  "@name": "idscp2-header"
                 },
                 "setBody": {
                   "simple": "${null}"

@@ -58,7 +58,7 @@ def read_modify_templates(provider, consumer, ports):
     )
     provider_routes[0]["choice"]["when"][0]["setProperty"][
         "constant"
-    ] = "https://hub.docker.com/layers/farmstack/sha256:%s#%s" % (provider.usage_policy, consumer.application_port)
+    ] = "https://hub.docker.com/layers/farmstack/sha256-%s#%s" % (consumer.usage_policy.strip(), consumer.application_port)
     provider_routes[1]["to"]["@uri"] = "http://provider-app:%s/get_data" % (provider.application_port)
     provider_routes[1]["setProperty"]["constant"] = "https://farmstack.digitalgreen.org/%s/%s" % (
         provider.connector_name,
