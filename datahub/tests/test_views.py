@@ -14,7 +14,7 @@ from django.test import Client, TestCase
 from django.test.client import encode_multipart
 
 # from django.urls import reverse
-from participant.models import SupportTicket
+from participant.models import SupportTicket, Connectors, Department, Project
 from requests import request
 from requests_toolbelt.multipart.encoder import MultipartEncoder
 from rest_framework import serializers, status
@@ -827,10 +827,23 @@ class AdminDashboardTestView(TestCase):
         super().setUpClass()
         cls.client = APIClient()
         cls.organization_url = reverse("-dashboard")
+        UserRole.objects.create(id=3, role_name="datahub_participant_root")
+        User.objects.create(email="test_participant@email.com", role_id=3)
+
+        org_obj = Organization.objects.create(org_email="test_org_email@email.com", address=json.dumps({"city": "Banglore"}))
+        user_map = UserOrganizationMap.objects.create(
+            user=User.objects.get(email="test_participant@email.com"),
+            organization=Organization.objects.get(org_email="test_org_email@email.com"),
+        )
+
+        dataset_obj = Datasets.objects.create(user_map=UserOrganizationMap.objects.get(id=user_map.id), **datasets_dump_data)
+        dept_obj = Department.objects.create(organization=Organization.objects.get(id=org_obj.id), department_name="Dept Name", department_discription="Dept description ...")
+        proj_obj = Project.objects.create(department=Department.objects.get(id=dept_obj.id), project_name="Proj Name")
+        Connectors.objects.create(user_map=UserOrganizationMap.objects.get(id=user_map.id), dataset=Datasets.objects.get(id=dataset_obj.id), project=Project.objects.get(id=proj_obj.id), connector_name="Connector Name", connector_type="consumer", docker_image_url="farmstack/gen-z-consumer:latest", application_port=2700)
 
     def test_total_participants_greater_than_or_equal_zero(self):
-        participants_count = User.objects.filter(role_id=3, status=True).count()
-        self.assertGreaterEqual(participants_count, 0)
+        participant_count = User.objects.filter(role_id=3, status=True).count()
+        self.assertGreaterEqual(participant_count, 0)
 
     def test_total_datasets_greater_than_or_equal_zero(self):
         datasets_count = (
@@ -839,5 +852,12 @@ class AdminDashboardTestView(TestCase):
                 .order_by("updated_at")
                 .count()
             )
-
         self.assertGreaterEqual(datasets_count, 0)
+
+    def test_active_connectors_greater_than_or_equal_zero(self):
+        active_connectors = Connectors.objects.filter(status=True).count()
+        self.assertGreaterEqual(active_connectors, 0)
+
+    def test_dataset_categories_not_emtpy(self):
+        dataset_categories = Datasets.objects.filter(status=True).values_list("category", flat=True).count()
+        self.assertGreaterEqual(dataset_categories, 0)
