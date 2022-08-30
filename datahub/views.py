@@ -386,13 +386,13 @@ class MailInvitationViewSet(GenericViewSet):
                 data = {"datahub_name": os.environ.get("DATAHUB_NAME", "datahub_name"), "participant_admin_name": full_name, "datahub_site": os.environ.get("DATAHUB_SITE", "datahub_site")}
 
                 # render email from query_email template
-                email_render = render(request, "When_a_data-hub_admin_adds_a_participant.html", data)
+                email_render = render(request, "Data-hub_admins_invite_participants_via_broadcast_method.html", data)
                 mail_body = email_render.content.decode("utf-8")
 
                 Utils().send_email(
                     to_email=[user.email],
                     content=mail_body,
-                    subject=Constants.PARTICIPANT_INVITATION + os.environ.get("DATAHUB_NAME", "datahub_name"),
+                    subject= os.environ.get("DATAHUB_NAME", "datahub_name") + Constants.PARTICIPANT_INVITATION,
                 )
 
             failed = f"No participants found for emails: {emails_not_found}"
