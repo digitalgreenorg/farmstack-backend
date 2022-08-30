@@ -39,7 +39,7 @@ class Utils:
             subject (None, optional): _description_. Defaults to None.
         """
         content = Content("text/html", content)
-        mail = Mail(FROM_EMAIL, to_email, subject, content)
+        mail = Mail(FROM_EMAIL, to_email, subject, content, is_multiple=True)
         try:
             SG.client.mail.send.post(request_body=mail.get())
         # except exceptions.BadRequestsError as error:

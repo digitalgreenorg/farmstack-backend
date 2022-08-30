@@ -830,6 +830,7 @@ class ParticipantProjectViewSet(GenericViewSet):
             Project.objects.select_related(Constants.DEPARTMENT_ORGANIZATION)
             # .filter(Q(status=True, **filters) | Q(project_name=Constants.DEFAULT))
             .filter(status=True, **filters)
+            .exclude(project_name=Constants.DEFAULT)
             .order_by(Constants.UPDATED_AT)
             .reverse()
             .all()
