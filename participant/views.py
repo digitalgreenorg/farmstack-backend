@@ -1,4 +1,4 @@
-import json
+import json, time
 import logging
 import os
 import subprocess
@@ -7,9 +7,11 @@ from struct import unpack
 
 import pandas as pd
 import requests
+from datetime import datetime
 from accounts.models import User
 from core.constants import Constants
 from core.utils import (
+    Utils,
     CustomPagination,
     DefaultPagination,
     csv_and_xlsx_file_validatation,
@@ -19,6 +21,7 @@ from core.utils import (
 from datahub.models import Datasets, Organization, UserOrganizationMap
 from django.db.models import Q
 from django.db.models.functions import Lower
+from django.shortcuts import render
 from rest_framework import pagination, status
 from rest_framework.decorators import action
 from rest_framework.parsers import JSONParser
@@ -26,6 +29,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.viewsets import GenericViewSet, ViewSet
 from uritemplate import partial
+from utils import string_functions
 
 from participant.models import (
     Connectors,
@@ -161,6 +165,29 @@ class ParticipantDatasetsViewSet(GenericViewSet):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         self.perform_create(serializer)
+
+        # trigger email to the participant as they are being added
+        try:
+            datahub_admin = User.objects.filter(role_id=1).first()
+            full_name = string_functions.get_full_name(datahub_admin.first_name, datahub_admin.last_name)
+            dataset_serializer = DatasetSerializer(data=request.data)
+            dataset_serializer.is_valid(raise_exception=True)
+            dataset = dataset_serializer.data
+
+            data = {"datahub_name": os.environ.get("DATAHUB_NAME", "datahub_name"), "datahub_admin_name": full_name, "datahub_site": os.environ.get("DATAHUB_SITE", "datahub_site"), "dataset": dataset}
+            print(data)
+
+            email_render = render(request, "A_new_dataset_request_has_been_uploded_in_datahub_name.html", data)
+            mail_body = email_render.content.decode("utf-8")
+            Utils().send_email(
+                to_email=datahub_admin.email,
+                content=mail_body,
+                subject= Constants.ADDED_NEW_DATASET + os.environ.get("DATAHUB_NAME", "datahub_name"),
+            )
+
+        except Exception as error:
+            LOGGER.error(error, exc_info=True)
+
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
     def list(self, request, *args, **kwargs):

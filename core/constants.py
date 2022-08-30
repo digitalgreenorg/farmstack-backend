@@ -89,3 +89,4 @@ class Constants:
     RECENTLY_ACTIVE = "Recently Active"
     PARTICIPANT_INVITATION = " has invited you to join as a participant"
     PARTICIPANT_ORG_ADDITION = "Your organization has been added as a participant in "
+    ADDED_NEW_DATASET = "A new dataset request has been uploaded in "
