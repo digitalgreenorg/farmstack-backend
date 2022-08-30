@@ -6,7 +6,7 @@ class Constants:
     EMAIL = "email"
     ORG_EMAIL = "org_email"
     TO_EMAIL = "to_email"
-    PARTICIPANT_INVITATION = "Participant Invitation"
+    PARTICIPANT_INVITATION = "Your organisation has been added as a participant in "
     SUPPORTTICKET = "supportticket"
     USER_ORGANIZATION_MAP = "userorganizationmap"
     USER_MAP = "user_map"
