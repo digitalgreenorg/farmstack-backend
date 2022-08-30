@@ -359,12 +359,13 @@ class RecentDatasetListSerializer(serializers.ModelSerializer):
     activity = serializers.SerializerMethodField(method_name="get_activity")
 
     def get_connector_count(self, datasets_queryset):
-        return Connectors.objects.filter(status=True, user_map__user=datasets_queryset.user_map.user_id).count()
+        return Connectors.objects.filter(status=True, dataset_id=datasets_queryset.id).count()
 
     def get_activity(self, datasets_queryset):
         try:
-            if Datasets.objects.filter(status=True, user_map__id=datasets_queryset.user_map.id):
-                if Datasets.objects.filter(status=True, user_map__id=datasets_queryset.user_map.id).first().status == True:
+            datasets_queryset = Datasets.objects.filter(status=True, id=datasets_queryset.id)
+            if datasets_queryset:
+                if datasets_queryset.first().status == True:
                     return Constants.ACTIVE
                 else:
                     return Constants.NOT_ACTIVE
