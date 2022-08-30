@@ -26,7 +26,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.viewsets import GenericViewSet, ViewSet
 from uritemplate import partial
-from utils.connector_utils import run_containers
+from utils.connector_utils import run_containers, stop_containers
 
 from participant.models import (
     Connectors,
@@ -667,6 +667,7 @@ class ParticipantConnectorsMapViewSet(GenericViewSet):
             consumer_connectors.connector_status = Constants.UNPAIRED
             self.perform_create(consumer_connectors)
             self.perform_create(provider_connectors)
+            stop_containers(provider_connectors, consumer_connectors)
         self.perform_create(serializer)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 

@@ -210,3 +210,10 @@ def run_containers(provider, consumer):
     # print(docker_clients)
     docker_clients.compose.build()
     docker_clients.compose.up()
+
+def stop_containers(provider, consumer):
+    "stop Docker containers"
+    provider_yaml = "%s.yaml" % (os.path.join(settings.CONNECTOR_CONFIGS, provider.connector_name))
+    consumer_yaml = "%s.yaml" % (os.path.join(settings.CONNECTOR_CONFIGS, consumer.connector_name))
+    docker_clients = DockerClient(compose_files=[provider_yaml, consumer_yaml])
+    docker_clients.compose.down()
