@@ -19,6 +19,7 @@ from core.utils import (
     csv_and_xlsx_file_validatation,
     date_formater,
     read_contents_from_csv_or_xlsx_file,
+
 )
 from django.conf import settings
 from django.contrib.admin.utils import get_model_from_relation
@@ -40,7 +41,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.viewsets import GenericViewSet, ViewSet
 from uritemplate import partial
-from utils import file_operations, validators
+from utils import file_operations, validators, string_functions
 
 from datahub.models import DatahubDocuments, Datasets, Organization, UserOrganizationMap
 from datahub.serializers import (
@@ -288,15 +289,15 @@ class ParticipantViewSet(GenericViewSet):
             Organization.objects.filter(org_email=self.request.data.get(Constants.ORG_EMAIL, "")).values()
         )
         if not org_queryset:
-            serializer = OrganizationSerializer(data=request.data, partial=True)
-            serializer.is_valid(raise_exception=True)
-            org_queryset = self.perform_create(serializer)
+            org_serializer = OrganizationSerializer(data=request.data, partial=True)
+            org_serializer.is_valid(raise_exception=True)
+            org_queryset = self.perform_create(org_serializer)
             org_id = org_queryset.id
         else:
             org_id = org_queryset[0].get(Constants.ID)
-        serializer = UserCreateSerializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        user_saved = self.perform_create(serializer)
+        user_serializer = UserCreateSerializer(data=request.data)
+        user_serializer.is_valid(raise_exception=True)
+        user_saved = self.perform_create(user_serializer)
 
         user_org_serializer = UserOrganizationMapSerializer(
             data={
@@ -306,7 +307,26 @@ class ParticipantViewSet(GenericViewSet):
         )
         user_org_serializer.is_valid(raise_exception=True)
         self.perform_create(user_org_serializer)
-        return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+        # trigger email to the participant as they are being added
+        try:
+            full_name = string_functions.get_full_name(user_serializer.data["first_name"], user_serializer.data["last_name"])
+            data = {"datahub_name": os.environ.get("DATAHUB_NAME", "datahub_name"), "participant_admin_name": full_name, "datahub_site": os.environ.get("DATAHUB_SITE", "datahub_site")}
+
+            # render email from query_email template
+            email_render = render(request, "When_a_data-hub_admin_adds_a_participant.html", data)
+            mail_body = email_render.content.decode("utf-8")
+
+            Utils().send_email(
+                to_email=user_serializer.data["email"],
+                content=mail_body,
+                subject= Constants.PARTICIPANT_ORG_ADDITION + os.environ.get("DATAHUB_NAME", "datahub_name"),
+            )
+
+        except Exception as error:
+            LOGGER.error(error, exc_info=True)
+
+        return Response(user_org_serializer.data, status=status.HTTP_201_CREATED)
 
     def list(self, request, *args, **kwargs):
         """GET method: query all the list of objects from the Product model"""
