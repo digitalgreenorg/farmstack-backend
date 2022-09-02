@@ -862,6 +862,36 @@ class DatahubDatasetsViewSet(GenericViewSet):
         serializer = DatasetUpdateSerializer(instance, data=data, partial=True)
         serializer.is_valid(raise_exception=True)
         self.perform_create(serializer)
+
+        # trigger email to the participant as they are being added
+        try:
+            user_map_queryset = UserOrganizationMap.objects.select_related(Constants.USER).get(id=instance.user_map_id)
+            participant_admin = user_map_queryset.user
+            full_name = string_functions.get_full_name(participant_admin.first_name, participant_admin.last_name)
+
+            data = {"datahub_name": os.environ.get("DATAHUB_NAME", "datahub_name"), "participant_admin_name": full_name, "dataset_name": instance.name, "datahub_site": os.environ.get("DATAHUB_SITE", "datahub_site")}
+
+            if request.data.get(Constants.APPROVAL_STATUS) == Constants.APPROVED:
+                email_render = render(request, "Datahub_admin_approves_dataset.html", data)
+                mail_body = email_render.content.decode("utf-8")
+                Utils().send_email(
+                    to_email=participant_admin.email,
+                    content=mail_body,
+                    subject= Constants.APPROVED_NEW_DATASET + os.environ.get("DATAHUB_NAME", "datahub_name"),
+                )
+
+            elif request.data.get(Constants.APPROVAL_STATUS) == Constants.REJECTED:
+                email_render = render(request, "Datahub_admin_rejects_dataset.html", data)
+                mail_body = email_render.content.decode("utf-8")
+                Utils().send_email(
+                    to_email=participant_admin.email,
+                    content=mail_body,
+                    subject= Constants.REJECTED_NEW_DATASET + os.environ.get("DATAHUB_NAME", "datahub_name"),
+                )
+
+        except Exception as error:
+            LOGGER.error(error, exc_info=True)
+
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
     def destroy(self, request, pk):
