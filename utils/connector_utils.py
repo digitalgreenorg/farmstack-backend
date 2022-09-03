@@ -131,7 +131,7 @@ def read_modify_templates(provider, consumer, ports):
         "/root/etc/settings.mapdb",
     )
     provider_yaml_template["services"]["provider-core"]["volumes"][6] = "%s:%s" % (
-        "~/connector_configs/%s.xml" % (provider.connector_name),
+        "~/connector_configs/%s/%s.xml" % (provider.connector_name+consumer.connector_name, provider.connector_name),
         "/root/deploy/provider.xml",
     )
     provider_yaml_template["services"]["provider-core"]["ports"][0] = "%s:%s" % (
@@ -158,7 +158,7 @@ def read_modify_templates(provider, consumer, ports):
         "/root/etc/settings.mapdb",
     )
     consumer_yaml_template["services"]["consumer-core"]["volumes"][6] = "%s:%s" % (
-        "~/connector_configs/%s.xml" % (consumer.connector_name),
+        "~/connector_configs/%s/%s.xml" % (provider.connector_name+consumer.connector_name, consumer.connector_name),
         "/root/deploy/consumer.xml",
     )
     consumer_yaml_template["services"]["consumer-core"]["ports"][0] = "%s:%s" % (
