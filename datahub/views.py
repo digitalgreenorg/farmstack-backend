@@ -146,6 +146,27 @@ class OrganizationViewSet(GenericViewSet):
         """
         return serializer.save()
 
+    def trigger_email(self, request):
+       # trigger email to the participant as they are being added
+       try:
+           datahub_admin = User.objects.filter(role_id=1).first()
+           admin_full_name = string_functions.get_full_name(datahub_admin.first_name, datahub_admin.last_name)
+           participant_full_name = string_functions.get_full_name(request.data.get("first_name"), request.data.get("last_name"))
+
+           data = {"datahub_name": os.environ.get("DATAHUB_NAME", "datahub_name"), "participant_admin_name": participant_full_name, "participant_organization_name": request.data.get("name"), "datahub_admin": admin_full_name, "datahub_site": os.environ.get("DATAHUB_SITE", "datahub_site")}
+           print(data)
+
+           email_render = render(request, "Datahub_admin_adds_participant_organization.html", data)
+           mail_body = email_render.content.decode("utf-8")
+           Utils().send_email(
+               to_email=request.data.get("user_email"),
+               content=mail_body,
+               subject= Constants.PARTICIPANT_ORG_ADDITION + os.environ.get("DATAHUB_NAME", "datahub_name"),
+           )
+
+       except Exception as error:
+           LOGGER.error(error, exc_info=True)
+
     def create(self, request, *args, **kwargs):
         """POST method: create action to save an organization object using User ID (IMPORTANT: Using USER ID instead of Organization ID)"""
         try:
@@ -176,6 +197,7 @@ class OrganizationViewSet(GenericViewSet):
                     )
                     user_org_serializer.is_valid(raise_exception=True)
                     self.perform_create(user_org_serializer)
+                    self.trigger_email(request)
                     return Response(org_serializer.data, status=status.HTTP_201_CREATED)
 
             elif org_queryset and not user_org_queryset:
@@ -189,6 +211,7 @@ class OrganizationViewSet(GenericViewSet):
                     )
                     user_org_serializer.is_valid(raise_exception=True)
                     self.perform_create(user_org_serializer)
+                    self.trigger_email(request)
                     return Response(user_org_serializer.data, status=status.HTTP_201_CREATED)
 
         except Exception as error:
