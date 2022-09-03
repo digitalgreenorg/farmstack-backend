@@ -373,31 +373,39 @@ class MailInvitationViewSet(GenericViewSet):
             _type_: Retuns the sucess response with message and status code.
         """
         try:
-            email_list = request.data.get("to_email")
-            emails_found, emails_not_found = ([] for i in range(2))
-            for email in email_list:
-                if User.objects.filter(email=email):
-                    emails_found.append(email)
-                else:
-                    emails_not_found.append(email)
+            # email_list = request.data.get("to_email")
+            # emails_found, emails_not_found = ([] for i in range(2))
+            # for email in email_list:
+            #     if User.objects.filter(email=email):
+            #         emails_found.append(email)
+            #     else:
+            #         emails_not_found.append(email)
 
-            for user in User.objects.filter(email__in=emails_found):
-                full_name = user.first_name + " " + str(user.last_name) if user.last_name else user.first_name
-                data = {"datahub_name": os.environ.get("DATAHUB_NAME", "datahub_name"), "participant_admin_name": full_name, "datahub_site": os.environ.get("DATAHUB_SITE", "datahub_site")}
+            # for user in User.objects.filter(email__in=emails_found):
+            #     full_name = user.first_name + " " + str(user.last_name) if user.last_name else user.first_name
+            #     data = {"datahub_name": os.environ.get("DATAHUB_NAME", "datahub_name"), "participant_admin_name": full_name, "datahub_site": os.environ.get("DATAHUB_SITE", "datahub_site")}
 
-                # render email from query_email template
-                email_render = render(request, "When_a_data-hub_admin_adds_a_participant.html", data)
-                mail_body = email_render.content.decode("utf-8")
+            #     # render email from query_email template
+            #     email_render = render(request, "When_a_data-hub_admin_adds_a_participant.html", data)
+            #     mail_body = email_render.content.decode("utf-8")
 
-                Utils().send_email(
-                    to_email=[user.email],
-                    content=mail_body,
-                    subject=Constants.PARTICIPANT_INVITATION + os.environ.get("DATAHUB_NAME", "datahub_name"),
+            #     Utils().send_email(
+            #         to_email=[user.email],
+            #         content=mail_body,
+            #         subject=Constants.PARTICIPANT_INVITATION + os.environ.get("DATAHUB_NAME", "datahub_name"),
+            #     )
+
+            # failed = f"No participants found for emails: {emails_not_found}"
+            # LOGGER.warning(failed)
+            # return Response({"message": f"Email successfully sent to {emails_found}", "failed": failed}, status=status.HTTP_200_OK)
+
+            data = request.data
+            return Utils().send_email(
+                    to_email=data.get(Constants.TO_EMAIL, []),
+                    content=data.get(Constants.CONTENT),
+                    subject=Constants.PARTICIPANT_INVITATION,
                 )
 
-            failed = f"No participants found for emails: {emails_not_found}"
-            LOGGER.warning(failed)
-            return Response({"message": f"Email successfully sent to {emails_found}", "failed": failed}, status=status.HTTP_200_OK)
 
         except Exception as error:
             LOGGER.error(error, exc_info=True)

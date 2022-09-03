@@ -115,8 +115,10 @@ def read_modify_templates(provider, consumer, ports):
     )
 
     # XML file paths.
-    provider_xml_file = open("%s.xml" % (os.path.join(settings.CONNECTOR_CONFIGS, provider.connector_name)), "w")
-    consumer_xml_file = open("%s.xml" % (os.path.join(settings.CONNECTOR_CONFIGS, consumer.connector_name)), "w")
+    connector_path = (os.path.join(settings.CONNECTOR_CONFIGS,  provider.connector_name+consumer.connector_name))
+    os.mkdir(connector_path)
+    provider_xml_file = open("%s.xml" % (os.path.join(connector_path, provider.connector_name)), "w")
+    consumer_xml_file = open("%s.xml" % (os.path.join(connector_path, consumer.connector_name)), "w")
     # print("------", type(provider.certificate), str(provider.certificate))
 
     provider_yaml_template["services"]["provider-core"]["volumes"][2] = "%s:%s" % (
@@ -173,8 +175,8 @@ def read_modify_templates(provider, consumer, ports):
     )
 
     # Write the values to templates.
-    provider_yaml_file = open("%s.yaml" % (os.path.join(settings.CONNECTOR_CONFIGS, provider.connector_name)), "w")
-    consumer_yaml_file = open("%s.yaml" % (os.path.join(settings.CONNECTOR_CONFIGS, consumer.connector_name)), "w")
+    provider_yaml_file = open("%s.yaml" % (os.path.join(connector_path, provider.connector_name)), "w")
+    consumer_yaml_file = open("%s.yaml" % (os.path.join(connector_path, consumer.connector_name)), "w")
 
     xmltodict.unparse(provider_xml_template, pretty=True, output=provider_xml_file)
     yaml.dump(provider_yaml_template, provider_yaml_file)
@@ -203,7 +205,6 @@ def generate_xml_yaml(provider, consumer):
 
 def run_containers(provider, consumer):
     "Run Docker containers"
-
     provider_yaml, consumer_yaml = generate_xml_yaml(provider, consumer)
     # Run Docker Containers.
     docker_clients = DockerClient(compose_files=[provider_yaml, consumer_yaml])
@@ -211,9 +212,9 @@ def run_containers(provider, consumer):
     docker_clients.compose.build()
     docker_clients.compose.up()
 
-def stop_containers(provider, consumer):
+async def stop_containers(provider, consumer):
     "stop Docker containers"
-    provider_yaml = "%s.yaml" % (os.path.join(settings.CONNECTOR_CONFIGS, provider.connector_name))
-    consumer_yaml = "%s.yaml" % (os.path.join(settings.CONNECTOR_CONFIGS, consumer.connector_name))
+    provider_yaml = "%s.yaml" % (os.path.join(settings.CONNECTOR_CONFIGS, provider.connector_name.replace(" ", "")))
+    consumer_yaml = "%s.yaml" % (os.path.join(settings.CONNECTOR_CONFIGS, consumer.connector_name.replace(" ", "")))
     docker_clients = DockerClient(compose_files=[provider_yaml, consumer_yaml])
     docker_clients.compose.down()

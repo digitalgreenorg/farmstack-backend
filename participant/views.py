@@ -667,7 +667,7 @@ class ParticipantConnectorsMapViewSet(GenericViewSet):
             consumer_connectors.connector_status = Constants.UNPAIRED
             self.perform_create(consumer_connectors)
             self.perform_create(provider_connectors)
-            stop_containers(provider_connectors, consumer_connectors)
+            # stop_containers(provider_connectors, consumer_connectors)
         self.perform_create(serializer)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
