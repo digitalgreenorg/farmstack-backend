@@ -23,8 +23,8 @@ def get_ports():
         Constants.CONSUMER_APP: consumer_app,
         Constants.PROVIDER_APP: provider_app,
     }
-    # file_path = "./ports.json"
-    # new_ports = readjson(file_path)
+    with open("./ports.json", "w") as outfile:
+        json.dump(new_ports, outfile)
     return new_ports
 
 
@@ -103,7 +103,6 @@ def read_modify_templates(provider, consumer, ports):
 
     # YAML Files.
     # copy the settings.mapdb file.
-    print("**** CONNECTOR NAME ***** ", provider.connector_name)
     shutil.copy(
         os.path.join(settings.CONNECTOR_TEMPLATE_STATICS, "settings.mapdb"),
         os.path.join(settings.CONNECTOR_STATICS, ("%s-settings.mapdb") % (provider.connector_name)),
@@ -143,7 +142,7 @@ def read_modify_templates(provider, consumer, ports):
 
     provider_yaml_template["services"]["provider-app"]["image"] = provider.docker_image_url
     provider_yaml_template["services"]["provider-app"]["ports"][0] = "%s:%s" % (
-        provider.application_port,
+        ports.get(Constants.PROVIDER_APP),
         provider.application_port,
     )
 
@@ -170,7 +169,7 @@ def read_modify_templates(provider, consumer, ports):
 
     consumer_yaml_template["services"]["consumer-app"]["image"] = consumer.docker_image_url
     consumer_yaml_template["services"]["consumer-app"]["ports"][0] = "%s:%s" % (
-        consumer.application_port,
+        ports.get(Constants.CONSUMER_APP),
         consumer.application_port,
     )
 
@@ -200,21 +199,29 @@ def generate_xml_yaml(provider, consumer):
     print("************ ", provider_yaml, consumer_yaml)
     # TODO:Write the updated ports.
     # Return Yaml and XML
-    return provider_yaml, consumer_yaml
+    return provider_yaml, consumer_yaml, ports
 
 
 def run_containers(provider, consumer):
     "Run Docker containers"
-    provider_yaml, consumer_yaml = generate_xml_yaml(provider, consumer)
+    provider_yaml, consumer_yaml, ports = generate_xml_yaml(provider, consumer)
     # Run Docker Containers.
-    docker_clients = DockerClient(compose_files=[provider_yaml, consumer_yaml])
+    docker_clients_provider = DockerClient(compose_files=[provider_yaml])
+    docker_clients_consumer = DockerClient(compose_files=[consumer_yaml])
     # print(docker_clients)
-    docker_clients.compose.build()
-    docker_clients.compose.up()
+    docker_clients_provider.compose.build()
+    docker_clients_provider.compose.up(detach=True)
 
-async def stop_containers(provider, consumer):
+    docker_clients_consumer.compose.build()
+    docker_clients_consumer.compose.up(detach=True)
+    return ports
+
+def stop_containers(provider, consumer):
     "stop Docker containers"
-    provider_yaml = "%s.yaml" % (os.path.join(settings.CONNECTOR_CONFIGS, provider.connector_name.replace(" ", "")))
-    consumer_yaml = "%s.yaml" % (os.path.join(settings.CONNECTOR_CONFIGS, consumer.connector_name.replace(" ", "")))
+    connector_path = (os.path.join(settings.CONNECTOR_CONFIGS,  provider.connector_name+consumer.connector_name))
+    provider_yaml = "%s.yaml" % (os.path.join(connector_path, provider.connector_name.replace(" ", "")))
+    consumer_yaml = "%s.yaml" % (os.path.join(connector_path, consumer.connector_name.replace(" ", "")))
     docker_clients = DockerClient(compose_files=[provider_yaml, consumer_yaml])
     docker_clients.compose.down()
+    print(connector_path)
+    shutil.rmtree(connector_path, ignore_errors=True, onerror=None)

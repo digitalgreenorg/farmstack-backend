@@ -609,9 +609,9 @@ class ParticipantConnectorsMapViewSet(GenericViewSet):
 
     def update(self, request, *args, **kwargs):
         """PUT method: update or send a PUT request on an object of the Product model"""
+        setattr(request.data, "_mutable", True)
         instance = self.get_object()
-        serializer = self.get_serializer(instance, data=request.data, partial=True)
-        serializer.is_valid(raise_exception=True)
+        data = request.data
         if request.data.get(Constants.CONNECTOR_PAIR_STATUS) == Constants.REJECTED:
             connectors = Connectors.objects.get(id=instance.consumer.id)
             connectors.connector_status = Constants.REJECTED
@@ -625,7 +625,6 @@ class ParticipantConnectorsMapViewSet(GenericViewSet):
                 connectors.connector_status = Constants.UNPAIRED
                 self.perform_create(connectors)
         elif request.data.get(Constants.CONNECTOR_PAIR_STATUS) == Constants.PAIRED:
-            # ports = get_ports()
             consumer_connectors = Connectors.objects.get(id=instance.consumer.id)
             provider_connectors = Connectors.objects.get(id=instance.provider.id)
             if provider_connectors.connector_status == Constants.PAIRED:
@@ -642,7 +641,7 @@ class ParticipantConnectorsMapViewSet(GenericViewSet):
                     ],
                     400,
                 )
-            run_containers(provider_connectors, consumer_connectors)
+            ports = run_containers(provider_connectors, consumer_connectors)
             provider_connectors.connector_status = Constants.PAIRED
             consumer_connectors.connector_status = Constants.PAIRED
             self.perform_create(consumer_connectors)
@@ -659,7 +658,8 @@ class ParticipantConnectorsMapViewSet(GenericViewSet):
                     map_connectors_consumer.connector_status = Constants.REJECTED
                     self.perform_create(map_connectors)
                     self.perform_create(map_connectors_consumer)
-            # serializer.ports = ports
+            print(ports)
+            data["ports"] = json.dumps(ports)
         elif request.data.get(Constants.CONNECTOR_PAIR_STATUS) == Constants.UNPAIRED:
             consumer_connectors = Connectors.objects.get(id=instance.consumer.id)
             provider_connectors = Connectors.objects.get(id=instance.provider.id)
@@ -667,7 +667,9 @@ class ParticipantConnectorsMapViewSet(GenericViewSet):
             consumer_connectors.connector_status = Constants.UNPAIRED
             self.perform_create(consumer_connectors)
             self.perform_create(provider_connectors)
-            # stop_containers(provider_connectors, consumer_connectors)
+            stop_containers(provider_connectors, consumer_connectors)
+        serializer = self.get_serializer(instance, data=data, partial=True)
+        serializer.is_valid(raise_exception=True)
         self.perform_create(serializer)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
