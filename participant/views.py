@@ -182,7 +182,7 @@ class ParticipantDatasetsViewSet(GenericViewSet):
             Utils().send_email(
                 to_email=datahub_admin.email,
                 content=mail_body,
-                subject= Constants.ADDED_NEW_DATASET + os.environ.get("DATAHUB_NAME", "datahub_name"),
+                subject= Constants.ADDED_NEW_DATASET_SUBJECT + os.environ.get("DATAHUB_NAME", "datahub_name"),
             )
 
         except Exception as error:
