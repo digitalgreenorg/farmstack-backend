@@ -146,22 +146,22 @@ class OrganizationViewSet(GenericViewSet):
         """
         return serializer.save()
 
-    def trigger_email(self, request):
+    def trigger_email(self, request, template, to_email, subject, first_name, last_name, org_name):
        # trigger email to the participant as they are being added
        try:
            datahub_admin = User.objects.filter(role_id=1).first()
            admin_full_name = string_functions.get_full_name(datahub_admin.first_name, datahub_admin.last_name)
-           participant_full_name = string_functions.get_full_name(request.data.get("first_name"), request.data.get("last_name"))
+           participant_full_name = string_functions.get_full_name(first_name, last_name)
 
-           data = {"datahub_name": os.environ.get("DATAHUB_NAME", "datahub_name"), "participant_admin_name": participant_full_name, "participant_organization_name": request.data.get("name"), "datahub_admin": admin_full_name, "datahub_site": os.environ.get("DATAHUB_SITE", "datahub_site")}
+           data = {"datahub_name": os.environ.get("DATAHUB_NAME", "datahub_name"), "participant_admin_name": participant_full_name, "participant_organization_name": org_name, "datahub_admin": admin_full_name, "datahub_site": os.environ.get("DATAHUB_SITE", "datahub_site")}
            print(data)
 
-           email_render = render(request, "Datahub_admin_adds_participant_organization.html", data)
+           email_render = render(request, template, data)
            mail_body = email_render.content.decode("utf-8")
            Utils().send_email(
-               to_email=request.data.get("user_email"),
+               to_email=to_email,
                content=mail_body,
-               subject= Constants.PARTICIPANT_ORG_ADDITION + os.environ.get("DATAHUB_NAME", "datahub_name"),
+               subject= subject + os.environ.get("DATAHUB_NAME", "datahub_name"),
            )
 
        except Exception as error:
@@ -170,12 +170,12 @@ class OrganizationViewSet(GenericViewSet):
     def create(self, request, *args, **kwargs):
         """POST method: create action to save an organization object using User ID (IMPORTANT: Using USER ID instead of Organization ID)"""
         try:
-            user_queryset = User.objects.filter(id=request.data.get("user_id", None))
-            if not user_queryset:
-                return Response({"message": ["User is not available"]}, status=status.HTTP_400_BAD_REQUEST)
+            user_obj = User.objects.get(id=request.data.get(Constants.USER_ID))
+            org_queryset = Organization.objects.filter(org_email=request.data.get(Constants.ORG_EMAIL), status=True)
+            user_org_queryset = UserOrganizationMap.objects.filter(organization_id=org_queryset.first().id) if org_queryset else None
 
-            org_queryset = Organization.objects.filter(org_email=request.data.get("org_email", None))
-            user_org_queryset = UserOrganizationMap.objects.filter(user_id=user_queryset.first().id)
+            if not user_obj:
+                return Response({"message": ["User is not available"]}, status=status.HTTP_400_BAD_REQUEST)
 
             if user_org_queryset:
                 return Response(
@@ -191,13 +191,13 @@ class OrganizationViewSet(GenericViewSet):
 
                     user_org_serializer = UserOrganizationMapSerializer(
                         data={
-                            Constants.USER: user_queryset.first().id,
+                            Constants.USER: user_obj.id,
                             Constants.ORGANIZATION: org_queryset.id,
                         }
                     )
                     user_org_serializer.is_valid(raise_exception=True)
                     self.perform_create(user_org_serializer)
-                    self.trigger_email(request)
+                    self.trigger_email(request, "Datahub_admin_adds_participant_organization.html", user_obj.email, Constants.PARTICIPANT_ORG_ADDITION, user_obj.first_name, user_obj.last_name, request.data.get("name"))
                     return Response(org_serializer.data, status=status.HTTP_201_CREATED)
 
             elif org_queryset and not user_org_queryset:
@@ -205,13 +205,13 @@ class OrganizationViewSet(GenericViewSet):
                     # map user to org by creating userorganizationmap object
                     user_org_serializer = UserOrganizationMapSerializer(
                         data={
-                            Constants.USER: user_queryset.first().id,
+                            Constants.USER: user_obj.id,
                             Constants.ORGANIZATION: org_queryset.first().id,
                         }
                     )
                     user_org_serializer.is_valid(raise_exception=True)
                     self.perform_create(user_org_serializer)
-                    self.trigger_email(request)
+                    self.trigger_email(request, "Datahub_admin_adds_participant_organization.html", user_obj.email, Constants.PARTICIPANT_ORG_ADDITION, user_obj.first_name, user_obj.last_name, request.data.get("name"))
                     return Response(user_org_serializer.data, status=status.HTTP_201_CREATED)
 
         except Exception as error:
@@ -222,7 +222,7 @@ class OrganizationViewSet(GenericViewSet):
         """GET method: query the list of Organization objects"""
         user_org_queryset = (
             UserOrganizationMap.objects.select_related(Constants.USER, Constants.ORGANIZATION)
-            # .filter(organization__status=True)
+            .filter(organization__status=True)
             .all()
         )
         page = self.paginate_queryset(user_org_queryset)
@@ -231,11 +231,10 @@ class OrganizationViewSet(GenericViewSet):
 
     def retrieve(self, request, pk):
         """GET method: retrieve an object of Organization using User ID of the User (IMPORTANT: Using USER ID instead of Organization ID)"""
-        user_obj = User.objects.get(id=pk)
+        user_obj = User.objects.get(id=pk, status=True)
         user_org_queryset = (
             UserOrganizationMap.objects.prefetch_related(Constants.USER, Constants.ORGANIZATION)
-            # .filter(organization__status=True, user=pk)
-            .filter(user=pk)
+            .filter(organization__status=True, user=pk)
         )
 
         if not user_org_queryset:
@@ -249,6 +248,7 @@ class OrganizationViewSet(GenericViewSet):
 
     def update(self, request, pk):
         """PUT method: update or PUT request for Organization using User ID of the User (IMPORTANT: Using USER ID instead of Organization ID)"""
+        user_obj = User.objects.get(id=pk, status=True)
         user_org_queryset = (
             UserOrganizationMap.objects.prefetch_related(Constants.USER, Constants.ORGANIZATION).filter(user=pk).all()
         )
@@ -256,22 +256,20 @@ class OrganizationViewSet(GenericViewSet):
         if not user_org_queryset:
             return Response({}, status=status.HTTP_404_NOT_FOUND)
 
-        user_org_map = user_org_queryset.first()
-        user_org_id = user_org_map.organization_id
-        user_map_id = user_org_map.id
         organization_serializer = OrganizationSerializer(
-            Organization.objects.get(id=user_org_id),
+            Organization.objects.get(id=user_org_queryset.first().organization_id),
             data=request.data,
             partial=True,
         )
 
         organization_serializer.is_valid(raise_exception=True)
         self.perform_create(organization_serializer)
+        self.trigger_email(request, "Datahub_admin_updates_participant_organization.html", user_obj.email, Constants.PARTICIPANT_ORG_UPDATION, user_obj.first_name, user_obj.last_name, organization_serializer.data["name"])
         data = {
             Constants.USER: {"id": pk},
             Constants.ORGANIZATION: organization_serializer.data,
-            "user_map": user_map_id,
-            "org_id": user_org_id,
+            "user_map": user_org_queryset.first().id,
+            "org_id": user_org_queryset.first().organization_id,
         }
         return Response(
             data,
@@ -280,8 +278,12 @@ class OrganizationViewSet(GenericViewSet):
 
     def destroy(self, request, pk):
         """DELETE method: delete an object"""
-        organization = self.get_object()
-        # organization.delete()
+        user_obj = User.objects.get(id=pk, status=True)
+        user_org_queryset = UserOrganizationMap.objects.select_related(Constants.ORGANIZATION).get(user_id=pk)
+        org_queryset = Organization.objects.get(id=user_org_queryset.organization_id)
+        org_queryset.status = False
+        self.perform_create(org_queryset)
+        self.trigger_email(request, "Datahub_admin_deletes_participant_organization.html", user_obj.email, Constants.PARTICIPANT_ORG_DELETION, user_obj.first_name, user_obj.last_name, org_queryset.name)
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
