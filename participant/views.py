@@ -503,6 +503,16 @@ class ParticipantConnectorsViewSet(GenericViewSet):
         serializer = self.get_serializer(instance, data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
         self.perform_create(serializer)
+
+        user_org_obj = UserOrganizationMap.objects.select_related(Constants.ORGANIZATION).get(id=str(instance.user_map.id))
+        org_obj = Organization.objects.get(id=user_org_obj.organization_id)
+        user_obj = User.objects.get(id=user_org_obj.user_id)
+        dataset_obj = Datasets.objects.get(user_map_id=str(instance.user_map.id))
+        org_address = string_functions.get_full_address(org_obj.address)
+        subject = "A certificate on " + os.environ.get("DATAHUB_NAME", "datahub_name") + " was successfully installed"
+
+        self.trigger_email(request, "Once_the_certificate_is_installed.html", subject, user_obj, org_obj, org_address, serializer.data, dataset_obj)
+
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
     def destroy(self, request, pk):
