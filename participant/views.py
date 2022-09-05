@@ -398,7 +398,6 @@ class ParticipantConnectorsViewSet(GenericViewSet):
        except Exception as error:
            LOGGER.error(error, exc_info=True)
 
-
     def create(self, request, *args, **kwargs):
         """POST method: create action to save an object by sending a POST request"""
         setattr(request.data, "_mutable", True)
@@ -420,7 +419,7 @@ class ParticipantConnectorsViewSet(GenericViewSet):
         user_org_obj = UserOrganizationMap.objects.select_related(Constants.ORGANIZATION).get(id=data.get(Constants.USER_MAP))
         org_obj = Organization.objects.get(id=user_org_obj.organization_id)
         user_obj = User.objects.get(id=user_org_obj.user_id)
-        dataset_obj = Datasets.objects.get(user_map_id=data.get(Constants.USER_MAP))
+        dataset_obj = Datasets.objects.get(id=data.get(Constants.DATASET))
         org_address = string_functions.get_full_address(org_obj.address)
 
         self.trigger_email(request, "A_participant_creates_a_connector_and_requests_a_certificate.html", Constants.NEW_CONNECTOR_CERTIFICATE_SUBJECT, user_obj, org_obj, org_address, serializer.data, dataset_obj)
@@ -629,6 +628,26 @@ class ParticipantConnectorsMapViewSet(GenericViewSet):
         """
         return serializer.save()
 
+    def trigger_email(self, request, template, subject, user_data, consumer_org_data, consumer_org_address, consumer_connector_data, provider_connector_data, dataset):
+       # trigger email to the participant as they are being added
+       try:
+           datahub_admin = User.objects.filter(role_id=1).first()
+           admin_full_name = string_functions.get_full_name(datahub_admin.first_name, datahub_admin.last_name)
+           participant_full_name = string_functions.get_full_name(user_data.first_name, user_data.last_name)
+
+           data = {"datahub_name": os.environ.get("DATAHUB_NAME", "datahub_name"), "datahub_admin": admin_full_name, "participant_admin_name": participant_full_name, "participant_email": user_data.email, "consumer_connector_data": consumer_connector_data, "consumer_org_data": consumer_org_data, "consumer_org_address": consumer_org_address, "dataset": dataset, "provider_connector_data": provider_connector_data, "datahub_site": os.environ.get("DATAHUB_SITE", "datahub_site")}
+
+           email_render = render(request, template, data)
+           mail_body = email_render.content.decode("utf-8")
+           Utils().send_email(
+               to_email=datahub_admin.email,
+               content=mail_body,
+               subject=subject,
+           )
+
+       except Exception as error:
+           LOGGER.error(error, exc_info=True)
+
     def create(self, request, *args, **kwargs):
         """POST method: create action to save an object by sending a POST request"""
         serializer = self.get_serializer(data=request.data, partial=True)
@@ -646,6 +665,16 @@ class ParticipantConnectorsMapViewSet(GenericViewSet):
         self.perform_create(provider_obj)
         self.perform_create(consumer_obj)
         self.perform_create(serializer)
+
+        user_map_id = request.data.get(Constants.USER_MAP)
+        user_org_obj = UserOrganizationMap.objects.select_related(Constants.ORGANIZATION).get(id=user_map_id) if user_map_id else None
+        org_obj = Organization.objects.get(id=user_org_obj.organization_id) if user_org_obj else None
+        user_obj = User.objects.get(id=user_org_obj.user_id) if user_org_obj else None
+        dataset_obj = Datasets.objects.get(id=provider_obj.dataset_id)
+        org_address = string_functions.get_full_address(org_obj.address) if org_obj else None
+
+        self.trigger_email(request, "Request–for–pairing.html", Constants.PAIRING_REQUEST_RECIEVED_SUBJECT, user_obj, org_obj, org_address, consumer_obj, provider_obj, dataset_obj)
+
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
     def update(self, request, *args, **kwargs):
