@@ -97,3 +97,4 @@ class Constants:
     REJECTED_NEW_DATASET_SUBJECT = "Your dataset has been rejected on "
     ENABLE_DATASET_SUBJECT = "Your dataset is now enabled in "
     DISABLE_DATASET_SUBJECT = "Your dataset is disabled in "
+    NEW_CONNECTOR_CERTIFICATE_SUBJECT = "A new certificate request has been received"
