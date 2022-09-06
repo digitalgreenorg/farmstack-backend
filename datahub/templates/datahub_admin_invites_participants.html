@@ -33,15 +33,15 @@
       }
       .biggerCard {
         /* height: 90vh; */
-        max-width: 600px;
-        /* border: 1px solid red; */
+        width: 500px;
         /* min-width: 33vw; */
         /* border: 1px solid green; */
         background-color: #eaeff2;
-        display: flex;
-        flex-direction: column;
+
+        display: block;
+        /* flex-direction: column; */
         row-gap: 55px;
-        padding: 33px 33px 0 33px;
+        padding: 33px 57px 0 57px;
         text-align: center;
         position: relative;
       }
@@ -118,15 +118,16 @@
         background-color: #dbbf60;
         /* height: 35px; */
         padding: 10px 50px;
-        color: white!important;
+        color: white;
         border: none;
         outline: none;
-        text-decoration: none!important;
+        font-weight: 600;
       }
       .whiteButton {
         border: 1px solid #dbbf60;
         color: #dbbf60;
         padding: 10px 50px;
+        font-weight: 600;
       }
       .logo {
         margin: 33px auto;
@@ -154,6 +155,21 @@
         /* border: 1px solid red; */
         /* border-bottom-left-radius: 10px !important; */
         /* border-bottom-right-radius: 10px !important; */
+      }
+      .font14bold {
+        font-size: 14px;
+        font-weight: 600;
+        color: #3d4a52;
+      }
+      .font14light {
+        font-size: 14px;
+        font-weight: 400;
+        color: #3d4a52;
+      }
+      @media screen and (max-width: 480px) {
+        .biggerCard {
+          padding: 10px 2px 0 2px;
+        }
       }
     </style>
   </head>

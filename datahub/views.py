@@ -339,7 +339,7 @@ class ParticipantViewSet(GenericViewSet):
             data = {"datahub_name": os.environ.get("DATAHUB_NAME", "datahub_name"), "participant_admin_name": full_name, "datahub_site": os.environ.get("DATAHUB_SITE", "datahub_site")}
 
             # render email from query_email template
-            email_render = render(request, "When_a_data-hub_admin_adds_a_participant.html", data)
+            email_render = render(request, "when_datahub_admin_adds_participant.html", data)
             mail_body = email_render.content.decode("utf-8")
 
             Utils().send_email(
@@ -397,9 +397,9 @@ class ParticipantViewSet(GenericViewSet):
 
     def destroy(self, request, pk):
         """DELETE method: delete an object"""
-        product = self.get_object()
-        product.status = False
-        self.perform_create(product)
+        participant = self.get_object()
+        participant.status = False
+        self.perform_create(participant)
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
@@ -431,7 +431,7 @@ class MailInvitationViewSet(GenericViewSet):
                 data = {"datahub_name": os.environ.get("DATAHUB_NAME", "datahub_name"), "participant_admin_name": full_name, "datahub_site": os.environ.get("DATAHUB_SITE", "datahub_site")}
 
                 # render email from query_email template
-                email_render = render(request, "Data-hub_admins_invite_participants_via_broadcast_method.html", data)
+                email_render = render(request, "datahub_admin_invites_participants.html", data)
                 mail_body = email_render.content.decode("utf-8")
 
                 Utils().send_email(
