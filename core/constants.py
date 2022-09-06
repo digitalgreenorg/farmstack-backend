@@ -61,6 +61,7 @@ class Constants:
     USAGE_POLICY = "usage_policy"
     PROJECT_DEPARTMENT = "project__department"
     CONNECTOR_TYPE = "connector_type"
+    CERTIFICATE = "certificate"
     CONSUMER = "consumer"
     CONSUMER_DATASET = "consumer__dataset"
     CONSUMER_PROJECT = "consumer__project"
@@ -102,3 +103,4 @@ class Constants:
     PAIRING_REQUEST_APPROVED_SUBJECT = "Your connector pairing request has been approved on "
     PAIRING_REQUEST_REJECTED_SUBJECT = "Your connector pairing request has been rejected on "
     CONNECTOR_UNPAIRED_SUBJECT = "A connector has been unpaired on "
+    CONNECTOR_DELETION = "A connector has been deleted from "

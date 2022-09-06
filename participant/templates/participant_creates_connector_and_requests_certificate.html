@@ -398,6 +398,21 @@
         font-weight: 600;
         line-height: 16px;
       }
+      .font14bold {
+        font-size: 14px;
+        font-weight: 600;
+        color: #3d4a52;
+      }
+      .font14light {
+        font-size: 14px;
+        font-weight: 400;
+        color: #3d4a52;
+      }
+      @media screen and (max-width: 480px) {
+        .biggerCard {
+          padding: 10px 2px 0 2px;
+        }
+      }
     </style>
   </head>
 
@@ -419,8 +434,8 @@
                     <div class="blackHead margin15px">
                         Hi {{ datahub_admin }}
                     </div>
-                    <div class="font12px">
-                        A certificate request for a connector on {{ datahub_name }} has been sent to you. The {{ org_data.name }} connector information is provided below.
+                    <div class="font14light">
+                        A certificate request for a connector on {{ datahub_name }} has been sent to you. The {{ participant_org.name }} connector information is provided below.
                     </div>
                   </div>
                 </div>
@@ -435,9 +450,13 @@
                         <td>Dataset name</td>
                       </tr>
                       <tr>
-                          <td>{{ connector_data.connector_name }}</td>
-                          <td>{{ connector_data.connector_type }}</td>
-                          <td>{{ dataset.name }}</td>
+                      <td class="font14bold">
+                            {{ connector.connector_name }}
+                        </td>
+                        <td class="font14bold">
+                          {{ connector.connector_type }}
+                        </td>
+                        <td class="font14bold">{{ dataset.name }}</td>
                       </tr>
                     </table>
                     <table>
@@ -445,8 +464,8 @@
                         <td>Description</td>
                       </tr>
                       <tr>
-                        <td>
-                            {{ connector_data.connector_description }}
+                       <td class="font14bold">
+                            {{ connector.connector_description }}
                         </td>
                       </tr>
                     </table>
@@ -454,7 +473,8 @@
                 </div>
 
                 <div class="connectorDetails">
-                  <div style="margin-top: 33px" class="yelloHead">
+                  <div class="yelloHead">Organisation details</div>
+                  <!-- <div style="margin-top: 33px" class="yelloHead"> -->
                     Organisation details
                   </div>
                   <div>
@@ -465,9 +485,13 @@
                         <td>Email</td>
                       </tr>
                       <tr>
-                          <td>{{ participant_admin_name }}</td>
-                          <td>{{ org_data.name }}</td>
-                          <td>{{ org_data.org_email }}</td>
+                        <td class="font14bold">
+                            {{ participant_admin_name }}
+                        </td>
+                        <td class="font14bold">
+                            {{ participant_org.name }}
+                        </td>
+                        <td class="font14bold">{{ participant_org.org_email }}</td>
                       </tr>
                     </table>
                     <table>
@@ -477,9 +501,15 @@
                         <td>Pincode</td>
                       </tr>
                       <tr>
-                          <td>{{ org_data.phone_number }}</td>
-                          <td>{{ org_address.address }}</td>
-                          <td>{{ org_address.pincode }}</td>
+                       <td class="font14bold">
+                            {{ participant_org.phone_number }}
+                        </td>
+                        <td class="font14bold">
+                            {{ participant_org_address.address }}
+                        </td>
+                        <td class="font14bold">
+                            {{ participant_org_address.pincode }}
+                        </td>
                       </tr>
                     </table>
                     <table>
@@ -487,7 +517,9 @@
                         <td>Country</td>
                       </tr>
                       <tr>
-                          <td>{{ org_address.country }}</td>
+                        <td class="font14bold">
+                          {{ participant_org_address.country }}
+                        </td>
                       </tr>
                     </table>
                   </div>

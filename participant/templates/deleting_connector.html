@@ -440,10 +440,10 @@
                 <div class="contentBox textCenter">
                   <div style="padding: 44px 45px">
                     <div class="blackHead margin15px">
-                      Hi &lt;datahub admin name &gt;
+                      Hi {{ datahub_admin }}
                     </div>
                     <div class="font14light">
-                      &lt;Participant organisation name&gt; has deleted one of
+                        {{ participant_org.name }} has deleted one of
                       their connectors
                     </div>
                   </div>
@@ -460,12 +460,12 @@
                       </tr>
                       <tr>
                         <td class="font14bold">
-                          Agnext - 1qsbsdsnjhdbjjhcjhsjhsdcjh
+                            {{ connector.connector_name }}
                         </td>
                         <td class="font14bold">
-                          Agnext - 1qsbsdsnjhdbjjhcjhsjhsdcjh
+                          {{ connector.connector_type }}
                         </td>
-                        <td class="font14bold">Soil data</td>
+                        <td class="font14bold">{{ dataset.name }}</td>
                       </tr>
                     </table>
                     <table>
@@ -474,9 +474,7 @@
                       </tr>
                       <tr>
                         <td class="font14bold">
-                          Lorem ipsum dolor sit amet, consectetur adipiscing
-                          elit. Lorem ipsum dolor sit amet, consectetur
-                          adipiscing elit.
+                            {{ connector.connector_description }}
                         </td>
                       </tr>
                     </table>
@@ -488,29 +486,45 @@
                   <div>
                     <table>
                       <tr>
-                        <td>Connector name</td>
-                        <td>Connector type</td>
-                        <td>Dataset name</td>
+                        <td>Contact person's name</td>
+                        <td>Organisation name</td>
+                        <td>Email</td>
                       </tr>
                       <tr>
                         <td class="font14bold">
-                          Agnext - 1qsbsdsnjhdbjjhcjhsjhsdcjh
+                            {{ participant_admin_name }}
                         </td>
                         <td class="font14bold">
-                          Agnext - 1qsbsdsnjhdbjjhcjhsjhsdcjh
+                            {{ participant_org.name }}
                         </td>
-                        <td class="font14bold">Soil data</td>
+                        <td class="font14bold">{{ participant_org.org_email }}</td>
                       </tr>
                     </table>
                     <table>
                       <tr>
-                        <td>Description</td>
+                        <td>Contact number</td>
+                        <td>Address</td>
+                        <td>Pincode</td>
                       </tr>
                       <tr>
                         <td class="font14bold">
-                          Lorem ipsum dolor sit amet, consectetur adipiscing
-                          elit. Lorem ipsum dolor sit amet, consectetur
-                          adipiscing elit.
+                            {{ participant_org.phone_number }}
+                        </td>
+                        <td class="font14bold">
+                            {{ participant_org_address.address }}
+                        </td>
+                        <td class="font14bold">
+                            {{ participant_org_address.pincode }}
+                        </td>
+                      </tr>
+                    </table>
+                    <table>
+                      <tr>
+                        <td>Country</td>
+                      </tr>
+                      <tr>
+                        <td class="font14bold">
+                          {{ participant_org_address.country }}
                         </td>
                       </tr>
                     </table>

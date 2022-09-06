@@ -177,7 +177,7 @@ class ParticipantDatasetsViewSet(GenericViewSet):
             data = {"datahub_name": os.environ.get("DATAHUB_NAME", "datahub_name"), "datahub_admin_name": full_name, "datahub_site": os.environ.get("DATAHUB_SITE", "datahub_site"), "dataset": dataset}
             print(data)
 
-            email_render = render(request, "A_new_dataset_request_has_been_uploded_in_datahub_name.html", data)
+            email_render = render(request, "new_dataset_request_in_datahub_name.html", data)
             mail_body = email_render.content.decode("utf-8")
             Utils().send_email(
                 to_email=datahub_admin.email,
@@ -378,14 +378,17 @@ class ParticipantConnectorsViewSet(GenericViewSet):
         """
         return serializer.save()
 
-    def trigger_email(self, request, template, subject, user_data, org_data, org_address, connector_data, dataset):
-       # trigger email to the participant as they are being added
+    def trigger_email(self, request, template, subject, user_org_map, connector_data, dataset):
+       """trigger email to the respective users"""
        try:
            datahub_admin = User.objects.filter(role_id=1).first()
            admin_full_name = string_functions.get_full_name(datahub_admin.first_name, datahub_admin.last_name)
-           participant_full_name = string_functions.get_full_name(user_data.first_name, user_data.last_name)
+           participant_org = Organization.objects.get(id=user_org_map.organization_id) if user_org_map else None
+           participant_org_address = string_functions.get_full_address(participant_org.address)
+           participant = User.objects.get(id=user_org_map.user_id)
+           participant_full_name = string_functions.get_full_name(participant.first_name, participant.last_name)
 
-           data = {"datahub_name": os.environ.get("DATAHUB_NAME", "datahub_name"), "datahub_admin": admin_full_name, "participant_admin_name": participant_full_name, "participant_email": user_data.email, "connector_data": connector_data, "org_data": org_data, "org_address": org_address, "dataset": dataset, "datahub_site": os.environ.get("DATAHUB_SITE", "datahub_site")}
+           data = {"datahub_name": os.environ.get("DATAHUB_NAME", "datahub_name"), "datahub_admin": admin_full_name, "participant_admin_name": participant_full_name, "participant_email": participant.email, "connector": connector_data, "participant_org": participant_org, "participant_org_address": participant_org_address, "dataset": dataset, "datahub_site": os.environ.get("DATAHUB_SITE", "datahub_site")}
 
            email_render = render(request, template, data)
            mail_body = email_render.content.decode("utf-8")
@@ -416,13 +419,9 @@ class ParticipantConnectorsViewSet(GenericViewSet):
         serializer.is_valid(raise_exception=True)
         self.perform_create(serializer)
 
-        user_org_obj = UserOrganizationMap.objects.select_related(Constants.ORGANIZATION).get(id=data.get(Constants.USER_MAP))
-        org_obj = Organization.objects.get(id=user_org_obj.organization_id)
-        user_obj = User.objects.get(id=user_org_obj.user_id)
-        dataset_obj = Datasets.objects.get(id=data.get(Constants.DATASET))
-        org_address = string_functions.get_full_address(org_obj.address)
-
-        self.trigger_email(request, "A_participant_creates_a_connector_and_requests_a_certificate.html", Constants.NEW_CONNECTOR_CERTIFICATE_SUBJECT, user_obj, org_obj, org_address, serializer.data, dataset_obj)
+        user_org_map = UserOrganizationMap.objects.select_related(Constants.ORGANIZATION).get(id=serializer.data.get(Constants.USER_MAP))
+        dataset = Datasets.objects.get(id=serializer.data.get(Constants.DATASET))
+        self.trigger_email(request, "participant_creates_connector_and_requests_certificate.html", Constants.NEW_CONNECTOR_CERTIFICATE_SUBJECT, user_org_map, serializer.data, dataset)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
     def list(self, request, *args, **kwargs):
@@ -503,23 +502,24 @@ class ParticipantConnectorsViewSet(GenericViewSet):
         serializer.is_valid(raise_exception=True)
         self.perform_create(serializer)
 
-        user_org_obj = UserOrganizationMap.objects.select_related(Constants.ORGANIZATION).get(id=str(instance.user_map.id))
-        org_obj = Organization.objects.get(id=user_org_obj.organization_id)
-        user_obj = User.objects.get(id=user_org_obj.user_id)
-        dataset_obj = Datasets.objects.get(user_map_id=str(instance.user_map.id))
-        org_address = string_functions.get_full_address(org_obj.address)
-        subject = "A certificate on " + os.environ.get("DATAHUB_NAME", "datahub_name") + " was successfully installed"
-
-        self.trigger_email(request, "Once_the_certificate_is_installed.html", subject, user_obj, org_obj, org_address, serializer.data, dataset_obj)
-
+        if request.data.get(Constants.CERTIFICATE):
+            user_org_map = UserOrganizationMap.objects.select_related(Constants.ORGANIZATION).get(id=serializer.data.get(Constants.USER_MAP))
+            dataset = Datasets.objects.get(id=serializer.data.get(Constants.DATASET))
+            subject = "A certificate on " + os.environ.get("DATAHUB_NAME", "datahub_name") + " was successfully installed"
+            self.trigger_email(request, "participant_installs_certificate.html", subject, user_org_map, serializer.data, dataset)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
     def destroy(self, request, pk):
         """DELETE method: delete an object"""
-        product = self.get_object()
-        if product.connector_status in [Constants.UNPAIRED, Constants.REJECTED]:
-            product.status = False
-            self.perform_create(product)
+        connector = self.get_object()
+        if connector.connector_status in [Constants.UNPAIRED, Constants.REJECTED]:
+            connector.status = False
+            self.perform_create(connector)
+
+            user_org_map = UserOrganizationMap.objects.select_related(Constants.ORGANIZATION).get(id=connector.user_map_id)
+            dataset = Datasets.objects.get(id=connector.dataset_id)
+            self.trigger_email(request, "deleting_connector.html", Constants.CONNECTOR_DELETION + os.environ.get("DATAHUB_NAME", "datahub_name"), user_org_map, connector, dataset)
+
             return Response(status=status.HTTP_204_NO_CONTENT)
         return Response(["Connector status should be either unpaired or rejected to delete"], status=400)
 
@@ -681,7 +681,7 @@ class ParticipantConnectorsMapViewSet(GenericViewSet):
 
         provider_org_map = UserOrganizationMap.objects.select_related(Constants.ORGANIZATION).get(id=provider_obj.user_map_id) if provider_obj.user_map_id else None
         provider = User.objects.get(id=provider_org_map.user_id) if provider_org_map else None
-        self.trigger_email_for_pairing(request, "Request–for–pairing.html", provider.email, Constants.PAIRING_REQUEST_RECIEVED_SUBJECT, consumer_obj, provider_obj)
+        self.trigger_email_for_pairing(request, "request_for_connector_pairing.html", provider.email, Constants.PAIRING_REQUEST_RECIEVED_SUBJECT, consumer_obj, provider_obj)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
     def update(self, request, *args, **kwargs):
@@ -762,9 +762,9 @@ class ParticipantConnectorsMapViewSet(GenericViewSet):
 
     def destroy(self, request, pk):
         """DELETE method: delete an object"""
-        product = self.get_object()
-        product.status = False
-        self.perform_create(product)
+        connector = self.get_object()
+        connector.status = False
+        self.perform_create(connector)
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
