@@ -36,13 +36,13 @@
 
       .biggerCard {
         /* height: 90vh; */
-        max-width: 600px;
+        width: 500px;
         /* min-width: 33vw; */
         /* border: 1px solid green; */
         background-color: #eaeff2;
 
-        display: flex;
-        flex-direction: column;
+        display: block;
+        /* flex-direction: column; */
         row-gap: 55px;
         padding: 33px 57px 0 57px;
         text-align: center;
@@ -140,9 +140,11 @@
         color: white;
         border: none;
         outline: none;
+        font-weight: 600;
       }
 
       .whiteButton {
+        font-weight: 600;
         border: 1px solid #dbbf60;
         color: #dbbf60;
         padding: 10px 50px;
@@ -214,7 +216,7 @@
       }
 
       .dataBox td {
-        width: 50%;
+        /* width: 50%; */
       }
 
       .margin33px {
@@ -259,8 +261,6 @@
       }
       .row td {
         padding: 5px;
-        /* display: inline-block; */
-        /* border: 1px solid red; */
       }
 
       .right {
@@ -269,7 +269,8 @@
         font-size: 14px;
         font-weight: 600;
         line-height: 16px;
-        color: #818488;
+        color: #4d4d4d !important;
+
         /* line-height:; */
       }
 
@@ -281,140 +282,29 @@
         font-weight: 400;
         line-height: 14px;
         color: #818488;
+        /* border: 1px solid red; */
+        /* width: 100px; */
       }
 
       .table > :not(caption) > * > * {
         border-bottom-width: 0px;
       }
-      .connectorGridBox {
-        display: grid;
-        grid-template-columns: auto auto auto !important;
-        /* grid-auto-columns: ; */
-        justify-content: space-evenly;
-        grid-gap: 5px;
-        padding: 5px;
+      .row td:first-child {
+        width: 100px;
+        /* word-wrap: break-word; */
       }
-      .orgGridBox {
-        display: grid;
-        grid-template-columns: auto auto auto !important;
-        /* grid-auto-columns: ; */
-        justify-content: space-evenly;
-        grid-gap: 5px;
-        padding: 5px;
+      .row td:last-child {
+        width: 300px;
+        /* border: 1px solid green; */
+        /* word-wrap: break-word; */
       }
-      .connectorGridBox div {
-        max-width: 200px;
-        overflow-wrap: break-word;
-        /* border: 1px solid red; */
-        /* margin: 10px; */
-      }
-      .orgGridBox div {
-        max-width: 200px;
-        overflow-wrap: break-word;
-        /* border: 1px solid red; */
-        /* margin: 10px; */
-      }
-      .connectorGridBox div:last-child {
-        max-width: none;
-        overflow-wrap: break-word;
-        /* border: 1px solid red; */
-        /* margin: 10px; */
-      }
-      .connectorGridBox > div {
-        text-align: left;
-      }
-      .orgGridBox > div {
-        text-align: left;
-      }
-      .connectorGridBox div > div:first-child {
-        font-size: 14px;
-        font-weight: 400;
-        line-height: 14px;
-        margin: 2px;
-      }
-      .connectorGridBox div > div:last-child {
-        font-size: 14px;
-        font-weight: 600;
-        line-height: 14px;
-        margin: 2px;
-      }
-      .connectorDetails div:last-child {
-        text-align: left;
-      }
-      .descGrid {
-        /* border: 1px solid red; */
-        color: #3d4a52;
-      }
-
-      .certiSpan {
-        font-weight: 400;
-        font-size: 14px;
-        line-height: 16px;
-        color: #4d4d4d;
-        margin-top: 33px;
-        margin-bottom: 33px;
-      }
-      .connectorDetails table {
-        width: 100%;
-        /* margin-top: 33px; */
-      }
-      .connectorDetails table:first-child {
-        /* width: 100%; */
-        margin-top: 16px;
-      }
-      .connectorDetails table tr {
-        /* border: 1px solid red; */
-      }
-
-      .connectorDetails table tr td {
-        max-width: 110px;
-        min-width: 110px;
-        overflow-wrap: break-word;
-        vertical-align: top;
-        text-align: left;
-        /* text-align: start; */
-        color: #3d4a52;
-
-        padding: 5px;
-        /* border: 1px solid red; */
-        /* display: flex; */
-        /* flex-direction: column; */
-        /* justify-content: left; */
-        /* align-items: center; */
-      }
-      .connectorDetails table tr:first-child td {
-        /* border: 1px solid red; */
-        font-size: 14px;
-        font-weight: 400;
-        line-height: 14px;
-      }
-      .connectorDetails {
-        /* border: 1px solid red; */
-        padding: 10px;
-      }
-      .connectorDetails table tr:nth-child(2) td {
-        /* border: 1px solid red; */
-        font-size: 14px;
-        font-weight: 600;
-        line-height: 16px;
-      }
-      .font14bold {
-        font-size: 14px;
-        font-weight: 600;
-        color: #3d4a52;
-      }
-      .font14light {
-        font-size: 14px;
-        font-weight: 400;
-        color: #3d4a52;
+      a {
+        color: #4d4d4d !important;
       }
       @media screen and (max-width: 480px) {
         .biggerCard {
           padding: 10px 2px 0 2px;
         }
-      }
-      td{
-          word-wrap: break-word !important;
       }
     </style>
   </head>
@@ -430,111 +320,55 @@
                 A new dataset request has been uploded in &lt;datahub name&gt;.
               </div> -->
               <div class="card">
-                <!-- card starts -->
                 <div class="topLine"></div>
                 <div class="contentBox textCenter">
-                  <div style="padding: 44px 45px">
-                    <div class="blackHead margin15px">
-                      Hi {{ datahub_admin }}
+                  <!-- <div style='padding: 44px 45px'>
+                    <div class='blackHead margin15px'>
+                      Hi &lt;datahub admin name &gt;
                     </div>
-                    <div class="font14light">
-                        A certificate was successfully installed for the following connector on {{ datahub_name }}.
+                    <div class='font12px'>
+                      A new dataset has been uploaded. The dataset details are
+                      listed below.
                     </div>
-                  </div>
-                </div>
+                  </div> -->
+                  <div class="dataBox">
+                    <!-- <div class='yelloHead margin33px'>Dataset details</div> -->
+                    <!-- <table style='border: 1px solid green; margin: auto'>
+                      <tr style='border: 1px solid red; margin: 0 auto'>
+                        <td
+                          style='
+                            border: 1px solid red;
+                            width: fit-content;
+                            margin: 0 auto;
+                          '
+                        > -->
+                    <!-- <div class='contentBoxValue'> -->
+                    <table class="table">
+                      <tr class="row">
+                        <td class="left">Date:</td>
+                        <td class="right">{{ date }}</td>
+                      </tr>
 
-                <div class="connectorDetails">
-                  <div class="yelloHead">Connnector details</div>
-                  <div>
-                    <table>
-                      <tr>
-                        <td>Connector name</td>
-                        <td>Connector type</td>
-                        <td>Dataset name</td>
+                      <tr class="row">
+                        <td class="left">Email:</td>
+                        <td class="right">{{ email }}</td>
                       </tr>
-                      <tr>
-                        <td class="font14bold">
-                            {{ connector.connector_name }}
-                        </td>
-                        <td class="font14bold">
-                          {{ connector.connector_type }}
-                        </td>
-                        <td class="font14bold">{{ dataset.name }}</td>
+                      <tr class="row">
+                        <td class="left">Subject:</td>
+                        <td class="right">{{ subject }}</td>
                       </tr>
-                    </table>
-                    <table>
-                      <tr>
-                        <td>Description</td>
-                      </tr>
-                      <tr>
-                       <td class="font14bold">
-                            {{ connector.connector_description }}
-                        </td>
-                      </tr>
-                    </table>
-                  </div>
-                </div>
-
-                <div class="connectorDetails">
-                  <div style="margin-top: 33px" class="yelloHead">
-                    Organisation details
-                  </div>
-                  <div>
-                    <table>
-                      <tr>
-                        <td>Contact person's name</td>
-                        <td>Organisation name</td>
-                        <td>Email</td>
-                      </tr>
-                        <tr>
-                        <td class="font14bold">
-                            {{ participant_admin_name }}
-                        </td>
-                        <td class="font14bold">
-                            {{ participant_org.name }}
-                        </td>
-                        <td class="font14bold">{{ participant_org.org_email }}</td>
-                      </tr>
-                    </table>
-                    <table>
-                      <tr>
-                        <td>Contact number</td>
-                        <td>Address</td>
-                        <td>Pincode</td>
-                      </tr>
-                      <tr>
-                       <td class="font14bold">
-                            {{ participant_org.phone_number }}
-                        </td>
-                        <td class="font14bold">
-                            {{ participant_org_address.address }}
-                        </td>
-                        <td class="font14bold">
-                            {{ participant_org_address.pincode }}
-                        </td>
-                      </tr>
-                    </table>
-                    <table>
-                      <tr>
-                        <td>Country</td>
-                      </tr>
-                      <tr>
-                        <td class="font14bold">
-                          {{ participant_org_address.country }}
+                      <tr class="row">
+                        <td class="left">Message:</td>
+                        <td class="right">
+                            {{ describe_query }}
                         </td>
                       </tr>
                     </table>
                   </div>
                 </div>
-
-                <!-- <div class='certiSpan'>
-                  Send the certificate to the &lt;participant's email id
-                  participant&gt;
-                </div> -->
-
                 <div class="bottomLine"></div>
-                <!-- card ends -->
               </div>
+
               <div class="logo">
                 <img
                   src="https://i.ibb.co/tHxbb7g/Frame-8981.png"
