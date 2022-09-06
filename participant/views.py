@@ -693,6 +693,7 @@ class ParticipantConnectorsMapViewSet(GenericViewSet):
             connectors = Connectors.objects.get(id=instance.consumer.id)
             connectors.connector_status = Constants.REJECTED
             self.perform_create(connectors)
+
             if (
                 not ConnectorsMap.objects.all()
                 .filter(provider=instance.provider.id, connector_pair_status=Constants.AWAITING_FOR_APPROVAL)
@@ -701,6 +702,12 @@ class ParticipantConnectorsMapViewSet(GenericViewSet):
                 connectors = Connectors.objects.get(id=instance.provider.id)
                 connectors.connector_status = Constants.UNPAIRED
                 self.perform_create(connectors)
+
+            provider_connectors = Connectors.objects.get(id=instance.provider.id)
+            consumer_org_map = UserOrganizationMap.objects.select_related(Constants.ORGANIZATION).get(id=connectors.user_map_id) if connectors.user_map_id else None
+            consumer = User.objects.get(id=consumer_org_map.user_id) if consumer_org_map else None
+            self.trigger_email_for_pairing(request, "pairing_request_rejected.html", consumer.email, Constants.PAIRING_REQUEST_REJECTED_SUBJECT + os.environ.get("DATAHUB_NAME", "datahub_name"), connectors, provider_connectors)
+
         elif request.data.get(Constants.CONNECTOR_PAIR_STATUS) == Constants.PAIRED:
             ports = get_ports()
             consumer_connectors = Connectors.objects.get(id=instance.consumer.id)
@@ -716,7 +723,7 @@ class ParticipantConnectorsMapViewSet(GenericViewSet):
 
             consumer_org_map = UserOrganizationMap.objects.select_related(Constants.ORGANIZATION).get(id=consumer_connectors.user_map_id) if consumer_connectors.user_map_id else None
             consumer = User.objects.get(id=consumer_org_map.user_id) if consumer_org_map else None
-            self.trigger_email_for_pairing(request, "Paring_request_approved.html", consumer.email, Constants.PAIRING_REQUEST_APPROVED_SUBJECT + os.environ.get("DATAHUB_NAME", "datahub_name"), consumer_connectors, provider_connectors)
+            self.trigger_email_for_pairing(request, "pairing_request_approved.html", consumer.email, Constants.PAIRING_REQUEST_APPROVED_SUBJECT + os.environ.get("DATAHUB_NAME", "datahub_name"), consumer_connectors, provider_connectors)
 
             rejection_needed_connectors = (
                 ConnectorsMap.objects.all()
@@ -738,6 +745,10 @@ class ParticipantConnectorsMapViewSet(GenericViewSet):
             consumer_connectors.connector_status = Constants.UNPAIRED
             self.perform_create(consumer_connectors)
             self.perform_create(provider_connectors)
+
+            consumer_org_map = UserOrganizationMap.objects.select_related(Constants.ORGANIZATION).get(id=consumer_connectors.user_map_id) if consumer_connectors.user_map_id else None
+            consumer = User.objects.get(id=consumer_org_map.user_id) if consumer_org_map else None
+            self.trigger_email_for_pairing(request, "when_connector_unpaired.html", consumer.email, Constants.CONNECTOR_UNPAIRED_SUBJECT + os.environ.get("DATAHUB_NAME", "datahub_name"), consumer_connectors, provider_connectors)
         self.perform_create(serializer)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 

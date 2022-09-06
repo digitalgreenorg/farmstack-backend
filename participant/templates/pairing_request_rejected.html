@@ -64,6 +64,7 @@
         /* margin-top: 33px; */
         border-radius: 10px 10px 10px 10px;
         overflow: hidden;
+        width: 500px;
       }
 
       .topLine {
@@ -441,15 +442,14 @@
                         Hi {{ consumer_admin_name }}
                     </div>
                     <div class="font14light">
-                      Your connector pairing request has been approved by
-                      {{ provider_organization_name }}. The data exchange
-                      has begun.
+                      Your connector pairing request has been rejected by
+                      {{ provider_org.name }}.
                     </div>
                   </div>
                 </div>
 
                 <div class="connectorDetails">
-                  <div class="yelloHead">Connector details</div>
+                  <div class="yelloHead">Connector Details</div>
                   <div>
                     <table>
                       <tr>
@@ -463,6 +463,7 @@
                         </td>
                         <td class="font14bold">
                           {{ consumer_connector.connector_type }}
+
                         </td>
                         <td class="font14bold">{{ dataset.name }}</td>
                       </tr>
@@ -474,7 +475,6 @@
                       <tr>
                         <td class="font14bold">
                           {{ consumer_connector.connector_description }}
-
                         </td>
                       </tr>
                     </table>
@@ -482,7 +482,7 @@
                 </div>
 
                 <div class="connectorDetails">
-                  <div class="yelloHead">Paired with</div>
+                  <div class="yelloHead">You tried pairing with</div>
                   <div>
                     <table>
                       <tr>
@@ -522,7 +522,6 @@
                     <td>
                         <!-- <button class="yellowButton">View details</button> -->
                       <a target="_blank" class="yellowButton" href="{{ datahub_site }}/participant/connectors/">View details</a>
-
                     </td>
                     <!-- <td>
                       <button class='whiteButton'>Reject</button>
