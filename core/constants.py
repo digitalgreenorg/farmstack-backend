@@ -99,3 +99,4 @@ class Constants:
     DISABLE_DATASET_SUBJECT = "Your dataset is disabled in "
     NEW_CONNECTOR_CERTIFICATE_SUBJECT = "A new certificate request has been received"
     PAIRING_REQUEST_RECIEVED_SUBJECT = "You have recieved a connector pairing request"
+    PAIRING_REQUEST_APPROVED_SUBJECT = "Your connector pairing request has been approved on "
