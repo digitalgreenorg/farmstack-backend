@@ -197,7 +197,7 @@ class OrganizationViewSet(GenericViewSet):
                     )
                     user_org_serializer.is_valid(raise_exception=True)
                     self.perform_create(user_org_serializer)
-                    self.trigger_email(request, "Datahub_admin_adds_participant_organization.html", user_obj.email, Constants.PARTICIPANT_ORG_ADDITION_SUBJECT, user_obj.first_name, user_obj.last_name, request.data.get("name"))
+                    self.trigger_email(request, "datahub_admin_adds_participant_organization.html", user_obj.email, Constants.PARTICIPANT_ORG_ADDITION_SUBJECT, user_obj.first_name, user_obj.last_name, request.data.get("name"))
                     return Response(org_serializer.data, status=status.HTTP_201_CREATED)
 
             elif org_queryset and not user_org_queryset:
@@ -211,7 +211,7 @@ class OrganizationViewSet(GenericViewSet):
                     )
                     user_org_serializer.is_valid(raise_exception=True)
                     self.perform_create(user_org_serializer)
-                    self.trigger_email(request, "Datahub_admin_adds_participant_organization.html", user_obj.email, Constants.PARTICIPANT_ORG_ADDITION_SUBJECT, user_obj.first_name, user_obj.last_name, request.data.get("name"))
+                    self.trigger_email(request, "datahub_admin_adds_participant_organization.html", user_obj.email, Constants.PARTICIPANT_ORG_ADDITION_SUBJECT, user_obj.first_name, user_obj.last_name, request.data.get("name"))
                     return Response(user_org_serializer.data, status=status.HTTP_201_CREATED)
 
         except Exception as error:
@@ -264,7 +264,7 @@ class OrganizationViewSet(GenericViewSet):
 
         organization_serializer.is_valid(raise_exception=True)
         self.perform_create(organization_serializer)
-        self.trigger_email(request, "Datahub_admin_updates_participant_organization.html", user_obj.email, Constants.PARTICIPANT_ORG_UPDATION_SUBJECT, user_obj.first_name, user_obj.last_name, organization_serializer.data["name"])
+        self.trigger_email(request, "datahub_admin_updates_participant_organization.html", user_obj.email, Constants.PARTICIPANT_ORG_UPDATION_SUBJECT, user_obj.first_name, user_obj.last_name, organization_serializer.data["name"])
         data = {
             Constants.USER: {"id": pk},
             Constants.ORGANIZATION: organization_serializer.data,
@@ -283,7 +283,7 @@ class OrganizationViewSet(GenericViewSet):
         org_queryset = Organization.objects.get(id=user_org_queryset.organization_id)
         org_queryset.status = False
         self.perform_create(org_queryset)
-        self.trigger_email(request, "Datahub_admin_deletes_participant_organization.html", user_obj.email, Constants.PARTICIPANT_ORG_DELETION_SUBJECT, user_obj.first_name, user_obj.last_name, org_queryset.name)
+        self.trigger_email(request, "datahub_admin_deletes_participant_organization.html", user_obj.email, Constants.PARTICIPANT_ORG_DELETION_SUBJECT, user_obj.first_name, user_obj.last_name, org_queryset.name)
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
@@ -914,16 +914,16 @@ class DatahubDatasetsViewSet(GenericViewSet):
         data = request.data
 
         if data.get(Constants.APPROVAL_STATUS) == Constants.APPROVED:
-            self.trigger_email(request, "Datahub_admin_approves_dataset.html", user_obj.email, Constants.APPROVED_NEW_DATASET_SUBJECT, user_obj.first_name, user_obj.last_name, instance.name)
+            self.trigger_email(request, "datahub_admin_approves_dataset.html", user_obj.email, Constants.APPROVED_NEW_DATASET_SUBJECT, user_obj.first_name, user_obj.last_name, instance.name)
 
         elif data.get(Constants.APPROVAL_STATUS) == Constants.REJECTED:
-            self.trigger_email(request, "Datahub_admin_rejects_dataset.html", user_obj.email, Constants.REJECTED_NEW_DATASET_SUBJECT, user_obj.first_name, user_obj.last_name, instance.name)
+            self.trigger_email(request, "datahub_admin_rejects_dataset.html", user_obj.email, Constants.REJECTED_NEW_DATASET_SUBJECT, user_obj.first_name, user_obj.last_name, instance.name)
 
         elif data.get(Constants.IS_ENABLED) == str(True) or data.get(Constants.IS_ENABLED) == str("true"):
-            self.trigger_email(request, "Datahub_admin_enables_dataset.html", user_obj.email, Constants.ENABLE_DATASET_SUBJECT, user_obj.first_name, user_obj.last_name, instance.name)
+            self.trigger_email(request, "datahub_admin_enables_dataset.html", user_obj.email, Constants.ENABLE_DATASET_SUBJECT, user_obj.first_name, user_obj.last_name, instance.name)
 
         elif data.get(Constants.IS_ENABLED) == str(False) or data.get(Constants.IS_ENABLED) == str("false"):
-            self.trigger_email(request, "Datahub_admin_disables_dataset.html", user_obj.email, Constants.DISABLE_DATASET_SUBJECT, user_obj.first_name, user_obj.last_name, instance.name)
+            self.trigger_email(request, "datahub_admin_disables_dataset.html", user_obj.email, Constants.DISABLE_DATASET_SUBJECT, user_obj.first_name, user_obj.last_name, instance.name)
 
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 

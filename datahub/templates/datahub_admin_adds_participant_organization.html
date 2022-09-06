@@ -33,14 +33,15 @@
       }
       .biggerCard {
         /* height: 90vh; */
-        max-width: 400px;
+        width: 500px;
         /* min-width: 33vw; */
         /* border: 1px solid green; */
         background-color: #eaeff2;
-        display: flex;
-        flex-direction: column;
+
+        display: block;
+        /* flex-direction: column; */
         row-gap: 55px;
-        padding: 130px 57px 0 57px;
+        padding: 33px 57px 0 57px;
         text-align: center;
         position: relative;
       }
@@ -54,10 +55,12 @@
         background-color: white;
         border: none;
         outline: none;
+        width: 500px;
         box-shadow: 0px 10px 15px rgba(0, 0, 0, 0.1);
-        margin-top: 33px;
+        /* margin-top: 33px; */
         border-radius: 10px 10px 10px 10px;
         overflow: hidden;
+        /* width: 500px; */
       }
       .topLine {
         /* border-radius: 10px 10px 0px 0px; */
@@ -66,7 +69,7 @@
         height: 11px;
       }
       .contentBox {
-        font-size: 12px;
+        font-size: 14px;
         /* max-width: 277px; */
       }
       .blackHead {
@@ -74,8 +77,10 @@
         font-weight: 700;
         line-height: 12px;
         margin-bottom: 33px;
+        font-size: 16px;
       }
       .yelloHead {
+        font-size: 16px;
         color: #d8af28;
         font-weight: 700;
         line-height: 12px;
@@ -111,21 +116,22 @@
       }
       .eachQuery {
         margin-bottom: 20px;
+        display: none;
       }
       .yellowButton {
         background-color: #dbbf60;
         /* height: 35px; */
         padding: 10px 50px;
-        font-style: none;
-        color: white!important;
+        color: white;
         border: none;
         outline: none;
-        text-decoration: none!important;
+        font-weight: 600;
       }
       .whiteButton {
         border: 1px solid #dbbf60;
         color: #dbbf60;
         padding: 10px 50px;
+        font-weight: 600;
       }
       .logo {
         margin: 33px auto;
@@ -154,6 +160,11 @@
         /* border-bottom-left-radius: 10px !important; */
         /* border-bottom-right-radius: 10px !important; */
       }
+      @media screen and (max-width: 480px) {
+        .biggerCard {
+          padding: 10px 2px 0 2px;
+        }
+      }
     </style>
   </head>
   <body>
@@ -163,8 +174,9 @@
         <tbody>
           <tr class="biggerCard">
             <td>
-              <!-- <div class="title">
-                  Your organisation has been added as a participant in {{ datahub_name }}.
+              <!-- <div class='title'>
+                Your organisation has been added as a participant in datahub
+                name &gt;.
               </div> -->
               <div class="card">
                 <div class="topLine"></div>
@@ -173,19 +185,10 @@
                     <div class="blackHead margin15px">
                         Hi {{ participant_admin_name }}
                     </div>
-
                     <div class="font12px">
-                        Your dataset, {{ dataset_name }} has been approved.
-                        Now you can view your approved dataset.
+                       Your {{ participant_organization_name }} is successfully added by {{ datahub_admin }} in {{ datahub_name }} as a participant.
                     </div>
                   </div>
-
-                      <div>
-                          <!-- <button class="yellowButton">Login to datahub</button> -->
-                          <!-- <button target="_blank" class="yellowButton" href="{{ datahub_site }}">Login to datahub</button> -->
-                          <a target="_blank" class="yellowButton" href="{{ datahub_site }}/datahub/datasets/">View dataset</a>
-                      </div>
-                    </div>
                   </div>
                 </div>
                 <div class="bottomLine"></div>
