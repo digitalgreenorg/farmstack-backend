@@ -173,7 +173,6 @@ class ParticipantDatasetsViewSet(GenericViewSet):
             full_name = string_functions.get_full_name(datahub_admin.first_name, datahub_admin.last_name)
 
             data = {"datahub_name": os.environ.get("DATAHUB_NAME", "datahub_name"), "datahub_admin_name": full_name, "datahub_site": os.environ.get("DATAHUB_SITE", "datahub_site"), "dataset": serializer.data}
-            print(data)
 
             email_render = render(request, "new_dataset_upload_request_in_datahub.html", data)
             mail_body = email_render.content.decode("utf-8")
