@@ -1038,7 +1038,8 @@ class DatahubDashboard(GenericViewSet):
     def dashboard(self, request):
         """Retrieve datahub dashboard details"""
         try:
-            total_participants = User.objects.filter(role_id=3, status=True).count()
+            # total_participants = User.objects.filter(role_id=3, status=True).count()
+            total_participants = UserOrganizationMap.objects.select_related(Constants.USER, Constants.ORGANIZATION).filter(user__role=3, user__status=True).count()
             total_datasets = (
                 Datasets.objects.select_related("user_map", "user_map__user", "user_map__organization")
                 .filter(user_map__user__status=True, status=True)
