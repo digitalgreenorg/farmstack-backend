@@ -438,6 +438,7 @@ class MailInvitationViewSet(GenericViewSet):
                     to_email=[user.email],
                     content=mail_body,
                     subject= os.environ.get("DATAHUB_NAME", "datahub_name") + Constants.PARTICIPANT_INVITATION_SUBJECT,
+                    )
 
             failed = f"No participants found for emails: {emails_not_found}"
             LOGGER.warning(failed)
