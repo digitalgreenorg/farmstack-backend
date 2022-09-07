@@ -390,10 +390,12 @@ class ParticipantViewSet(GenericViewSet):
         organization = OrganizationSerializer(
             Organization.objects.get(id=request.data.get(Constants.ID)),
             data=request.data,
-            partial=None,
+            partial=True,
         )
         organization.is_valid(raise_exception=True)
         self.perform_create(organization)
+
+        self.trigger_email(request, "datahub_admin_updates_participant_organization.html", serializer.data.get("email"), Constants.PARTICIPANT_ORG_UPDATION_SUBJECT, serializer.data.get("first_name"), serializer.data.get("last_name"), organization.data.get("name"))
         data = {
             Constants.USER: serializer.data,
             Constants.ORGANIZATION: organization.data,
@@ -403,8 +405,16 @@ class ParticipantViewSet(GenericViewSet):
     def destroy(self, request, pk):
         """DELETE method: delete an object"""
         participant = self.get_object()
-        participant.status = False
-        self.perform_create(participant)
+        user_org_queryset = UserOrganizationMap.objects.select_related(Constants.ORGANIZATION).get(user_id=pk)
+        org_queryset = Organization.objects.get(id=user_org_queryset.organization_id)
+
+        with transaction.atomic():
+            if participant.status is not False and org_queryset.status is not False:
+                participant.status = False
+                org_queryset.status = False
+                self.perform_create(participant)
+                self.perform_create(org_queryset)
+                self.trigger_email(request, "datahub_admin_deletes_participant_organization.html", participant.email, Constants.PARTICIPANT_ORG_DELETION_SUBJECT, participant.first_name, participant.last_name, org_queryset.name)
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
