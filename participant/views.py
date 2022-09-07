@@ -171,11 +171,8 @@ class ParticipantDatasetsViewSet(GenericViewSet):
         try:
             datahub_admin = User.objects.filter(role_id=1).first()
             full_name = string_functions.get_full_name(datahub_admin.first_name, datahub_admin.last_name)
-            dataset_serializer = DatasetSerializer(data=request.data)
-            dataset_serializer.is_valid(raise_exception=True)
-            dataset = dataset_serializer.data
 
-            data = {"datahub_name": os.environ.get("DATAHUB_NAME", "datahub_name"), "datahub_admin_name": full_name, "datahub_site": os.environ.get("DATAHUB_SITE", "datahub_site"), "dataset": dataset}
+            data = {"datahub_name": os.environ.get("DATAHUB_NAME", "datahub_name"), "datahub_admin_name": full_name, "datahub_site": os.environ.get("DATAHUB_SITE", "datahub_site"), "dataset": serializer.data}
 
             email_render = render(request, "new_dataset_upload_request_in_datahub.html", data)
             mail_body = email_render.content.decode("utf-8")
