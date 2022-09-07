@@ -104,3 +104,4 @@ class Constants:
     PAIRING_REQUEST_REJECTED_SUBJECT = "Your connector pairing request has been rejected on "
     CONNECTOR_UNPAIRED_SUBJECT = "A connector has been unpaired on "
     CONNECTOR_DELETION = "A connector has been deleted from "
+    MAX_FILE_SIZE = 2097152

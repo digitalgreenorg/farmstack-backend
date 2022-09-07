@@ -30,6 +30,7 @@ from rest_framework.response import Response
 from rest_framework.viewsets import GenericViewSet, ViewSet
 from uritemplate import partial
 from utils import string_functions
+from utils.connector_utils import run_containers, stop_containers
 
 from participant.models import (
     Connectors,
@@ -497,7 +498,20 @@ class ParticipantConnectorsViewSet(GenericViewSet):
     def update(self, request, *args, **kwargs):
         """PUT method: update or send a PUT request on an object of the Product model"""
         instance = self.get_object()
-        serializer = self.get_serializer(instance, data=request.data, partial=True)
+        setattr(request.data, "_mutable", True)
+        data = request.data
+        docker_image = data.get(Constants.DOCKER_IMAGE_URL)
+        if docker_image:
+            try:
+                docker = docker_image.split(":")
+                response = requests.get(f"https://hub.docker.com/v2/repositories/{docker[0]}/tags/{docker[1]}")
+                images = response.json().get(Constants.IMAGES, [{}])
+                hash = [image.get(Constants.DIGEST, "") for image in images if image.get("architecture") == "amd64"]
+                data[Constants.USAGE_POLICY] = hash[0].split(":")[1].strip()
+            except Exception as error:
+                logging.error("Error while fetching the hash value. ERROR: %s", error)
+                return Response({Constants.DOCKER_IMAGE_URL: [f"Invalid docker Image: {docker_image}"]}, status=400)
+        serializer = self.get_serializer(instance, data=data, partial=True)
         serializer.is_valid(raise_exception=True)
         self.perform_create(serializer)
 
@@ -605,7 +619,6 @@ class ParticipantConnectorsViewSet(GenericViewSet):
         connector_serializer = ConnectorListSerializer(data, many=True)
         return Response(connector_serializer.data, status=200)
 
-
 class ParticipantConnectorsMapViewSet(GenericViewSet):
     """
     This class handles the participant Datsets CRUD operations.
@@ -660,6 +673,13 @@ class ParticipantConnectorsMapViewSet(GenericViewSet):
            LOGGER.error(error, exc_info=True)
 
 
+    @action(detail=False, methods=["get"])
+    def data_size(self, request, *args, **kwargs):
+        size = request.query_params.get("size", "")
+        print("**********SIZE OF DATA************************")
+        print(size)
+        return Response([], status=200)
+
     def create(self, request, *args, **kwargs):
         """POST method: create action to save an object by sending a POST request"""
         serializer = self.get_serializer(data=request.data, partial=True)
@@ -669,9 +689,14 @@ class ParticipantConnectorsMapViewSet(GenericViewSet):
         provider_obj = Connectors.objects.get(id=provider)
         consumer_obj = Connectors.objects.get(id=consumer)
         if provider_obj.connector_status == Constants.PAIRED:
-            return Response([f"Provider connector ({({provider_connectors.connector_name}) }) is already paired with another connector"], 400)
+            return Response(
+                [f"Provider connector ({({provider_obj.connector_name}) }) is already paired with another connector"],
+                400,
+            )
         elif consumer_obj.connector_status == Constants.PAIRED:
-            return Response([f"Consumer connector ({consumer_connectors.connector_name}) is already paired with another connector"], 400)
+            return Response(
+                [f"Consumer connector ({consumer_obj.connector_name}) is already paired with another connector"], 400
+            )
         consumer_obj.connector_status = Constants.AWAITING_FOR_APPROVAL
         provider_obj.connector_status = Constants.PAIRING_REQUEST_RECIEVED
         self.perform_create(provider_obj)
@@ -685,9 +710,9 @@ class ParticipantConnectorsMapViewSet(GenericViewSet):
 
     def update(self, request, *args, **kwargs):
         """PUT method: update or send a PUT request on an object of the Product model"""
+        setattr(request.data, "_mutable", True)
         instance = self.get_object()
-        serializer = self.get_serializer(instance, data=request.data, partial=True)
-        serializer.is_valid(raise_exception=True)
+        data = request.data
         if request.data.get(Constants.CONNECTOR_PAIR_STATUS) == Constants.REJECTED:
             connectors = Connectors.objects.get(id=instance.consumer.id)
             connectors.connector_status = Constants.REJECTED
@@ -708,13 +733,23 @@ class ParticipantConnectorsMapViewSet(GenericViewSet):
             self.trigger_email_for_pairing(request, "pairing_request_rejected.html", consumer.email, Constants.PAIRING_REQUEST_REJECTED_SUBJECT + os.environ.get("DATAHUB_NAME", "datahub_name"), connectors, provider_connectors)
 
         elif request.data.get(Constants.CONNECTOR_PAIR_STATUS) == Constants.PAIRED:
-            ports = get_ports()
             consumer_connectors = Connectors.objects.get(id=instance.consumer.id)
             provider_connectors = Connectors.objects.get(id=instance.provider.id)
             if provider_connectors.connector_status == Constants.PAIRED:
-                return Response([f"Provider connector ({({provider_connectors.connector_name}) }) is already paired with another connector"], 400)
+                return Response(
+                    [
+                        f"Provider connector ({({provider_connectors.connector_name}) }) is already paired with another connector"
+                    ],
+                    400,
+                )
             elif consumer_connectors.connector_status == Constants.PAIRED:
-                return Response([f"Consumer connector ({consumer_connectors.connector_name}) is already paired with another connector"], 400)
+                return Response(
+                    [
+                        f"Consumer connector ({consumer_connectors.connector_name}) is already paired with another connector"
+                    ],
+                    400,
+                )
+            ports = run_containers(provider_connectors, consumer_connectors)
             provider_connectors.connector_status = Constants.PAIRED
             consumer_connectors.connector_status = Constants.PAIRED
             self.perform_create(consumer_connectors)
@@ -736,7 +771,8 @@ class ParticipantConnectorsMapViewSet(GenericViewSet):
                     map_connectors_consumer.connector_status = Constants.REJECTED
                     self.perform_create(map_connectors)
                     self.perform_create(map_connectors_consumer)
-            serializer.ports = ports
+            print(ports)
+            data["ports"] = json.dumps(ports)
         elif request.data.get(Constants.CONNECTOR_PAIR_STATUS) == Constants.UNPAIRED:
             consumer_connectors = Connectors.objects.get(id=instance.consumer.id)
             provider_connectors = Connectors.objects.get(id=instance.provider.id)
@@ -744,10 +780,14 @@ class ParticipantConnectorsMapViewSet(GenericViewSet):
             consumer_connectors.connector_status = Constants.UNPAIRED
             self.perform_create(consumer_connectors)
             self.perform_create(provider_connectors)
+            stop_containers(provider_connectors, consumer_connectors)
 
             consumer_org_map = UserOrganizationMap.objects.select_related(Constants.ORGANIZATION).get(id=consumer_connectors.user_map_id) if consumer_connectors.user_map_id else None
             consumer = User.objects.get(id=consumer_org_map.user_id) if consumer_org_map else None
             self.trigger_email_for_pairing(request, "when_connector_unpaired.html", consumer.email, Constants.CONNECTOR_UNPAIRED_SUBJECT + os.environ.get("DATAHUB_NAME", "datahub_name"), consumer_connectors, provider_connectors)
+
+        serializer = self.get_serializer(instance, data=data, partial=True)
+        serializer.is_valid(raise_exception=True)
         self.perform_create(serializer)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
@@ -828,6 +868,7 @@ class ParticipantDepatrmentViewSet(GenericViewSet):
         page = self.paginate_queryset(data)
         department_serializer = DepartmentSerializer(page, many=True)
         return self.get_paginated_response(department_serializer.data)
+
 
     def list(self, request, *args, **kwargs):
         """GET method: query all the list of objects from the Product model"""
@@ -938,22 +979,3 @@ class ParticipantProjectViewSet(GenericViewSet):
         project.status = False
         self.perform_create(project)
         return Response(status=status.HTTP_204_NO_CONTENT)
-
-
-def get_ports():
-    """This function give the ports for the connectors"""
-    with open("./ports.json", "r") as openfile:
-        ports_object = json.load(openfile)
-    provider_core = int(ports_object.get(Constants.PROVIDER_CORE)) + 1
-    consumer_core = int(ports_object.get(Constants.CONSUMER_CORE)) + 1
-    provider_app = int(ports_object.get(Constants.PROVIDER_APP)) + 1
-    consumer_app = int(ports_object.get(Constants.CONSUMER_APP)) + 1
-    new_ports = {
-        Constants.PROVIDER_CORE: provider_core,
-        Constants.CONSUMER_CORE: consumer_core,
-        Constants.CONSUMER_APP: consumer_app,
-        Constants.PROVIDER_APP: provider_app,
-    }
-    with open("./ports.json", "w") as outfile:
-        json.dump(new_ports, outfile)
-    return new_ports
