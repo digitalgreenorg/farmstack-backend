@@ -1,3 +1,4 @@
+import re
 from accounts import models
 from accounts.serializers import UserSerializer
 from core.constants import Constants
@@ -147,6 +148,33 @@ class ParticipantDatasetsSerializer(serializers.ModelSerializer):
             "age_of_date",
         ]
 
+
+class ParticipantDatasetsSerializerForEmail(serializers.ModelSerializer):
+    class Meta:
+        model = Datasets
+        fields = ["name", "description", "category", "geography", "crop_detail", "constantly_update", "age_of_date", "data_capture_end", "dataset_size", "connector_availability"]
+
+    def to_representation(self, instance):
+        ret = super().to_representation(instance)
+        data = []
+        for key, value in ret["category"].items():
+            if value == True:
+                data.append(re.sub("_", " ", key).title())
+            ret["category"] = data
+
+        ret["name"] = ret["name"].title()
+        ret["crop_detail"] = ret["crop_detail"].title()
+        ret["geography"] = ret["geography"].title()
+        ret["connector_availability"] = re.sub("_", " ", ret["connector_availability"]).title()
+
+        if ret["constantly_update"] == True:
+            ret["constantly_update"] = "Yes"
+        elif ret["constantly_update"] == False:
+            ret["constantly_update"] = "No"
+
+        ret["data_capture_end"] =  ret["data_capture_end"].split("T")[0] if ret["data_capture_end"] else None
+
+        return ret
 
 class DepartmentSerializer(serializers.ModelSerializer):
     class Meta:

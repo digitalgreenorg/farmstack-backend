@@ -1,4 +1,4 @@
-import json, time
+import json, time, re
 import logging
 import os
 import subprocess
@@ -58,6 +58,7 @@ from participant.serializers import (
     ProjectSerializer,
     ProjectDepartmentSerializer,
     TicketSupportSerializer,
+    ParticipantDatasetsSerializerForEmail,
 )
 
 LOGGER = logging.getLogger(__name__)
@@ -152,8 +153,26 @@ class ParticipantDatasetsViewSet(GenericViewSet):
         """
         return serializer.save()
 
+    def trigger_email(self, request, template, subject, recepient, dataset):
+       """trigger email to the respective users"""
+       try:
+           datahub_admin_name = string_functions.get_full_name(recepient.first_name, recepient.last_name)
+           data = {"datahub_name": os.environ.get("DATAHUB_NAME", "datahub_name"), "datahub_admin_name": datahub_admin_name, "datahub_site": os.environ.get("DATAHUB_SITE", "datahub_site"), "dataset": dataset}
+
+           email_render = render(request, template, data)
+           mail_body = email_render.content.decode("utf-8")
+           Utils().send_email(
+               to_email=recepient.email,
+               content=mail_body,
+               subject=subject,
+           )
+
+       except Exception as error:
+            LOGGER.error(error, exc_info=True)
+
+
     def create(self, request, *args, **kwargs):
-        """POST method: create action to save an object by sending a POST request"""
+        """creates a new participant dataset and triggers an email to the datahub admin"""
         if not csv_and_xlsx_file_validatation(request.data.get(Constants.SAMPLE_DATASET)):
             return Response(
                 {
@@ -167,24 +186,11 @@ class ParticipantDatasetsViewSet(GenericViewSet):
         serializer.is_valid(raise_exception=True)
         self.perform_create(serializer)
 
-        # trigger email to the participant as they are being added
-        try:
-            datahub_admin = User.objects.filter(role_id=1).first()
-            full_name = string_functions.get_full_name(datahub_admin.first_name, datahub_admin.last_name)
-
-            data = {"datahub_name": os.environ.get("DATAHUB_NAME", "datahub_name"), "datahub_admin_name": full_name, "datahub_site": os.environ.get("DATAHUB_SITE", "datahub_site"), "dataset": serializer.data}
-
-            email_render = render(request, "new_dataset_upload_request_in_datahub.html", data)
-            mail_body = email_render.content.decode("utf-8")
-            Utils().send_email(
-                to_email=datahub_admin.email,
-                content=mail_body,
-                subject= Constants.ADDED_NEW_DATASET_SUBJECT + os.environ.get("DATAHUB_NAME", "datahub_name"),
-            )
-
-        except Exception as error:
-            LOGGER.error(error, exc_info=True)
-
+        # initialize an email to datahub admin for approval of the dataset
+        serializer_email = ParticipantDatasetsSerializerForEmail(serializer.data)
+        recepient = User.objects.filter(role_id=1).first()
+        subject = Constants.ADDED_NEW_DATASET_SUBJECT + os.environ.get("DATAHUB_NAME", "datahub_name")
+        self.trigger_email(request, "new_dataset_upload_request_in_datahub.html", subject, recepient, serializer_email.data)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
     def list(self, request, *args, **kwargs):

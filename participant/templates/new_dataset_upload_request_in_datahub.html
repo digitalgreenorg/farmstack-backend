@@ -317,7 +317,11 @@
                         <td class="left">Data Category:</td>
                         <td class="right">
                             {% for category in  dataset.category %}
-                                {{ category }} |
+                                {% if forloop.last %}
+                                    {{ category }}
+                                {% else %}
+                                    {{ category }} |
+                                {% endif%}
                             {% endfor %}
                         </td>
                       </tr>
@@ -339,7 +343,7 @@
                       </tr>
                       <tr class="row">
                         <td class="left">Data capture interval:</td>
-                        <td class="right">{{ dataset.data_capture_start }}</td>
+                        <td class="right">{{ dataset.data_capture_end }}</td>
                       </tr>
                       <tr class="row">
                         <td class="left">Size of actual data:</td>
@@ -353,7 +357,7 @@
                   </div>
                   <div class="queriesBox">
                     <div class="blackHead">
-                      What can you do as a participant?
+                      What can you do as a next?
                     </div>
                   </div>
                   <table class="btngrp">
