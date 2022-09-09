@@ -178,7 +178,7 @@ class ConnectorsSerializer(serializers.ModelSerializer):
 
 class ConnectorsListSerializer(serializers.ModelSerializer):
 
-    department_details = DepartmentSerializer(required=False, allow_null=True, read_only=True, source="project.department")
+    department_details = DepartmentSerializer(required=False, allow_null=True, read_only=True, source="department")
     project_details = ProjectSerializer(required=False, allow_null=True, read_only=True, source="project")
 
     class Meta:
@@ -197,7 +197,7 @@ class ConnectorsRetriveSerializer(serializers.ModelSerializer):
             model = Organization
             fields = ["id", "name", "website"]
     department_details = DepartmentSerializer(
-        required=False, allow_null=True, read_only=True, source="project.department"
+        required=False, allow_null=True, read_only=True, source="department"
     )
     project_details = ProjectSerializer(required=False, allow_null=True, read_only=True, source="project")
     dataset_details = DatasetSerializer(required=False, allow_null=True, read_only=True, source="dataset")
@@ -221,7 +221,7 @@ class ConnectorsMapProviderRetriveSerializer(serializers.ModelSerializer):
             model = Organization
             fields = ["id", "name", "website"]
     department_details = DepartmentSerializer(
-        required=False, allow_null=True, read_only=True, source="provider.project.department"
+        required=False, allow_null=True, read_only=True, source="provider.department"
     )
     project_details = ProjectSerializer(required=False, allow_null=True, read_only=True, source="provider.project")
     dataset_details = DatasetSerializer(required=False, allow_null=True, read_only=True, source="provider.dataset")
@@ -245,7 +245,7 @@ class ConnectorsMapConsumerRetriveSerializer(serializers.ModelSerializer):
             model = Organization
             fields = ["id", "name", "website"]
     department_details = DepartmentSerializer(
-        required=False, allow_null=True, read_only=True, source="consumer.project.department"
+        required=False, allow_null=True, read_only=True, source="consumer.department"
     )
     project_details = ProjectSerializer(required=False, allow_null=True, read_only=True, source="consumer.project")
     dataset_details = DatasetSerializer(required=False, allow_null=True, read_only=True, source="consumer.dataset")
