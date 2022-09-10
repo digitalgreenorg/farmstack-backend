@@ -105,3 +105,8 @@ class Constants:
     CONNECTOR_UNPAIRED_SUBJECT = "A connector has been unpaired on "
     CONNECTOR_DELETION = "A connector has been deleted from "
     MAX_FILE_SIZE = 2097152
+    DATAHUB_NAME = "DATAHUB_NAME"
+    datahub_name = "datahub_name"
+    DATAHUB_SITE = "DATAHUB_SITE"
+    datahub_site = "datahub_site"
+    NEW_DATASET_UPLOAD_REQUEST_IN_DATAHUB = "new_dataset_upload_request_in_datahub.html"

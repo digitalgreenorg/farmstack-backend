@@ -1,4 +1,4 @@
-import re
+import re, datetime, json
 from accounts import models
 from accounts.serializers import UserSerializer
 from core.constants import Constants
@@ -152,29 +152,47 @@ class ParticipantDatasetsSerializer(serializers.ModelSerializer):
 class ParticipantDatasetsSerializerForEmail(serializers.ModelSerializer):
     class Meta:
         model = Datasets
-        fields = ["name", "description", "category", "geography", "crop_detail", "constantly_update", "age_of_date", "data_capture_end", "dataset_size", "connector_availability"]
+        fields = ["name", "description", "category", "geography", "crop_detail", "constantly_update", "age_of_date", "data_capture_start", "data_capture_end", "dataset_size", "connector_availability"]
 
     def to_representation(self, instance):
+        """Return formatted data for email template"""
         ret = super().to_representation(instance)
         data = []
-        for key, value in ret["category"].items():
-            if value == True:
-                data.append(re.sub("_", " ", key).title())
-            ret["category"] = data
+        if ret.get("category"):
+            for key, value in json.loads(ret.get("category")).items():
+                if value == True:
+                    data.append(re.sub("_", " ", key).title())
+                ret["category"] = data
+        else:
+            ret["category"] = None
 
-        ret["name"] = ret["name"].title()
-        ret["crop_detail"] = ret["crop_detail"].title()
-        ret["geography"] = ret["geography"].title()
-        ret["connector_availability"] = re.sub("_", " ", ret["connector_availability"]).title()
+        ret["name"] = ret.get("name").title() if ret.get("name") else None
+        ret["crop_detail"] = ret.get("crop_detail").title() if ret.get("crop_detail") else None
+        ret["geography"] = ret.get("geography").title() if ret.get("geography") else None
+        ret["connector_availability"] = re.sub("_", " ", ret.get("connector_availability")).title() if ret.get("connector_availability") else None
 
-        if ret["constantly_update"] == True:
-            ret["constantly_update"] = "Yes"
-        elif ret["constantly_update"] == False:
-            ret["constantly_update"] = "No"
+        if ret.get("constantly_update"):
+            if ret["constantly_update"] == True:
+                ret["constantly_update"] = "Yes"
+            elif ret["constantly_update"] == False:
+                ret["constantly_update"] = "No"
+        else:
+            ret["constantly_update"] = None
 
-        ret["data_capture_end"] =  ret["data_capture_end"].split("T")[0] if ret["data_capture_end"] else None
+        if ret.get("data_capture_start"):
+            date = ret["data_capture_start"].split("T")[0]
+            ret["data_capture_start"] = datetime.datetime.strptime(date, "%Y-%m-%d").strftime("%d/%m/%Y")
+        else:
+            ret["data_capture_start"] = None
+
+        if ret.get("data_capture_end"):
+            date = ret["data_capture_end"].split("T")[0]
+            ret["data_capture_end"] = datetime.datetime.strptime(date, "%Y-%m-%d").strftime("%d/%m/%Y")
+        else:
+            ret["data_capture_end"] = None
 
         return ret
+
 
 class DepartmentSerializer(serializers.ModelSerializer):
     class Meta:

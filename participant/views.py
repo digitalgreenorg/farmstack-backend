@@ -153,26 +153,8 @@ class ParticipantDatasetsViewSet(GenericViewSet):
         """
         return serializer.save()
 
-    def trigger_email(self, request, template, subject, recepient, dataset):
-       """trigger email to the respective users"""
-       try:
-           datahub_admin_name = string_functions.get_full_name(recepient.first_name, recepient.last_name)
-           data = {"datahub_name": os.environ.get("DATAHUB_NAME", "datahub_name"), "datahub_admin_name": datahub_admin_name, "datahub_site": os.environ.get("DATAHUB_SITE", "datahub_site"), "dataset": dataset}
-
-           email_render = render(request, template, data)
-           mail_body = email_render.content.decode("utf-8")
-           Utils().send_email(
-               to_email=recepient.email,
-               content=mail_body,
-               subject=subject,
-           )
-
-       except Exception as error:
-            LOGGER.error(error, exc_info=True)
-
-
     def create(self, request, *args, **kwargs):
-        """creates a new participant dataset and triggers an email to the datahub admin"""
+        """creates a new participant dataset and triggers an email to the datahub admin requesting for approval of dataset"""
         if not csv_and_xlsx_file_validatation(request.data.get(Constants.SAMPLE_DATASET)):
             return Response(
                 {
@@ -180,18 +162,33 @@ class ParticipantDatasetsViewSet(GenericViewSet):
                         "Invalid Sample dataset file (or) Atleast 5 rows should be available. please upload valid file"
                     ]
                 },
-                400,
+                status=status.HTTP_400_BAD_REQUEST,
             )
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        self.perform_create(serializer)
 
-        # initialize an email to datahub admin for approval of the dataset
-        serializer_email = ParticipantDatasetsSerializerForEmail(serializer.data)
-        recepient = User.objects.filter(role_id=1).first()
-        subject = Constants.ADDED_NEW_DATASET_SUBJECT + os.environ.get("DATAHUB_NAME", "datahub_name")
-        self.trigger_email(request, "new_dataset_upload_request_in_datahub.html", subject, recepient, serializer_email.data)
-        return Response(serializer.data, status=status.HTTP_201_CREATED)
+        try:
+           # initialize an email to datahub admin for approval of the dataset and save the data
+           serializer_email = ParticipantDatasetsSerializerForEmail(request.data)
+           recepient = User.objects.filter(role_id=1).first()
+           subject = Constants.ADDED_NEW_DATASET_SUBJECT + os.environ.get(Constants.DATAHUB_NAME, Constants.datahub_name)
+           datahub_admin_name = string_functions.get_full_name(recepient.first_name, recepient.last_name)
+           data = {Constants.datahub_name: os.environ.get(Constants.DATAHUB_NAME, Constants.datahub_name), "datahub_admin_name": datahub_admin_name, Constants.datahub_site: os.environ.get(Constants.DATAHUB_SITE, Constants.datahub_site), "dataset": serializer_email.data}
+
+           self.perform_create(serializer)       # save data
+           email_render = render(request, Constants.NEW_DATASET_UPLOAD_REQUEST_IN_DATAHUB, data)
+           mail_body = email_render.content.decode("utf-8")
+           Utils().send_email(
+               to_email=recepient.email,
+               content=mail_body,
+               subject=subject,
+           )
+           LOGGER.info(f"Successfully saved the dataset and emailed datahub admin: {recepient.email} for approval of dataset. \n dataset saved: {serializer.data}")
+           return Response(serializer.data, status=status.HTTP_201_CREATED)
+        except Exception as error:
+            LOGGER.error(error, exc_info=True)
+            return Response({"Error": ["Bad Request"]}, status=status.HTTP_400_BAD_REQUEST)
+
 
     def list(self, request, *args, **kwargs):
         """GET method: query all the list of objects from the Product model"""
