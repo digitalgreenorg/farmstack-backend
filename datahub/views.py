@@ -308,41 +308,19 @@ class ParticipantViewSet(GenericViewSet):
         """
         return serializer.save()
 
-    def trigger_email(self, request, template, to_email, subject, first_name, last_name, org_name):
-       # trigger email to the participant as they are being added
-       try:
-           datahub_admin = User.objects.filter(role_id=1).first()
-           admin_full_name = string_functions.get_full_name(datahub_admin.first_name, datahub_admin.last_name)
-           participant_full_name = string_functions.get_full_name(first_name, last_name)
-
-           data = {"datahub_name": os.environ.get("DATAHUB_NAME", "datahub_name"), "participant_admin_name": participant_full_name, "participant_organization_name": org_name, "datahub_admin": admin_full_name, "datahub_site": os.environ.get("DATAHUB_SITE", "datahub_site")}
-           print(data)
-
-           email_render = render(request, template, data)
-           mail_body = email_render.content.decode("utf-8")
-           Utils().send_email(
-               to_email=to_email,
-               content=mail_body,
-               subject= subject + os.environ.get("DATAHUB_NAME", "datahub_name"),
-           )
-
-       except Exception as error:
-           LOGGER.error(error, exc_info=True)
-
     def create(self, request, *args, **kwargs):
         """POST method: create action to save an object by sending a POST request"""
-        data = request.data
         org_queryset = list(
             Organization.objects.filter(org_email=self.request.data.get(Constants.ORG_EMAIL, "")).values()
         )
         if not org_queryset:
-            org_serializer = OrganizationSerializer(data=data, partial=True)
+            org_serializer = OrganizationSerializer(data=request.data, partial=True)
             org_serializer.is_valid(raise_exception=True)
             org_queryset = self.perform_create(org_serializer)
             org_id = org_queryset.id
         else:
             org_id = org_queryset[0].get(Constants.ID)
-        user_serializer = UserCreateSerializer(data=data)
+        user_serializer = UserCreateSerializer(data=request.data)
         user_serializer.is_valid(raise_exception=True)
         user_saved = self.perform_create(user_serializer)
 
@@ -355,7 +333,24 @@ class ParticipantViewSet(GenericViewSet):
         user_org_serializer.is_valid(raise_exception=True)
         self.perform_create(user_org_serializer)
 
-        self.trigger_email(request, "when_datahub_admin_adds_participant.html", data.get("email"), Constants.PARTICIPANT_ORG_ADDITION_SUBJECT, data.get("first_name"), data.get("last_name"), data.get("name"))
+        try:
+            datahub_admin = User.objects.filter(role_id=1).first()
+            admin_full_name = string_functions.get_full_name(datahub_admin.first_name, datahub_admin.last_name)
+            participant_full_name = string_functions.get_full_name(request.data.get("first_name"), request.data.get("last_name"))
+
+            data = {Constants.datahub_name: os.environ.get(Constants.DATAHUB_NAME, Constants.datahub_name), "participant_admin_name": participant_full_name, "participant_organization_name": request.data.get("name"), "datahub_admin": admin_full_name, Constants.datahub_site: os.environ.get(Constants.DATAHUB_SITE, Constants.datahub_site)}
+
+            email_render = render(request, Constants.WHEN_DATAHUB_ADMIN_ADDS_PARTICIPANT, data)
+            mail_body = email_render.content.decode("utf-8")
+            Utils().send_email(
+                to_email=request.data.get("email"),
+                content=mail_body,
+                subject=Constants.PARTICIPANT_ORG_ADDITION_SUBJECT + os.environ.get(Constants.DATAHUB_NAME, Constants.datahub_name),
+            )
+        except Exception as error:
+            LOGGER.error(error, exc_info=True)
+            return Response({"message": ["An error occured"]}, status=status.HTTP_200_OK)
+
         return Response(user_org_serializer.data, status=status.HTTP_201_CREATED)
 
     def list(self, request, *args, **kwargs):
@@ -383,40 +378,77 @@ class ParticipantViewSet(GenericViewSet):
 
     def update(self, request, *args, **kwargs):
         """PUT method: update or send a PUT request on an object of the Product model"""
-        instance = self.get_object()
-        serializer = self.get_serializer(instance, data=request.data, partial=True)
-        serializer.is_valid(raise_exception=True)
-        self.perform_create(serializer)
-        organization = OrganizationSerializer(
-            Organization.objects.get(id=request.data.get(Constants.ID)),
-            data=request.data,
-            partial=True,
-        )
-        organization.is_valid(raise_exception=True)
-        self.perform_create(organization)
+        participant = self.get_object()
+        user_serializer = self.get_serializer(participant, data=request.data, partial=True)
+        user_serializer.is_valid(raise_exception=True)
+        organization = Organization.objects.get(id=request.data.get(Constants.ID))
+        organization_serializer = OrganizationSerializer(organization, data=request.data, partial=True)
+        organization_serializer.is_valid(raise_exception=True)
 
-        self.trigger_email(request, "datahub_admin_updates_participant_organization.html", serializer.data.get("email"), Constants.PARTICIPANT_ORG_UPDATION_SUBJECT, serializer.data.get("first_name"), serializer.data.get("last_name"), organization.data.get("name"))
-        data = {
-            Constants.USER: serializer.data,
-            Constants.ORGANIZATION: organization.data,
-        }
-        return Response(data, status=status.HTTP_201_CREATED)
+        try:
+            datahub_admin = User.objects.filter(role_id=1).first()
+            admin_full_name = string_functions.get_full_name(datahub_admin.first_name, datahub_admin.last_name)
+            participant_full_name = string_functions.get_full_name(participant.first_name, participant.last_name)
+
+            data = {Constants.datahub_name: os.environ.get(Constants.DATAHUB_NAME, Constants.datahub_name), "participant_admin_name": participant_full_name, "participant_organization_name": organization.name, "datahub_admin": admin_full_name, Constants.datahub_site: os.environ.get(Constants.DATAHUB_SITE, Constants.datahub_site)}
+
+            # update data & trigger_email
+            self.perform_create(user_serializer)
+            self.perform_create(organization_serializer)
+            email_render = render(request, Constants.DATAHUB_ADMIN_UPDATES_PARTICIPANT_ORGANIZATION, data)
+            mail_body = email_render.content.decode("utf-8")
+            Utils().send_email(
+                to_email=participant.email,
+                content=mail_body,
+                subject=Constants.PARTICIPANT_ORG_UPDATION_SUBJECT + os.environ.get(Constants.DATAHUB_NAME, Constants.datahub_name),
+            )
+
+            data = {
+                Constants.USER: user_serializer.data,
+                Constants.ORGANIZATION: organization_serializer.data,
+            }
+            return Response(data, status=status.HTTP_201_CREATED)
+        except Exception as error:
+            LOGGER.error(error, exc_info=True)
+            return Response({"message": ["An error occured"]}, status=status.HTTP_200_OK)
 
     def destroy(self, request, pk):
         """DELETE method: delete an object"""
         participant = self.get_object()
-        user_org_queryset = UserOrganizationMap.objects.select_related(Constants.ORGANIZATION).get(user_id=pk)
-        org_queryset = Organization.objects.get(id=user_org_queryset.organization_id)
+        user_organization = UserOrganizationMap.objects.select_related(Constants.ORGANIZATION).get(user_id=pk)
+        organization = Organization.objects.get(id=user_organization.organization_id)
 
-        with transaction.atomic():
-            if participant.status is not False and org_queryset.status is not False:
-                participant.status = False
-                org_queryset.status = False
+        if participant.status is not False and organization.status is not False:
+            participant.status = False
+            organization.status = False
+
+            try:
+                datahub_admin = User.objects.filter(role_id=1).first()
+                admin_full_name = string_functions.get_full_name(datahub_admin.first_name, datahub_admin.last_name)
+                participant_full_name = string_functions.get_full_name(participant.first_name, participant.last_name)
+
+                data = {Constants.datahub_name: os.environ.get(Constants.DATAHUB_NAME, Constants.datahub_name), "participant_admin_name": participant_full_name, "participant_organization_name": organization.name, "datahub_admin": admin_full_name, Constants.datahub_site: os.environ.get(Constants.DATAHUB_SITE, Constants.datahub_site)}
+
+                # delete data & trigger_email
                 self.perform_create(participant)
-                self.perform_create(org_queryset)
-                self.trigger_email(request, "datahub_admin_deletes_participant_organization.html", participant.email, Constants.PARTICIPANT_ORG_DELETION_SUBJECT, participant.first_name, participant.last_name, org_queryset.name)
-        return Response(status=status.HTTP_204_NO_CONTENT)
+                self.perform_create(organization)
+                email_render = render(request, Constants.DATAHUB_ADMIN_DELETES_PARTICIPANT_ORGANIZATION, data)
+                mail_body = email_render.content.decode("utf-8")
+                Utils().send_email(
+                    to_email=participant.email,
+                    content=mail_body,
+                    subject=Constants.PARTICIPANT_ORG_DELETION_SUBJECT + os.environ.get(Constants.DATAHUB_NAME, Constants.datahub_name),
+                )
 
+                return Response({"message": ["Participant deleted"]}, status=status.HTTP_204_NO_CONTENT)
+            except Exception as error:
+                LOGGER.error(error, exc_info=True)
+                return Response({"message": ["An error occured"]}, status=status.HTTP_200_OK)
+
+        elif participant.status is False and organization.status is False:
+            return Response({"message": ["Object already deleted"]}, status=status.HTTP_204_NO_CONTENT)
+
+        return Response({"message": ["An error occured"]}, status=status.HTTP_200_OK)
 
 class MailInvitationViewSet(GenericViewSet):
     """
