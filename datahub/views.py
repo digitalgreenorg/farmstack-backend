@@ -197,7 +197,7 @@ class OrganizationViewSet(GenericViewSet):
                     )
                     user_org_serializer.is_valid(raise_exception=True)
                     self.perform_create(user_org_serializer)
-                    self.trigger_email(request, "datahub_admin_adds_participant_organization.html", user_obj.email, Constants.PARTICIPANT_ORG_ADDITION_SUBJECT, user_obj.first_name, user_obj.last_name, request.data.get("name"))
+                    # self.trigger_email(request, "datahub_admin_adds_participant_organization.html", user_obj.email, Constants.PARTICIPANT_ORG_ADDITION_SUBJECT, user_obj.first_name, user_obj.last_name, request.data.get("name"))
                     return Response(org_serializer.data, status=status.HTTP_201_CREATED)
 
             elif org_queryset and not user_org_queryset:
@@ -211,7 +211,7 @@ class OrganizationViewSet(GenericViewSet):
                     )
                     user_org_serializer.is_valid(raise_exception=True)
                     self.perform_create(user_org_serializer)
-                    self.trigger_email(request, "datahub_admin_adds_participant_organization.html", user_obj.email, Constants.PARTICIPANT_ORG_ADDITION_SUBJECT, user_obj.first_name, user_obj.last_name, request.data.get("name"))
+                    # self.trigger_email(request, "datahub_admin_adds_participant_organization.html", user_obj.email, Constants.PARTICIPANT_ORG_ADDITION_SUBJECT, user_obj.first_name, user_obj.last_name, request.data.get("name"))
                     return Response(user_org_serializer.data, status=status.HTTP_201_CREATED)
 
         except Exception as error:

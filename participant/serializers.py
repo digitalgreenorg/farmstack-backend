@@ -164,12 +164,14 @@ class ParticipantDatasetsSerializerForEmail(serializers.ModelSerializer):
                     data.append(re.sub("_", " ", key).title())
                 ret["category"] = data
         else:
-            ret["category"] = None
+            ret["category"] = "N/A"
 
-        ret["name"] = ret.get("name").title() if ret.get("name") else None
-        ret["crop_detail"] = ret.get("crop_detail").title() if ret.get("crop_detail") else None
-        ret["geography"] = ret.get("geography").title() if ret.get("geography") else None
-        ret["connector_availability"] = re.sub("_", " ", ret.get("connector_availability")).title() if ret.get("connector_availability") else None
+        ret["name"] = ret.get("name").title() if ret.get("name") else "N/A"
+        ret["crop_detail"] = ret.get("crop_detail").title() if ret.get("crop_detail") else "N/A"
+        ret["geography"] = ret.get("geography").title() if ret.get("geography") else "N/A"
+        ret["connector_availability"] = re.sub("_", " ", ret.get("connector_availability")).title() if ret.get("connector_availability") else "N/A"
+        ret["dataset_size"] = ret.get("dataset_size") if ret.get("dataset_size") else "N/A"
+        ret["age_of_date"] = ret.get("age_of_date") if ret.get("age_of_date") else "N/A"
 
         if ret.get("constantly_update"):
             if ret["constantly_update"] == True:
@@ -177,19 +179,19 @@ class ParticipantDatasetsSerializerForEmail(serializers.ModelSerializer):
             elif ret["constantly_update"] == False:
                 ret["constantly_update"] = "No"
         else:
-            ret["constantly_update"] = None
+            ret["constantly_update"] = "N/A"
 
         if ret.get("data_capture_start"):
             date = ret["data_capture_start"].split("T")[0]
             ret["data_capture_start"] = datetime.datetime.strptime(date, "%Y-%m-%d").strftime("%d/%m/%Y")
         else:
-            ret["data_capture_start"] = None
+            ret["data_capture_start"] = "N/A"
 
         if ret.get("data_capture_end"):
             date = ret["data_capture_end"].split("T")[0]
             ret["data_capture_end"] = datetime.datetime.strptime(date, "%Y-%m-%d").strftime("%d/%m/%Y")
         else:
-            ret["data_capture_end"] = None
+            ret["data_capture_end"] = "N/A"
 
         return ret
 

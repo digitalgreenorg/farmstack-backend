@@ -6,7 +6,7 @@ def get_full_name(first_name, last_name):
 
 def get_full_address(address):
     if address:
-        data = {"address": address["address"]+", "+ address["city"], "pincode": address["pincode"], "country": address["country"]}
+        data = {"address": address.get("address","")+ ", " + address.get("city",""), "pincode": address.get("pincode",""), "country": address.get("country","")}
         return data
 
 def dataset_category_formatted(category):
