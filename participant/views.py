@@ -422,7 +422,7 @@ class ParticipantConnectorsViewSet(GenericViewSet):
 
         user_org_map = UserOrganizationMap.objects.select_related(Constants.ORGANIZATION).get(id=serializer.data.get(Constants.USER_MAP))
         dataset = Datasets.objects.get(id=serializer.data.get(Constants.DATASET))
-        self.trigger_email(request, "participant_creates_connector_and_requests_certificate.html", Constants.NEW_CONNECTOR_CERTIFICATE_SUBJECT, user_org_map, serializer.data, dataset)
+        self.trigger_email(request, Constants.CREATE_CONNECTOR_AND_REQUEST_CERTIFICATE, Constants.CREATE_CONNECTOR_AND_REQUEST_CERTIFICATE_SUBJECT, user_org_map, serializer.data, dataset)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
     def list(self, request, *args, **kwargs):
@@ -520,7 +520,7 @@ class ParticipantConnectorsViewSet(GenericViewSet):
             user_org_map = UserOrganizationMap.objects.select_related(Constants.ORGANIZATION).get(id=serializer.data.get(Constants.USER_MAP))
             dataset = Datasets.objects.get(id=serializer.data.get(Constants.DATASET))
             subject = "A certificate on " + os.environ.get("DATAHUB_NAME", "datahub_name") + " was successfully installed"
-            self.trigger_email(request, "participant_installs_certificate.html", subject, user_org_map, serializer.data, dataset)
+            self.trigger_email(request, Constants.PARTICIPANT_INSTALLS_CERTIFICATE, subject, user_org_map, serializer.data, dataset)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
     def destroy(self, request, pk):
