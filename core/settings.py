@@ -123,7 +123,7 @@ DATABASES = {
         "OPTIONS": {
             "client_encoding": "UTF8",
         },
-    }
+    },
     # "default": {
     #     "ENGINE": "django.db.backends.sqlite3",
     #     "NAME": BASE_DIR / "db.sqlite3",
@@ -279,24 +279,30 @@ LOGGING = {
     "filters": {
         # information regarding filters
     },
+    'root': {
+        'handlers': ['console'],
+        'level': 'INFO',
+    },
     "formatters": {
-        # "Simple_Format": {
-        #     "format": "{levelname} {message}",
-        #     "style": "{",
-        # }
+        "Simple_Format": {
+            "format": "{levelname} {message}",
+            "style": "{",
+        },
         "with_datetime": {
             "format": "[%(asctime)s] [%(levelname)-s] %(lineno)-4s%(name)-15s %(message)s",
         },
     },
     "handlers": {
         "file": {
-            "level": "DEBUG",
+            # "level": "DEBUG",
+            "level": "INFO",
             "class": "logging.FileHandler",
             "filename": "./logs/log_file.log",
             "formatter": "with_datetime",
         },
         "console": {
-            "level": "DEBUG",
+            # "level": "DEBUG",
+            "level": "INFO",
             "class": "logging.StreamHandler",
             "formatter": "with_datetime",
         },

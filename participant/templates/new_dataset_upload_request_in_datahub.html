@@ -327,8 +327,13 @@
                       <tr class='row'>
                         <td class='left'>Data Category:</td>
                         <td class='right'>
-                          {% for category in dataset.category %} {{ category }}
-                          | {% endfor %}
+                            {% for category in  dataset.category %}
+                                {% if forloop.last %}
+                                    {{ category }}
+                                {% else %}
+                                    {{ category }} |
+                                {% endif%}
+                            {% endfor %}
                         </td>
                       </tr>
                       <tr class='row'>
@@ -365,16 +370,18 @@
                   </div>
                   <div class='queriesBox'>
                     <div class='blackHead'>
-                      What can you do as a participant?
+                      What can you do as a next?
                     </div>
                   </div>
                   <table class='btngrp'>
                     <tr>
                       <td>
-                        <a class='yellowButton'>Approve</a>
+                          <!-- <a class='yellowButton'>Approve</a> -->
+                        <a target="_blank" class="yellowButton" href="{{ datahub_site }}/participant/datasets/">Approve</a>
                       </td>
                       <td>
-                        <a class='whiteButton'>Reject</a>
+                          <!-- <a class='whiteButton'>Reject</a> -->
+                        <a target="_blank" class="yellowButton" href="{{ datahub_site }}/participant/datasets/">Reject</a>
                       </td>
                     </tr>
                   </table>
