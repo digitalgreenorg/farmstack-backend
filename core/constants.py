@@ -113,3 +113,7 @@ class Constants:
     WHEN_DATAHUB_ADMIN_ADDS_PARTICIPANT = "when_datahub_admin_adds_participant.html"
     DATAHUB_ADMIN_UPDATES_PARTICIPANT_ORGANIZATION = "datahub_admin_updates_participant_organization.html"
     DATAHUB_ADMIN_DELETES_PARTICIPANT_ORGANIZATION = "datahub_admin_deletes_participant_organization.html"
+    WHEN_CONNECTOR_UNPAIRED = "when_connector_unpaired.html"
+    PAIRING_REQUEST_APPROVED = "pairing_request_approved.html"
+    PAIRING_REQUEST_REJECTED = "pairing_request_rejected.html"
+    REQUEST_CONNECTOR_PAIRING = "request_for_connector_pairing.html"

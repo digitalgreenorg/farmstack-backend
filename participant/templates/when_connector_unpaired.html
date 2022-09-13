@@ -442,10 +442,19 @@
                 <div class="contentBox textCenter">
                   <div style="padding: 44px 45px">
                     <div class="blackHead margin15px">
-                        {{  consumer_admin_name }}
+                        Hi {% if consumer_admin_name %}
+                             {{ consumer_admin_name }}
+                                {% else %}
+                             {{ provider_admin_name }}
+                            {% endif %}
                     </div>
                     <div class="font14light">
-                        {{ provider_org.name }} has unpaired the
+                      {% if provider_org.name %}
+                        {{ provider_org.name }}
+                      {% else %}
+                        {{ consumer_org.name }}
+                      {% endif %}
+                        has unpaired the
                       connectors.
                     </div>
                   </div>
