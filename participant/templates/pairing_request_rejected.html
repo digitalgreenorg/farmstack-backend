@@ -447,10 +447,20 @@
                 <div class="topLine"></div>
                 <div class="contentBox textCenter">
                   <div>
-                    <div class="blackHead">Hi {{ consumer_admin_name }}</div>
+                    <div class="blackHead">
+                        Hi {% if consumer_admin_name %}
+                             {{ consumer_admin_name }}
+                                {% else %}
+                             {{ provider_admin_name }}
+                            {% endif %}
+                    </div>
                     <div class="font14light">
-                      Your connector pairing request has been rejected by {{
-                      provider_org.name }}.
+                      Your connector pairing request has been rejected by
+                      {% if provider_org.name %}
+                        {{ provider_org.name }}
+                      {% else %}
+                        {{ consumer_org.name }}
+                      {% endif %}
                     </div>
                   </div>
                 </div>

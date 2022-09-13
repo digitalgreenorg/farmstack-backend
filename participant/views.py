@@ -1,4 +1,4 @@
-import json, time
+import json, time, re
 import logging
 import os
 import subprocess
@@ -58,6 +58,8 @@ from participant.serializers import (
     ProjectSerializer,
     ProjectDepartmentSerializer,
     TicketSupportSerializer,
+    ParticipantDatasetsSerializerForEmail,
+    ConnectorsSerializerForEmail,
 )
 
 LOGGER = logging.getLogger(__name__)
@@ -153,7 +155,7 @@ class ParticipantDatasetsViewSet(GenericViewSet):
         return serializer.save()
 
     def create(self, request, *args, **kwargs):
-        """POST method: create action to save an object by sending a POST request"""
+        """creates a new participant dataset and triggers an email to the datahub admin requesting for approval of dataset"""
         if not csv_and_xlsx_file_validatation(request.data.get(Constants.SAMPLE_DATASET)):
             return Response(
                 {
@@ -161,31 +163,33 @@ class ParticipantDatasetsViewSet(GenericViewSet):
                         "Invalid Sample dataset file (or) Atleast 5 rows should be available. please upload valid file"
                     ]
                 },
-                400,
+                status=status.HTTP_400_BAD_REQUEST,
             )
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        self.perform_create(serializer)
 
-        # trigger email to the participant as they are being added
         try:
-            datahub_admin = User.objects.filter(role_id=1).first()
-            full_name = string_functions.get_full_name(datahub_admin.first_name, datahub_admin.last_name)
+           # initialize an email to datahub admin for approval of the dataset and save the data
+           serializer_email = ParticipantDatasetsSerializerForEmail(request.data)
+           recepient = User.objects.filter(role_id=1).first()
+           subject = Constants.ADDED_NEW_DATASET_SUBJECT + os.environ.get(Constants.DATAHUB_NAME, Constants.datahub_name)
+           datahub_admin_name = string_functions.get_full_name(recepient.first_name, recepient.last_name)
+           data = {Constants.datahub_name: os.environ.get(Constants.DATAHUB_NAME, Constants.datahub_name), "datahub_admin_name": datahub_admin_name, Constants.datahub_site: os.environ.get(Constants.DATAHUB_SITE, Constants.datahub_site), "dataset": serializer_email.data}
 
-            data = {"datahub_name": os.environ.get("DATAHUB_NAME", "datahub_name"), "datahub_admin_name": full_name, "datahub_site": os.environ.get("DATAHUB_SITE", "datahub_site"), "dataset": serializer.data}
-
-            email_render = render(request, "new_dataset_upload_request_in_datahub.html", data)
-            mail_body = email_render.content.decode("utf-8")
-            Utils().send_email(
-                to_email=datahub_admin.email,
-                content=mail_body,
-                subject= Constants.ADDED_NEW_DATASET_SUBJECT + os.environ.get("DATAHUB_NAME", "datahub_name"),
-            )
-
+           self.perform_create(serializer)       # save data
+           email_render = render(request, Constants.NEW_DATASET_UPLOAD_REQUEST_IN_DATAHUB, data)
+           mail_body = email_render.content.decode("utf-8")
+           Utils().send_email(
+               to_email=recepient.email,
+               content=mail_body,
+               subject=subject,
+           )
+           LOGGER.info(f"Successfully saved the dataset and emailed datahub admin: {recepient.email} for approval of dataset. \n dataset saved: {serializer.data}")
+           return Response(serializer.data, status=status.HTTP_201_CREATED)
         except Exception as error:
             LOGGER.error(error, exc_info=True)
+            return Response({"Error": ["Bad Request"]}, status=status.HTTP_400_BAD_REQUEST)
 
-        return Response(serializer.data, status=status.HTTP_201_CREATED)
 
     def list(self, request, *args, **kwargs):
         """GET method: query all the list of objects from the Product model"""
@@ -637,34 +641,40 @@ class ParticipantConnectorsMapViewSet(GenericViewSet):
         """
         return serializer.save()
 
-    def trigger_email_for_pairing(self, request, template, to_email,subject, consumer_connector, provider_connector):
+    def trigger_email_for_pairing(self, request, template, subject, consumer_connector, provider_connector):
        # trigger email to the participant as they are being added
        try:
-
-           consumer_org_map = UserOrganizationMap.objects.select_related(Constants.ORGANIZATION).get(id=consumer_connector.user_map_id) if consumer_connector.user_map_id else None
-           consumer_org = Organization.objects.get(id=consumer_org_map.organization_id) if consumer_org_map else None
-           consumer_org_address = string_functions.get_full_address(consumer_org.address) if consumer_org else None
-           consumer = User.objects.get(id=consumer_org_map.user_id) if consumer_org else None
-           consumer_full_name = string_functions.get_full_name(consumer.first_name, consumer.last_name)
-
-           provider_org_map = UserOrganizationMap.objects.select_related(Constants.ORGANIZATION).get(id=provider_connector.user_map_id) if provider_connector.user_map_id else None
-           provider_org = Organization.objects.get(id=provider_org_map.organization_id) if provider_org_map else None
-           provider_org_address = string_functions.get_full_address(provider_org.address) if provider_org else None
-           provider = User.objects.get(id=provider_org_map.user_id) if provider_org else None
-           provider_full_name = string_functions.get_full_name(provider.first_name, provider.last_name)
-
            dataset = Datasets.objects.get(id=provider_connector.dataset_id)
+           if str(provider_connector.user_map_id) == request.data.get("user_map"):
+               consumer_org_map = UserOrganizationMap.objects.select_related(Constants.ORGANIZATION).get(id=consumer_connector.user_map_id) if consumer_connector.user_map_id else None
+               consumer_org = Organization.objects.get(id=consumer_org_map.organization_id) if consumer_org_map else None
+               consumer = User.objects.get(id=consumer_org_map.user_id) if consumer_org_map else None
+               consumer_full_name = string_functions.get_full_name(consumer.first_name, consumer.last_name)
 
-           data = {"provider_admin_name": provider_full_name, "consumer_admin_name": consumer_full_name, "consumer_email": consumer.email, "consumer_connector": consumer_connector, "consumer_org": consumer_org, "consumer_org_address": consumer_org_address, "provider_org": provider_org, "provider_org_address": provider_org_address, "dataset": dataset, "provider_connector": provider_connector, "datahub_site": os.environ.get("DATAHUB_SITE", "datahub_site")}
-           print(data)
+               data = {"consumer_admin_name": consumer_full_name, "consumer_email": consumer.email, "consumer_connector": consumer_connector, "provider_org": consumer_org, "dataset": dataset, "provider_connector": provider_connector, "datahub_site": os.environ.get("DATAHUB_SITE", "datahub_site")}
 
-           email_render = render(request, template, data)
-           mail_body = email_render.content.decode("utf-8")
-           Utils().send_email(
-               to_email=to_email,
-               content=mail_body,
-               subject=subject,
-           )
+               email_render = render(request, template, data)
+               mail_body = email_render.content.decode("utf-8")
+               Utils().send_email(
+                   to_email=consumer.email,
+                   content=mail_body,
+                   subject=subject,
+                  )
+
+           elif str(consumer_connector.user_map_id) == request.data.get("user_map"):
+               provider_org_map = UserOrganizationMap.objects.select_related(Constants.ORGANIZATION).get(id=provider_connector.user_map_id) if provider_connector.user_map_id else None
+               provider_org = Organization.objects.get(id=provider_org_map.organization_id) if provider_org_map else None
+               provider = User.objects.get(id=provider_org_map.user_id) if provider_org_map else None
+               provider_full_name = string_functions.get_full_name(provider.first_name, provider.last_name)
+
+               data = {"provider_admin_name": provider_full_name, "consumer_connector": consumer_connector, "provider_org": provider_org, "dataset": dataset, "provider_connector": provider_connector, "datahub_site": os.environ.get("DATAHUB_SITE", "datahub_site")}
+               email_render = render(request, template, data)
+               mail_body = email_render.content.decode("utf-8")
+               Utils().send_email(
+                   to_email=provider.email,
+                   content=mail_body,
+                   subject=subject,
+                  )
 
        except Exception as error:
            LOGGER.error(error, exc_info=True)
@@ -700,9 +710,34 @@ class ParticipantConnectorsMapViewSet(GenericViewSet):
         self.perform_create(consumer_obj)
         self.perform_create(serializer)
 
-        provider_org_map = UserOrganizationMap.objects.select_related(Constants.ORGANIZATION).get(id=provider_obj.user_map_id) if provider_obj.user_map_id else None
-        provider = User.objects.get(id=provider_org_map.user_id) if provider_org_map else None
-        self.trigger_email_for_pairing(request, "request_for_connector_pairing.html", provider.email, Constants.PAIRING_REQUEST_RECIEVED_SUBJECT, consumer_obj, provider_obj)
+        try:
+            consumer_org_map = UserOrganizationMap.objects.select_related(Constants.ORGANIZATION).get(id=consumer_obj.user_map_id) if consumer_obj.user_map_id else None
+            consumer_org = Organization.objects.get(id=consumer_org_map.organization_id) if consumer_org_map else None
+            consumer_org_address = string_functions.get_full_address(consumer_org.address) if consumer_org else None
+            consumer = User.objects.get(id=consumer_org_map.user_id) if consumer_org else None
+            consumer_full_name = string_functions.get_full_name(consumer.first_name, consumer.last_name)
+
+            provider_org_map = UserOrganizationMap.objects.select_related(Constants.ORGANIZATION).get(id=provider_obj.user_map_id) if provider_obj.user_map_id else None
+            provider_org = Organization.objects.get(id=provider_org_map.organization_id) if provider_org_map else None
+            provider_org_address = string_functions.get_full_address(provider_org.address) if provider_org else None
+            provider = User.objects.get(id=provider_org_map.user_id) if provider_org else None
+            provider_full_name = string_functions.get_full_name(provider.first_name, provider.last_name)
+
+            dataset = Datasets.objects.get(id=provider_obj.dataset_id)
+
+            data = {"provider_admin_name": provider_full_name, "consumer_admin_name": consumer_full_name, "consumer_email": consumer.email, "consumer_connector": consumer_obj, "consumer_org": consumer_org, "consumer_org_address": consumer_org_address, "provider_org": provider_org, "provider_org_address": provider_org_address, "dataset": dataset, "provider_connector": provider_obj, "datahub_site": os.environ.get("DATAHUB_SITE", "datahub_site")}
+
+            email_render = render(request, Constants.REQUEST_CONNECTOR_PAIRING, data)
+            mail_body = email_render.content.decode("utf-8")
+            Utils().send_email(
+                to_email=provider.email,
+                   content=mail_body,
+                   subject=Constants.PAIRING_REQUEST_RECIEVED_SUBJECT,
+               )
+
+        except Exception as error:
+            LOGGER.error(error, exc_info=True)
+
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
     def update(self, request, *args, **kwargs):
@@ -725,9 +760,7 @@ class ParticipantConnectorsMapViewSet(GenericViewSet):
                 self.perform_create(connectors)
 
             provider_connectors = Connectors.objects.get(id=instance.provider.id)
-            consumer_org_map = UserOrganizationMap.objects.select_related(Constants.ORGANIZATION).get(id=connectors.user_map_id) if connectors.user_map_id else None
-            consumer = User.objects.get(id=consumer_org_map.user_id) if consumer_org_map else None
-            self.trigger_email_for_pairing(request, "pairing_request_rejected.html", consumer.email, Constants.PAIRING_REQUEST_REJECTED_SUBJECT + os.environ.get("DATAHUB_NAME", "datahub_name"), connectors, provider_connectors)
+            self.trigger_email_for_pairing(request, Constants.PAIRING_REQUEST_REJECTED, Constants.PAIRING_REQUEST_REJECTED_SUBJECT + os.environ.get(Constants.DATAHUB_NAME, Constants.datahub_name), connectors, provider_connectors)
 
         elif request.data.get(Constants.CONNECTOR_PAIR_STATUS) == Constants.PAIRED:
             consumer_connectors = Connectors.objects.get(id=instance.consumer.id)
@@ -752,9 +785,7 @@ class ParticipantConnectorsMapViewSet(GenericViewSet):
             self.perform_create(consumer_connectors)
             self.perform_create(provider_connectors)
 
-            consumer_org_map = UserOrganizationMap.objects.select_related(Constants.ORGANIZATION).get(id=consumer_connectors.user_map_id) if consumer_connectors.user_map_id else None
-            consumer = User.objects.get(id=consumer_org_map.user_id) if consumer_org_map else None
-            self.trigger_email_for_pairing(request, "pairing_request_approved.html", consumer.email, Constants.PAIRING_REQUEST_APPROVED_SUBJECT + os.environ.get("DATAHUB_NAME", "datahub_name"), consumer_connectors, provider_connectors)
+            self.trigger_email_for_pairing(request, Constants.PAIRING_REQUEST_APPROVED, Constants.PAIRING_REQUEST_APPROVED_SUBJECT + os.environ.get(Constants.DATAHUB_NAME, Constants.datahub_name), consumer_connectors, provider_connectors)
 
             rejection_needed_connectors = (
                 ConnectorsMap.objects.all()
@@ -779,9 +810,7 @@ class ParticipantConnectorsMapViewSet(GenericViewSet):
             self.perform_create(provider_connectors)
             stop_containers(provider_connectors, consumer_connectors)
 
-            consumer_org_map = UserOrganizationMap.objects.select_related(Constants.ORGANIZATION).get(id=consumer_connectors.user_map_id) if consumer_connectors.user_map_id else None
-            consumer = User.objects.get(id=consumer_org_map.user_id) if consumer_org_map else None
-            self.trigger_email_for_pairing(request, "when_connector_unpaired.html", consumer.email, Constants.CONNECTOR_UNPAIRED_SUBJECT + os.environ.get("DATAHUB_NAME", "datahub_name"), consumer_connectors, provider_connectors)
+            self.trigger_email_for_pairing(request, Constants.WHEN_CONNECTOR_UNPAIRED, Constants.CONNECTOR_UNPAIRED_SUBJECT + os.environ.get(Constants.DATAHUB_NAME, Constants.datahub_name), consumer_connectors, provider_connectors)
 
         serializer = self.get_serializer(instance, data=data, partial=True)
         serializer.is_valid(raise_exception=True)
