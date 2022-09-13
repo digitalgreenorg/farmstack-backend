@@ -1,21 +1,21 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang='en'>
   <head>
-    <meta charset="UTF-8" />
-    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta charset='UTF-8' />
+    <meta http-equiv='X-UA-Compatible' content='IE=edge' />
+    <meta name='viewport' content='width=device-width, initial-scale=1.0' />
     <link
-      href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.0/dist/css/bootstrap.min.css"
-      rel="stylesheet"
-      integrity="sha384-gH2yIJqKdNHPEq0n4Mqa/HGKIhSkIHeL5AyhkYV8i59U5AR6csBvApHHNl/vI1Bx"
-      crossorigin="anonymous"
+      href='https://cdn.jsdelivr.net/npm/bootstrap@5.2.0/dist/css/bootstrap.min.css'
+      rel='stylesheet'
+      integrity='sha384-gH2yIJqKdNHPEq0n4Mqa/HGKIhSkIHeL5AyhkYV8i59U5AR6csBvApHHNl/vI1Bx'
+      crossorigin='anonymous'
     />
     <title>template</title>
     <style>
-      @import url("https://fonts.googleapis.com/css2?family=Inter:wght@100;200;300;400;500;600;700;800;900&display=swap");
+      @import url('https://fonts.googleapis.com/css2?family=Inter:wght@100;200;300;400;500;600;700;800;900&display=swap');
 
       body {
-        font-family: "Inter", sans-serif;
+        font-family: 'Inter', sans-serif;
         font-style: normal;
         padding: 0;
         margin: 0;
@@ -36,15 +36,15 @@
 
       .biggerCard {
         /* height: 90vh; */
-        width: 500px;
+        /* width: 500px; */
         /* min-width: 33vw; */
         /* border: 1px solid green; */
         background-color: #eaeff2;
 
         display: block;
         /* flex-direction: column; */
-        row-gap: 55px;
-        padding: 33px 57px 0 57px;
+        row-gap: 33px;
+        padding: 33px 33px 0 33px;
         text-align: center;
         position: relative;
       }
@@ -52,7 +52,7 @@
       .title {
         font-size: 24px;
         font-weight: 400;
-        line-height: 33px;
+        line-height: 16.64px;
         color: #4d4d4d;
       }
 
@@ -60,6 +60,7 @@
         background-color: white;
         border: none;
         outline: none;
+        width: 550px;
         box-shadow: 0px 10px 15px rgba(0, 0, 0, 0.1);
         /* margin-top: 33px; */
         border-radius: 10px 10px 10px 10px;
@@ -81,16 +82,17 @@
       .blackHead {
         color: #4d4d4d;
         font-weight: 700;
-        line-height: 12px;
-        margin-bottom: 33px;
+        line-height: 16.64px;
+        /* margin-bottom: 33px; */
         font-size: 16px;
       }
 
       .yelloHead {
         color: #d8af28;
         font-weight: 700;
-        font-size: 16px;
+        font-size: 14px;
         line-height: 16px;
+        margin-bottom: 5px;
       }
 
       .font12px {
@@ -101,10 +103,10 @@
 
       .desc {
         color: #4d4d4d;
-        font-size: 12px;
+        font-size: 14px;
         font-weight: 400;
-        line-height: 16px;
-        margin-top: 9px;
+        line-height: 16.64px;
+        margin-top: 5px;
       }
 
       .bottomLine {
@@ -136,16 +138,16 @@
       .yellowButton {
         background-color: #dbbf60;
         /* height: 35px; */
-        padding: 10px 50px;
-        color: white;
+        padding: 10px;
+        color: white !important;
         border: none;
         outline: none;
       }
 
       .whiteButton {
         border: 1px solid #dbbf60;
-        color: #dbbf60;
-        padding: 10px 50px;
+        color: #dbbf60 !important;
+        padding: 10px;
         background-color: white;
       }
 
@@ -172,7 +174,8 @@
         /* flex-direction: column; */
         /* justify-content: center; */
         /* border: 1px solid red; */
-        padding: 0 5%;
+        /* padding: 0 5%; */
+        padding: 0px 33px;
       }
 
       .eachLine {
@@ -259,38 +262,48 @@
         font-weight: 400;
         color: #3d4a52;
       }
+      .table a {
+        text-decoration: none !important;
+        color: #3d4a52 !important;
+        font-weight: 400 !important;
+        display: block;
+      }
+      .btngrp a {
+        text-decoration: none !important;
+        font-weight: 400 !important;
+        display: block;
+        width: 160px !important;
+      }
       @media screen and (max-width: 480px) {
         .biggerCard {
-          padding: 10px 2px 0 2px;
+          padding: 2px 2px 0 2px;
         }
       }
     </style>
   </head>
 
   <body>
-    <div class="container">
+    <div class='container'>
       <!-- hello -->
-      <table cell class="mainBox">
+      <table cell class='mainBox'>
         <tbody>
-          <tr class="biggerCard">
+          <tr class='biggerCard'>
             <td>
               <!-- <div class='title'>
                 A new dataset request has been uploded in &lt;datahub name&gt;.
               </div> -->
-              <div class="card">
-                <div class="topLine"></div>
-                <div class="contentBox textCenter">
-                  <div style="padding: 44px 45px">
-                    <div class="blackHead margin15px">
-                        Hi {{ datahub_admin_name }}
-                    </div>
-                    <div class="font14light">
+              <div class='card'>
+                <div class='topLine'></div>
+                <div class='contentBox textCenter'>
+                  <div style='padding: 44px 45px'>
+                    <div class='blackHead'>Hi {{ datahub_admin_name }}</div>
+                    <div class='font14light'>
                       A new dataset has been uploaded. The dataset details are
                       listed below.
                     </div>
                   </div>
-                  <div class="dataBox">
-                    <div class="yelloHead margin33px">Dataset details</div>
+                  <div class='dataBox'>
+                    <div class='yelloHead'>Dataset details</div>
                     <!-- <table style='border: 1px solid green; margin: auto'>
                       <tr style='border: 1px solid red; margin: 0 auto'>
                         <td
@@ -301,95 +314,94 @@
                           '
                         > -->
                     <!-- <div class='contentBoxValue'> -->
-                    <table class="table">
-                      <tr class="row">
-                        <td class="left">Dataset name:</td>
-                        <td class="right">{{ dataset.name }}</td>
+                    <table class='table'>
+                      <tr class='row'>
+                        <td class='left'>Dataset name:</td>
+                        <td class='right'>{{ dataset.name }}</td>
                       </tr>
 
-                      <tr class="row">
-                        <td class="left">Description:</td>
-                        <td class="right">
-                            {{ dataset.description }}
+                      <tr class='row'>
+                        <td class='left'>Description:</td>
+                        <td class='right'>{{ dataset.description }}</td>
+                      </tr>
+                      <tr class='row'>
+                        <td class='left'>Data Category:</td>
+                        <td class='right'>
+                          {% for category in dataset.category %} {{ category }}
+                          | {% endfor %}
                         </td>
                       </tr>
-                      <tr class="row">
-                        <td class="left">Data Category:</td>
-                        <td class="right">
-                            {% for category in  dataset.category %}
-                                {{ category }} |
-                            {% endfor %}
+                      <tr class='row'>
+                        <td class='left'>Geography:</td>
+                        <td class='right'>{{ dataset.geography }}</td>
+                      </tr>
+                      <tr class='row'>
+                        <td class='left'>Crop details:</td>
+                        <td class='right'>{{ dataset.crop_detail }}</td>
+                      </tr>
+                      <tr class='row'>
+                        <td class='left'>Constantly updating:</td>
+                        <td class='right'>{{ dataset.constantly_update }}</td>
+                      </tr>
+                      <tr class='row'>
+                        <td class='left'>Age of actual data:</td>
+                        <td class='right'>{{ dataset.age_of_date }}</td>
+                      </tr>
+                      <tr class='row'>
+                        <td class='left'>Data capture interval:</td>
+                        <td class='right'>{{ dataset.data_capture_start }}</td>
+                      </tr>
+                      <tr class='row'>
+                        <td class='left'>Size of actual data:</td>
+                        <td class='right'>{{ dataset.dataset_size }}</td>
+                      </tr>
+                      <tr class='row'>
+                        <td class='left'>Connector availability:</td>
+                        <td class='right'>
+                          {{ dataset.connector_availability }}
                         </td>
-                      </tr>
-                      <tr class="row">
-                        <td class="left">Geography:</td>
-                        <td class="right">{{ dataset.geography }}</td>
-                      </tr>
-                      <tr class="row">
-                        <td class="left">Crop details:</td>
-                        <td class="right">{{ dataset.crop_detail }}</td>
-                      </tr>
-                      <tr class="row">
-                        <td class="left">Constantly updating:</td>
-                        <td class="right">{{ dataset.constantly_update }}</td>
-                      </tr>
-                      <tr class="row">
-                        <td class="left">Age of actual data:</td>
-                        <td class="right">{{ dataset.age_of_date }}</td>
-                      </tr>
-                      <tr class="row">
-                        <td class="left">Data capture interval:</td>
-                        <td class="right">{{ dataset.data_capture_start }}</td>
-                      </tr>
-                      <tr class="row">
-                        <td class="left">Size of actual data:</td>
-                        <td class="right">{{ dataset.dataset_size }}</td>
-                      </tr>
-                      <tr class="row">
-                        <td class="left">Connector availability:</td>
-                        <td class="right">{{ dataset.connector_availability }}</td>
                       </tr>
                     </table>
                   </div>
-                  <div class="queriesBox">
-                    <div class="blackHead">
+                  <div class='queriesBox'>
+                    <div class='blackHead'>
                       What can you do as a participant?
                     </div>
                   </div>
-                  <table class="btngrp">
+                  <table class='btngrp'>
                     <tr>
                       <td>
-                        <button class="yellowButton">Approve</button>
+                        <a class='yellowButton'>Approve</a>
                       </td>
                       <td>
-                        <button class="whiteButton">Reject</button>
+                        <a class='whiteButton'>Reject</a>
                       </td>
                     </tr>
                   </table>
                 </div>
-                <div class="bottomLine"></div>
+                <div class='bottomLine'></div>
               </div>
 
-              <div class="logo">
+              <div class='logo'>
                 <img
-                  src="https://i.ibb.co/tHxbb7g/Frame-8981.png"
-                  alt="FarmStack"
+                  src='https://i.ibb.co/tHxbb7g/Frame-8981.png'
+                  alt='FarmStack'
                 />
               </div>
             </td>
           </tr>
-          <tr style="background-color: #eaeff2">
+          <tr style='background-color: #eaeff2'>
             <td>
-              <div class="bottomMostLine"></div>
+              <div class='bottomMostLine'></div>
             </td>
           </tr>
         </tbody>
       </table>
     </div>
     <script
-      src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.0/dist/js/bootstrap.bundle.min.js"
-      integrity="sha384-A3rJD856KowSb7dwlZdYEkO39Gagi7vIsF0jrRAoQmDKKtQBHUuLZ9AsSv4jD4Xa"
-      crossorigin="anonymous"
+      src='https://cdn.jsdelivr.net/npm/bootstrap@5.2.0/dist/js/bootstrap.bundle.min.js'
+      integrity='sha384-A3rJD856KowSb7dwlZdYEkO39Gagi7vIsF0jrRAoQmDKKtQBHUuLZ9AsSv4jD4Xa'
+      crossorigin='anonymous'
     ></script>
   </body>
 </html>

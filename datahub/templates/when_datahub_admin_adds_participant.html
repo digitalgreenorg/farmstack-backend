@@ -33,7 +33,7 @@
       }
       .biggerCard {
         /* height: 90vh; */
-        width: 500px;
+        /* width: 500px; */
         /* min-width: 33vw; */
         /* border: 1px solid green; */
         background-color: #eaeff2;
@@ -48,7 +48,7 @@
       .title {
         font-size: 24px;
         font-weight: 400;
-        line-height: 33px;
+        /* line-height: 33px; */
         color: #4d4d4d;
       }
       .card {
@@ -56,10 +56,19 @@
         border: none;
         outline: none;
         box-shadow: 0px 10px 15px rgba(0, 0, 0, 0.1);
-        /* margin-top: 33px; */
+        margin-top: 33px;
         border-radius: 10px 10px 10px 10px;
         overflow: hidden;
-        /* width: 500px; */
+        width: 550px;
+      }
+      .font16px {
+        font-size: 16px;
+      }
+      .font14px {
+        font-size: 14px;
+      }
+      .font12px {
+        font-size: 12px;
       }
       .topLine {
         /* border-radius: 10px 10px 0px 0px; */
@@ -68,31 +77,30 @@
         height: 11px;
       }
       .contentBox {
-        font-size: 14px;
+        font-size: 16px;
         /* max-width: 277px; */
       }
       .blackHead {
         color: #4d4d4d;
         font-weight: 700;
-        line-height: 12px;
+        line-height: 16.64px;
         margin-bottom: 33px;
-        font-size: 16px;
       }
       .yelloHead {
-        font-size: 16px;
         color: #d8af28;
         font-weight: 700;
-        line-height: 12px;
+        font-size: 14px;
+        line-height: 16.64px;
       }
       .font12px {
-        font-size: 14px;
-        line-height: 16px;
+        font-size: 16px;
+        line-height: 16.64px;
       }
       .desc {
         color: #4d4d4d;
         font-size: 14px;
         font-weight: 400;
-        line-height: 14px;
+        line-height: 16.64px;
         margin-top: 9px;
       }
       .bottomLine {
@@ -110,26 +118,30 @@
         text-align: center;
       }
       .queriesBox {
-        width: 277px;
+        width: 380px;
         margin: 0px auto 33px auto;
       }
       .eachQuery {
-        margin-bottom: 20px;
+        margin-bottom: 33px;
       }
       .yellowButton {
         background-color: #dbbf60;
         /* height: 35px; */
-        padding: 10px 50px;
-        color: white;
+        padding: 10px;
+        color: white !important;
         border: none;
         outline: none;
-        font-weight: 600;
+        font-weight: 400;
+        font-size: 14px;
+        width: 160px;
+        margin: auto;
       }
       .whiteButton {
         border: 1px solid #dbbf60;
         color: #dbbf60;
-        padding: 10px 50px;
-        font-weight: 600;
+        padding: 10px;
+        font-weight: 400;
+        font-size: 12px;
       }
       .logo {
         margin: 33px auto;
@@ -158,6 +170,20 @@
         /* border-bottom-left-radius: 10px !important; */
         /* border-bottom-right-radius: 10px !important; */
       }
+      .font14bold {
+        font-size: 14px;
+        font-weight: 600;
+        color: #3d4a52;
+      }
+      .font14light {
+        font-size: 14px;
+        font-weight: 400;
+        color: #3d4a52;
+      }
+      a {
+        text-decoration: none;
+        color: #3d4a52;
+      }
       @media screen and (max-width: 480px) {
         .biggerCard {
           padding: 10px 2px 0 2px;
@@ -173,28 +199,32 @@
           <tr class="biggerCard">
             <td>
               <!-- <div class='title'>
-                Your organisation has been added as a participant in datahub
-                name &gt;.
+                &lt;Datahub name&gt;has invited you to join as a participiant.
+                datahub name .
               </div> -->
               <div class="card">
                 <div class="topLine"></div>
                 <div class="contentBox textCenter">
-                  <div style="padding: 44px 35px">
-                    <div class="blackHead margin15px">
-                        Hi {{ participant_admin_name }}
+                  <div style="padding: 33px">
+                    <div class="blackHead margin15px font16px">
+                      Hi {{ participant_admin_name }}
                     </div>
-                    <div class="font12px">
-                        {{ datahub_name }} has added your organisation as a
-                      participant. Click the “Login to datahub” button below to
-                      finish setting up your account. We will log you in right
-                      away!
+                    <div class="font14px">
+                      {{ datahub_name }} has added your organisation as a
+                      participant. <br />
+                      Click the “Login to datahub” button below to finish
+                      setting up your account. We will log you in right away!
                     </div>
                   </div>
                   <div class="queriesBox">
-                    <div class="blackHead">What can you do next?</div>
+                    <div class="blackHead font14px">
+                      What can you do as a participant?
+                    </div>
                     <div>
                       <div class="eachQuery">
-                        <div class="yelloHead">Manage your organisation</div>
+                        <div class="yelloHead font14px">
+                          Manage your organisation
+                        </div>
                         <div class="desc">
                           Coordinate and connect a wide range of dataset, in
                           order to create a systemic interconnection of
@@ -227,8 +257,13 @@
                       </div>
 
                       <div>
-                          <!-- <button class="yellowButton">Login to datahub</button> -->
-                          <a target="_blank" class="yellowButton" href="{{ datahub_site }}/participant/login/">Login to datahub</a>
+                        <!-- <button class='yellowButton'>Contact us</button> -->
+                        <a
+                          target="_blank"
+                          class="yellowButton"
+                          href="{{ datahub_site }}/contact/"
+                          >Login to datahub</a
+                        >
                       </div>
                     </div>
                   </div>

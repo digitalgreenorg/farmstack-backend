@@ -36,23 +36,23 @@
 
       .biggerCard {
         /* height: 90vh; */
-        max-width: 600px;
+        /* width: 500px; */
         /* min-width: 33vw; */
         /* border: 1px solid green; */
         background-color: #eaeff2;
 
-        display: flex;
-        flex-direction: column;
-        row-gap: 55px;
-        padding: 33px 57px 0 57px;
+        display: block;
+        /* flex-direction: column; */
+        row-gap: 33px;
+        padding: 33px;
         text-align: center;
         position: relative;
       }
 
       .title {
-        font-size: 24px;
+        font-size: 14px;
         font-weight: 400;
-        line-height: 33px;
+        line-height: 16.64px;
         color: #4d4d4d;
       }
 
@@ -64,6 +64,7 @@
         /* margin-top: 33px; */
         border-radius: 10px 10px 10px 10px;
         overflow: hidden;
+        width: 550px;
       }
 
       .topLine {
@@ -76,20 +77,22 @@
       .contentBox {
         font-size: 16px;
         /* max-width: 277px; */
+        padding: 33px 33px 0px 33px;
+        /* border: 1px solid red; */
       }
 
       .blackHead {
         color: #4d4d4d;
         font-weight: 700;
-        line-height: 12px;
-        margin-bottom: 33px;
+        line-height: 16.64px;
+        margin-bottom: 5px;
         font-size: 16px;
       }
 
       .yelloHead {
         color: #d8af28;
         font-weight: 700;
-        font-size: 16px;
+        font-size: 14px;
         line-height: 16px;
       }
 
@@ -150,7 +153,7 @@
       }
 
       .logo {
-        margin: 33px auto;
+        margin: 33px auto 0px auto;
         /* width: 400px; */
         /* border: 1px solid red; */
       }
@@ -369,13 +372,15 @@
       .connectorDetails table tr td {
         max-width: 110px;
         min-width: 110px;
-        overflow-wrap: break-word;
+        word-wrap: break-word;
+        /* overflow-wrap: break-word; */
         vertical-align: top;
         text-align: left;
         /* text-align: start; */
         color: #3d4a52;
-
+        font-size: 14px;
         padding: 5px;
+        padding-bottom: 0px;
         /* border: 1px solid red; */
         /* display: flex; */
         /* flex-direction: column; */
@@ -390,27 +395,40 @@
       }
       .connectorDetails {
         /* border: 1px solid red; */
-        padding: 10px;
+        /* padding: 10px; */
+        /* margin-top: 33px; */
+        padding: 0px 33px 33px 33px;
       }
       .connectorDetails table tr:nth-child(2) td {
         /* border: 1px solid red; */
         font-size: 14px;
-        font-weight: 600;
-        line-height: 16px;
+        font-weight: 500;
+        line-height: 16.64px;
       }
       .font14bold {
         font-size: 14px;
         font-weight: 600;
         color: #3d4a52;
+        /* padding-bottom: 15px !important; */
       }
+
       .font14light {
         font-size: 14px;
         font-weight: 400;
         color: #3d4a52;
       }
+      a {
+        text-decoration: none !important;
+        color: #3d4a52 !important;
+        display: block;
+      }
+      .pb20 {
+        padding-bottom: 20px !important;
+      }
+
       @media screen and (max-width: 480px) {
         .biggerCard {
-          padding: 10px 2px 0 2px;
+          padding: 2px 2px 0 2px;
         }
       }
     </style>
@@ -422,7 +440,14 @@
       <table cell class="mainBox">
         <tbody>
           <tr class="biggerCard">
-            <td>
+            <td
+              style="
+                margin: 0px auto;
+                /* border: 1px solid red; */
+                display: block;
+                /* padding: 33px; */
+              "
+            >
               <!-- <div class='title'>
                 A new dataset request has been uploded in &lt;datahub name&gt;.
               </div> -->
@@ -430,33 +455,33 @@
                 <!-- card starts -->
                 <div class="topLine"></div>
                 <div class="contentBox textCenter">
-                  <div style="padding: 44px 45px">
-                    <div class="blackHead margin15px">
-                        Hi {{ datahub_admin }}
-                    </div>
+                  <div class="margin33px">
+                    <div class="blackHead">Hi {{ datahub_admin }}</div>
                     <div class="font14light">
-                        A certificate request for a connector on {{ datahub_name }} has been sent to you. The {{ participant_org.name }} connector information is provided below.
+                      A certificate request for a connector on {{ datahub_name
+                      }} has been sent to you. The {{ participant_org.name }}
+                      connector information is provided below.
                     </div>
                   </div>
                 </div>
 
                 <div class="connectorDetails">
-                  <div class="yelloHead">Connnector details</div>
+                  <div class="yelloHead">Connector Details</div>
                   <div>
-                    <table>
+                    <table class="tableInsideConnector">
                       <tr>
                         <td>Connector name</td>
                         <td>Connector type</td>
                         <td>Dataset name</td>
                       </tr>
-                      <tr>
-                      <td class="font14bold">
-                            {{ connector.connector_name }}
+                      <tr class="mb5">
+                        <td class="font14bold pb20">
+                          {{ connector.connector_name }}
                         </td>
-                        <td class="font14bold">
+                        <td class="font14bold pb20">
                           {{ connector.connector_type }}
                         </td>
-                        <td class="font14bold">{{ dataset.name }}</td>
+                        <td class="font14bold pb20">{{ dataset.name }}</td>
                       </tr>
                     </table>
                     <table>
@@ -464,8 +489,8 @@
                         <td>Description</td>
                       </tr>
                       <tr>
-                       <td class="font14bold">
-                            {{ connector.connector_description }}
+                        <td class="font14bold">
+                          {{ connector.connector_description }}
                         </td>
                       </tr>
                     </table>
@@ -474,24 +499,23 @@
 
                 <div class="connectorDetails">
                   <div class="yelloHead">Organisation details</div>
-                  <!-- <div style="margin-top: 33px" class="yelloHead"> -->
-                    Organisation details
-                  </div>
                   <div>
-                    <table>
+                    <table class="tableInsideConnector">
                       <tr>
                         <td>Contact person's name</td>
                         <td>Organisation name</td>
                         <td>Email</td>
                       </tr>
-                      <tr>
-                        <td class="font14bold">
-                            {{ participant_admin_name }}
+                      <tr class="mb-5">
+                        <td class="font14bold pb20">
+                          {{ participant_admin_name }}
                         </td>
-                        <td class="font14bold">
-                            {{ participant_org.name }}
+                        <td class="font14bold pb20">
+                          {{ participant_org.name }}
                         </td>
-                        <td class="font14bold">{{ participant_org.org_email }}</td>
+                        <td class="font14bold pb20">
+                          {{ participant_org.org_email }}
+                        </td>
                       </tr>
                     </table>
                     <table>
@@ -500,15 +524,15 @@
                         <td>Address</td>
                         <td>Pincode</td>
                       </tr>
-                      <tr>
-                       <td class="font14bold">
-                            {{ participant_org.phone_number }}
+                      <tr class="mb-5">
+                        <td class="font14bold pb20">
+                          {{ participant_org.phone_number }}
                         </td>
-                        <td class="font14bold">
-                            {{ participant_org_address.address }}
+                        <td class="font14bold pb20">
+                          {{ participant_org_address.address }}
                         </td>
-                        <td class="font14bold">
-                            {{ participant_org_address.pincode }}
+                        <td class="font14bold pb20">
+                          {{ participant_org_address.pincode }}
                         </td>
                       </tr>
                     </table>
@@ -525,9 +549,20 @@
                   </div>
                 </div>
 
-                <div class="certiSpan">
-                    Send the certificate to the {{ participant_email }};
-                </div>
+                <!-- <div class='certiSpan'>
+                  Send the certificate to the &lt;participant's email id
+                  participant&gt;
+                </div> -->
+                <!-- <table class='btngrp'>
+                  <tr>
+                    <td>
+                      <button class='yellowButton'>Approve</button>
+                    </td> -->
+                <!-- <td>
+                      <button class='whiteButton'>Reject</button>
+                    </td> -->
+                <!-- </tr>
+                </table> -->
 
                 <div class="bottomLine"></div>
                 <!-- card ends -->

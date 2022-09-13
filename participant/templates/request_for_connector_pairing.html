@@ -36,15 +36,15 @@
 
       .biggerCard {
         /* height: 90vh; */
-        width: 500px;
+        /* width: 500px; */
         /* min-width: 33vw; */
         /* border: 1px solid green; */
         background-color: #eaeff2;
 
         display: block;
         /* flex-direction: column; */
-        row-gap: 55px;
-        padding: 33px 57px 0 57px;
+        row-gap: 33px;
+        padding: 33px 33px 0 33px;
         text-align: center;
         position: relative;
       }
@@ -64,7 +64,7 @@
         /* margin-top: 33px; */
         border-radius: 10px 10px 10px 10px;
         overflow: hidden;
-        width: 500px;
+        width: 550px;
       }
 
       .topLine {
@@ -82,15 +82,15 @@
       .blackHead {
         color: #4d4d4d;
         font-weight: 700;
-        line-height: 12px;
-        margin-bottom: 33px;
+        line-height: 16.64px;
+        margin-bottom: 5px;
         font-size: 16px;
       }
 
       .yelloHead {
         color: #d8af28;
         font-weight: 700;
-        font-size: 16px;
+        font-size: 14px;
         line-height: 16px;
       }
 
@@ -102,10 +102,10 @@
 
       .desc {
         color: #4d4d4d;
-        font-size: 12px;
+        font-size: 14px;
         font-weight: 400;
         line-height: 16px;
-        margin-top: 9px;
+        /* margin-top: 9px; */
       }
 
       .bottomLine {
@@ -137,19 +137,21 @@
       .yellowButton {
         background-color: #dbbf60;
         /* height: 35px; */
-        padding: 10px 50px;
-        color: white;
+        padding: 10px;
+        color: white !important;
         border: none;
         outline: none;
-        font-weight: 600;
+        font-weight: 400;
+        font-size: 14px;
       }
 
       .whiteButton {
         border: 1px solid #dbbf60;
-        color: #dbbf60;
-        padding: 10px 50px;
+        color: #dbbf60 !important;
+        padding: 10px;
         background-color: white;
-        font-weight: 600;
+        font-weight: 400;
+        font-size: 14px;
       }
 
       .logo {
@@ -394,7 +396,7 @@
       }
       .connectorDetails {
         /* border: 1px solid red; */
-        padding: 10px;
+        padding: 0px 33px;
       }
       .connectorDetails table tr:nth-child(2) td {
         /* border: 1px solid red; */
@@ -413,7 +415,13 @@
         color: #3d4a52;
       }
       a {
+        text-decoration: none !important;
         color: #3d4a52 !important;
+      }
+      .btngrp a {
+        text-decoration: none !important;
+        display: block;
+        width: 160px;
       }
       @media screen and (max-width: 480px) {
         .biggerCard {
@@ -437,12 +445,10 @@
                 <!-- card starts -->
                 <div class="topLine"></div>
                 <div class="contentBox textCenter">
-                  <div style="padding: 44px 45px">
-                    <div class="blackHead margin15px">
-                        Hi {{ provider_admin_name }}
-                    </div>
+                  <div style="padding: 33px 33px">
+                    <div class="blackHead">Hi {{ provider_admin_name }}</div>
                     <div class="font14light">
-                        {{ consumer_org.name }} has initated a paring requested.
+                      {{ consumer_org.name }} has initated a paring requested.
                     </div>
                   </div>
                 </div>
@@ -493,9 +499,9 @@
                         <td>Email</td>
                       </tr>
                       <tr>
-                          <td class="font14bold">{{ consumer_admin_name }}</td>
-                          <td class="font14bold">{{ consumer_org.name }}</td>
-                          <td class="font14bold">{{ consumer_org.org_email }}</td>
+                        <td class="font14bold">{{ consumer_admin_name }}</td>
+                        <td class="font14bold">{{ consumer_org.name }}</td>
+                        <td class="font14bold">{{ consumer_org.org_email }}</td>
                       </tr>
                     </table>
                     <table>
@@ -505,11 +511,15 @@
                         <td>Pincode</td>
                       </tr>
                       <tr>
-                          <td class="font14bold">{{ consumer_org.phone_number }}</td>
                         <td class="font14bold">
-                            {{ consumer_org_address.address }}
+                          {{ consumer_org.phone_number }}
                         </td>
-                        <td class="font14bold">{{ consumer_org_address.pincode }}</td>
+                        <td class="font14bold">
+                          {{ consumer_org_address.address }}
+                        </td>
+                        <td class="font14bold">
+                          {{ consumer_org_address.pincode }}
+                        </td>
                       </tr>
                     </table>
                     <table>
@@ -517,12 +527,14 @@
                         <td>Country</td>
                       </tr>
                       <tr>
-                          <td class="font14bold">{{ consumer_org_address.country }}</td>
+                        <td class="font14bold">
+                          {{ consumer_org_address.country }}
+                        </td>
                       </tr>
                     </table>
                   </div>
                 </div>
-                <div class="connectorDetails">
+                <div style="margin-top: 33px" class="connectorDetails">
                   <div class="yelloHead">Wants to pair with</div>
                   <div>
                     <table>
@@ -533,7 +545,7 @@
                       </tr>
                       <tr>
                         <td class="font14bold">
-                            {{ provider_connector.connector_name }}
+                          {{ provider_connector.connector_name }}
                         </td>
                         <td class="font14bold">
                           {{ provider_connector.connector_type }}
@@ -547,7 +559,7 @@
                       </tr>
                       <tr>
                         <td class="font14bold">
-                            {{ provider_connector.connector_description }}
+                          {{ provider_connector.connector_description }}
                         </td>
                       </tr>
                     </table>
@@ -558,13 +570,13 @@
                   Send the certificate to the &lt;participant's email id
                   participant&gt;
                 </div> -->
-                <table class="btngrp">
+                <table style="margin-top: 33px" class="btngrp">
                   <tr>
                     <td>
-                      <button class="yellowButton">Approve & pair</button>
+                      <a class="yellowButton">Approve & pair</a>
                     </td>
                     <td>
-                      <button class="whiteButton">Reject</button>
+                      <a class="whiteButton">Reject</a>
                     </td>
                   </tr>
                 </table>
