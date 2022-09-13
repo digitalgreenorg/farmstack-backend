@@ -446,9 +446,11 @@
                 <div class="topLine"></div>
                 <div class="contentBox textCenter">
                   <div style="padding: 33px 33px">
-                    <div class="blackHead">Hi {{ provider_admin_name }}</div>
+                      <!-- <div class="blackHead">Hi {{ provider_admin_name }}</div> -->
+                    <div class="blackHead">Hi {{ provider.user.full_name }}</div>
                     <div class="font14light">
-                      {{ consumer_org.name }} has initated a pairing requested.
+                      <!-- {{ consumer_org.name }} has initated a pairing requested. -->
+                      {{ consumer.organization.name }} has initated a pairing requested.
                     </div>
                   </div>
                 </div>
@@ -466,12 +468,15 @@
                       </tr>
                       <tr>
                         <td class="font14bold">
-                          {{ consumer_connector.connector_name }}
+                            <!-- {{ consumer_connector.connector_name }} -->
+                          {{ consumer.connector_name }}
                         </td>
                         <td class="font14bold">
-                          {{ consumer_connector.connector_type }}
+                            <!-- {{ consumer_connector.connector_type }} -->
+                          {{ consumer.connector_type }}
                         </td>
-                        <td class="font14bold">{{ dataset.name }}</td>
+                        <!-- <td class="font14bold">{{ dataset.name }}</td> -->
+                        <td class="font14bold">{{ consumer.dataset_detail.name }}</td>
                       </tr>
                     </table>
                     <table>
@@ -480,7 +485,8 @@
                       </tr>
                       <tr>
                         <td class="font14bold">
-                          {{ consumer_connector.connector_description }}
+                            <!-- {{ consumer_connector.connector_description }} -->
+                          {{ consumer.connector_description }}
                         </td>
                       </tr>
                     </table>
@@ -499,9 +505,12 @@
                         <td>Email</td>
                       </tr>
                       <tr>
-                        <td class="font14bold">{{ consumer_admin_name }}</td>
-                        <td class="font14bold">{{ consumer_org.name }}</td>
-                        <td class="font14bold">{{ consumer_org.org_email }}</td>
+                          <!-- <td class="font14bold">{{ consumer_admin_name }}</td> -->
+                        <td class="font14bold">{{ consumer.user.full_name }}</td>
+                        <!-- <td class="font14bold">{{ consumer_org.name }}</td> -->
+                        <td class="font14bold">{{ consumer.organization.name }}</td>
+                        <!-- <td class="font14bold">{{ consumer_org.org_email }}</td> -->
+                        <td class="font14bold">{{ consumer.organization.org_email }}</td>
                       </tr>
                     </table>
                     <table>
@@ -512,13 +521,16 @@
                       </tr>
                       <tr>
                         <td class="font14bold">
-                          {{ consumer_org.phone_number }}
+                            <!-- {{ consumer_org.phone_number }} -->
+                          {{ consumer.organization.phone_number }}
                         </td>
                         <td class="font14bold">
-                          {{ consumer_org_address.address }}
+                            <!-- {{ consumer_org_address.address }} -->
+                          {{ consumer.organization.address.address }}
                         </td>
                         <td class="font14bold">
-                          {{ consumer_org_address.pincode }}
+                            <!-- {{ consumer_org_address.pincode }} -->
+                          {{ consumer.organization.address.pincode }}
                         </td>
                       </tr>
                     </table>
@@ -528,7 +540,8 @@
                       </tr>
                       <tr>
                         <td class="font14bold">
-                          {{ consumer_org_address.country }}
+                            <!-- {{ consumer_org_address.country }} -->
+                          {{ consumer.organization.address.country }}
                         </td>
                       </tr>
                     </table>
@@ -545,12 +558,14 @@
                       </tr>
                       <tr>
                         <td class="font14bold">
-                          {{ provider_connector.connector_name }}
+                            <!-- {{ provider_connector.connector_name }} -->
+                          {{ provider.connector_name }}
                         </td>
                         <td class="font14bold">
-                          {{ provider_connector.connector_type }}
+                            <!-- {{ provider_connector.connector_type }} -->
+                          {{ provider.connector_type }}
                         </td>
-                        <td class="font14bold">{{ dataset.name }}</td>
+                        <td class="font14bold">{{ provider.dataset_detail.name }}</td>
                       </tr>
                     </table>
                     <table>
@@ -559,7 +574,8 @@
                       </tr>
                       <tr>
                         <td class="font14bold">
-                          {{ provider_connector.connector_description }}
+                            <!-- {{ provider_connector.connector_description }} -->
+                          {{ provider.connector_description }}
                         </td>
                       </tr>
                     </table>

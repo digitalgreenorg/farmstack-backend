@@ -230,40 +230,47 @@ class ConnectorsSerializerForEmail(serializers.ModelSerializer):
     class OrganizationSerializer(serializers.ModelSerializer):
         class Meta:
             model = Organization
-            fields = ["org_email", "org_description", "name", "logo", "address"]
+            fields = ["name", "org_email", "phone_number", "address"]
+
+        def to_representation(self, instance):
+            """Return formatted data for email template"""
+            ret = super().to_representation(instance)
+            ret["name"] = ret.get("name").title() if ret.get("name") else "N/A"
+            if ret.get("address"):
+                address = ret.get("address")
+                data = {"address": address.get("address","")+ ", " + address.get("city",""), "pincode": address.get("pincode",""), "country": address.get("country","")}
+                ret["address"] = data
+            else:
+                ret["address"] = "N/A"
+            return ret
 
     class UserSerializer(serializers.ModelSerializer):
         class Meta:
-            model = models.User
-            fields = ["last_name", "first_name", "email"]
+            model = User
+            fields = ["full_name", "email", "phone_number"]
 
-    organization = OrganizationSerializer(
-        required=False, allow_null=True, read_only=True, source="user_map.organization"
-    )
+        full_name = serializers.SerializerMethodField(method_name="get_full_name")
+        def get_full_name(self, instance):
+            user = User.objects.get(id=instance.id)
+            return user.first_name + " " + user.last_name if  user.last_name else user.first_name
 
-    user = UserSerializer(required=False, allow_null=True, read_only=True, source="user_map.user")
+    class DatasetSerializer(serializers.ModelSerializer):
+        class Meta:
+            model = Datasets
+            fields = ["name"]
+
+        def to_representation(self, instance):
+            ret = super().to_representation(instance)
+            ret["name"] = ret.get("name").title() if ret.get("name") else "N/A"
+            return ret
+
+    organization = OrganizationSerializer(required=False, read_only=True, source="user_map.organization")
+    user = UserSerializer(required=False, read_only=True, source="user_map.user")
+    dataset_detail = DatasetSerializer(required=False, read_only=True, source="dataset")
 
     class Meta:
         model = Connectors
-        # fields = ["connector_name", "connector_type", "connector_description", "dataset_name", "participant_org"]
-        fields = ["connector_name", "connector_type", "connector_description", "dataset_name", "user", "organization"]
-
-    dataset_name = serializers.SerializerMethodField(method_name="get_dataset_name")
-    # participant_org = serializers.SerializerMethodField(method_name="get_participant_org")
-
-    def get_dataset_name(self, connector):
-        return Datasets.objects.get(id=connector.dataset_id).name
-
-    # def get_participant_org(self, connector):
-    #     connector = Connectors.objects.filter(user_map=connector.user_map)
-    #     user_org_map = UserOrganizationMap.objects.get(id=connector.first().user_map.id) if connector else None
-    #     participant = User.objects.get(id=user_org_map.user_id) if user_org_map else None
-    #     participant_full_name = string_functions.get_full_name(participant.first_name, participant.last_name)
-    #     organization = Organization.objects.get(id=user_org_map.organization_id) if user_org_map else None
-    #     org_address = string_functions.get_full_address(organization.address) if organization else None
-
-    #     data = {"participant_admin_name": participant_full_name, "organization": organization, "org_address": org_address}
-    #     return data
+        fields = ["connector_name", "connector_type", "connector_description", "dataset_detail", "user", "organization"]
 
 
 class ConnectorsListSerializer(serializers.ModelSerializer):

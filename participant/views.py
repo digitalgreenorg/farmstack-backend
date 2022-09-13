@@ -712,26 +712,16 @@ class ParticipantConnectorsMapViewSet(GenericViewSet):
         self.perform_create(serializer)
 
         try:
-            consumer_org_map = UserOrganizationMap.objects.select_related(Constants.ORGANIZATION).get(id=consumer_obj.user_map_id) if consumer_obj.user_map_id else None
-            consumer_org = Organization.objects.get(id=consumer_org_map.organization_id) if consumer_org_map else None
-            consumer_org_address = string_functions.get_full_address(consumer_org.address) if consumer_org else None
-            consumer = User.objects.get(id=consumer_org_map.user_id) if consumer_org else None
-            consumer_full_name = string_functions.get_full_name(consumer.first_name, consumer.last_name)
-
-            provider_org_map = UserOrganizationMap.objects.select_related(Constants.ORGANIZATION).get(id=provider_obj.user_map_id) if provider_obj.user_map_id else None
-            provider_org = Organization.objects.get(id=provider_org_map.organization_id) if provider_org_map else None
-            provider_org_address = string_functions.get_full_address(provider_org.address) if provider_org else None
-            provider = User.objects.get(id=provider_org_map.user_id) if provider_org else None
-            provider_full_name = string_functions.get_full_name(provider.first_name, provider.last_name)
-
-            dataset = Datasets.objects.get(id=provider_obj.dataset_id)
-
-            data = {"provider_admin_name": provider_full_name, "consumer_admin_name": consumer_full_name, "consumer_email": consumer.email, "consumer_connector": consumer_obj, "consumer_org": consumer_org, "consumer_org_address": consumer_org_address, "provider_org": provider_org, "provider_org_address": provider_org_address, "dataset": dataset, "provider_connector": provider_obj, "datahub_site": os.environ.get("DATAHUB_SITE", "datahub_site")}
+            # trigger email
+            consumer_serializer = ConnectorsSerializerForEmail(consumer_obj)
+            provider_serializer = ConnectorsSerializerForEmail(provider_obj)
+            data = {"consumer": consumer_serializer.data, "provider": provider_serializer.data}
+            to_email = provider_serializer.data.get("user").get("email")
 
             email_render = render(request, Constants.REQUEST_CONNECTOR_PAIRING, data)
             mail_body = email_render.content.decode("utf-8")
             Utils().send_email(
-                to_email=provider.email,
+                to_email=to_email,
                    content=mail_body,
                    subject=Constants.PAIRING_REQUEST_RECIEVED_SUBJECT,
                )
