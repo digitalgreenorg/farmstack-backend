@@ -138,17 +138,22 @@
       .yellowButton {
         background-color: #dbbf60;
         /* height: 35px; */
-        padding: 10px;
+        padding: 10px 50px;
         color: white !important;
-        border: none;
+        border: 1px solid #dbbf60;
         outline: none;
+        width: fit-content;
+        box-sizing: content-box;
+        margin-right: 20px;
       }
 
       .whiteButton {
         border: 1px solid #dbbf60;
         color: #dbbf60 !important;
-        padding: 10px;
+        padding: 10px 50px;
         background-color: white;
+        width: fit-content;
+        box-sizing: content-box;
       }
 
       .logo {
@@ -272,7 +277,8 @@
         text-decoration: none !important;
         font-weight: 400 !important;
         display: block;
-        width: 160px !important;
+        font-size: 14px;
+        width: fit-content !important;
       }
       @media screen and (max-width: 480px) {
         .biggerCard {
@@ -381,7 +387,7 @@
                       </td>
                       <td>
                           <!-- <a class='whiteButton'>Reject</a> -->
-                        <a target="_blank" class="yellowButton" href="{{ datahub_site }}/participant/datasets/">Reject</a>
+                        <a target="_blank" class="whiteButton" href="{{ datahub_site }}/participant/datasets/">Reject</a>
                       </td>
                     </tr>
                   </table>

@@ -143,6 +143,8 @@
         border: none;
         outline: none;
         font-weight: 600;
+        width: fit-content;
+        box-sizing: content-box;
       }
 
       .whiteButton {
@@ -151,6 +153,8 @@
         padding: 10px 50px;
         background-color: white;
         font-weight: 600;
+        width: fit-content;
+        box-sizing: content-box;
       }
 
       .logo {
@@ -444,7 +448,7 @@
                 <div class="contentBox textCenter">
                   <div>
                     <div class="blackHead">
-                        Hi {% if consumer_admin_name %}
+                      Hi {% if consumer_admin_name %}
                              {{ consumer_admin_name }}
                                 {% else %}
                              {{ provider_admin_name }}

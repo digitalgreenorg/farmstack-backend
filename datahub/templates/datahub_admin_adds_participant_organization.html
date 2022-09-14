@@ -131,10 +131,13 @@
         background-color: #dbbf60;
         /* height: 35px; */
         padding: 10px 50px;
-        color: white;
+        color: white !important;
         border: none;
         outline: none;
-        font-weight: 600;
+        font-weight: 400;
+        text-decoration: none;
+        box-sizing: content-box;
+        width: fit-content !important;
       }
       .whiteButton {
         border: 1px solid #dbbf60;
@@ -169,6 +172,7 @@
         /* border-bottom-left-radius: 10px !important; */
         /* border-bottom-right-radius: 10px !important; */
       }
+      
 
       .margint5px {
         margin-top: 5px;
@@ -201,6 +205,14 @@
                       added by {{ datahub_admin }} in {{ datahub_name }} as a
                       participant.
                     </div>
+                  </div>
+                  <div style="margin-top: 33px">
+                    <a
+                      target="_blank"
+                      class="yellowButton"
+                      href="{{ datahub_site }}/datahub/datasets/"
+                      >View details</a
+                    >
                   </div>
                 </div>
                 <div class="bottomLine"></div>

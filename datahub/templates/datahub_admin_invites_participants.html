@@ -84,7 +84,7 @@
         color: #4d4d4d;
         font-weight: 700;
         line-height: 16.64px;
-        margin-bottom: 33px;
+        margin-bottom: 5px;
       }
       .yelloHead {
         color: #d8af28;
@@ -127,14 +127,15 @@
       .yellowButton {
         background-color: #dbbf60;
         /* height: 35px; */
-        padding: 10px;
+        padding: 10px 50px;
         color: white !important;
         border: none;
         outline: none;
         font-weight: 400;
         font-size: 14px;
-        width: 160px;
+        width: fit-content;
         margin: auto;
+        box-sizing: content-box;
       }
       .whiteButton {
         border: 1px solid #dbbf60;
@@ -209,7 +210,7 @@
                 <div class="topLine"></div>
                 <div class="contentBox textCenter">
                   <div style="padding: 33px">
-                    <div class="blackHead margin15px font16px">
+                    <div class="blackHead font16px">
                       Hi {{ participant_admin_name }}
                     </div>
                     <div class="font14px">
