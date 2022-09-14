@@ -716,7 +716,7 @@ class ParticipantConnectorsMapViewSet(GenericViewSet):
             # trigger email
             consumer_serializer = ConnectorsSerializerForEmail(consumer_obj)
             provider_serializer = ConnectorsSerializerForEmail(provider_obj)
-            data = {"consumer": consumer_serializer.data, "provider": provider_serializer.data}
+            data = {"consumer": consumer_serializer.data, "provider": provider_serializer.data, "datahub_site": os.environ.get(Constants.DATAHUB_SITE, Constants.datahub_site), "datahub_name": os.environ.get(Constants.DATAHUB_NAME, Constants.datahub_name)}
             to_email = provider_serializer.data.get("user").get("email")
 
             email_render = render(request, Constants.REQUEST_CONNECTOR_PAIRING, data)
