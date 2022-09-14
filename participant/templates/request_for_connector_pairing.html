@@ -137,21 +137,28 @@
       .yellowButton {
         background-color: #dbbf60;
         /* height: 35px; */
-        padding: 10px;
+        padding: 10px 50px;
         color: white !important;
         border: none;
         outline: none;
         font-weight: 400;
         font-size: 14px;
+        min-width: 184px;
+
+        margin-right: 20px;
       }
 
       .whiteButton {
         border: 1px solid #dbbf60;
         color: #dbbf60 !important;
-        padding: 10px;
+        padding: 10px 75px;
         background-color: white;
         font-weight: 400;
         font-size: 14px;
+        min-width: 184px !important;
+
+        /* border: 2px solid red; */
+
       }
 
       .logo {
@@ -420,12 +427,11 @@
       }
       .btngrp a {
         text-decoration: none !important;
-        display: block;
-        width: 160px;
+        width: 184px;
       }
       @media screen and (max-width: 480px) {
         .biggerCard {
-          padding: 10px 2px 0 2px;
+          padding: 2px 2px 0 2px;
         }
       }
     </style>
@@ -574,11 +580,11 @@
                   <tr>
                     <td>
                         <!-- <a class="yellowButton">Approve & pair</a> -->
-                      <a target="_blank" class="yellowButton" href="{{ datahub_site }}/participant/connectors/">Approve</a>
+                      <a target="_blank" class="yellowButton" href="{{ datahub_site }}/participant/connectors/">Approve & pair</a>
                     </td>
                     <td>
                         <!-- <a class="whiteButton">Reject</a> -->
-                      <a target="_blank" class="yellowButton" href="{{ datahub_site }}/participant/connectors/">Reject</a>
+                      <a target="_blank" class="whiteButton" href="{{ datahub_site }}/participant/connectors/">Reject</a>
                     </td>
                   </tr>
                 </table>
