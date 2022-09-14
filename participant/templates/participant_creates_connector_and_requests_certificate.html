@@ -412,7 +412,7 @@
       .font14bold {
         font-size: 14px;
         font-weight: 600;
-        color: #3d4a52;
+        color: #3d4a52 !important;
         /* padding-bottom: 15px !important; */
       }
 
@@ -426,6 +426,10 @@
         color: #3d4a52;
         display: block;
       } */
+      .connectorDetails a{
+        text-decoration: none !important;
+        color: #4d4d4d !important;
+      }
       .pb20 {
         padding-bottom: 20px !important;
       }
@@ -515,7 +519,7 @@
                         <td class="font14bold pb20">
                           {{ participant_org.name }}
                         </td>
-                        <td style="text-decoration: none; color:#4d4d4d" class="font14bold pb20">
+                        <td class="font14bold pb20">
                           {{ participant_org.org_email }}
                         </td>
                       </tr>
@@ -552,7 +556,7 @@
                 </div>
 
                 <div class='certiSpan'>
-                    Send the certificate to the <span style="text-decoration:underline; color:#0000EE"> {{ participant_email }} </span> 
+                    Send the certificate to the  {{ participant_email }} 
                 </div>
                 <!-- <table class='btngrp'>
                   <tr>
