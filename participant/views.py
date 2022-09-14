@@ -644,14 +644,19 @@ class ParticipantConnectorsMapViewSet(GenericViewSet):
     def trigger_email_for_pairing(self, request, template, subject, consumer_connector, provider_connector):
        # trigger email to the participant as they are being added
        try:
+           consumer_org_map = UserOrganizationMap.objects.select_related(Constants.ORGANIZATION).get(id=consumer_connector.user_map_id) if consumer_connector.user_map_id else None
+           consumer_org = Organization.objects.get(id=consumer_org_map.organization_id) if consumer_org_map else None
+           consumer = User.objects.get(id=consumer_org_map.user_id) if consumer_org_map else None
+           consumer_full_name = string_functions.get_full_name(consumer.first_name, consumer.last_name)
+           provider_org_map = UserOrganizationMap.objects.select_related(Constants.ORGANIZATION).get(id=provider_connector.user_map_id) if provider_connector.user_map_id else None
+           provider_org = Organization.objects.get(id=provider_org_map.organization_id) if provider_org_map else None
+           provider = User.objects.get(id=provider_org_map.user_id) if provider_org_map else None
+           provider_full_name = string_functions.get_full_name(provider.first_name, provider.last_name)
            dataset = Datasets.objects.get(id=provider_connector.dataset_id)
-           if str(provider_connector.user_map_id) == request.data.get("user_map"):
-               consumer_org_map = UserOrganizationMap.objects.select_related(Constants.ORGANIZATION).get(id=consumer_connector.user_map_id) if consumer_connector.user_map_id else None
-               consumer_org = Organization.objects.get(id=consumer_org_map.organization_id) if consumer_org_map else None
-               consumer = User.objects.get(id=consumer_org_map.user_id) if consumer_org_map else None
-               consumer_full_name = string_functions.get_full_name(consumer.first_name, consumer.last_name)
 
-               data = {"consumer_admin_name": consumer_full_name, "consumer_email": consumer.email, "consumer_connector": consumer_connector, "provider_org": consumer_org, "dataset": dataset, "provider_connector": provider_connector, "datahub_site": os.environ.get("DATAHUB_SITE", "datahub_site")}
+           if str(provider_connector.user_map_id) == request.data.get("user_map"):
+               print("CTA by provider. Trigger email to consumer")
+               data = {"consumer_admin_name": consumer_full_name, "consumer_connector": consumer_connector, "provider_org": provider_org, "dataset": dataset, "provider_connector": provider_connector, "datahub_site": os.environ.get(Constants.DATAHUB_SITE, Constants.datahub_site)}
 
                email_render = render(request, template, data)
                mail_body = email_render.content.decode("utf-8")
@@ -662,12 +667,8 @@ class ParticipantConnectorsMapViewSet(GenericViewSet):
                   )
 
            elif str(consumer_connector.user_map_id) == request.data.get("user_map"):
-               provider_org_map = UserOrganizationMap.objects.select_related(Constants.ORGANIZATION).get(id=provider_connector.user_map_id) if provider_connector.user_map_id else None
-               provider_org = Organization.objects.get(id=provider_org_map.organization_id) if provider_org_map else None
-               provider = User.objects.get(id=provider_org_map.user_id) if provider_org_map else None
-               provider_full_name = string_functions.get_full_name(provider.first_name, provider.last_name)
-
-               data = {"provider_admin_name": provider_full_name, "consumer_connector": consumer_connector, "provider_org": provider_org, "dataset": dataset, "provider_connector": provider_connector, "datahub_site": os.environ.get("DATAHUB_SITE", "datahub_site")}
+               print("CTA by consumer. Trigger email to provider")
+               data = {"provider_admin_name": provider_full_name, "consumer_connector": consumer_connector, "consumer_org": consumer_org, "dataset": dataset, "provider_connector": provider_connector, "datahub_site": os.environ.get(Constants.DATAHUB_SITE, Constants.datahub_site)}
 
                email_render = render(request, template, data)
                mail_body = email_render.content.decode("utf-8")
