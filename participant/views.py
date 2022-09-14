@@ -422,7 +422,7 @@ class ParticipantConnectorsViewSet(GenericViewSet):
 
         user_org_map = UserOrganizationMap.objects.select_related(Constants.ORGANIZATION).get(id=serializer.data.get(Constants.USER_MAP))
         dataset = Datasets.objects.get(id=serializer.data.get(Constants.DATASET))
-        self.trigger_email(request, "participant_creates_connector_and_requests_certificate.html", Constants.NEW_CONNECTOR_CERTIFICATE_SUBJECT, user_org_map, serializer.data, dataset)
+        self.trigger_email(request, Constants.CREATE_CONNECTOR_AND_REQUEST_CERTIFICATE, Constants.CREATE_CONNECTOR_AND_REQUEST_CERTIFICATE_SUBJECT, user_org_map, serializer.data, dataset)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
     def list(self, request, *args, **kwargs):
@@ -520,7 +520,7 @@ class ParticipantConnectorsViewSet(GenericViewSet):
             user_org_map = UserOrganizationMap.objects.select_related(Constants.ORGANIZATION).get(id=serializer.data.get(Constants.USER_MAP))
             dataset = Datasets.objects.get(id=serializer.data.get(Constants.DATASET))
             subject = "A certificate on " + os.environ.get("DATAHUB_NAME", "datahub_name") + " was successfully installed"
-            self.trigger_email(request, "participant_installs_certificate.html", subject, user_org_map, serializer.data, dataset)
+            self.trigger_email(request, Constants.PARTICIPANT_INSTALLS_CERTIFICATE, subject, user_org_map, serializer.data, dataset)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
     def destroy(self, request, pk):
@@ -668,6 +668,7 @@ class ParticipantConnectorsMapViewSet(GenericViewSet):
                provider_full_name = string_functions.get_full_name(provider.first_name, provider.last_name)
 
                data = {"provider_admin_name": provider_full_name, "consumer_connector": consumer_connector, "provider_org": provider_org, "dataset": dataset, "provider_connector": provider_connector, "datahub_site": os.environ.get("DATAHUB_SITE", "datahub_site")}
+
                email_render = render(request, template, data)
                mail_body = email_render.content.decode("utf-8")
                Utils().send_email(
@@ -760,7 +761,9 @@ class ParticipantConnectorsMapViewSet(GenericViewSet):
                 self.perform_create(connectors)
 
             provider_connectors = Connectors.objects.get(id=instance.provider.id)
-            self.trigger_email_for_pairing(request, Constants.PAIRING_REQUEST_REJECTED, Constants.PAIRING_REQUEST_REJECTED_SUBJECT + os.environ.get(Constants.DATAHUB_NAME, Constants.datahub_name), connectors, provider_connectors)
+            consumer_connectors = Connectors.objects.get(id=instance.consumer.id)
+
+            self.trigger_email_for_pairing(request, Constants.PAIRING_REQUEST_REJECTED, Constants.PAIRING_REQUEST_REJECTED_SUBJECT + os.environ.get(Constants.DATAHUB_NAME, Constants.datahub_name), consumer_connectors, provider_connectors)
 
         elif request.data.get(Constants.CONNECTOR_PAIR_STATUS) == Constants.PAIRED:
             consumer_connectors = Connectors.objects.get(id=instance.consumer.id)
