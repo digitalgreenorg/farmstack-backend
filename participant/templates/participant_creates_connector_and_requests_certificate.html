@@ -357,10 +357,10 @@
         margin-top: 33px;
         margin-bottom: 33px;
       }
-      .certiSpan a{
+      /* .certiSpan a{
         text-decoration: underline !important;
         color: #0000EE !important;
-      }
+      } */
       .connectorDetails table {
         width: 100%;
         /* margin-top: 33px; */
@@ -421,11 +421,11 @@
         font-weight: 400;
         color: #3d4a52;
       }
-      a {
+      /* a {
         text-decoration: none;
         color: #3d4a52;
         display: block;
-      }
+      } */
       .pb20 {
         padding-bottom: 20px !important;
       }
@@ -462,7 +462,7 @@
                   <div class="margin33px">
                     <div class="blackHead">Hi {{ datahub_admin }}</div>
                     <div class="font14light">
-                      A certificate request for a connector on {{ datahub_name }} has been sent to you. The {{ participant_org.name }} connector information is provided below.
+                      A certificate request for a connector on <span style="text-decoration:underline; color:#0000EE">{{ datahub_name }}</span>  has been sent to you. The {{ participant_org.name }} connector information is provided below.
                     </div>
                   </div>
                 </div>
@@ -515,7 +515,7 @@
                         <td class="font14bold pb20">
                           {{ participant_org.name }}
                         </td>
-                        <td class="font14bold pb20">
+                        <td style="text-decoration: none; color:#4d4d4d" class="font14bold pb20">
                           {{ participant_org.org_email }}
                         </td>
                       </tr>
@@ -552,7 +552,7 @@
                 </div>
 
                 <div class='certiSpan'>
-                    Send the certificate to the {{ participant_email }}
+                    Send the certificate to the <span style="text-decoration:underline; color:#0000EE"> {{ participant_email }} </span> 
                 </div>
                 <!-- <table class='btngrp'>
                   <tr>
