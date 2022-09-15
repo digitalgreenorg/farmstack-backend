@@ -28,32 +28,6 @@ class UserManager(BaseUserManager):
         return self._create_user(email, **extra_fields)
 
 
-class UserRole(models.Model):
-    """UserRole model for user roles of the datahub users
-    User role mapping with id:
-        ADMIN: 1
-        TEAM MEMBER: 2
-        PARTICIPANT ROOT: 3
-        PARTICIPANT TEAM MEMBER: 4
-        GUEST: 5
-    """
-
-    ROLES = (
-        ("ADMIN", "ADMIN"),
-        ("TEAM MEMBER", "TEAM MEMBER"),
-        ("PARTICIPANT ROOT", "PARTICIPANT ROOT"),
-        ("PARTICIPANT TEAM MEMBER", "PARTICIPANT TEAM MEMBER"),
-        ("GUEST", "GUEST"),
-    )
-
-    # id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    id = models.IntegerField(primary_key=True)
-    role_name = models.CharField(max_length=255, choices=ROLES)
-
-    def __str__(self):
-        return self.role_name
-
-
 def auto_str(cls):
     def __str__(self):
         return "%s(%s)" % (
@@ -63,6 +37,31 @@ def auto_str(cls):
 
     cls.__str__ = __str__
     return cls
+
+class UserRole(models.Model):
+    """UserRole model for user roles of the datahub users
+    User role mapping with id:
+        datahub_admin: 1
+        datahub_team_member: 2
+        datahub_participant_root: 3
+        datahub_participant_team: 4
+        datahub_guest_user: 5
+    """
+
+    ROLES = (
+        ("datahub_admin", "datahub_admin"),
+        ("datahub_team_member", "datahub_team_member"),
+        ("datahub_participant_root", "datahub_participant_root"),
+        ("datahub_participant_team", "datahub_participant_team"),
+        ("datahub_guest_user", "datahub_guest_user"),
+    )
+
+    # id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    id = models.IntegerField(primary_key=True)
+    role_name = models.CharField(max_length=255, choices=ROLES)
+
+    def __str__(self):
+        return self.role_name
 
 
 @auto_str

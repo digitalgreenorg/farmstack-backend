@@ -15,7 +15,7 @@ import os
 from datetime import timedelta
 from pathlib import Path
 
-collections.Callable = collections.abc.Callable
+collections.Callable = collections.Callable
 
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -115,15 +115,15 @@ WSGI_APPLICATION = "core.wsgi.application"
 DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.postgresql",
-        "NAME": os.environ.get("POSTGRES_NAME"),
-        "USER": os.environ.get("POSTGRES_USER"),
-        "PASSWORD": os.environ.get("POSTGRES_PASSWORD"),
+        "NAME": "postgres",
+        "USER": "postgres",
+        "PASSWORD": "$farmstack@!21",
         "HOST": "datahubtest.farmstack.co",
-        "PORT": os.environ.get("PORT"),
+        "PORT": 7000,
         "OPTIONS": {
             "client_encoding": "UTF8",
         },
-    }
+    },
     # "default": {
     #     "ENGINE": "django.db.backends.sqlite3",
     #     "NAME": BASE_DIR / "db.sqlite3",
@@ -195,6 +195,15 @@ ISSUE_ATTACHEMENT_URL = "users/tickets/"
 SOLUCTION_ATTACHEMENT_URL = "users/tickets/soluctions/"
 SAMPLE_DATASETS_URL = "users/datasets/sample_data/"
 CONNECTORS_CERTIFICATE_URL = "users/connectors/certificates/"
+
+# Template Files.
+PROVIDER_TEMPLATE_XML = os.path.join(BASE_DIR, "utils/templates/provider_xml_template.json")
+PROVIDER_TEMPLATE_YAML = os.path.join(BASE_DIR, "utils/templates/provider_yaml_template.json")
+CONSUMER_TEMPLATE_XML = os.path.join(BASE_DIR, "utils/templates/consumer_xml_template.json")
+CONSUMER_TEMPLATE_YAML = os.path.join(BASE_DIR, "utils/templates/consumer_yaml_template.json")
+CONNECTOR_CONFIGS = os.path.join(BASE_DIR, "connector_configs/")
+CONNECTOR_STATICS = os.path.join(CONNECTOR_CONFIGS, "static_configs/")
+CONNECTOR_TEMPLATE_STATICS = os.path.join(CONNECTOR_CONFIGS, "static_template_configs/")
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/4.0/ref/settings/#default-auto-field
@@ -270,24 +279,30 @@ LOGGING = {
     "filters": {
         # information regarding filters
     },
+    'root': {
+        'handlers': ['console'],
+        'level': 'INFO',
+    },
     "formatters": {
-        # "Simple_Format": {
-        #     "format": "{levelname} {message}",
-        #     "style": "{",
-        # }
+        "Simple_Format": {
+            "format": "{levelname} {message}",
+            "style": "{",
+        },
         "with_datetime": {
             "format": "[%(asctime)s] [%(levelname)-s] %(lineno)-4s%(name)-15s %(message)s",
         },
     },
     "handlers": {
         "file": {
-            "level": "DEBUG",
+            # "level": "DEBUG",
+            "level": "INFO",
             "class": "logging.FileHandler",
             "filename": "./logs/log_file.log",
             "formatter": "with_datetime",
         },
         "console": {
-            "level": "DEBUG",
+            # "level": "DEBUG",
+            "level": "INFO",
             "class": "logging.StreamHandler",
             "formatter": "with_datetime",
         },

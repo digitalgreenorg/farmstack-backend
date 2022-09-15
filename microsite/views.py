@@ -1,4 +1,4 @@
-import logging
+import logging, datetime
 from core.utils import (
     DefaultPagination,
     CustomPagination,
@@ -208,20 +208,22 @@ class ContactFormViewSet(GenericViewSet):
     def create(self, request):
         """POST method to create a query and mail it to the datahub admin"""
         try:
-            # datahub_admin = [request.data["datahub_admin"]]
-            datahub_admin = [User.objects.filter(role_id=1).first().email]
+            datahub_admin = User.objects.filter(role_id=1).first()
             serializer = self.get_serializer(data=request.data)
             serializer.is_valid(raise_exception=True)
+            date = datetime.datetime.now().strftime("%d-%m-%Y")
+            data = serializer.data
+            data.update({"date": date})
+            print(data)
 
             # render email from query_email template
-            email_render = render(request, "query_email.html", serializer.data)
+            email_render = render(request, "user_fills_in_contact_form.html", data)
             mail_body = email_render.content.decode("utf-8")
             Utils().send_email(
-                to_email=datahub_admin,
+                to_email=[datahub_admin.email],
                 content=mail_body,
                 subject=serializer.data.get("subject", Constants.DATAHUB),
             )
-
             return Response({"Message": "Your query is submitted! Thank you."}, status=status.HTTP_200_OK)
 
         except Exception as error:
