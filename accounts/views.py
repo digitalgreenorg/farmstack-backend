@@ -7,6 +7,7 @@ from core.utils import Utils
 from datahub.models import UserOrganizationMap
 from django.conf import settings
 from django.core.cache import cache
+from django.shortcuts import render
 from rest_framework import serializers, status
 from rest_framework.decorators import action, permission_classes
 from rest_framework.parsers import FileUploadParser, MultiPartParser
@@ -22,7 +23,7 @@ from accounts.serializers import (
     UserCreateSerializer,
     UserUpdateSerializer,
 )
-from utils import login_helper
+from utils import login_helper, string_functions
 
 LOGGER = logging.getLogger(__name__)
 
@@ -108,7 +109,6 @@ class LoginViewset(GenericViewSet):
         user = user_obj.first()
         user_role_obj = UserRole.objects.filter(role_name=request.data.get("role")) 
         user_role = user_role_obj.first().id if user_role_obj else None
-        print(user_role)
 
         try:
             if not user:
@@ -149,10 +149,17 @@ class LoginViewset(GenericViewSet):
 
             # generate and send OTP to the the user
             gen_key = login_helper.generateKey()
-            otp = gen_key.returnValue()["OTP"]
+            otp = gen_key.returnValue().get("OTP")
+            full_name = string_functions.get_full_name(user.first_name, user.last_name)
+            data = {"otp": otp, "participant_admin_name": full_name}
+
+            email_render = render(request, "otp.html", data)
+            mail_body = email_render.content.decode("utf-8")
+
             Utils().send_email(
                 to_email=email,
-                content=f"Your OTP is {otp}",
+                # content=f"Your OTP is {otp}",
+                content=mail_body,
                 subject=f"Your account verification OTP",
             )
 
