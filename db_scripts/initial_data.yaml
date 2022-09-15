@@ -1,4 +1,4 @@
-- model: accounts.User
+- model: accounts.user
   pk: "2f0c183f-0a5e-484a-ab8c-1f76f430b54f"
   fields:
     created_at: "2022-07-01 05:21:55.463786"
@@ -7,7 +7,7 @@
     email: "varun@digitalgreen.org"
     status: True
     role: 1
-- model: accounts.User
+- model: accounts.user
   pk: "0efa4f87-e642-4737-97aa-1384c377e765"
   fields:
     created_at: "2022-07-01 05:22:55.463786"
@@ -16,7 +16,7 @@
     email: "waseempasha@digitalgreen.org"
     status: True
     role: 1
-- model: accounts.User
+- model: accounts.user
   pk: "67e30bd1-c907-43ab-a6a9-45c969ceed05"
   fields:
     created_at: "2022-07-01 05:23:55.463786"
@@ -25,7 +25,7 @@
     email: "ugesh@digitalgreen.org"
     status: True
     role: 1
-- model: accounts.User
+- model: accounts.user
   pk: "7ca4d95f-ee3b-45b1-ac32-bc343fc24381"
   fields:
     created_at: "2022-07-01 05:24:55.463786"
@@ -34,7 +34,7 @@
     email: "jashwanth@digitalgreen.org"
     status: True
     role: 1
-- model: accounts.User
+- model: accounts.user
   pk: "ec123cd9-0262-498a-b899-77680ca52bb1"
   fields:
     created_at: "2022-07-01 05:25:55.463786"
@@ -43,7 +43,7 @@
     email: "fatema@digitalgreen.org"
     status: True
     role: 1
-- model: accounts.User
+- model: accounts.user
   pk: "5b156a02-b436-4288-afa9-872d459094bf"
   fields:
     created_at: "2022-07-01 05:26:55.463786"
@@ -52,7 +52,7 @@
     email: "chandrashekar@digitalgreen.org"
     status: True
     role: 1
-- model: accounts.User
+- model: accounts.user
   pk: "9fadd9f9-769e-4ebe-aa5e-ccae91bc319a"
   fields:
     created_at: "2022-07-01 05:27:55.463786"
@@ -61,7 +61,7 @@
     email: "vignesh@digitalgreen.org"
     status: True
     role: 1
-- model: accounts.User
+- model: accounts.user
   pk: "397b8e6c-8c3d-4a37-bb2b-690daac26705"
   fields:
     created_at: "2022-07-01 05:28:55.463786"
@@ -70,7 +70,7 @@
     email: "shruthichandran@digitalgreen.org"
     status: True
     role: 1
-- model: accounts.User
+- model: accounts.user
   pk: "f609b53d-71ab-4ff5-aa10-2502179a41d0"
   fields:
     created_at: "2022-07-01 05:29:55.463786"
@@ -79,7 +79,7 @@
     email: "jayasankar@digitalgreen.org"
     status: True
     role: 1
-- model: accounts.User
+- model: accounts.user
   pk: "f36cf2ad-7caa-4891-a1ee-2668459102a9"
   fields:
     created_at: "2022-07-01 05:30:55.463786"
@@ -88,7 +88,7 @@
     email: "gautam@digitalgreen.org"
     status: True
     role: 1
-- model: accounts.User
+- model: accounts.user
   pk: "fa156187-0941-4e5c-b6d1-cd5dd7570227"
   fields:
     created_at: "2022-07-01 05:30:55.463786"
@@ -97,7 +97,7 @@
     email: "preeti@digitalgreen.org"
     status: True
     role: 1
-- model: accounts.User
+- model: accounts.user
   pk: "fa156187-0941-4e5c-b6d1-cd5dd7570227"
   fields:
     created_at: "2022-07-01 05:30:55.463786"
@@ -106,7 +106,7 @@
     email: "razak@digitalgreen.org"
     status: True
     role: 1
-- model: accounts.User
+- model: accounts.user
   pk: "29c350d4-3180-4f48-8218-5c7040e04d35"
   fields:
     created_at: "2022-07-01 05:30:55.463786"
