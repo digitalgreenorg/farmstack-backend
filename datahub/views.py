@@ -164,6 +164,7 @@ class OrganizationViewSet(GenericViewSet):
             elif not org_queryset and not user_org_queryset:
                 with transaction.atomic():
                     # create organization and userorganizationmap object
+                    print("Creating org & user_org_map")
                     org_serializer = OrganizationSerializer(data=request.data, partial=True)
                     org_serializer.is_valid(raise_exception=True)
                     org_queryset = self.perform_create(org_serializer)
@@ -176,11 +177,17 @@ class OrganizationViewSet(GenericViewSet):
                     )
                     user_org_serializer.is_valid(raise_exception=True)
                     self.perform_create(user_org_serializer)
-                    return Response(org_serializer.data, status=status.HTTP_201_CREATED)
+                    data = {
+                        "user_map": user_org_serializer.data.get("id"),
+                        "org_id": org_queryset.id,
+                        "organization": org_serializer.data
+                    }
+                    return Response(data, status=status.HTTP_201_CREATED)
 
             elif org_queryset and not user_org_queryset:
                 with transaction.atomic():
                     # map user to org by creating userorganizationmap object
+                    print("creating only user_org_map")
                     user_org_serializer = UserOrganizationMapSerializer(
                         data={
                             Constants.USER: user_obj.id,
@@ -189,7 +196,11 @@ class OrganizationViewSet(GenericViewSet):
                     )
                     user_org_serializer.is_valid(raise_exception=True)
                     self.perform_create(user_org_serializer)
-                    return Response(user_org_serializer.data, status=status.HTTP_201_CREATED)
+                    data = {
+                        "user_map": user_org_serializer.data.get("id"),
+                        "org_id":  org_queryset.first().id,
+                    }
+                    return Response(data, status=status.HTTP_201_CREATED)
 
         except Exception as error:
             LOGGER.error(error, exc_info=True)
