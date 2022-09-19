@@ -142,6 +142,22 @@ def date_formater(date_range: list):
         logging.error("Invalid time formate: %s", error)
         return ["", ""]
 
+def one_day_date_formater(date_range: list):
+    """This function accepts from date and to date as list and converts into valid date.
+
+    Args:
+        date_range (list): _description_
+    """
+    try:
+        start = date_range[0].split("T")[0]
+        end = date_range[1].split("T")[0]
+        start = (datetime.datetime.strptime(start, "%Y-%m-%d") + datetime.timedelta(1)).strftime("%Y-%m-%d")
+        end = (datetime.datetime.strptime(end, "%Y-%m-%d") + datetime.timedelta(1)).strftime("%Y-%m-%d")
+        return [start, end]
+    except Exception as error:
+        logging.error("Invalid time formate: %s", error)
+        return ["", ""]
+
 
 def csv_and_xlsx_file_validatation(file_obj):
     """This function accepts file obj and validates it."""
