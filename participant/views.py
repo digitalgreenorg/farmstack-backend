@@ -906,6 +906,7 @@ class ParticipantDepatrmentViewSet(GenericViewSet):
 
     def destroy(self, request, pk):
         """DELETE method: delete an object"""
+        Connectors.objects.filter(department=pk).update(department='e459f452-2b4b-4129-ba8b-1e1180c87888')
         product = self.get_object()
         product.status = False
         self.perform_create(product)
@@ -995,6 +996,7 @@ class ParticipantProjectViewSet(GenericViewSet):
 
     def destroy(self, request, pk):
         """DELETE method: delete an object"""
+        Connectors.objects.filter(project=pk).update(project='3526bd39-4514-43fe-bbc4-ee0980bde252')
         project = self.get_object()
         project.status = False
         self.perform_create(project)
