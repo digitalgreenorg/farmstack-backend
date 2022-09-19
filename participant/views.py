@@ -16,6 +16,7 @@ from core.utils import (
     DefaultPagination,
     csv_and_xlsx_file_validatation,
     date_formater,
+    one_day_date_formater,
     read_contents_from_csv_or_xlsx_file,
 )
 from datahub.models import Datasets, Organization, UserOrganizationMap
@@ -156,6 +157,8 @@ class ParticipantDatasetsViewSet(GenericViewSet):
 
     def create(self, request, *args, **kwargs):
         """creates a new participant dataset and triggers an email to the datahub admin requesting for approval of dataset"""
+        setattr(request.data, "_mutable", True)
+        data = request.data
         if not csv_and_xlsx_file_validatation(request.data.get(Constants.SAMPLE_DATASET)):
             return Response(
                 {
@@ -165,9 +168,14 @@ class ParticipantDatasetsViewSet(GenericViewSet):
                 },
                 status=status.HTTP_400_BAD_REQUEST,
             )
-        serializer = self.get_serializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
 
+        if data.get("constantly_update") == 'false':
+            formatted_date = one_day_date_formater([data.get("data_capture_start", ""), data.get("data_capture_end")])
+            data["data_capture_start"] = formatted_date[0]
+            data["data_capture_end"] = formatted_date[1]
+        serializer = self.get_serializer(data=data)
+        serializer.is_valid(raise_exception=True)
+        self.perform_create(serializer)       # save data
         try:
            # initialize an email to datahub admin for approval of the dataset and save the data
            serializer_email = ParticipantDatasetsSerializerForEmail(request.data)
@@ -176,7 +184,6 @@ class ParticipantDatasetsViewSet(GenericViewSet):
            datahub_admin_name = string_functions.get_full_name(recepient.first_name, recepient.last_name)
            data = {Constants.datahub_name: os.environ.get(Constants.DATAHUB_NAME, Constants.datahub_name), "datahub_admin_name": datahub_admin_name, Constants.datahub_site: os.environ.get(Constants.DATAHUB_SITE, Constants.datahub_site), "dataset": serializer_email.data}
 
-           self.perform_create(serializer)       # save data
            email_render = render(request, Constants.NEW_DATASET_UPLOAD_REQUEST_IN_DATAHUB, data)
            mail_body = email_render.content.decode("utf-8")
            Utils().send_email(
