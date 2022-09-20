@@ -184,17 +184,13 @@ class ParticipantDatasetsSerializerForEmail(serializers.ModelSerializer):
             ret["constantly_update"] = "N/A"
 
         if ret.get("data_capture_start"):
-            # ret["data_capture_start"] = datetime.datetime.strptime(date, "%Y-%m-%d").strftime("%d/%m/%Y")
-            start = ret["data_capture_start"].split("T")[0]
-            date = (datetime.datetime.strptime(start, "%Y-%m-%d") + datetime.timedelta(1)).strftime("%Y-%m-%d")
+            date = ret["data_capture_start"].split("T")[0]
             ret["data_capture_start"] = datetime.datetime.strptime(date, "%Y-%m-%d").strftime("%d/%m/%Y")
         else:
             ret["data_capture_start"] = "N/A"
 
         if ret.get("data_capture_end"):
-            # ret["data_capture_end"] = datetime.datetime.strptime(date, "%Y-%m-%d").strftime("%d/%m/%Y")
-            end = ret["data_capture_end"].split("T")[0]
-            date = (datetime.datetime.strptime(end, "%Y-%m-%d") + datetime.timedelta(1)).strftime("%Y-%m-%d")
+            date = ret["data_capture_end"].split("T")[0]
             ret["data_capture_end"] = datetime.datetime.strptime(date, "%Y-%m-%d").strftime("%d/%m/%Y")
         else:
             ret["data_capture_end"] = "N/A"
