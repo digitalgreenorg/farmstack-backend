@@ -271,6 +271,10 @@ class ParticipantDatasetsViewSet(GenericViewSet):
                     },
                     400,
                 )
+        if data.get("constantly_update") == 'false':
+            formatted_date = one_day_date_formater([data.get("data_capture_start", ""), data.get("data_capture_end")])
+            data["data_capture_start"] = formatted_date[0]
+            data["data_capture_end"] = formatted_date[1]
         category = data.get(Constants.CATEGORY)
         if category:
             data[Constants.CATEGORY] = json.loads(category) if isinstance(category, str) else category
