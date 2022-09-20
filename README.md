@@ -9,3 +9,5 @@ coverage  run --source='.' manage.py test
 coverage report -m  
 
 1. Testing.
+
+end
