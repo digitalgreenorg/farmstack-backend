@@ -184,10 +184,9 @@ class ParticipantDatasetsViewSet(GenericViewSet):
            subject = Constants.ADDED_NEW_DATASET_SUBJECT + os.environ.get(Constants.DATAHUB_NAME, Constants.datahub_name)
            datahub_admin_name = string_functions.get_full_name(recepient.first_name, recepient.last_name)
            formatted_date = one_day_date_formater([data.get("data_capture_start", ""), data.get("data_capture_end")])
-           data = {Constants.datahub_name: os.environ.get(Constants.DATAHUB_NAME, Constants.datahub_name), "datahub_admin_name": datahub_admin_name, Constants.datahub_site: os.environ.get(Constants.DATAHUB_SITE, Constants.datahub_site), "dataset": serializer_email.data, "data_capture_interval": formatted_date}
-           print("EMAILED DATA: ", data)
+           email_data = {Constants.datahub_name: os.environ.get(Constants.DATAHUB_NAME, Constants.datahub_name), "datahub_admin_name": datahub_admin_name, Constants.datahub_site: os.environ.get(Constants.DATAHUB_SITE, Constants.datahub_site), "dataset": serializer_email.data}
 
-           email_render = render(request, Constants.NEW_DATASET_UPLOAD_REQUEST_IN_DATAHUB, data)
+           email_render = render(request, Constants.NEW_DATASET_UPLOAD_REQUEST_IN_DATAHUB, email_data)
            mail_body = email_render.content.decode("utf-8")
            Utils().send_email(
                to_email=recepient.email,

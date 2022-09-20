@@ -183,20 +183,20 @@ class ParticipantDatasetsSerializerForEmail(serializers.ModelSerializer):
         else:
             ret["constantly_update"] = "N/A"
 
-        # if ret.get("data_capture_start"):
-        #     date = ret["data_capture_start"].split("T")[0]
-        #     ret["data_capture_start"] = datetime.datetime.strptime(date, "%Y-%m-%d").strftime("%d/%m/%Y")
-        # else:
-        #     ret["data_capture_start"] = "N/A"
+        if ret.get("data_capture_start"):
+            date = ret["data_capture_start"].split("T")[0]
+            ret["data_capture_start"] = datetime.datetime.strptime(date, "%Y-%m-%d").strftime("%d/%m/%Y")
+        else:
+            ret["data_capture_start"] = "N/A"
 
-        # if ret.get("data_capture_end"):
-        #     date = ret["data_capture_end"].split("T")[0]
-        #     ret["data_capture_end"] = datetime.datetime.strptime(date, "%Y-%m-%d").strftime("%d/%m/%Y")
-        # else:
-        #     ret["data_capture_end"] = "N/A"
+        if ret.get("data_capture_end"):
+            date = ret["data_capture_end"].split("T")[0]
+            ret["data_capture_end"] = datetime.datetime.strptime(date, "%Y-%m-%d").strftime("%d/%m/%Y")
+        else:
+            ret["data_capture_end"] = "N/A"
 
         return ret
-                                                                
+
 
 class DepartmentSerializer(serializers.ModelSerializer):
     class Meta:
