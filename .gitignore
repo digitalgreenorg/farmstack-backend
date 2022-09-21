@@ -148,3 +148,6 @@ db.sqlite3
 
 # django cache directory
 *django_cache/
+
+# IDE
+*.DS_Store
