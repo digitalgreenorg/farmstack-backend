@@ -78,6 +78,7 @@ class Project(TimeStampMixin):
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     department = models.ForeignKey(Department, on_delete=models.CASCADE)
+    organization = models.ForeignKey(Organization, on_delete=models.CASCADE, null=True)
     project_name = models.CharField(max_length=255, unique=True)
     project_discription = models.CharField(max_length=255)
     status = models.BooleanField(default=True)
