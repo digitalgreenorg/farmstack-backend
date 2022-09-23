@@ -229,27 +229,40 @@ class ResendOTPViewset(GenericViewSet):
 
             # update the current attempts of OTP
             if cache.get(email):
-                otp = gen_key.returnValue()["OTP"]
+                # generate and send OTP to the the user
+                gen_key = login_helper.generateKey()
+                otp = gen_key.returnValue().get("OTP")
+                full_name = string_functions.get_full_name(user.first_name, user.last_name)
+                data = {"otp": otp, "participant_admin_name": full_name}
+                email_render = render(request, "otp.html", data)
+                mail_body = email_render.content.decode("utf-8")
                 Utils().send_email(
                     to_email=email,
-                    content=f"Your OTP is {otp}",
+                    content=mail_body,
                     subject=f"Your account verification OTP",
                 )
-
+                # assign OTP to the user using cache
                 otp_attempt = int(cache.get(email)["otp_attempt"])
                 login_helper.set_user_otp(email, otp, settings.OTP_DURATION, otp_attempt)
                 print(cache.get(email))
 
             # generate a new attempts of OTP
             elif not cache.get(email):
-                otp = gen_key.returnValue()["OTP"]
+                # generate and send OTP to the the user
+                gen_key = login_helper.generateKey()
+                otp = gen_key.returnValue().get("OTP")
+                full_name = string_functions.get_full_name(user.first_name, user.last_name)
+                data = {"otp": otp, "participant_admin_name": full_name}
+                email_render = render(request, "otp.html", data)
+                mail_body = email_render.content.decode("utf-8")
                 Utils().send_email(
                     to_email=email,
-                    content=f"Your OTP is {otp}",
+                    content=mail_body,
                     subject=f"Your account verification OTP",
                 )
-
+                # assign OTP to the user using cache
                 login_helper.set_user_otp(email, otp, settings.OTP_DURATION)
+                print(cache.get(email))
 
             return Response(
                 {
