@@ -979,7 +979,7 @@ class ParticipantProjectViewSet(GenericViewSet):
         """GET method: query all the list of objects from the Product model"""
         data = []
         org_id = request.data.get(Constants.ORG_ID)
-        filters = {Constants.DEPARTMENT_ORGANIZATION: org_id} if org_id else {}
+        filters = {Constants.ORGANIZATION: org_id} if org_id else {}
         data = (
             Project.objects.select_related(Constants.DEPARTMENT_ORGANIZATION)
             # .filter(Q(status=True, **filters) | Q(project_name=Constants.DEFAULT))
@@ -988,7 +988,7 @@ class ParticipantProjectViewSet(GenericViewSet):
             .order_by(Constants.UPDATED_AT)
             .reverse()
             .all()
-        )
+        ) 
         page = self.paginate_queryset(data)
         project_serializer = ProjectDepartmentSerializer(page, many=True)
         return self.get_paginated_response(project_serializer.data)

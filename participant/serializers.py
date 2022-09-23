@@ -207,17 +207,16 @@ class DepartmentSerializer(serializers.ModelSerializer):
 class ProjectSerializer(serializers.ModelSerializer):
     class Meta:
         model = Project
-        fields = ["id", "project_name", "project_discription", "department"]
+        fields = ["id", "project_name", "project_discription", "department", "organization"]
 
 
 class ProjectDepartmentSerializer(serializers.ModelSerializer):
     department = DepartmentSerializer(
         read_only=True,
     )
-
     class Meta:
         model = Project
-        fields = ["id", "project_name", "project_discription", "department"]
+        fields = ["id", "project_name", "project_discription", "department", 'organization']
 
 
 class ConnectorsSerializer(serializers.ModelSerializer):
