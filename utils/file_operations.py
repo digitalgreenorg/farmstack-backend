@@ -13,22 +13,23 @@ def file_save(source_file, file_name, destination):
     """Save files"""
     try:
         # remove the same files if found in destination
-        for root, dirs, files in os.walk(destination):
-            print(root, files)
-            for file in files:
-                if file.split(".")[0] == file_name.split(".")[0]:
-                    os.remove(destination+file)
-                    print("removing file: ", destination+file)
+        if file_name:
+            for root, dirs, files in os.walk(destination):
+                print(root, files)
+                for file in files:
+                    if file.split(".")[0] == file_name.split(".")[0]:
+                        os.remove(destination+file)
+                        print("removing file: ", destination+file)
 
-        fs = FileSystemStorage(destination)
-        # overrides if file exists
-        # if fs.exists(file_name):
-        #     fs.delete(file_name)
-        #     fs.save(destination + file_name, source_file)
-        #     return "replaced"
-        # else:
-        fs.save(destination + file_name, source_file)
-        return "saved"
+            fs = FileSystemStorage(destination)
+            # overrides if file exists
+            # if fs.exists(file_name):
+            #     fs.delete(file_name)
+            #     fs.save(destination + file_name, source_file)
+            #     return "replaced"
+            # else:
+            fs.save(destination + file_name, source_file)
+            return "saved"
     except Exception as error:
         LOGGER.error(error, exc_info=True)
 
@@ -36,8 +37,8 @@ def file_save(source_file, file_name, destination):
 def file_path(destination):
     try:
         for root, dirs, files in os.walk(destination):
-            file_paths = {os.path.splitext(os.path.basename(file))[0]: root + file for file in files}
-            print(file_paths)
+            file_paths = {os.path.splitext(os.path.basename(file))[0]: root + file if file else None for file  in files }
+            print("file_paths: ", file_paths)
             return file_paths
     except Exception as error:
         LOGGER.error(error, exc_info=True)
