@@ -244,21 +244,32 @@ class DocumentsMicrositeViewSet(GenericViewSet):
         try:
             file_paths = file_operations.file_path(settings.DOCUMENTS_URL)
             datahub_obj = DatahubDocuments.objects.last()
-            documents = {Constants.GOVERNING_LAW: None, Constants.PRIVACY_POLICY: None, Constants.TOS: None, Constants.LIMITATIONS_OF_LIABILITIES: None, Constants.WARRANTY: None}
+
+            content = { Constants.GOVERNING_LAW: datahub_obj.governing_law if datahub_obj else None,
+                        Constants.PRIVACY_POLICY: datahub_obj.privacy_policy if datahub_obj else None,
+                        Constants.TOS: datahub_obj.tos if datahub_obj else None,
+                        Constants.LIMITATIONS_OF_LIABILITIES: datahub_obj.limitations_of_liabilities if datahub_obj else None,
+                        Constants.WARRANTY: datahub_obj.warranty if datahub_obj else None
+                        }
+
+            documents = { Constants.GOVERNING_LAW: file_paths.get("governing_law"),
+                          Constants.PRIVACY_POLICY: file_paths.get("privacy_policy"),
+                          Constants.TOS: file_paths.get("tos"),
+                          Constants.LIMITATIONS_OF_LIABILITIES: file_paths.get("limitations_of_liabilities"),
+                          Constants.WARRANTY: file_paths.get("warranty")
+                          }
 
             if not datahub_obj and not file_paths:
-                data = {"Content": None, "Documents": documents}
+                data = {"content": content, "documents": documents}
                 return Response(data, status=status.HTTP_200_OK)
             elif not datahub_obj:
-                data = {"Content": None, "Documents": file_paths}
+                data = {"content": content, "documents": documents}
                 return Response(data, status=status.HTTP_200_OK)
             elif datahub_obj and not file_paths:
-                documents_serializer = LegalDocumentSerializer(datahub_obj)
-                data = {"Content": documents_serializer.data, "Documents": documents}
+                data = {"content": content, "documents": documents}
                 return Response(data, status=status.HTTP_200_OK)
             elif datahub_obj and file_paths:
-                documents_serializer = LegalDocumentSerializer(datahub_obj)
-                data = {"Content": documents_serializer.data, "Documents": file_paths}
+                data = {"content": content, "documents": documents}
                 return Response(data, status=status.HTTP_200_OK)
 
         except Exception as error:
