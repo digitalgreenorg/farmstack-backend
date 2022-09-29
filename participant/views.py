@@ -997,9 +997,14 @@ class ParticipantProjectViewSet(GenericViewSet):
         """GET method: query all the list of objects from the Product model"""
         data = []
         department = request.query_params.get(Constants.DEPARTMENT)
-        filters = {Constants.DEPARTMENT: department} if department else {}
+        org_id = request.query_params.get(Constants.ORG_ID)
+        # filters = {Constants.DEPARTMENT: department} if department else {}
+        filters = {Constants.DEPARTMENT: department, Constants.ORGANIZATION: org_id} if department or org_id else {}
         data = (
-            Project.objects.filter(Q(status=True, **filters) | Q(project_name=Constants.DEFAULT))
+            Project.objects.select_related(Constants.DEPARTMENT_ORGANIZATION)
+            .filter(Q(status=True, **filters) | Q(project_name=Constants.DEFAULT))
+            # .filter(status=True, **filters)
+            # .exclude(project_name=Constants.DEFAULT)
             .order_by(Constants.UPDATED_AT)
             .reverse()
             .all()
