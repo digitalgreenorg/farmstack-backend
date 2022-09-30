@@ -563,7 +563,7 @@ class ParticipantConnectorsViewSet(GenericViewSet):
         try:
             data = (
                 Connectors.objects.select_related(
-                    Constants.DATASET, Constants.USER_MAP, Constants.PROJECT, Constants.PROJECT_DEPARTMENT
+                    Constants.DATASET, Constants.USER_MAP, Constants.PROJECT, Constants.DEPARTMENT
                 )
                 .filter(status=True, dataset__status=True, **data, **filters, **cretated_range)
                 .order_by(Constants.UPDATED_AT)
@@ -594,9 +594,9 @@ class ParticipantConnectorsViewSet(GenericViewSet):
             )
             departments = (
                 Connectors.objects.select_related(
-                    Constants.DATASET, Constants.PROJECT, Constants.PROJECT_DEPARTMENT, Constants.DATASET_USER_MAP
+                    Constants.DATASET, Constants.DEPARTMENT, Constants.DATASET_USER_MAP
                 )
-                .values_list(Constants.PROJECT_DEPARTMENT_DEPARTMENT_NAME, flat=True)
+                .values_list(Constants.DEPARTMENT_DEPARTMENT_NAME, flat=True)
                 .distinct()
                 .filter(dataset__status=True, status=True, **filters)
                 .exclude(

@@ -77,7 +77,7 @@ class Constants:
     RELATION = "relation"
     PROJECT_PROJECT_NAME = "project__project_name"
     DATASET_USER_MAP = "dataset__user_map"
-    PROJECT_DEPARTMENT_DEPARTMENT_NAME = "project__department__department_name"
+    DEPARTMENT_DEPARTMENT_NAME = "department__department_name"
     DEPARTMENT_ORGANIZATION = "department__organization"
     IS_DATASET_PRESENT = "is_dataset_present"
     DATASET_ID = "dataset_id"
