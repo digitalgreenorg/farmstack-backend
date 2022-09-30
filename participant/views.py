@@ -632,7 +632,13 @@ class ParticipantConnectorsViewSet(GenericViewSet):
         )
         connector_serializer = ConnectorListSerializer(data, many=True)
         return Response(connector_serializer.data, status=200)
+    
+    @action(detail=False, methods=["get"])
+    def show_data(self, request, *args, **kwargs):
+        port = request.query_params.get("port", "")
+        return requests.get(f'http://{os.environ.get("REACT_APP_BASEURL_without_slash_view_data")}{port}/show_data')
 
+    
 class ParticipantConnectorsMapViewSet(GenericViewSet):
     """
     This class handles the participant Datsets CRUD operations.
