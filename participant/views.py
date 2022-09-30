@@ -636,7 +636,7 @@ class ParticipantConnectorsViewSet(GenericViewSet):
     @action(detail=False, methods=["get"])
     def show_data(self, request, *args, **kwargs):
         port = request.query_params.get("port", "")
-        return requests.get(f'{os.environ.get("REACT_APP_BASEURL_without_slash_view_data")}{port}/show_data')
+        return Response(requests.get(f'{os.environ.get("REACT_APP_BASEURL_without_slash_view_data")}{port}/show_data').json(), 200)
 
 
     
