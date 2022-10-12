@@ -37,6 +37,7 @@ class UserCreateSerializer(serializers.ModelSerializer):
             "subscription",
             "profile_picture",
             "on_boarded",
+            "approval_status"
         )
         # fields = "__all__"
         depth = 1
@@ -56,6 +57,7 @@ class UserSerializer(serializers.ModelSerializer):
             "subscription",
             "profile_picture",
             "on_boarded",
+            "approval_status"
         )
 
 
@@ -77,6 +79,7 @@ class UserUpdateSerializer(serializers.ModelSerializer):
             "role",
             "profile_picture",
             "on_boarded",
+            "approval_status"
         )
         depth = 1
 
