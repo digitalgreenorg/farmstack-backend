@@ -29,6 +29,8 @@ class Constants:
     USERROLE = "userrole"
     ORG_ID = "org_id"
     DATAHUB_DATASETS = "datahub_datasets"
+    SEARCH_PATTERNS = "search_pattern"
+    NAME_ICONTAINS = "name__icontains"
     SAMPLE_DATASET = "sample_dataset"
     RECORDS = "records"
     CONTENTS = "contents"
