@@ -159,6 +159,9 @@ class ParticipantDatasetsViewSet(GenericViewSet):
         """creates a new participant dataset and triggers an email to the datahub admin requesting for approval of dataset"""
         setattr(request.data, "_mutable", True)
         data = request.data
+        user_org_map = UserOrganizationMap.objects.get(id=data.get(Constants.USER_MAP))
+        user = User.objects.get(id=user_org_map.user_id)
+
         if not csv_and_xlsx_file_validatation(request.data.get(Constants.SAMPLE_DATASET)):
             return Response(
                 {
@@ -169,10 +172,13 @@ class ParticipantDatasetsViewSet(GenericViewSet):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
+
         if data.get("constantly_update") == 'false':
             formatted_date = one_day_date_formater([data.get("data_capture_start", ""), data.get("data_capture_end")])
             data["data_capture_start"] = formatted_date[0]
             data["data_capture_end"] = formatted_date[1]
+        if user.approval_status == True:
+            data["approval_status"] = Constants.APPROVED
         serializer = self.get_serializer(data=data)
         serializer.is_valid(raise_exception=True)
         self.perform_create(serializer)       # save data

@@ -70,6 +70,7 @@ class DatasetSerializer(serializers.ModelSerializer):
 
         model = Datasets
         fields = [
+            "id",
             "user_map",
             "name",
             "description",
@@ -83,6 +84,7 @@ class DatasetSerializer(serializers.ModelSerializer):
             "sample_dataset",
             "data_capture_start",
             "data_capture_end",
+            "approval_status"
         ]
 
 
