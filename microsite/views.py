@@ -137,10 +137,11 @@ class DatasetsMicrositeViewSet(GenericViewSet):
         try:
             data = (
                 Datasets.objects.filter(
-                    Q(status=True, approval_status="approved", **data, **range)
+                    Q(status=True, approval_status=Constants.APPROVED, **data, **range)
                     | Q(user_map__user__role_id=1, status=True, **data, **range)
                 )
                 .order_by(Constants.UPDATED_AT)
+                .reverse()
                 .all()
             )
         except Exception as error:  # type: ignore
@@ -197,6 +198,33 @@ class DatasetsMicrositeViewSet(GenericViewSet):
         except Exception as error:
             LOGGER.error(error, exc_info=True)
             return Response({}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    @action(detail=False, methods=["post"])
+    def search_datasets(self, request, *args, **kwargs):
+        data = request.data
+        search_pattern = data.pop(Constants.SEARCH_PATTERNS, "")
+        filters = {Constants.NAME_ICONTAINS: search_pattern} if search_pattern else {}
+
+        try:
+            data = (
+                Datasets.objects.filter(
+                    Q(status=True, approval_status=Constants.APPROVED, **filters)
+                    | Q(user_map__user__role_id=1, status=True, **filters)
+                )
+                .order_by(Constants.UPDATED_AT)
+                .reverse()
+                .all()
+            )
+
+        except Exception as error:  # type: ignore
+            LOGGER.error("Error while filtering the datasets. ERROR: %s", error, exc_info=True)
+            return Response(
+                f"Invalid filter fields: {list(request.data.keys())}", status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+        page = self.paginate_queryset(data)
+        serializer = DatasetsMicrositeSerializer(page, many=True)
+        return self.get_paginated_response(serializer.data)
 
 
 class ContactFormViewSet(GenericViewSet):
