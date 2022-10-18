@@ -115,7 +115,8 @@ def read_modify_templates(provider, consumer, ports):
 
     # XML file paths.
     connector_path = (os.path.join(settings.CONNECTOR_CONFIGS,  provider.connector_name+consumer.connector_name))
-    os.mkdir(connector_path)
+    if not os.path.exists(connector_path):
+        os.mkdir(connector_path)
     provider_xml_file = open("%s.xml" % (os.path.join(connector_path, provider.connector_name)), "w")
     consumer_xml_file = open("%s.xml" % (os.path.join(connector_path, consumer.connector_name)), "w")
     # print("------", type(provider.certificate), str(provider.certificate))
