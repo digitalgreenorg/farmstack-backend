@@ -931,7 +931,7 @@ class DatahubDatasetsViewSet(GenericViewSet):
             return Response(data, status=status.HTTP_200_OK)
         return Response({}, status=status.HTTP_200_OK)
 
-    def update(self, request, *args, **kwargs):
+    def update(self, request, *args, **kwargs):        
         """PUT method: update or send a PUT request on an object of the Product model"""
         setattr(request.data, "_mutable", True)
         data = request.data
@@ -950,15 +950,20 @@ class DatahubDatasetsViewSet(GenericViewSet):
         if category:
             data[Constants.CATEGORY] = json.loads(category) if isinstance(category, str) else category
         instance = self.get_object()
-        serializer = DatasetUpdateSerializer(instance, data=data, partial=True)
-        serializer.is_valid(raise_exception=True)
-        self.perform_create(serializer)
 
         # trigger email to the participant
         user_map_queryset = UserOrganizationMap.objects.select_related(Constants.USER).get(id=instance.user_map_id)
         user_obj = user_map_queryset.user
-        data = request.data
 
+        # reset the approval status b/c the user modified the dataset after an approval
+        if (getattr(instance, Constants.APPROVAL_STATUS) == Constants.APPROVED and (user_obj.role_id == 3 or user_obj.role_id == 4)): data[Constants.APPROVAL_STATUS] = Constants.AWAITING_REVIEW
+
+        serializer = DatasetUpdateSerializer(instance, data=data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        self.perform_create(serializer)
+        
+        data = request.data
+        
         if data.get(Constants.APPROVAL_STATUS) == Constants.APPROVED:
             self.trigger_email(request, "datahub_admin_approves_dataset.html", user_obj.email, Constants.APPROVED_NEW_DATASET_SUBJECT, user_obj.first_name, user_obj.last_name, instance.name)
 
