@@ -56,6 +56,7 @@ class Constants:
     WARRANTY = "warranty"
     APPROVAL_STATUS = "approval_status"
     APPROVED = "approved"
+    AWAITING_REVIEW = "for_review"
     IS_ENABLED = "is_enabled"
     DOCKER_IMAGE_URL = "docker_image_url"
     IMAGES = "images"
