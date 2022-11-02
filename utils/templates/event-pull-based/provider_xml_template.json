@@ -119,7 +119,7 @@
           "setHeader": [
             {
               "@name": "CamelHttpMethod",
-              "constant": "POST"
+              "constant": "GET"
             },
             {
               "@name": "Content-Type",
