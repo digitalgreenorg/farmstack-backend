@@ -222,7 +222,7 @@ def read_modify_templates_event_based_pull(provider, consumer, ports):
         consumer.application_port,
     )
 
-    provider_routes[1]["to"]["@uri"] = "http://provider-app:%s/get_data" % (provider.application_port)
+    provider_routes[1]["to"]["@ur"] = "http://provider-app:%s/get_data" % (provider.application_port)
     provider_routes[1]["setProperty"]["constant"] = "https://farmstack.digitalgreen.org/%s/%s" % (
         provider.connector_name,
         consumer.connector_name,
@@ -235,17 +235,17 @@ def read_modify_templates_event_based_pull(provider, consumer, ports):
     )
 
     consumer_routes[0]["to"]["@uri"] = (
-        "idscp2client://provider-core:%s?awaitResponse=true&amp;connectionShareId=ucConnection&amp;sslContextParameters=#clientSslContext&amp;useIdsMessages=true"
+        "idscp2client://provider-core:%s?awaitResponse=true&connectionShareId=ucConnection&sslContextParameters=#clientSslContext&useIdsMessages=true"
         % (ports[Constants.PROVIDER_CORE])
     )
 
     consumer_routes[0]["choice"]["when"]["to"]["@uri"] = (
-        "idscp2client://provider-core:%s?awaitResponse=true&amp;connectionShareId=ucConnection&amp;sslContextParameters=#clientSslContext&amp;useIdsMessages=true"
+        "idscp2client://provider-core:%s?awaitResponse=true&connectionShareId=ucConnection&sslContextParameters=#clientSslContext&useIdsMessages=true"
         % (ports[Constants.PROVIDER_CORE])
     )
 
     consumer_routes[1]["from"]["@uri"] = (
-        "idscp2client://provider-core:%s?awaitResponse=true&amp;connectionShareId=ucConnection&amp;sslContextParameters=#clientSslContext&amp;useIdsMessages=true"
+        "idscp2client://provider-core:%s?awaitResponse=true&connectionShareId=ucConnection&sslContextParameters=#clientSslContext&useIdsMessages=true"
         % (ports[Constants.PROVIDER_CORE])
     )
 
@@ -264,7 +264,7 @@ def read_modify_templates_event_based_pull(provider, consumer, ports):
     )
 
     consumer_routes[2]["to"]["@uri"] = (
-        "idscp2client://provider-core:%s?awaitResponse=true&amp;connectionShareId=ucConnection&amp;sslContextParameters=#clientSslContext&amp;useIdsMessages=true"
+        "idscp2client://provider-core:%s?awaitResponse=true&connectionShareId=ucConnection&sslContextParameters=#clientSslContext&useIdsMessages=true"
         % (ports[Constants.PROVIDER_CORE])
     )
 
