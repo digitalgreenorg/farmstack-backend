@@ -222,7 +222,7 @@ def read_modify_templates_event_based_pull(provider, consumer, ports):
         consumer.application_port,
     )
 
-    provider_routes[1]["to"] = "http://provider-app:%s/get_data" % (provider.application_port)
+    provider_routes[1]["to"]["@uri"] = "http://provider-app:%s/get_data" % (provider.application_port)
     provider_routes[1]["setProperty"]["constant"] = "https://farmstack.digitalgreen.org/%s/%s" % (
         provider.connector_name,
         consumer.connector_name,

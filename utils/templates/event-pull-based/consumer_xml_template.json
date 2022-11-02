@@ -78,16 +78,18 @@
             "@name": "artifactUri",
             "constant": "https://farmstack.digitalgreen.org/farmstackLocationFao"
           },
-          "process": [
+          "process": 
             {
               "@ref": "ContractRequestCreationProcessor"
             },
-            {
-              "@ref": "TypeExtractionProcessor"
-            }
-          ],
           "to": {
             "@uri": "idscp2client://provider-core:8989?awaitResponse=true&connectionShareId=ucConnection&sslContextParameters=#clientSslContext&useIdsMessages=true"
+          },
+          "filter":{
+            "simple": true,
+            "process": {
+              "@ref": "TypeExtractionProcessor"
+            }
           },
           "choice": {
             "when": {
