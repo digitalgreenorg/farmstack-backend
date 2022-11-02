@@ -215,7 +215,7 @@ def read_modify_templates_event_based_pull(provider, consumer, ports):
         % (ports[Constants.PROVIDER_CORE])
     )
 
-    provider_routes[0]["choice"]["when"]["setProperty"][
+    provider_routes[0]["choice"]["when"][0]["setProperty"][
         "constant"
     ] = "https://hub.docker.com/layers/farmstack/sha256-%s#%s" % (
         consumer.usage_policy.strip(),
@@ -223,7 +223,7 @@ def read_modify_templates_event_based_pull(provider, consumer, ports):
     )
 
     provider_routes[1]["to"] = "http://provider-app:%s/get_data" % (provider.application_port)
-    provider_routes[1]["setProperty"] = "https://farmstack.digitalgreen.org/%s/%s" % (
+    provider_routes[1]["setProperty"]["constant"] = "https://farmstack.digitalgreen.org/%s/%s" % (
         provider.connector_name,
         consumer.connector_name,
     )
@@ -234,12 +234,12 @@ def read_modify_templates_event_based_pull(provider, consumer, ports):
         consumer.connector_name,
     )
 
-    consumer_routes[0]["to"] = (
+    consumer_routes[0]["to"]["@uri"] = (
         "idscp2client://provider-core:%s?awaitResponse=true&amp;connectionShareId=ucConnection&amp;sslContextParameters=#clientSslContext&amp;useIdsMessages=true"
         % (ports[Constants.PROVIDER_CORE])
     )
 
-    consumer_routes[0]["choice"]["when"]["to"] = (
+    consumer_routes[0]["choice"]["when"]["to"]["@uri"] = (
         "idscp2client://provider-core:%s?awaitResponse=true&amp;connectionShareId=ucConnection&amp;sslContextParameters=#clientSslContext&amp;useIdsMessages=true"
         % (ports[Constants.PROVIDER_CORE])
     )
@@ -254,14 +254,16 @@ def read_modify_templates_event_based_pull(provider, consumer, ports):
         consumer.connector_name,
     )
 
-    consumer_routes[1]["choice"]["when"]["to"] = "http://consumer-app:%s/post_data" % (consumer.application_port)
+    consumer_routes[1]["choice"]["when"]["to"]["@uri"] = "http://consumer-app:%s/post_data" % (
+        consumer.application_port
+    )
 
     consumer_routes[2]["setProperty"]["constant"] = "https://farmstack.digitalgreen.org/%s/%s" % (
         provider.connector_name,
         consumer.connector_name,
     )
 
-    consumer_routes[2]["to"] = (
+    consumer_routes[2]["to"]["@uri"] = (
         "idscp2client://provider-core:%s?awaitResponse=true&amp;connectionShareId=ucConnection&amp;sslContextParameters=#clientSslContext&amp;useIdsMessages=true"
         % (ports[Constants.PROVIDER_CORE])
     )
