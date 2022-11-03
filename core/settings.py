@@ -15,7 +15,8 @@ import os
 from datetime import timedelta
 from pathlib import Path
 
-collections.Callable = collections.abc.Callable
+collections.Callable = collections.Callable
+
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -196,33 +197,10 @@ SAMPLE_DATASETS_URL = "users/datasets/sample_data/"
 CONNECTORS_CERTIFICATE_URL = "users/connectors/certificates/"
 
 # Template Files.
-SINGLE_PULL_PROVIDER_TEMPLATE_XML = os.path.join(
-    BASE_DIR, "utils/templates/single-pull-based/provider_xml_template.json"
-)
-SINGLE_PULL_PROVIDER_TEMPLATE_YAML = os.path.join(
-    BASE_DIR, "utils/templates/single-pull-based/provider_yaml_template.json"
-)
-SINGLE_PULL_CONSUMER_TEMPLATE_XML = os.path.join(
-    BASE_DIR, "utils/templates/single-pull-based/consumer_xml_template.json"
-)
-SINGLE_PULL_CONSUMER_TEMPLATE_YAML = os.path.join(
-    BASE_DIR, "utils/templates/single-pull-based/consumer_yaml_template.json"
-)
-
-# Event-based Pull Templates
-EVENT_BASED_PULL_PROVIDER_TEMPLATE_XML = os.path.join(
-    BASE_DIR, "utils/templates/event-pull-based/provider_xml_template.json"
-)
-EVENT_BASED_PULL_PROVIDER_TEMPLATE_YAML = os.path.join(
-    BASE_DIR, "utils/templates/event-pull-based/provider_yaml_template.json"
-)
-EVENT_BASED_PULL_CONSUMER_TEMPLATE_XML = os.path.join(
-    BASE_DIR, "utils/templates/event-pull-based/consumer_xml_template.json"
-)
-EVENT_BASED_PULL_CONSUMER_TEMPLATE_YAML = os.path.join(
-    BASE_DIR, "utils/templates/event-pull-based/consumer_yaml_template.json"
-)
-
+PROVIDER_TEMPLATE_XML = os.path.join(BASE_DIR, "utils/templates/provider_xml_template.json")
+PROVIDER_TEMPLATE_YAML = os.path.join(BASE_DIR, "utils/templates/provider_yaml_template.json")
+CONSUMER_TEMPLATE_XML = os.path.join(BASE_DIR, "utils/templates/consumer_xml_template.json")
+CONSUMER_TEMPLATE_YAML = os.path.join(BASE_DIR, "utils/templates/consumer_yaml_template.json")
 CONNECTOR_CONFIGS = os.path.join(BASE_DIR, "connector_configs/")
 CONNECTOR_STATICS = os.path.join(CONNECTOR_CONFIGS, "static_configs/")
 CONNECTOR_TEMPLATE_STATICS = os.path.join(CONNECTOR_CONFIGS, "static_template_configs/")
@@ -301,9 +279,9 @@ LOGGING = {
     "filters": {
         # information regarding filters
     },
-    "root": {
-        "handlers": ["console"],
-        "level": "INFO",
+    'root': {
+        'handlers': ['console'],
+        'level': 'INFO',
     },
     "formatters": {
         "Simple_Format": {
