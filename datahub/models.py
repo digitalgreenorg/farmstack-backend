@@ -113,6 +113,3 @@ class Datasets(TimeStampMixin):
     approval_status = models.CharField(max_length=255, null=True, choices=APPROVAL_STATUS, default="for_review")
     is_enabled = models.BooleanField(default=True)
     remarks = models.CharField(max_length=1000, null=True, blank=True)
-
-    class Meta:
-        indexes = [models.Index(fields=["name"])]
