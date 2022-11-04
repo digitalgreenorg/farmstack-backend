@@ -103,7 +103,14 @@ def read_modify_templates_single_pull(provider, consumer, ports):
         "idscp2client://provider-core:%s?awaitResponse=true&connectionShareId=%s&sslContextParameters=#clientSslContext&useIdsMessages=true"
         % (ports[Constants.PROVIDER_CORE], consumer.connector_name)
     )
-
+    consumer_routes[3]["setProperty"]["constant"] = "https://farmstack.digitalgreen.org/%s/%s" % (
+        provider.connector_name,
+        consumer.connector_name,
+    )
+    consumer_routes[3]["to"]["@uri"] = (
+        "idscp2client://provider-core:%s?awaitResponse=true&connectionShareId=%s&sslContextParameters=#clientSslContext&useIdsMessages=true"
+        % (ports[Constants.PROVIDER_CORE], consumer.connector_name)
+    )
     # YAML Files.
     # copy the settings.mapdb file.
     shutil.copy(

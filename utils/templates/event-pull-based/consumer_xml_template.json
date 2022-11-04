@@ -172,6 +172,21 @@
           "to": {
             "@uri": "idscp2client://provider-core:8989?awaitResponse=true&connectionShareId=ucConnection&sslContextParameters=#clientSslContext&useIdsMessages=true"
           }
+        },
+        {
+          "from": {
+            "@uri": "timer://contractRequest?repeatCount=1&delay=50s"
+          },
+          "setProperty": {
+            "@name": "artifactUri",
+            "constant": "https://farmstack.digitalgreen.org/farmstack"
+          },
+          "process": {
+            "@ref": "ArtifactRequestCreationProcessor"
+          },
+          "to": {
+            "@uri": "idscp2client://provider-core:8989?awaitResponse=true&connectionShareId=ucConnection&sslContextParameters=#clientSslContext&useIdsMessages=true"
+          }
         }
       ]
     }
