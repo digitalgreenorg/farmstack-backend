@@ -3,8 +3,8 @@
   fields:
     created_at: "2022-07-01 05:21:55.463786"
     updated_at: "2022-07-01 05:21:55.464100"
-    first_name: "Varun"
-    email: "varun@digitalgreen.org"
+    first_name: "Amanuel"
+    email: "amanuel@digitalgreen.org"
     status: True
     role: 1
 - model: accounts.user
@@ -12,10 +12,10 @@
   fields:
     created_at: "2022-07-01 05:22:55.463786"
     updated_at: "2022-07-01 05:22:55.464100"
-    first_name: "Waseem"
-    email: "waseempasha@digitalgreen.org"
+    first_name: "Amanuel"
+    email: "amanuel.ng@hotmail.com"
     status: True
-    role: 1
+    role: 3
 - model: accounts.user
   pk: "67e30bd1-c907-43ab-a6a9-45c969ceed05"
   fields:

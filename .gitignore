@@ -151,3 +151,5 @@ db.sqlite3
 
 # IDE
 *.DS_Store
+# virtual enviroment 
+virtualenv
