@@ -65,6 +65,7 @@ from participant.serializers import (
 
 LOGGER = logging.getLogger(__name__)
 
+
 class ParticipantSupportViewSet(GenericViewSet):
     """
     This class handles the participant CRUD operations.
@@ -98,7 +99,9 @@ class ParticipantSupportViewSet(GenericViewSet):
         user_id = request.GET.get(Constants.USER_ID)
         data = (
             SupportTicket.objects.select_related(
-                Constants.USER_MAP, Constants.USER_MAP_USER, Constants.USER_MAP_ORGANIZATION
+                Constants.USER_MAP,
+                Constants.USER_MAP_USER,
+                Constants.USER_MAP_ORGANIZATION,
             )
             .filter(user_map__user__status=True, user_map__user=user_id)
             .order_by(Constants.UPDATED_AT)
@@ -162,49 +165,73 @@ class ParticipantDatasetsViewSet(GenericViewSet):
         user_org_map = UserOrganizationMap.objects.get(id=data.get(Constants.USER_MAP))
         user = User.objects.get(id=user_org_map.user_id)
 
-        if not csv_and_xlsx_file_validatation(request.data.get(Constants.SAMPLE_DATASET)):
-            return Response(
-                {
-                    Constants.SAMPLE_DATASET: [
-                        "Invalid Sample dataset file (or) Atleast 5 rows should be available. please upload valid file"
-                    ]
-                },
-                status=status.HTTP_400_BAD_REQUEST,
+        if not data.get("is_public"):
+            if not csv_and_xlsx_file_validatation(
+                request.data.get(Constants.SAMPLE_DATASET)
+            ):
+                return Response(
+                    {
+                        Constants.SAMPLE_DATASET: [
+                            "Invalid Sample dataset file (or) Atleast 5 rows should be available. please upload valid file"
+                        ]
+                    },
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+        if data.get("constantly_update") == "false":
+            formatted_date = one_day_date_formater(
+                [data.get("data_capture_start", ""), data.get("data_capture_end")]
             )
-
-
-        if data.get("constantly_update") == 'false':
-            formatted_date = one_day_date_formater([data.get("data_capture_start", ""), data.get("data_capture_end")])
             data["data_capture_start"] = formatted_date[0]
             data["data_capture_end"] = formatted_date[1]
         if user.approval_status == True:
             data["approval_status"] = Constants.APPROVED
         serializer = self.get_serializer(data=data)
         serializer.is_valid(raise_exception=True)
-        self.perform_create(serializer)       # save data
+        self.perform_create(serializer)  # save data
 
         try:
-           # initialize an email to datahub admin for approval of the dataset and save the data
-           serializer_email = ParticipantDatasetsSerializerForEmail(data)
-           recepient = User.objects.filter(role_id=1).first()
-           subject = Constants.ADDED_NEW_DATASET_SUBJECT + os.environ.get(Constants.DATAHUB_NAME, Constants.datahub_name)
-           datahub_admin_name = string_functions.get_full_name(recepient.first_name, recepient.last_name)
-           formatted_date = one_day_date_formater([data.get("data_capture_start", ""), data.get("data_capture_end")])
-           email_data = {Constants.datahub_name: os.environ.get(Constants.DATAHUB_NAME, Constants.datahub_name), "datahub_admin_name": datahub_admin_name, Constants.datahub_site: os.environ.get(Constants.DATAHUB_SITE, Constants.datahub_site), "dataset": serializer_email.data}
+            # initialize an email to datahub admin for approval of the dataset and save the data
+            serializer_email = ParticipantDatasetsSerializerForEmail(data)
+            recepient = User.objects.filter(role_id=1).first()
+            subject = Constants.ADDED_NEW_DATASET_SUBJECT + os.environ.get(
+                Constants.DATAHUB_NAME, Constants.datahub_name
+            )
+            datahub_admin_name = string_functions.get_full_name(
+                recepient.first_name, recepient.last_name
+            )
+            formatted_date = one_day_date_formater(
+                [data.get("data_capture_start", ""), data.get("data_capture_end")]
+            )
+            email_data = {
+                Constants.datahub_name: os.environ.get(
+                    Constants.DATAHUB_NAME, Constants.datahub_name
+                ),
+                "datahub_admin_name": datahub_admin_name,
+                Constants.datahub_site: os.environ.get(
+                    Constants.DATAHUB_SITE, Constants.datahub_site
+                ),
+                "dataset": serializer_email.data,
+            }
 
-           email_render = render(request, Constants.NEW_DATASET_UPLOAD_REQUEST_IN_DATAHUB, email_data)
-           mail_body = email_render.content.decode("utf-8")
-           Utils().send_email(
-               to_email=recepient.email,
-               content=mail_body,
-               subject=subject,
-           )
-           LOGGER.info(f"Successfully saved the dataset and emailed datahub admin: {recepient.email} for approval of dataset. \n dataset saved: {serializer.data}")
-           return Response(serializer.data, status=status.HTTP_201_CREATED)
+            email_render = render(
+                request, Constants.NEW_DATASET_UPLOAD_REQUEST_IN_DATAHUB, email_data
+            )
+            mail_body = email_render.content.decode("utf-8")
+            Utils().send_email(
+                to_email=recepient.email,
+                content=mail_body,
+                subject=subject,
+            )
+            LOGGER.info(
+                f"Successfully saved the dataset and emailed datahub admin: {recepient.email} for approval of dataset. \n dataset saved: {serializer.data}"
+            )
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
         except Exception as error:
             LOGGER.error(error, exc_info=True)
-            return Response({"Error": ["Bad Request"]}, status=status.HTTP_400_BAD_REQUEST)
-
+            return Response(
+                {"Error": ["Bad Request"]}, status=status.HTTP_400_BAD_REQUEST
+            )
 
     def list(self, request, *args, **kwargs):
         """GET method: query all the list of objects from the Product model"""
@@ -212,11 +239,17 @@ class ParticipantDatasetsViewSet(GenericViewSet):
         user_id = request.query_params.get(Constants.USER_ID, "")
         org_id = request.query_params.get(Constants.ORG_ID)
         exclude = {Constants.USER_MAP_USER: user_id} if org_id else {}
-        filters = {Constants.USER_MAP_ORGANIZATION: org_id} if org_id else {Constants.USER_MAP_USER: user_id}
+        filters = (
+            {Constants.USER_MAP_ORGANIZATION: org_id}
+            if org_id
+            else {Constants.USER_MAP_USER: user_id}
+        )
         if filters:
             data = (
                 Datasets.objects.select_related(
-                    Constants.USER_MAP, Constants.USER_MAP_USER, Constants.USER_MAP_ORGANIZATION
+                    Constants.USER_MAP,
+                    Constants.USER_MAP_USER,
+                    Constants.USER_MAP_ORGANIZATION,
                 )
                 .filter(user_map__user__status=True, status=True, **filters)
                 .exclude(**exclude)
@@ -236,9 +269,16 @@ class ParticipantDatasetsViewSet(GenericViewSet):
         filters = {Constants.USER_MAP_USER: user_id} if user_id else {}
         data = (
             Datasets.objects.select_related(
-                Constants.USER_MAP, Constants.USER_MAP_USER, Constants.USER_MAP_ORGANIZATION
+                Constants.USER_MAP,
+                Constants.USER_MAP_USER,
+                Constants.USER_MAP_ORGANIZATION,
             )
-            .filter(user_map__user__status=True, status=True, approval_status="approved", **filters)
+            .filter(
+                user_map__user__status=True,
+                status=True,
+                approval_status="approved",
+                **filters,
+            )
             .order_by(Constants.UPDATED_AT)
             .reverse()
             .all()
@@ -260,7 +300,10 @@ class ParticipantDatasetsViewSet(GenericViewSet):
         participant_serializer = ParticipantDatasetsDetailSerializer(data, many=True)
         if participant_serializer.data:
             data = participant_serializer.data[0]
-            data[Constants.CONTENT] = read_contents_from_csv_or_xlsx_file(data.get(Constants.SAMPLE_DATASET))
+            if not data.get("is_public"):
+                data[Constants.CONTENT] = read_contents_from_csv_or_xlsx_file(
+                    data.get(Constants.SAMPLE_DATASET)
+                )
 
             return Response(data, status=status.HTTP_200_OK)
         return Response({}, status=status.HTTP_200_OK)
@@ -269,23 +312,31 @@ class ParticipantDatasetsViewSet(GenericViewSet):
         """PUT method: update or send a PUT request on an object of the Product model"""
         setattr(request.data, "_mutable", True)
         data = request.data
-        if data.get(Constants.SAMPLE_DATASET):
-            if not csv_and_xlsx_file_validatation(data.get(Constants.SAMPLE_DATASET)):
-                return Response(
-                    {
-                        Constants.SAMPLE_DATASET: [
-                            "Invalid Sample dataset file (or) Atleast 5 rows should be available. please upload valid file"
-                        ]
-                    },
-                    400,
-                )
-        if data.get("constantly_update") == 'false':
-            formatted_date = one_day_date_formater([data.get("data_capture_start", ""), data.get("data_capture_end")])
+        print(data)
+        if not data.get("is_public"):
+            if data.get(Constants.SAMPLE_DATASET):
+                if not csv_and_xlsx_file_validatation(
+                    data.get(Constants.SAMPLE_DATASET)
+                ):
+                    return Response(
+                        {
+                            Constants.SAMPLE_DATASET: [
+                                "Invalid Sample dataset file (or) Atleast 5 rows should be available. please upload valid file"
+                            ]
+                        },
+                        400,
+                    )
+        if data.get("constantly_update") == "false":
+            formatted_date = one_day_date_formater(
+                [data.get("data_capture_start", ""), data.get("data_capture_end")]
+            )
             data["data_capture_start"] = formatted_date[0]
             data["data_capture_end"] = formatted_date[1]
         category = data.get(Constants.CATEGORY)
         if category:
-            data[Constants.CATEGORY] = json.loads(category) if isinstance(category, str) else category
+            data[Constants.CATEGORY] = (
+                json.loads(category) if isinstance(category, str) else category
+            )
         instance = self.get_object()
         serializer = self.get_serializer(instance, data=data, partial=True)
         serializer.is_valid(raise_exception=True)
@@ -315,7 +366,9 @@ class ParticipantDatasetsViewSet(GenericViewSet):
         cretated_range = {}
         created_at__range = request.data.pop(Constants.CREATED_AT__RANGE, None)
         if created_at__range:
-            cretated_range[Constants.CREATED_AT__RANGE] = date_formater(created_at__range)
+            cretated_range[Constants.CREATED_AT__RANGE] = date_formater(
+                created_at__range
+            )
         try:
             data = (
                 Datasets.objects.select_related(
@@ -323,7 +376,13 @@ class ParticipantDatasetsViewSet(GenericViewSet):
                     Constants.USER_MAP_USER,
                     Constants.USER_MAP_ORGANIZATION,
                 )
-                .filter(user_map__user__status=True, status=True, **data, **filters, **cretated_range)
+                .filter(
+                    user_map__user__status=True,
+                    status=True,
+                    **data,
+                    **filters,
+                    **cretated_range,
+                )
                 .exclude(**exclude)
                 .order_by(Constants.UPDATED_AT)
                 .reverse()
@@ -331,7 +390,9 @@ class ParticipantDatasetsViewSet(GenericViewSet):
             )
         except Exception as error:  # type: ignore
             logging.error("Error while filtering the datasets. ERROR: %s", error)
-            return Response(f"Invalid filter fields: {list(request.data.keys())}", status=500)
+            return Response(
+                f"Invalid filter fields: {list(request.data.keys())}", status=500
+            )
 
         page = self.paginate_queryset(data)
         participant_serializer = ParticipantDatasetsSerializer(page, many=True)
@@ -353,7 +414,9 @@ class ParticipantDatasetsViewSet(GenericViewSet):
         try:
             geography = (
                 Datasets.objects.all()
-                .select_related(Constants.USER_MAP_ORGANIZATION, Constants.USER_MAP_USER)
+                .select_related(
+                    Constants.USER_MAP_ORGANIZATION, Constants.USER_MAP_USER
+                )
                 .values_list(Constants.GEOGRAPHY, flat=True)
                 .filter(user_map__user__status=True, status=True, **filters)
                 .exclude(geography="")
@@ -363,7 +426,9 @@ class ParticipantDatasetsViewSet(GenericViewSet):
             )
             crop_detail = (
                 Datasets.objects.all()
-                .select_related(Constants.USER_MAP_ORGANIZATION, Constants.USER_MAP_USER)
+                .select_related(
+                    Constants.USER_MAP_ORGANIZATION, Constants.USER_MAP_USER
+                )
                 .values_list(Constants.CROP_DETAIL, flat=True)
                 .filter(user_map__user__status=True, status=True, **filters)
                 .exclude(crop_detail="")
@@ -373,8 +438,12 @@ class ParticipantDatasetsViewSet(GenericViewSet):
             )
         except Exception as error:  # type: ignore
             logging.error("Error while filtering the datasets. ERROR: %s", error)
-            return Response(f"Invalid filter fields: {list(request.data.keys())}", status=500)
-        return Response({"geography": geography, "crop_detail": crop_detail}, status=200)
+            return Response(
+                f"Invalid filter fields: {list(request.data.keys())}", status=500
+            )
+        return Response(
+            {"geography": geography, "crop_detail": crop_detail}, status=200
+        )
 
     @action(detail=False, methods=["post"])
     def search_datasets(self, request, *args, **kwargs):
@@ -387,16 +456,30 @@ class ParticipantDatasetsViewSet(GenericViewSet):
 
         if others:
             exclude = {Constants.USER_MAP_ORGANIZATION: org_id} if org_id else {}
-            filters = {Constants.APPROVAL_STATUS:Constants.APPROVED, Constants.NAME_ICONTAINS: search_pattern} if search_pattern else {}
+            filters = (
+                {
+                    Constants.APPROVAL_STATUS: Constants.APPROVED,
+                    Constants.NAME_ICONTAINS: search_pattern,
+                }
+                if search_pattern
+                else {}
+            )
         else:
-            filters = {Constants.USER_MAP_ORGANIZATION: org_id, Constants.NAME_ICONTAINS: search_pattern} if org_id else {}
+            filters = (
+                {
+                    Constants.USER_MAP_ORGANIZATION: org_id,
+                    Constants.NAME_ICONTAINS: search_pattern,
+                }
+                if org_id
+                else {}
+            )
         try:
             data = (
-                    Datasets.objects.select_related(
-                        Constants.USER_MAP,
-                        Constants.USER_MAP_USER,
-                        Constants.USER_MAP_ORGANIZATION,
-                    )
+                Datasets.objects.select_related(
+                    Constants.USER_MAP,
+                    Constants.USER_MAP_USER,
+                    Constants.USER_MAP_ORGANIZATION,
+                )
                 .filter(user_map__user__status=True, status=True, **data, **filters)
                 .exclude(**exclude)
                 .order_by(Constants.UPDATED_AT)
@@ -405,7 +488,10 @@ class ParticipantDatasetsViewSet(GenericViewSet):
             )
         except Exception as error:  # type: ignore
             logging.error("Error while filtering the datasets. ERROR: %s", error)
-            return Response(f"Invalid filter fields: {list(request.data.keys())}", status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            return Response(
+                f"Invalid filter fields: {list(request.data.keys())}",
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
 
         page = self.paginate_queryset(data)
         participant_serializer = ParticipantDatasetsSerializer(page, many=True)
@@ -433,28 +519,50 @@ class ParticipantConnectorsViewSet(GenericViewSet):
         """
         return serializer.save()
 
-    def trigger_email(self, request, template, subject, user_org_map, connector_data, dataset):
-       """trigger email to the respective users"""
-       try:
-           datahub_admin = User.objects.filter(role_id=1).first()
-           admin_full_name = string_functions.get_full_name(datahub_admin.first_name, datahub_admin.last_name)
-           participant_org = Organization.objects.get(id=user_org_map.organization_id) if user_org_map else None
-           participant_org_address = string_functions.get_full_address(participant_org.address)
-           participant = User.objects.get(id=user_org_map.user_id)
-           participant_full_name = string_functions.get_full_name(participant.first_name, participant.last_name)
+    def trigger_email(
+        self, request, template, subject, user_org_map, connector_data, dataset
+    ):
+        """trigger email to the respective users"""
+        try:
+            datahub_admin = User.objects.filter(role_id=1).first()
+            admin_full_name = string_functions.get_full_name(
+                datahub_admin.first_name, datahub_admin.last_name
+            )
+            participant_org = (
+                Organization.objects.get(id=user_org_map.organization_id)
+                if user_org_map
+                else None
+            )
+            participant_org_address = string_functions.get_full_address(
+                participant_org.address
+            )
+            participant = User.objects.get(id=user_org_map.user_id)
+            participant_full_name = string_functions.get_full_name(
+                participant.first_name, participant.last_name
+            )
 
-           data = {"datahub_name": os.environ.get("DATAHUB_NAME", "datahub_name"), "datahub_admin": admin_full_name, "participant_admin_name": participant_full_name, "participant_email": participant.email, "connector": connector_data, "participant_org": participant_org, "participant_org_address": participant_org_address, "dataset": dataset, "datahub_site": os.environ.get("DATAHUB_SITE", "datahub_site")}
+            data = {
+                "datahub_name": os.environ.get("DATAHUB_NAME", "datahub_name"),
+                "datahub_admin": admin_full_name,
+                "participant_admin_name": participant_full_name,
+                "participant_email": participant.email,
+                "connector": connector_data,
+                "participant_org": participant_org,
+                "participant_org_address": participant_org_address,
+                "dataset": dataset,
+                "datahub_site": os.environ.get("DATAHUB_SITE", "datahub_site"),
+            }
 
-           email_render = render(request, template, data)
-           mail_body = email_render.content.decode("utf-8")
-           Utils().send_email(
-               to_email=datahub_admin.email,
-               content=mail_body,
-               subject=subject,
-           )
+            email_render = render(request, template, data)
+            mail_body = email_render.content.decode("utf-8")
+            Utils().send_email(
+                to_email=datahub_admin.email,
+                content=mail_body,
+                subject=subject,
+            )
 
-       except Exception as error:
-           LOGGER.error(error, exc_info=True)
+        except Exception as error:
+            LOGGER.error(error, exc_info=True)
 
     def create(self, request, *args, **kwargs):
         """POST method: create action to save an object by sending a POST request"""
@@ -463,20 +571,38 @@ class ParticipantConnectorsViewSet(GenericViewSet):
         docker_image = data.get(Constants.DOCKER_IMAGE_URL)
         try:
             docker = docker_image.split(":")
-            response = requests.get(f"https://hub.docker.com/v2/repositories/{docker[0]}/tags/{docker[1]}")
+            response = requests.get(
+                f"https://hub.docker.com/v2/repositories/{docker[0]}/tags/{docker[1]}"
+            )
             images = response.json().get(Constants.IMAGES, [{}])
-            hash = [image.get(Constants.DIGEST, "") for image in images if image.get("architecture") == "amd64"]
+            hash = [
+                image.get(Constants.DIGEST, "")
+                for image in images
+                if image.get("architecture") == "amd64"
+            ]
             data[Constants.USAGE_POLICY] = hash[0].split(":")[1].strip()
         except Exception as error:
             logging.error("Error while fetching the hash value. ERROR: %s", error)
-            return Response({Constants.DOCKER_IMAGE_URL: [f"Invalid docker Image: {docker_image}"]}, status=400)
+            return Response(
+                {Constants.DOCKER_IMAGE_URL: [f"Invalid docker Image: {docker_image}"]},
+                status=400,
+            )
         serializer = self.get_serializer(data=data, partial=True)
         serializer.is_valid(raise_exception=True)
         self.perform_create(serializer)
 
-        user_org_map = UserOrganizationMap.objects.select_related(Constants.ORGANIZATION).get(id=serializer.data.get(Constants.USER_MAP))
+        user_org_map = UserOrganizationMap.objects.select_related(
+            Constants.ORGANIZATION
+        ).get(id=serializer.data.get(Constants.USER_MAP))
         dataset = Datasets.objects.get(id=serializer.data.get(Constants.DATASET))
-        self.trigger_email(request, Constants.CREATE_CONNECTOR_AND_REQUEST_CERTIFICATE, Constants.CREATE_CONNECTOR_AND_REQUEST_CERTIFICATE_SUBJECT, user_org_map, serializer.data, dataset)
+        self.trigger_email(
+            request,
+            Constants.CREATE_CONNECTOR_AND_REQUEST_CERTIFICATE,
+            Constants.CREATE_CONNECTOR_AND_REQUEST_CERTIFICATE_SUBJECT,
+            user_org_map,
+            serializer.data,
+            dataset,
+        )
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
     def list(self, request, *args, **kwargs):
@@ -487,9 +613,17 @@ class ParticipantConnectorsViewSet(GenericViewSet):
         if filters:
             data = (
                 Connectors.objects.select_related(
-                    Constants.DATASET, Constants.USER_MAP, Constants.PROJECT, Constants.PROJECT_DEPARTMENT
+                    Constants.DATASET,
+                    Constants.USER_MAP,
+                    Constants.PROJECT,
+                    Constants.PROJECT_DEPARTMENT,
                 )
-                .filter(user_map__user__status=True, dataset__status=True, status=True, **filters)
+                .filter(
+                    user_map__user__status=True,
+                    dataset__status=True,
+                    status=True,
+                    **filters,
+                )
                 .order_by(Constants.UPDATED_AT)
                 .reverse()
                 .all()
@@ -502,9 +636,14 @@ class ParticipantConnectorsViewSet(GenericViewSet):
         """GET method: retrieve an object or instance of the Product model"""
         data = (
             Connectors.objects.select_related(
-                Constants.DATASET, Constants.USER_MAP, Constants.USER_MAP_USER, Constants.USER_MAP_ORGANIZATION
+                Constants.DATASET,
+                Constants.USER_MAP,
+                Constants.USER_MAP_USER,
+                Constants.USER_MAP_ORGANIZATION,
             )
-            .filter(user_map__user__status=True, dataset__status=True, status=True, id=pk)
+            .filter(
+                user_map__user__status=True, dataset__status=True, status=True, id=pk
+            )
             .all()
         )
         participant_serializer = ConnectorsRetriveSerializer(data, many=True)
@@ -523,11 +662,16 @@ class ParticipantConnectorsViewSet(GenericViewSet):
                         status=True,
                         provider=pk,
                         consumer__status=True,
-                        connector_pair_status__in=[Constants.PAIRED, Constants.AWAITING_FOR_APPROVAL],
+                        connector_pair_status__in=[
+                            Constants.PAIRED,
+                            Constants.AWAITING_FOR_APPROVAL,
+                        ],
                     )
                     .all()
                 )
-                relation_serializer = ConnectorsMapConsumerRetriveSerializer(relation, many=True)
+                relation_serializer = ConnectorsMapConsumerRetriveSerializer(
+                    relation, many=True
+                )
             else:
                 relation = (
                     ConnectorsMap.objects.select_related(
@@ -541,11 +685,16 @@ class ParticipantConnectorsViewSet(GenericViewSet):
                         status=True,
                         consumer=pk,
                         provider__status=True,
-                        connector_pair_status__in=[Constants.PAIRED, Constants.AWAITING_FOR_APPROVAL],
+                        connector_pair_status__in=[
+                            Constants.PAIRED,
+                            Constants.AWAITING_FOR_APPROVAL,
+                        ],
                     )
                     .all()
                 )
-                relation_serializer = ConnectorsMapProviderRetriveSerializer(relation, many=True)
+                relation_serializer = ConnectorsMapProviderRetriveSerializer(
+                    relation, many=True
+                )
             data[Constants.RELATION] = relation_serializer.data
             return Response(data, status=status.HTTP_200_OK)
         return Response({}, status=status.HTTP_200_OK)
@@ -559,22 +708,48 @@ class ParticipantConnectorsViewSet(GenericViewSet):
         if docker_image:
             try:
                 docker = docker_image.split(":")
-                response = requests.get(f"https://hub.docker.com/v2/repositories/{docker[0]}/tags/{docker[1]}")
+                response = requests.get(
+                    f"https://hub.docker.com/v2/repositories/{docker[0]}/tags/{docker[1]}"
+                )
                 images = response.json().get(Constants.IMAGES, [{}])
-                hash = [image.get(Constants.DIGEST, "") for image in images if image.get("architecture") == "amd64"]
+                hash = [
+                    image.get(Constants.DIGEST, "")
+                    for image in images
+                    if image.get("architecture") == "amd64"
+                ]
                 data[Constants.USAGE_POLICY] = hash[0].split(":")[1].strip()
             except Exception as error:
                 logging.error("Error while fetching the hash value. ERROR: %s", error)
-                return Response({Constants.DOCKER_IMAGE_URL: [f"Invalid docker Image: {docker_image}"]}, status=400)
+                return Response(
+                    {
+                        Constants.DOCKER_IMAGE_URL: [
+                            f"Invalid docker Image: {docker_image}"
+                        ]
+                    },
+                    status=400,
+                )
         serializer = self.get_serializer(instance, data=data, partial=True)
         serializer.is_valid(raise_exception=True)
         self.perform_create(serializer)
 
         if request.data.get(Constants.CERTIFICATE):
-            user_org_map = UserOrganizationMap.objects.select_related(Constants.ORGANIZATION).get(id=serializer.data.get(Constants.USER_MAP))
+            user_org_map = UserOrganizationMap.objects.select_related(
+                Constants.ORGANIZATION
+            ).get(id=serializer.data.get(Constants.USER_MAP))
             dataset = Datasets.objects.get(id=serializer.data.get(Constants.DATASET))
-            subject = "A certificate on " + os.environ.get("DATAHUB_NAME", "datahub_name") + " was successfully installed"
-            self.trigger_email(request, Constants.PARTICIPANT_INSTALLS_CERTIFICATE, subject, user_org_map, serializer.data, dataset)
+            subject = (
+                "A certificate on "
+                + os.environ.get("DATAHUB_NAME", "datahub_name")
+                + " was successfully installed"
+            )
+            self.trigger_email(
+                request,
+                Constants.PARTICIPANT_INSTALLS_CERTIFICATE,
+                subject,
+                user_org_map,
+                serializer.data,
+                dataset,
+            )
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
     def destroy(self, request, pk):
@@ -584,12 +759,25 @@ class ParticipantConnectorsViewSet(GenericViewSet):
             connector.status = False
             self.perform_create(connector)
 
-            user_org_map = UserOrganizationMap.objects.select_related(Constants.ORGANIZATION).get(id=connector.user_map_id)
+            user_org_map = UserOrganizationMap.objects.select_related(
+                Constants.ORGANIZATION
+            ).get(id=connector.user_map_id)
             dataset = Datasets.objects.get(id=connector.dataset_id)
-            self.trigger_email(request, "deleting_connector.html", Constants.CONNECTOR_DELETION + os.environ.get("DATAHUB_NAME", "datahub_name"), user_org_map, connector, dataset)
+            self.trigger_email(
+                request,
+                "deleting_connector.html",
+                Constants.CONNECTOR_DELETION
+                + os.environ.get("DATAHUB_NAME", "datahub_name"),
+                user_org_map,
+                connector,
+                dataset,
+            )
 
             return Response(status=status.HTTP_204_NO_CONTENT)
-        return Response(["Connector status should be either unpaired or rejected to delete"], status=400)
+        return Response(
+            ["Connector status should be either unpaired or rejected to delete"],
+            status=400,
+        )
 
     @action(detail=False, methods=["post"])
     def connectors_filters(self, request, *args, **kwargs):
@@ -600,20 +788,33 @@ class ParticipantConnectorsViewSet(GenericViewSet):
         cretated_range = {}
         created_at__range = request.data.pop(Constants.CREATED_AT__RANGE, None)
         if created_at__range:
-            cretated_range[Constants.CREATED_AT__RANGE] = date_formater(created_at__range)
+            cretated_range[Constants.CREATED_AT__RANGE] = date_formater(
+                created_at__range
+            )
         try:
             data = (
                 Connectors.objects.select_related(
-                    Constants.DATASET, Constants.USER_MAP, Constants.PROJECT, Constants.DEPARTMENT
+                    Constants.DATASET,
+                    Constants.USER_MAP,
+                    Constants.PROJECT,
+                    Constants.DEPARTMENT,
                 )
-                .filter(status=True, dataset__status=True, **data, **filters, **cretated_range)
+                .filter(
+                    status=True,
+                    dataset__status=True,
+                    **data,
+                    **filters,
+                    **cretated_range,
+                )
                 .order_by(Constants.UPDATED_AT)
                 .reverse()
                 .all()
             )
         except Exception as error:  # type: ignore
             logging.error("Error while filtering the datasets. ERROR: %s", error)
-            return Response(f"Invalid filter fields: {list(request.data.keys())}", status=500)
+            return Response(
+                f"Invalid filter fields: {list(request.data.keys())}", status=500
+            )
 
         page = self.paginate_queryset(data)
         participant_serializer = ConnectorsListSerializer(page, many=True)
@@ -627,11 +828,15 @@ class ParticipantConnectorsViewSet(GenericViewSet):
         filters = {Constants.USER_MAP_USER: user_id} if user_id else {}
         try:
             projects = (
-                Connectors.objects.select_related(Constants.DATASET, Constants.PROJECT, Constants.USER_MAP)
+                Connectors.objects.select_related(
+                    Constants.DATASET, Constants.PROJECT, Constants.USER_MAP
+                )
                 .values_list(Constants.PROJECT_PROJECT_NAME, flat=True)
                 .distinct()
                 .filter(dataset__status=True, status=True, **filters)
-                .exclude(project__project_name__isnull=True, project__project_name__exact="")
+                .exclude(
+                    project__project_name__isnull=True, project__project_name__exact=""
+                )
             )
             departments = (
                 Connectors.objects.select_related(
@@ -641,18 +846,23 @@ class ParticipantConnectorsViewSet(GenericViewSet):
                 .distinct()
                 .filter(dataset__status=True, status=True, **filters)
                 .exclude(
-                    project__department__department_name__isnull=True, project__department__department_name__exact=""
+                    project__department__department_name__isnull=True,
+                    project__department__department_name__exact="",
                 )
             )
             datasests = (
                 Datasets.objects.all()
                 .select_related(Constants.USER_MAP, Constants.USER_MAP_USER)
-                .filter(user_map__user=user_id, user_map__user__status=True, status=True)
+                .filter(
+                    user_map__user=user_id, user_map__user__status=True, status=True
+                )
             )
             is_datset_present = True if datasests else False
         except Exception as error:  # type: ignore
             logging.error("Error while filtering the datasets. ERROR: %s", error)
-            return Response(f"Invalid filter fields: {list(request.data.keys())}", status=500)
+            return Response(
+                f"Invalid filter fields: {list(request.data.keys())}", status=500
+            )
         return Response(
             {
                 Constants.PROJECTS: list(projects),
@@ -668,19 +878,26 @@ class ParticipantConnectorsViewSet(GenericViewSet):
         data = Connectors.objects.all().filter(
             dataset=dataset_id,
             status=True,
-            connector_status__in=[Constants.UNPAIRED, Constants.PAIRING_REQUEST_RECIEVED],
+            connector_status__in=[
+                Constants.UNPAIRED,
+                Constants.PAIRING_REQUEST_RECIEVED,
+            ],
             connector_type="Provider",
         )
         connector_serializer = ConnectorListSerializer(data, many=True)
         return Response(connector_serializer.data, status=200)
-    
+
     @action(detail=False, methods=["get"])
     def show_data(self, request, *args, **kwargs):
         port = request.query_params.get("port", "")
-        return Response(requests.get(f'{os.environ.get("REACT_APP_BASEURL_without_slash_view_data")}{port}/show_data').json(), 200)
+        return Response(
+            requests.get(
+                f'{os.environ.get("REACT_APP_BASEURL_without_slash_view_data")}{port}/show_data'
+            ).json(),
+            200,
+        )
 
 
-    
 class ParticipantConnectorsMapViewSet(GenericViewSet):
     """
     This class handles the participant Datsets CRUD operations.
@@ -702,46 +919,97 @@ class ParticipantConnectorsMapViewSet(GenericViewSet):
         """
         return serializer.save()
 
-    def trigger_email_for_pairing(self, request, template, subject, consumer_connector, provider_connector):
-       # trigger email to the participant as they are being added
-       try:
-           consumer_org_map = UserOrganizationMap.objects.select_related(Constants.ORGANIZATION).get(id=consumer_connector.user_map_id) if consumer_connector.user_map_id else None
-           consumer_org = Organization.objects.get(id=consumer_org_map.organization_id) if consumer_org_map else None
-           consumer = User.objects.get(id=consumer_org_map.user_id) if consumer_org_map else None
-           consumer_full_name = string_functions.get_full_name(consumer.first_name, consumer.last_name)
-           provider_org_map = UserOrganizationMap.objects.select_related(Constants.ORGANIZATION).get(id=provider_connector.user_map_id) if provider_connector.user_map_id else None
-           provider_org = Organization.objects.get(id=provider_org_map.organization_id) if provider_org_map else None
-           provider = User.objects.get(id=provider_org_map.user_id) if provider_org_map else None
-           provider_full_name = string_functions.get_full_name(provider.first_name, provider.last_name)
-           dataset = Datasets.objects.get(id=provider_connector.dataset_id)
+    def trigger_email_for_pairing(
+        self, request, template, subject, consumer_connector, provider_connector
+    ):
+        # trigger email to the participant as they are being added
+        try:
+            consumer_org_map = (
+                UserOrganizationMap.objects.select_related(Constants.ORGANIZATION).get(
+                    id=consumer_connector.user_map_id
+                )
+                if consumer_connector.user_map_id
+                else None
+            )
+            consumer_org = (
+                Organization.objects.get(id=consumer_org_map.organization_id)
+                if consumer_org_map
+                else None
+            )
+            consumer = (
+                User.objects.get(id=consumer_org_map.user_id)
+                if consumer_org_map
+                else None
+            )
+            consumer_full_name = string_functions.get_full_name(
+                consumer.first_name, consumer.last_name
+            )
+            provider_org_map = (
+                UserOrganizationMap.objects.select_related(Constants.ORGANIZATION).get(
+                    id=provider_connector.user_map_id
+                )
+                if provider_connector.user_map_id
+                else None
+            )
+            provider_org = (
+                Organization.objects.get(id=provider_org_map.organization_id)
+                if provider_org_map
+                else None
+            )
+            provider = (
+                User.objects.get(id=provider_org_map.user_id)
+                if provider_org_map
+                else None
+            )
+            provider_full_name = string_functions.get_full_name(
+                provider.first_name, provider.last_name
+            )
+            dataset = Datasets.objects.get(id=provider_connector.dataset_id)
 
-           if str(provider_connector.user_map_id) == request.data.get("user_map"):
-               print("CTA by provider. Trigger email to consumer")
-               data = {"consumer_admin_name": consumer_full_name, "consumer_connector": consumer_connector, "provider_org": provider_org, "dataset": dataset, "provider_connector": provider_connector, "datahub_site": os.environ.get(Constants.DATAHUB_SITE, Constants.datahub_site)}
+            if str(provider_connector.user_map_id) == request.data.get("user_map"):
+                print("CTA by provider. Trigger email to consumer")
+                data = {
+                    "consumer_admin_name": consumer_full_name,
+                    "consumer_connector": consumer_connector,
+                    "provider_org": provider_org,
+                    "dataset": dataset,
+                    "provider_connector": provider_connector,
+                    "datahub_site": os.environ.get(
+                        Constants.DATAHUB_SITE, Constants.datahub_site
+                    ),
+                }
 
-               email_render = render(request, template, data)
-               mail_body = email_render.content.decode("utf-8")
-               Utils().send_email(
-                   to_email=consumer.email,
-                   content=mail_body,
-                   subject=subject,
-                  )
+                email_render = render(request, template, data)
+                mail_body = email_render.content.decode("utf-8")
+                Utils().send_email(
+                    to_email=consumer.email,
+                    content=mail_body,
+                    subject=subject,
+                )
 
-           elif str(consumer_connector.user_map_id) == request.data.get("user_map"):
-               print("CTA by consumer. Trigger email to provider")
-               data = {"provider_admin_name": provider_full_name, "consumer_connector": consumer_connector, "consumer_org": consumer_org, "dataset": dataset, "provider_connector": provider_connector, "datahub_site": os.environ.get(Constants.DATAHUB_SITE, Constants.datahub_site)}
+            elif str(consumer_connector.user_map_id) == request.data.get("user_map"):
+                print("CTA by consumer. Trigger email to provider")
+                data = {
+                    "provider_admin_name": provider_full_name,
+                    "consumer_connector": consumer_connector,
+                    "consumer_org": consumer_org,
+                    "dataset": dataset,
+                    "provider_connector": provider_connector,
+                    "datahub_site": os.environ.get(
+                        Constants.DATAHUB_SITE, Constants.datahub_site
+                    ),
+                }
 
-               email_render = render(request, template, data)
-               mail_body = email_render.content.decode("utf-8")
-               Utils().send_email(
-                   to_email=provider.email,
-                   content=mail_body,
-                   subject=subject,
-                  )
+                email_render = render(request, template, data)
+                mail_body = email_render.content.decode("utf-8")
+                Utils().send_email(
+                    to_email=provider.email,
+                    content=mail_body,
+                    subject=subject,
+                )
 
-       except Exception as error:
-           LOGGER.error(error, exc_info=True)
-
+        except Exception as error:
+            LOGGER.error(error, exc_info=True)
 
     @action(detail=False, methods=["get"])
     def data_size(self, request, *args, **kwargs):
@@ -760,12 +1028,17 @@ class ParticipantConnectorsMapViewSet(GenericViewSet):
         consumer_obj = Connectors.objects.get(id=consumer)
         if provider_obj.connector_status == Constants.PAIRED:
             return Response(
-                [f"Provider connector ({({provider_obj.connector_name}) }) is already paired with another connector"],
+                [
+                    f"Provider connector ({({provider_obj.connector_name}) }) is already paired with another connector"
+                ],
                 400,
             )
         elif consumer_obj.connector_status == Constants.PAIRED:
             return Response(
-                [f"Consumer connector ({consumer_obj.connector_name}) is already paired with another connector"], 400
+                [
+                    f"Consumer connector ({consumer_obj.connector_name}) is already paired with another connector"
+                ],
+                400,
             )
         consumer_obj.connector_status = Constants.AWAITING_FOR_APPROVAL
         provider_obj.connector_status = Constants.PAIRING_REQUEST_RECIEVED
@@ -777,16 +1050,25 @@ class ParticipantConnectorsMapViewSet(GenericViewSet):
             # trigger email
             consumer_serializer = ConnectorsSerializerForEmail(consumer_obj)
             provider_serializer = ConnectorsSerializerForEmail(provider_obj)
-            data = {"consumer": consumer_serializer.data, "provider": provider_serializer.data, "datahub_site": os.environ.get(Constants.DATAHUB_SITE, Constants.datahub_site), "datahub_name": os.environ.get(Constants.DATAHUB_NAME, Constants.datahub_name)}
+            data = {
+                "consumer": consumer_serializer.data,
+                "provider": provider_serializer.data,
+                "datahub_site": os.environ.get(
+                    Constants.DATAHUB_SITE, Constants.datahub_site
+                ),
+                "datahub_name": os.environ.get(
+                    Constants.DATAHUB_NAME, Constants.datahub_name
+                ),
+            }
             to_email = provider_serializer.data.get("user").get("email")
 
             email_render = render(request, Constants.REQUEST_CONNECTOR_PAIRING, data)
             mail_body = email_render.content.decode("utf-8")
             Utils().send_email(
                 to_email=to_email,
-                   content=mail_body,
-                   subject=Constants.PAIRING_REQUEST_RECIEVED_SUBJECT,
-               )
+                content=mail_body,
+                subject=Constants.PAIRING_REQUEST_RECIEVED_SUBJECT,
+            )
 
         except Exception as error:
             LOGGER.error(error, exc_info=True)
@@ -805,7 +1087,10 @@ class ParticipantConnectorsMapViewSet(GenericViewSet):
 
             if (
                 not ConnectorsMap.objects.all()
-                .filter(provider=instance.provider.id, connector_pair_status=Constants.AWAITING_FOR_APPROVAL)
+                .filter(
+                    provider=instance.provider.id,
+                    connector_pair_status=Constants.AWAITING_FOR_APPROVAL,
+                )
                 .exclude(id=instance.id)
             ):
                 connectors = Connectors.objects.get(id=instance.provider.id)
@@ -815,7 +1100,14 @@ class ParticipantConnectorsMapViewSet(GenericViewSet):
             provider_connectors = Connectors.objects.get(id=instance.provider.id)
             consumer_connectors = Connectors.objects.get(id=instance.consumer.id)
 
-            self.trigger_email_for_pairing(request, Constants.PAIRING_REQUEST_REJECTED, Constants.PAIRING_REQUEST_REJECTED_SUBJECT + os.environ.get(Constants.DATAHUB_NAME, Constants.datahub_name), consumer_connectors, provider_connectors)
+            self.trigger_email_for_pairing(
+                request,
+                Constants.PAIRING_REQUEST_REJECTED,
+                Constants.PAIRING_REQUEST_REJECTED_SUBJECT
+                + os.environ.get(Constants.DATAHUB_NAME, Constants.datahub_name),
+                consumer_connectors,
+                provider_connectors,
+            )
 
         elif request.data.get(Constants.CONNECTOR_PAIR_STATUS) == Constants.PAIRED:
             consumer_connectors = Connectors.objects.get(id=instance.consumer.id)
@@ -840,17 +1132,29 @@ class ParticipantConnectorsMapViewSet(GenericViewSet):
             self.perform_create(consumer_connectors)
             self.perform_create(provider_connectors)
 
-            self.trigger_email_for_pairing(request, Constants.PAIRING_REQUEST_APPROVED, Constants.PAIRING_REQUEST_APPROVED_SUBJECT + os.environ.get(Constants.DATAHUB_NAME, Constants.datahub_name), consumer_connectors, provider_connectors)
+            self.trigger_email_for_pairing(
+                request,
+                Constants.PAIRING_REQUEST_APPROVED,
+                Constants.PAIRING_REQUEST_APPROVED_SUBJECT
+                + os.environ.get(Constants.DATAHUB_NAME, Constants.datahub_name),
+                consumer_connectors,
+                provider_connectors,
+            )
 
             rejection_needed_connectors = (
                 ConnectorsMap.objects.all()
-                .filter(provider=instance.provider.id, connector_pair_status=Constants.AWAITING_FOR_APPROVAL)
+                .filter(
+                    provider=instance.provider.id,
+                    connector_pair_status=Constants.AWAITING_FOR_APPROVAL,
+                )
                 .exclude(id=instance.id)
             )
             if rejection_needed_connectors:
                 for map_connectors in rejection_needed_connectors:
                     map_connectors.connector_pair_status = Constants.REJECTED
-                    map_connectors_consumer = Connectors.objects.get(id=map_connectors.consumer.id)
+                    map_connectors_consumer = Connectors.objects.get(
+                        id=map_connectors.consumer.id
+                    )
                     map_connectors_consumer.connector_status = Constants.REJECTED
                     self.perform_create(map_connectors)
                     self.perform_create(map_connectors_consumer)
@@ -865,7 +1169,14 @@ class ParticipantConnectorsMapViewSet(GenericViewSet):
             self.perform_create(provider_connectors)
             stop_containers(provider_connectors, consumer_connectors)
 
-            self.trigger_email_for_pairing(request, Constants.WHEN_CONNECTOR_UNPAIRED, Constants.CONNECTOR_UNPAIRED_SUBJECT + os.environ.get(Constants.DATAHUB_NAME, Constants.datahub_name), consumer_connectors, provider_connectors)
+            self.trigger_email_for_pairing(
+                request,
+                Constants.WHEN_CONNECTOR_UNPAIRED,
+                Constants.CONNECTOR_UNPAIRED_SUBJECT
+                + os.environ.get(Constants.DATAHUB_NAME, Constants.datahub_name),
+                consumer_connectors,
+                provider_connectors,
+            )
 
         serializer = self.get_serializer(instance, data=data, partial=True)
         serializer.is_valid(raise_exception=True)
@@ -926,13 +1237,15 @@ class ParticipantDepatrmentViewSet(GenericViewSet):
 
     def retrieve(self, request, pk):
         """GET method: retrieve an object or instance of the Product model"""
-        queryset = Department.objects.filter(Q(status=True, id=pk) | Q(department_name=Constants.DEFAULT, id=pk))
+        queryset = Department.objects.filter(
+            Q(status=True, id=pk) | Q(department_name=Constants.DEFAULT, id=pk)
+        )
         serializer = self.serializer_class(queryset, many=True)
         if serializer.data:
             return Response(serializer.data, status=status.HTTP_200_OK)
         return Response([], status=status.HTTP_200_OK)
 
-    @action(detail=False, methods=['get'])
+    @action(detail=False, methods=["get"])
     def department_list(self, request, *args, **kwargs):
         """GET method: query all the list of objects from the Product model"""
         data = []
@@ -950,14 +1263,15 @@ class ParticipantDepatrmentViewSet(GenericViewSet):
         department_serializer = DepartmentSerializer(page, many=True)
         return self.get_paginated_response(department_serializer.data)
 
-
     def list(self, request, *args, **kwargs):
         """GET method: query all the list of objects from the Product model"""
         data = []
         org_id = request.query_params.get(Constants.ORG_ID)
         filters = {Constants.ORGANIZATION: org_id} if org_id else {}
         data = (
-            Department.objects.filter(Q(status=True, **filters) | Q(department_name=Constants.DEFAULT))
+            Department.objects.filter(
+                Q(status=True, **filters) | Q(department_name=Constants.DEFAULT)
+            )
             .order_by(Constants.UPDATED_AT)
             .reverse()
             .all()
@@ -967,7 +1281,9 @@ class ParticipantDepatrmentViewSet(GenericViewSet):
 
     def destroy(self, request, pk):
         """DELETE method: delete an object"""
-        Connectors.objects.filter(department=pk).update(department='e459f452-2b4b-4129-ba8b-1e1180c87888')
+        Connectors.objects.filter(department=pk).update(
+            department="e459f452-2b4b-4129-ba8b-1e1180c87888"
+        )
         product = self.get_object()
         product.status = False
         self.perform_create(product)
@@ -1013,7 +1329,9 @@ class ParticipantProjectViewSet(GenericViewSet):
     def retrieve(self, request, pk):
         """GET method: retrieve an object or instance of the Product model"""
         try:
-            queryset = Project.objects.filter(Q(status=True, id=pk) | Q(project_name=Constants.DEFAULT, id=pk))
+            queryset = Project.objects.filter(
+                Q(status=True, id=pk) | Q(project_name=Constants.DEFAULT, id=pk)
+            )
             serializer = ProjectDepartmentSerializer(queryset, many=True)
             if serializer.data:
                 return Response(serializer.data[0], status=status.HTTP_200_OK)
@@ -1022,7 +1340,7 @@ class ParticipantProjectViewSet(GenericViewSet):
             return Response({"message": error}, status=status.HTTP_200_OK)
         return Response({}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-    @action(detail=False, methods=['post'])
+    @action(detail=False, methods=["post"])
     def project_list(self, request, *args, **kwargs):
         """GET method: query all the list of objects from the Product model"""
         data = []
@@ -1036,7 +1354,7 @@ class ParticipantProjectViewSet(GenericViewSet):
             .order_by(Constants.UPDATED_AT)
             .reverse()
             .all()
-        ) 
+        )
         page = self.paginate_queryset(data)
         project_serializer = ProjectDepartmentSerializer(page, many=True)
         return self.get_paginated_response(project_serializer.data)
@@ -1047,7 +1365,11 @@ class ParticipantProjectViewSet(GenericViewSet):
         department = request.query_params.get(Constants.DEPARTMENT)
         org_id = request.query_params.get(Constants.ORG_ID)
         # filters = {Constants.DEPARTMENT: department} if department else {}
-        filters = {Constants.DEPARTMENT: department, Constants.ORGANIZATION: org_id} if department or org_id else {}
+        filters = (
+            {Constants.DEPARTMENT: department, Constants.ORGANIZATION: org_id}
+            if department or org_id
+            else {}
+        )
         data = (
             Project.objects.select_related(Constants.DEPARTMENT_ORGANIZATION)
             .filter(Q(status=True, **filters) | Q(project_name=Constants.DEFAULT))
@@ -1062,7 +1384,9 @@ class ParticipantProjectViewSet(GenericViewSet):
 
     def destroy(self, request, pk):
         """DELETE method: delete an object"""
-        Connectors.objects.filter(project=pk).update(project='3526bd39-4514-43fe-bbc4-ee0980bde252')
+        Connectors.objects.filter(project=pk).update(
+            project="3526bd39-4514-43fe-bbc4-ee0980bde252"
+        )
         project = self.get_object()
         project.status = False
         self.perform_create(project)

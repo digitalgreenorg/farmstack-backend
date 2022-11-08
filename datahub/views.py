@@ -1028,7 +1028,8 @@ class DatahubDatasetsViewSet(GenericViewSet):
         """POST method: create action to save an object by sending a POST request"""
         setattr(request.data, "_mutable", True)
         data = request.data
-        if not json.loads(data.get("is_public")):
+
+        if not data.get("is_public"):
             if not csv_and_xlsx_file_validatation(
                 request.data.get(Constants.SAMPLE_DATASET)
             ):
@@ -1096,16 +1097,19 @@ class DatahubDatasetsViewSet(GenericViewSet):
         setattr(request.data, "_mutable", True)
         data = request.data
         data = {key: value for key, value in data.items() if value != "null"}
-        if (not data.get("is_public")) and data.get(Constants.SAMPLE_DATASET):
-            if not csv_and_xlsx_file_validatation(data.get(Constants.SAMPLE_DATASET)):
-                return Response(
-                    {
-                        Constants.SAMPLE_DATASET: [
-                            "Invalid Sample dataset file (or) Atleast 5 rows should be available. please upload valid file"
-                        ]
-                    },
-                    400,
-                )
+        if not data.get("is_public"):
+            if data.get(Constants.SAMPLE_DATASET):
+                if not csv_and_xlsx_file_validatation(
+                    data.get(Constants.SAMPLE_DATASET)
+                ):
+                    return Response(
+                        {
+                            Constants.SAMPLE_DATASET: [
+                                "Invalid Sample dataset file (or) Atleast 5 rows should be available. please upload valid file"
+                            ]
+                        },
+                        400,
+                    )
         category = data.get(Constants.CATEGORY)
         if category:
             data[Constants.CATEGORY] = (

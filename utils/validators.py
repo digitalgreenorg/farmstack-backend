@@ -3,17 +3,13 @@ from django.conf import settings
 from django.core.exceptions import ValidationError
 
 
-def validate_file_size(self, value):
+def validate_file_size(value):
     """
     Validator function to check the file size limit.
     """
-    data = self.get_initial()
-    MAX_FILE_SIZE = (
-        Constants.MAX_PUBLIC_FILE_SIZE if data.is_public else Constants.MAX_FILE_SIZE
-    )
     filesize = value.size
-    print("max file_size", filesize)
-    if filesize > MAX_FILE_SIZE:
+    print("file_size", filesize)
+    if filesize > Constants.MAX_FILE_SIZE:
         raise ValidationError("You cannot upload file more than 2Mb")
     else:
         return value

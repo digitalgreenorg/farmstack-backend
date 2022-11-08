@@ -4,7 +4,6 @@ from email.mime import application
 from accounts.models import User
 from core.base_models import TimeStampMixin
 
-# from utils.validators import validate_file_size
 from django.conf import settings
 from django.db import models
 from utils.validators import validate_file_size, validate_image_type
@@ -110,11 +109,9 @@ class Datasets(TimeStampMixin):
     data_capture_end = models.DateTimeField(null=True, blank=True)
     dataset_size = models.CharField(max_length=255, null=True, blank=True)
     connector_availability = models.CharField(max_length=255, null=True, blank=True)
-    is_public = models.BooleanField(default=False)
     sample_dataset = models.FileField(
         upload_to=settings.SAMPLE_DATASETS_URL,
         blank=True,
-        validators=[validate_file_size],
     )
     status = models.BooleanField(default=True)
     approval_status = models.CharField(
