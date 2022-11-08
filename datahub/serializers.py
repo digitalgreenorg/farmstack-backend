@@ -1,5 +1,7 @@
 import logging
 
+from rest_framework import serializers
+
 from accounts import models
 from accounts.models import User, UserRole
 from accounts.serializers import (
@@ -7,16 +9,14 @@ from accounts.serializers import (
     UserRoleSerializer,
     UserSerializer,
 )
-from participant.models import SupportTicket, Connectors
 from core.constants import Constants
-from rest_framework import serializers
+from datahub.models import DatahubDocuments, Datasets, Organization, UserOrganizationMap
+from participant.models import Connectors, SupportTicket
 from utils.validators import (
     validate_document_type,
     validate_file_size,
     validate_image_type,
 )
-
-from datahub.models import DatahubDocuments, Datasets, Organization, UserOrganizationMap
 
 LOGGER = logging.getLogger(__name__)
 
@@ -237,6 +237,7 @@ class DatasetSerializer(serializers.ModelSerializer):
             "remarks",
             "is_enabled",
             "approval_status",
+            "is_public",
         ]
 
 
@@ -252,6 +253,7 @@ class DatasetUpdateSerializer(serializers.ModelSerializer):
 
         model = Datasets
         fields = Constants.ALL
+
 
 class DatahubDatasetsDetailSerializer(serializers.ModelSerializer):
     user_id = serializers.PrimaryKeyRelatedField(
@@ -315,12 +317,10 @@ class RecentSupportTicketSerializer(serializers.ModelSerializer):
             fields = ["id", "first_name", "last_name", "email", "role"]
 
     organization = OrganizationRetriveSerializer(
-            allow_null=True, required=False, read_only=True, source="user_map.organization"
-            )
+        allow_null=True, required=False, read_only=True, source="user_map.organization"
+    )
 
-    user = UserSerializer(
-            allow_null=True, required=False, read_only=True, source="user_map.user"
-            )
+    user = UserSerializer(allow_null=True, required=False, read_only=True, source="user_map.user")
 
     class Meta:
         model = SupportTicket
@@ -331,13 +331,13 @@ class RecentSupportTicketSerializer(serializers.ModelSerializer):
 #     class Meta:
 #         model = Connectors
 #         fields = ["id", "connector_name", "updated_at", "dataset_count", "activity"]
-# 
+#
 #     dataset_count = serializers.SerializerMethodField(method_name="get_dataset_count")
 #     activity = serializers.SerializerMethodField(method_name="get_activity")
-# 
+#
 #     def get_dataset_count(self, connectors_queryset):
 #         return Datasets.objects.filter(status=True, user_map__user=connectors_queryset.user_map.user_id).count()
-# 
+#
 #     def get_activity(self, connectors_queryset):
 #         try:
 #             if Connectors.objects.filter(status=True, user_map__id=connectors_queryset.user_map.id).first().status == True:
@@ -346,7 +346,7 @@ class RecentSupportTicketSerializer(serializers.ModelSerializer):
 #                 return Constants.NOT_ACTIVE
 #         except Exception as error:
 #             LOGGER.error(error, exc_info=True)
-# 
+#
 #         return None
 
 
