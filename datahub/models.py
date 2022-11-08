@@ -121,6 +121,7 @@ class Datasets(TimeStampMixin):
         max_length=255, null=True, choices=APPROVAL_STATUS, default="for_review"
     )
     is_enabled = models.BooleanField(default=True)
+    is_public = models.BooleanField(default=True)
     remarks = models.CharField(max_length=1000, null=True, blank=True)
 
     class Meta:

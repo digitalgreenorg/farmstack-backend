@@ -3,7 +3,6 @@ import logging
 import os
 import shutil
 from calendar import c
-
 import django
 import pandas as pd
 from accounts.models import User, UserRole
