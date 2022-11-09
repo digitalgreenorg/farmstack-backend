@@ -252,6 +252,7 @@ class DatasetSerializer(serializers.ModelSerializer):
                 _("You cannot upload a file more than %(value)s MB"),
                 params={"value": MAX_FILE_SIZE / 1048576},
             )
+        return value
 
     class Meta:
         """_summary_"""

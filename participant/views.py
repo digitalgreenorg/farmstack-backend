@@ -161,6 +161,9 @@ class ParticipantDatasetsViewSet(GenericViewSet):
     def create(self, request, *args, **kwargs):
         """creates a new participant dataset and triggers an email to the datahub admin requesting for approval of dataset"""
         setattr(request.data, "_mutable", True)
+
+        print("It's me!!!!", request.data)
+
         data = request.data
         user_org_map = UserOrganizationMap.objects.get(id=data.get(Constants.USER_MAP))
         user = User.objects.get(id=user_org_map.user_id)
