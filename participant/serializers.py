@@ -9,6 +9,8 @@ from datahub.serializers import (
     UserOrganizationMapSerializer,
 )
 from rest_framework import serializers
+from django.core.exceptions import ValidationError
+from django.utils.translation import gettext as _
 from utils import string_functions
 
 from participant.models import (
@@ -40,7 +42,10 @@ class ParticipantSupportTicketSerializer(serializers.ModelSerializer):
         queryset=models.User.objects.all(), required=True, source="user_map.user"
     )
     organization_id = serializers.PrimaryKeyRelatedField(
-        queryset=Organization.objects.all(), allow_null=True, required=False, source="user_map.organization"
+        queryset=Organization.objects.all(),
+        allow_null=True,
+        required=False,
+        source="user_map.organization",
     )
     user = UserSerializer(
         read_only=False,
@@ -65,6 +70,22 @@ class DatasetSerializer(serializers.ModelSerializer):
         serializers (_type_): _description_
     """
 
+    def validate_sample_dataset(self, value):
+        """
+        Validator function to check the file size limit.
+        """
+        MAX_FILE_SIZE = (
+            Constants.MAX_PUBLIC_FILE_SIZE
+            if self.initial_data.get("is_public")
+            else Constants.MAX_FILE_SIZE
+        )
+        filesize = value.size
+        if filesize > MAX_FILE_SIZE:
+            raise ValidationError(
+                _("You cannot upload a file more than %(value)s MB"),
+                params={"value": MAX_FILE_SIZE / 1048576},
+            )
+
     class Meta:
         """_summary_"""
 
@@ -84,7 +105,8 @@ class DatasetSerializer(serializers.ModelSerializer):
             "sample_dataset",
             "data_capture_start",
             "data_capture_end",
-            "approval_status"
+            "approval_status",
+            "is_public",
         ]
 
 
@@ -93,7 +115,10 @@ class ParticipantDatasetsDetailSerializer(serializers.ModelSerializer):
         queryset=models.User.objects.all(), required=True, source="user_map.user"
     )
     organization_id = serializers.PrimaryKeyRelatedField(
-        queryset=Organization.objects.all(), allow_null=True, required=False, source="user_map.organization"
+        queryset=Organization.objects.all(),
+        allow_null=True,
+        required=False,
+        source="user_map.organization",
     )
     user = UserSerializer(
         read_only=False,
@@ -125,13 +150,18 @@ class ParticipantDatasetsSerializer(serializers.ModelSerializer):
         queryset=models.User.objects.all(), required=True, source="user_map.user"
     )
     organization_id = serializers.PrimaryKeyRelatedField(
-        queryset=Organization.objects.all(), allow_null=True, required=False, source="user_map.organization"
+        queryset=Organization.objects.all(),
+        allow_null=True,
+        required=False,
+        source="user_map.organization",
     )
 
     organization = OrganizationDatsetsListRetriveSerializer(
         required=False, allow_null=True, read_only=True, source="user_map.organization"
     )
-    user = UserDatasetSerializer(required=False, allow_null=True, read_only=True, source="user_map.user")
+    user = UserDatasetSerializer(
+        required=False, allow_null=True, read_only=True, source="user_map.user"
+    )
 
     class Meta:
         model = Datasets
@@ -156,7 +186,19 @@ class ParticipantDatasetsSerializer(serializers.ModelSerializer):
 class ParticipantDatasetsSerializerForEmail(serializers.ModelSerializer):
     class Meta:
         model = Datasets
-        fields = ["name", "description", "category", "geography", "crop_detail", "constantly_update", "age_of_date", "data_capture_start", "data_capture_end", "dataset_size", "connector_availability"]
+        fields = [
+            "name",
+            "description",
+            "category",
+            "geography",
+            "crop_detail",
+            "constantly_update",
+            "age_of_date",
+            "data_capture_start",
+            "data_capture_end",
+            "dataset_size",
+            "connector_availability",
+        ]
 
     def to_representation(self, instance):
         """Return formatted data for email template"""
@@ -171,10 +213,20 @@ class ParticipantDatasetsSerializerForEmail(serializers.ModelSerializer):
             ret["category"] = "N/A"
 
         ret["name"] = ret.get("name").title() if ret.get("name") else "N/A"
-        ret["crop_detail"] = ret.get("crop_detail").title() if ret.get("crop_detail") else "N/A"
-        ret["geography"] = ret.get("geography").title() if ret.get("geography") else "N/A"
-        ret["connector_availability"] = re.sub("_", " ", ret.get("connector_availability")).title() if ret.get("connector_availability") else "N/A"
-        ret["dataset_size"] = ret.get("dataset_size") if ret.get("dataset_size") else "N/A"
+        ret["crop_detail"] = (
+            ret.get("crop_detail").title() if ret.get("crop_detail") else "N/A"
+        )
+        ret["geography"] = (
+            ret.get("geography").title() if ret.get("geography") else "N/A"
+        )
+        ret["connector_availability"] = (
+            re.sub("_", " ", ret.get("connector_availability")).title()
+            if ret.get("connector_availability")
+            else "N/A"
+        )
+        ret["dataset_size"] = (
+            ret.get("dataset_size") if ret.get("dataset_size") else "N/A"
+        )
         ret["age_of_date"] = ret.get("age_of_date") if ret.get("age_of_date") else "N/A"
 
         if ret.get("constantly_update"):
@@ -187,13 +239,17 @@ class ParticipantDatasetsSerializerForEmail(serializers.ModelSerializer):
 
         if ret.get("data_capture_start"):
             date = ret["data_capture_start"].split("T")[0]
-            ret["data_capture_start"] = datetime.datetime.strptime(date, "%Y-%m-%d").strftime("%d/%m/%Y")
+            ret["data_capture_start"] = datetime.datetime.strptime(
+                date, "%Y-%m-%d"
+            ).strftime("%d/%m/%Y")
         else:
             ret["data_capture_start"] = "N/A"
 
         if ret.get("data_capture_end"):
             date = ret["data_capture_end"].split("T")[0]
-            ret["data_capture_end"] = datetime.datetime.strptime(date, "%Y-%m-%d").strftime("%d/%m/%Y")
+            ret["data_capture_end"] = datetime.datetime.strptime(
+                date, "%Y-%m-%d"
+            ).strftime("%d/%m/%Y")
         else:
             ret["data_capture_end"] = "N/A"
 
@@ -209,16 +265,29 @@ class DepartmentSerializer(serializers.ModelSerializer):
 class ProjectSerializer(serializers.ModelSerializer):
     class Meta:
         model = Project
-        fields = ["id", "project_name", "project_discription", "department", "organization"]
+        fields = [
+            "id",
+            "project_name",
+            "project_discription",
+            "department",
+            "organization",
+        ]
 
 
 class ProjectDepartmentSerializer(serializers.ModelSerializer):
     department = DepartmentSerializer(
         read_only=True,
     )
+
     class Meta:
         model = Project
-        fields = ["id", "project_name", "project_discription", "department", 'organization']
+        fields = [
+            "id",
+            "project_name",
+            "project_discription",
+            "department",
+            "organization",
+        ]
 
 
 class ConnectorsSerializer(serializers.ModelSerializer):
@@ -239,7 +308,13 @@ class ConnectorsSerializerForEmail(serializers.ModelSerializer):
             ret["name"] = ret.get("name").title() if ret.get("name") else "N/A"
             if ret.get("address"):
                 address = ret.get("address")
-                data = {"address": address.get("address","")+ ", " + address.get("city",""), "pincode": address.get("pincode",""), "country": address.get("country","")}
+                data = {
+                    "address": address.get("address", "")
+                    + ", "
+                    + address.get("city", ""),
+                    "pincode": address.get("pincode", ""),
+                    "country": address.get("country", ""),
+                }
                 ret["address"] = data
             else:
                 ret["address"] = "N/A"
@@ -251,9 +326,14 @@ class ConnectorsSerializerForEmail(serializers.ModelSerializer):
             fields = ["full_name", "email", "phone_number"]
 
         full_name = serializers.SerializerMethodField(method_name="get_full_name")
+
         def get_full_name(self, instance):
             user = User.objects.get(id=instance.id)
-            return user.first_name + " " + user.last_name if  user.last_name else user.first_name
+            return (
+                user.first_name + " " + user.last_name
+                if user.last_name
+                else user.first_name
+            )
 
     class DatasetSerializer(serializers.ModelSerializer):
         class Meta:
@@ -265,19 +345,32 @@ class ConnectorsSerializerForEmail(serializers.ModelSerializer):
             ret["name"] = ret.get("name").title() if ret.get("name") else "N/A"
             return ret
 
-    organization = OrganizationSerializer(required=False, read_only=True, source="user_map.organization")
+    organization = OrganizationSerializer(
+        required=False, read_only=True, source="user_map.organization"
+    )
     user = UserSerializer(required=False, read_only=True, source="user_map.user")
     dataset_detail = DatasetSerializer(required=False, read_only=True, source="dataset")
 
     class Meta:
         model = Connectors
-        fields = ["connector_name", "connector_type", "connector_description", "dataset_detail", "user", "organization"]
+        fields = [
+            "connector_name",
+            "connector_type",
+            "connector_description",
+            "dataset_detail",
+            "user",
+            "organization",
+        ]
 
 
 class ConnectorsListSerializer(serializers.ModelSerializer):
 
-    department_details = DepartmentSerializer(required=False, allow_null=True, read_only=True, source="department")
-    project_details = ProjectSerializer(required=False, allow_null=True, read_only=True, source="project")
+    department_details = DepartmentSerializer(
+        required=False, allow_null=True, read_only=True, source="department"
+    )
+    project_details = ProjectSerializer(
+        required=False, allow_null=True, read_only=True, source="project"
+    )
 
     class Meta:
         model = Connectors
@@ -290,18 +383,29 @@ class ConnectorsRetriveSerializer(serializers.ModelSerializer):
         class Meta:
             model = Datasets
             fields = ["id", "name", "description"]
+
     class OrganizationConnectorSerializer(serializers.ModelSerializer):
         class Meta:
             model = Organization
             fields = ["id", "name", "website"]
+
     department_details = DepartmentSerializer(
         required=False, allow_null=True, read_only=True, source="department"
     )
-    project_details = ProjectSerializer(required=False, allow_null=True, read_only=True, source="project")
-    dataset_details = DatasetSerializer(required=False, allow_null=True, read_only=True, source="dataset")
-    organization_details= OrganizationConnectorSerializer(required=False, allow_null=True, read_only=True, source="user_map.organization")
+    project_details = ProjectSerializer(
+        required=False, allow_null=True, read_only=True, source="project"
+    )
+    dataset_details = DatasetSerializer(
+        required=False, allow_null=True, read_only=True, source="dataset"
+    )
+    organization_details = OrganizationConnectorSerializer(
+        required=False, allow_null=True, read_only=True, source="user_map.organization"
+    )
     user_id = serializers.PrimaryKeyRelatedField(
-        queryset=models.User.objects.all(), allow_null=True, required=False, source="user_map.user"
+        queryset=models.User.objects.all(),
+        allow_null=True,
+        required=False,
+        source="user_map.user",
     )
 
     class Meta:
@@ -309,57 +413,95 @@ class ConnectorsRetriveSerializer(serializers.ModelSerializer):
         # exclude = Constants.EXCLUDE_DATES
         fields = Constants.ALL
 
+
 class ConnectorsMapProviderRetriveSerializer(serializers.ModelSerializer):
     class DatasetSerializer(serializers.ModelSerializer):
         class Meta:
             model = Datasets
             fields = ["id", "name", "description"]
+
     class OrganizationConnectorSerializer(serializers.ModelSerializer):
         class Meta:
             model = Organization
             fields = ["id", "name", "website"]
+
     department_details = DepartmentSerializer(
         required=False, allow_null=True, read_only=True, source="provider.department"
     )
-    project_details = ProjectSerializer(required=False, allow_null=True, read_only=True, source="provider.project")
-    dataset_details = DatasetSerializer(required=False, allow_null=True, read_only=True, source="provider.dataset")
-    organization_details= OrganizationConnectorSerializer(required=False, allow_null=True, read_only=True, source="provider.user_map.organization")
-    user_id = serializers.PrimaryKeyRelatedField(
-        queryset=models.User.objects.all(), allow_null=True, required=False, source="provider.user_map.user"
+    project_details = ProjectSerializer(
+        required=False, allow_null=True, read_only=True, source="provider.project"
     )
-    connector_details = ConnectorsSerializer(required=False, allow_null=True, read_only=True, source="provider")
+    dataset_details = DatasetSerializer(
+        required=False, allow_null=True, read_only=True, source="provider.dataset"
+    )
+    organization_details = OrganizationConnectorSerializer(
+        required=False,
+        allow_null=True,
+        read_only=True,
+        source="provider.user_map.organization",
+    )
+    user_id = serializers.PrimaryKeyRelatedField(
+        queryset=models.User.objects.all(),
+        allow_null=True,
+        required=False,
+        source="provider.user_map.user",
+    )
+    connector_details = ConnectorsSerializer(
+        required=False, allow_null=True, read_only=True, source="provider"
+    )
+
     class Meta:
         model = ConnectorsMap
         # exclude = Constants.EXCLUDE_DATES
         fields = Constants.ALL
+
 
 class ConnectorsMapConsumerRetriveSerializer(serializers.ModelSerializer):
     class DatasetSerializer(serializers.ModelSerializer):
         class Meta:
             model = Datasets
             fields = ["id", "name", "description"]
+
     class OrganizationConnectorSerializer(serializers.ModelSerializer):
         class Meta:
             model = Organization
             fields = ["id", "name", "website"]
+
     department_details = DepartmentSerializer(
         required=False, allow_null=True, read_only=True, source="consumer.department"
     )
-    project_details = ProjectSerializer(required=False, allow_null=True, read_only=True, source="consumer.project")
-    dataset_details = DatasetSerializer(required=False, allow_null=True, read_only=True, source="consumer.dataset")
-    organization_details= OrganizationConnectorSerializer(required=False, allow_null=True, read_only=True, source="consumer.user_map.organization")
-    user_id = serializers.PrimaryKeyRelatedField(
-        queryset=models.User.objects.all(), allow_null=True, required=False, source="consumer.user_map.user"
+    project_details = ProjectSerializer(
+        required=False, allow_null=True, read_only=True, source="consumer.project"
     )
-    connector_details = ConnectorsSerializer(required=False, allow_null=True, read_only=True, source="consumer")
+    dataset_details = DatasetSerializer(
+        required=False, allow_null=True, read_only=True, source="consumer.dataset"
+    )
+    organization_details = OrganizationConnectorSerializer(
+        required=False,
+        allow_null=True,
+        read_only=True,
+        source="consumer.user_map.organization",
+    )
+    user_id = serializers.PrimaryKeyRelatedField(
+        queryset=models.User.objects.all(),
+        allow_null=True,
+        required=False,
+        source="consumer.user_map.user",
+    )
+    connector_details = ConnectorsSerializer(
+        required=False, allow_null=True, read_only=True, source="consumer"
+    )
 
     class Meta:
         model = ConnectorsMap
         # exclude = Constants.EXCLUDE_DATES
         fields = Constants.ALL
 
+
 class ConnectorsConsumerRelationSerializer(serializers.ModelSerializer):
-    connectors = ConnectorsSerializer(required=False, allow_null=True, read_only=True, source="consumer")
+    connectors = ConnectorsSerializer(
+        required=False, allow_null=True, read_only=True, source="consumer"
+    )
 
     class Meta:
         model = ConnectorsMap
@@ -368,7 +510,9 @@ class ConnectorsConsumerRelationSerializer(serializers.ModelSerializer):
 
 
 class ConnectorsProviderRelationSerializer(serializers.ModelSerializer):
-    connectors = ConnectorsSerializer(required=False, allow_null=True, read_only=True, source="provider")
+    connectors = ConnectorsSerializer(
+        required=False, allow_null=True, read_only=True, source="provider"
+    )
 
     class Meta:
         model = ConnectorsMap
@@ -382,12 +526,14 @@ class ConnectorsMapSerializer(serializers.ModelSerializer):
         # exclude = Constants.EXCLUDE_DATES
         fields = Constants.ALL
 
+
 class ParticipantDatasetsDropDownSerializer(serializers.ModelSerializer):
     class Meta:
         model = Datasets
-        fields=["id", "name"]
+        fields = ["id", "name"]
+
 
 class ConnectorListSerializer(serializers.ModelSerializer):
     class Meta:
         model = Connectors
-        fields=["id", "connector_name"]
+        fields = ["id", "connector_name"]

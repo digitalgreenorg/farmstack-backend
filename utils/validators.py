@@ -23,7 +23,9 @@ def validate_image_type(file):
     file_extension = str(file).split(".")[-1]
     # if file_type not in settings.IMAGE_TYPES_ALLOWED and file_extension not in settings.IMAGE_TYPES_ALLOWED:
     if file_extension not in settings.IMAGE_TYPES_ALLOWED:
-        raise ValidationError("Image type not supported. Image type allowed: png, jpg, jpeg")
+        raise ValidationError(
+            "Image type not supported. Image type allowed: png, jpg, jpeg"
+        )
     return file_extension
 
 
@@ -35,5 +37,7 @@ def validate_document_type(file):
     file_extension = str(file).split(".")[-1]
     # if file_type not in settings.FILE_TYPES_ALLOWED and file_extension not in settings.FILE_TYPES_ALLOWED:
     if file_extension not in settings.FILE_TYPES_ALLOWED:
-        raise ValidationError("Document type not supported. Document type allowed: pdf, doc, docx")
+        raise ValidationError(
+            "Document type not supported. Document type allowed: pdf, doc, docx"
+        )
     return file

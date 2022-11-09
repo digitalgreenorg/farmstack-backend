@@ -4,7 +4,6 @@ from email.mime import application
 from accounts.models import User
 from core.base_models import TimeStampMixin
 
-# from utils.validators import validate_file_size
 from django.conf import settings
 from django.db import models
 from utils.validators import validate_file_size, validate_image_type
@@ -84,7 +83,11 @@ CATEGORY = (
 )
 
 CONNECTOR_TYPE = (("MYSQL", "MYSQL"), ("MONGODB", "MONDODB"), ("CSV", "CSV"))
-APPROVAL_STATUS = (("approved", "approved"), ("rejected", "rejected"), ("for_review", "for_review"))
+APPROVAL_STATUS = (
+    ("approved", "approved"),
+    ("rejected", "rejected"),
+    ("for_review", "for_review"),
+)
 
 
 @auto_str
@@ -97,7 +100,9 @@ class Datasets(TimeStampMixin):
     description = models.CharField(max_length=500)
     category = models.JSONField()
     geography = models.CharField(max_length=255, blank=True)
-    crop_detail = models.CharField(max_length=255, null=True, blank=True)  # field should update
+    crop_detail = models.CharField(
+        max_length=255, null=True, blank=True
+    )  # field should update
     constantly_update = models.BooleanField(default=False)
     age_of_date = models.CharField(max_length=255, null=True, blank=True)
     data_capture_start = models.DateTimeField(null=True, blank=True)
@@ -107,10 +112,11 @@ class Datasets(TimeStampMixin):
     sample_dataset = models.FileField(
         upload_to=settings.SAMPLE_DATASETS_URL,
         blank=True,
-        validators=[validate_file_size],
     )
     status = models.BooleanField(default=True)
-    approval_status = models.CharField(max_length=255, null=True, choices=APPROVAL_STATUS, default="for_review")
+    approval_status = models.CharField(
+        max_length=255, null=True, choices=APPROVAL_STATUS, default="for_review"
+    )
     is_enabled = models.BooleanField(default=True)
     is_public = models.BooleanField(default=True)
     remarks = models.CharField(max_length=1000, null=True, blank=True)

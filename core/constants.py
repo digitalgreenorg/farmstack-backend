@@ -93,32 +93,49 @@ class Constants:
     NOT_ACTIVE = "Not Active"
     RECENTLY_ACTIVE = "Recently Active"
     PARTICIPANT_INVITATION_SUBJECT = " has invited you to join as a participant"
-    PARTICIPANT_ORG_ADDITION_SUBJECT = "Your organization has been added as a participant in "
+    PARTICIPANT_ORG_ADDITION_SUBJECT = (
+        "Your organization has been added as a participant in "
+    )
     PARTICIPANT_ORG_UPDATION_SUBJECT = "Your organization details has been updated in "
-    PARTICIPANT_ORG_DELETION_SUBJECT = "Your organization has been deleted as a participant in "
+    PARTICIPANT_ORG_DELETION_SUBJECT = (
+        "Your organization has been deleted as a participant in "
+    )
     ADDED_NEW_DATASET_SUBJECT = "A new dataset request has been uploaded in "
     APPROVED_NEW_DATASET_SUBJECT = "Congratulations, your dataset has been approved on "
     REJECTED_NEW_DATASET_SUBJECT = "Your dataset has been rejected on "
     ENABLE_DATASET_SUBJECT = "Your dataset is now enabled in "
     DISABLE_DATASET_SUBJECT = "Your dataset is disabled in "
-    CREATE_CONNECTOR_AND_REQUEST_CERTIFICATE_SUBJECT = "A new certificate request has been received"
+    CREATE_CONNECTOR_AND_REQUEST_CERTIFICATE_SUBJECT = (
+        "A new certificate request has been received"
+    )
     PAIRING_REQUEST_RECIEVED_SUBJECT = "You have recieved a connector pairing request"
-    PAIRING_REQUEST_APPROVED_SUBJECT = "Your connector pairing request has been approved on "
-    PAIRING_REQUEST_REJECTED_SUBJECT = "Your connector pairing request has been rejected on "
+    PAIRING_REQUEST_APPROVED_SUBJECT = (
+        "Your connector pairing request has been approved on "
+    )
+    PAIRING_REQUEST_REJECTED_SUBJECT = (
+        "Your connector pairing request has been rejected on "
+    )
     CONNECTOR_UNPAIRED_SUBJECT = "A connector has been unpaired on "
     CONNECTOR_DELETION = "A connector has been deleted from "
-    MAX_FILE_SIZE = 2097152
+    MAX_SAMPLE_FILE_SIZE = 2097152
+    MAX_PUBLIC_FILE_SIZE = 52428800
     DATAHUB_NAME = "DATAHUB_NAME"
     datahub_name = "datahub_name"
     DATAHUB_SITE = "DATAHUB_SITE"
     datahub_site = "datahub_site"
     NEW_DATASET_UPLOAD_REQUEST_IN_DATAHUB = "new_dataset_upload_request_in_datahub.html"
     WHEN_DATAHUB_ADMIN_ADDS_PARTICIPANT = "when_datahub_admin_adds_participant.html"
-    DATAHUB_ADMIN_UPDATES_PARTICIPANT_ORGANIZATION = "datahub_admin_updates_participant_organization.html"
-    DATAHUB_ADMIN_DELETES_PARTICIPANT_ORGANIZATION = "datahub_admin_deletes_participant_organization.html"
+    DATAHUB_ADMIN_UPDATES_PARTICIPANT_ORGANIZATION = (
+        "datahub_admin_updates_participant_organization.html"
+    )
+    DATAHUB_ADMIN_DELETES_PARTICIPANT_ORGANIZATION = (
+        "datahub_admin_deletes_participant_organization.html"
+    )
     WHEN_CONNECTOR_UNPAIRED = "when_connector_unpaired.html"
     PAIRING_REQUEST_APPROVED = "pairing_request_approved.html"
     PAIRING_REQUEST_REJECTED = "pairing_request_rejected.html"
     REQUEST_CONNECTOR_PAIRING = "request_for_connector_pairing.html"
-    CREATE_CONNECTOR_AND_REQUEST_CERTIFICATE = "participant_creates_connector_and_requests_certificate.html"
+    CREATE_CONNECTOR_AND_REQUEST_CERTIFICATE = (
+        "participant_creates_connector_and_requests_certificate.html"
+    )
     PARTICIPANT_INSTALLS_CERTIFICATE = "participant_installs_certificate.html"

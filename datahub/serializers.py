@@ -2,6 +2,9 @@ import logging
 
 from rest_framework import serializers
 
+from django.core.exceptions import ValidationError
+from django.utils.translation import gettext as _
+
 from accounts import models
 from accounts.models import User, UserRole
 from accounts.serializers import (
@@ -118,23 +121,37 @@ class ParticipantSerializer(serializers.ModelSerializer):
         exclude = Constants.EXCLUDE_DATES
 
     dataset_count = serializers.SerializerMethodField(method_name="get_dataset_count")
-    connector_count = serializers.SerializerMethodField(method_name="get_connector_count")
+    connector_count = serializers.SerializerMethodField(
+        method_name="get_connector_count"
+    )
 
     def get_dataset_count(self, user_org_map):
-        return Datasets.objects.filter(status=True, user_map__user=user_org_map.user.id).count()
+        return Datasets.objects.filter(
+            status=True, user_map__user=user_org_map.user.id
+        ).count()
 
     def get_connector_count(self, user_org_map):
-        return Connectors.objects.filter(status=True, user_map__user=user_org_map.user.id).count()
+        return Connectors.objects.filter(
+            status=True, user_map__user=user_org_map.user.id
+        ).count()
 
 
 class DropDocumentSerializer(serializers.Serializer):
     """DropDocumentSerializer class"""
 
-    governing_law = serializers.FileField(validators=[validate_file_size, validate_document_type])
-    privacy_policy = serializers.FileField(validators=[validate_file_size, validate_document_type])
+    governing_law = serializers.FileField(
+        validators=[validate_file_size, validate_document_type]
+    )
+    privacy_policy = serializers.FileField(
+        validators=[validate_file_size, validate_document_type]
+    )
     tos = serializers.FileField(validators=[validate_file_size, validate_document_type])
-    limitations_of_liabilities = serializers.FileField(validators=[validate_file_size, validate_document_type])
-    warranty = serializers.FileField(validators=[validate_file_size, validate_document_type])
+    limitations_of_liabilities = serializers.FileField(
+        validators=[validate_file_size, validate_document_type]
+    )
+    warranty = serializers.FileField(
+        validators=[validate_file_size, validate_document_type]
+    )
 
 
 class PolicyDocumentSerializer(serializers.ModelSerializer):
@@ -155,7 +172,9 @@ class DatahubThemeSerializer(serializers.Serializer):
     """DatahubThemeSerializer class"""
 
     banner = serializers.ImageField(
-        validators=[validate_file_size, validate_image_type], required=False, allow_null=True
+        validators=[validate_file_size, validate_image_type],
+        required=False,
+        allow_null=True,
     )
     button_color = serializers.CharField(required=False, allow_null=True)
     # email = serializers.EmailField()
@@ -173,7 +192,9 @@ class TeamMemberListSerializer(serializers.Serializer):
     email = serializers.EmailField()
     first_name = serializers.CharField()
     last_name = serializers.CharField()
-    role = serializers.PrimaryKeyRelatedField(queryset=UserRole.objects.all(), read_only=False)
+    role = serializers.PrimaryKeyRelatedField(
+        queryset=UserRole.objects.all(), read_only=False
+    )
     profile_picture = serializers.FileField()
     status = serializers.BooleanField()
     on_boarded = serializers.BooleanField()
@@ -215,6 +236,22 @@ class DatasetSerializer(serializers.ModelSerializer):
     Args:
         serializers (_type_): _description_
     """
+
+    def validate_sample_dataset(self, value):
+        """
+        Validator function to check the file size limit.
+        """
+        MAX_FILE_SIZE = (
+            Constants.MAX_PUBLIC_FILE_SIZE
+            if self.initial_data.get("is_public")
+            else Constants.MAX_FILE_SIZE
+        )
+        filesize = value.size
+        if filesize > MAX_FILE_SIZE:
+            raise ValidationError(
+                _("You cannot upload a file more than %(value)s MB"),
+                params={"value": MAX_FILE_SIZE / 1048576},
+            )
 
     class Meta:
         """_summary_"""
@@ -260,7 +297,10 @@ class DatahubDatasetsDetailSerializer(serializers.ModelSerializer):
         queryset=models.User.objects.all(), required=True, source="user_map.user"
     )
     organization_id = serializers.PrimaryKeyRelatedField(
-        queryset=Organization.objects.all(), allow_null=True, required=False, source="user_map.organization"
+        queryset=Organization.objects.all(),
+        allow_null=True,
+        required=False,
+        source="user_map.organization",
     )
     user = UserSerializer(
         read_only=False,
@@ -281,7 +321,14 @@ class DatahubDatasetsSerializer(serializers.ModelSerializer):
     class OrganizationDatsetsListRetriveSerializer(serializers.ModelSerializer):
         class Meta:
             model = Organization
-            fields = ["org_email", "org_description", "name", "logo", "address", "phone_number"]
+            fields = [
+                "org_email",
+                "org_description",
+                "name",
+                "logo",
+                "address",
+                "phone_number",
+            ]
 
     class UserDatasetSerializer(serializers.ModelSerializer):
         class Meta:
@@ -292,13 +339,18 @@ class DatahubDatasetsSerializer(serializers.ModelSerializer):
         queryset=models.User.objects.all(), required=True, source="user_map.user"
     )
     organization_id = serializers.PrimaryKeyRelatedField(
-        queryset=Organization.objects.all(), allow_null=True, required=False, source="user_map.organization"
+        queryset=Organization.objects.all(),
+        allow_null=True,
+        required=False,
+        source="user_map.organization",
     )
 
     organization = OrganizationDatsetsListRetriveSerializer(
         required=False, allow_null=True, read_only=True, source="user_map.organization"
     )
-    user = UserDatasetSerializer(required=False, allow_null=True, read_only=True, source="user_map.user")
+    user = UserDatasetSerializer(
+        required=False, allow_null=True, read_only=True, source="user_map.user"
+    )
 
     class Meta:
         model = Datasets
@@ -320,7 +372,9 @@ class RecentSupportTicketSerializer(serializers.ModelSerializer):
         allow_null=True, required=False, read_only=True, source="user_map.organization"
     )
 
-    user = UserSerializer(allow_null=True, required=False, read_only=True, source="user_map.user")
+    user = UserSerializer(
+        allow_null=True, required=False, read_only=True, source="user_map.user"
+    )
 
     class Meta:
         model = SupportTicket
@@ -355,15 +409,21 @@ class RecentDatasetListSerializer(serializers.ModelSerializer):
         model = Datasets
         fields = ["id", "name", "updated_at", "connector_count", "activity"]
 
-    connector_count = serializers.SerializerMethodField(method_name="get_connector_count")
+    connector_count = serializers.SerializerMethodField(
+        method_name="get_connector_count"
+    )
     activity = serializers.SerializerMethodField(method_name="get_activity")
 
     def get_connector_count(self, datasets_queryset):
-        return Connectors.objects.filter(status=True, dataset_id=datasets_queryset.id).count()
+        return Connectors.objects.filter(
+            status=True, dataset_id=datasets_queryset.id
+        ).count()
 
     def get_activity(self, datasets_queryset):
         try:
-            datasets_queryset = Datasets.objects.filter(status=True, id=datasets_queryset.id)
+            datasets_queryset = Datasets.objects.filter(
+                status=True, id=datasets_queryset.id
+            )
             if datasets_queryset:
                 if datasets_queryset.first().status == True:
                     return Constants.ACTIVE
