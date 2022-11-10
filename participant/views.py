@@ -315,7 +315,7 @@ class ParticipantDatasetsViewSet(GenericViewSet):
         """PUT method: update or send a PUT request on an object of the Product model"""
         setattr(request.data, "_mutable", True)
         data = request.data
-        print(data)
+        data = {key: value for key, value in data.items() if value != "null"}
         if not data.get("is_public"):
             if data.get(Constants.SAMPLE_DATASET):
                 if not csv_and_xlsx_file_validatation(
