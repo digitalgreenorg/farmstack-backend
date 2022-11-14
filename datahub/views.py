@@ -1344,7 +1344,10 @@ class DatahubDashboard(GenericViewSet):
                     "user_map", "user_map__user", "user_map__organization"
                 )
                 .filter(
-                    user_map__user__status=True, status=True, approval_status="approved"
+                    user_map__user__status=True,
+                    status=True,
+                    approval_status="approved",
+                    is_enabled=True,
                 )
                 .order_by("updated_at")
                 .count()
