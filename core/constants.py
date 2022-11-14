@@ -101,6 +101,7 @@ class Constants:
         "Your organization has been deleted as a participant in "
     )
     ADDED_NEW_DATASET_SUBJECT = "A new dataset request has been uploaded in "
+    UPDATED_DATASET_SUBJECT = "A dataset has been updated in "
     APPROVED_NEW_DATASET_SUBJECT = "Congratulations, your dataset has been approved on "
     REJECTED_NEW_DATASET_SUBJECT = "Your dataset has been rejected on "
     ENABLE_DATASET_SUBJECT = "Your dataset is now enabled in "
@@ -124,6 +125,7 @@ class Constants:
     DATAHUB_SITE = "DATAHUB_SITE"
     datahub_site = "datahub_site"
     NEW_DATASET_UPLOAD_REQUEST_IN_DATAHUB = "new_dataset_upload_request_in_datahub.html"
+    DATASET_UPDATE_REQUEST_IN_DATAHUB = "dataset_update_request_in_datahub.html"
     WHEN_DATAHUB_ADMIN_ADDS_PARTICIPANT = "when_datahub_admin_adds_participant.html"
     DATAHUB_ADMIN_UPDATES_PARTICIPANT_ORGANIZATION = (
         "datahub_admin_updates_participant_organization.html"

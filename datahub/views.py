@@ -1027,7 +1027,6 @@ class DatahubDatasetsViewSet(GenericViewSet):
     def create(self, request, *args, **kwargs):
         """POST method: create action to save an object by sending a POST request"""
         setattr(request.data, "_mutable", True)
-        print("It's me!!!!", request.data)
         data = request.data
 
         if not data.get("is_public"):

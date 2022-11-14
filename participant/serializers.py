@@ -206,7 +206,7 @@ class ParticipantDatasetsSerializerForEmail(serializers.ModelSerializer):
         ret = super().to_representation(instance)
         data = []
         if ret.get("category"):
-            for key, value in json.loads(ret.get("category")).items():
+            for key, value in ret.get("category").items():
                 if value == True:
                     data.append(re.sub("_", " ", key).title())
                 ret["category"] = data
