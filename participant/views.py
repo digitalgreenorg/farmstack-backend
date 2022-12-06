@@ -161,6 +161,7 @@ class ParticipantDatasetsViewSet(GenericViewSet):
     def create(self, request, *args, **kwargs):
         """creates a new participant dataset and triggers an email to the datahub admin requesting for approval of dataset"""
         setattr(request.data, "_mutable", True)
+
         data = request.data
         user_org_map = UserOrganizationMap.objects.get(id=data.get(Constants.USER_MAP))
         user = User.objects.get(id=user_org_map.user_id)
@@ -312,7 +313,7 @@ class ParticipantDatasetsViewSet(GenericViewSet):
         """PUT method: update or send a PUT request on an object of the Product model"""
         setattr(request.data, "_mutable", True)
         data = request.data
-        print(data)
+        data = {key: value for key, value in data.items() if value != "null"}
         if not data.get("is_public"):
             if data.get(Constants.SAMPLE_DATASET):
                 if not csv_and_xlsx_file_validatation(
@@ -327,20 +328,78 @@ class ParticipantDatasetsViewSet(GenericViewSet):
                         400,
                     )
         if data.get("constantly_update") == "false":
-            formatted_date = one_day_date_formater(
-                [data.get("data_capture_start", ""), data.get("data_capture_end")]
-            )
-            data["data_capture_start"] = formatted_date[0]
-            data["data_capture_end"] = formatted_date[1]
+            if "data_capture_start" in data and "data_capture_end" in data:
+                formatted_date = one_day_date_formater(
+                    [data.get("data_capture_start", ""), data.get("data_capture_end")]
+                )
+                data["data_capture_start"] = formatted_date[0]
+                data["data_capture_end"] = formatted_date[1]
         category = data.get(Constants.CATEGORY)
         if category:
             data[Constants.CATEGORY] = (
                 json.loads(category) if isinstance(category, str) else category
             )
         instance = self.get_object()
+
+        # trigger email to the participant
+        user_map_queryset = UserOrganizationMap.objects.select_related(
+            Constants.USER
+        ).get(id=instance.user_map_id)
+        user_obj = user_map_queryset.user
+
+        # reset the approval status b/c the user modified the dataset after an approval
+        if getattr(instance, Constants.APPROVAL_STATUS) == Constants.APPROVED and (
+            user_obj.role_id == 3 or user_obj.role_id == 4
+        ):
+            data[Constants.APPROVAL_STATUS] = Constants.AWAITING_REVIEW
+
         serializer = self.get_serializer(instance, data=data, partial=True)
         serializer.is_valid(raise_exception=True)
         self.perform_create(serializer)
+
+        try:
+            # initialize an email to datahub admin for approval of the dataset and save the data
+            serializer_email = ParticipantDatasetsSerializerForEmail(data)
+            recepient = User.objects.filter(role_id=1).first()
+            subject = Constants.UPDATED_DATASET_SUBJECT + os.environ.get(
+                Constants.DATAHUB_NAME, Constants.datahub_name
+            )
+            datahub_admin_name = string_functions.get_full_name(
+                recepient.first_name, recepient.last_name
+            )
+            formatted_date = one_day_date_formater(
+                [data.get("data_capture_start", ""), data.get("data_capture_end")]
+            )
+            email_data = {
+                Constants.datahub_name: os.environ.get(
+                    Constants.DATAHUB_NAME, Constants.datahub_name
+                ),
+                "datahub_admin_name": datahub_admin_name,
+                Constants.datahub_site: os.environ.get(
+                    Constants.DATAHUB_SITE, Constants.datahub_site
+                ),
+                "dataset": serializer_email.data,
+            }
+
+            email_render = render(
+                request, Constants.DATASET_UPDATE_REQUEST_IN_DATAHUB, email_data
+            )
+            mail_body = email_render.content.decode("utf-8")
+            Utils().send_email(
+                to_email=recepient.email,
+                content=mail_body,
+                subject=subject,
+            )
+            LOGGER.info(
+                f"Successfully updated the dataset and emailed datahub admin: {recepient.email} for approval of dataset. \n dataset saved: {serializer.data}"
+            )
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        except Exception as error:
+            LOGGER.error(error, exc_info=True)
+            return Response(
+                {"Error": ["Bad Request"]}, status=status.HTTP_400_BAD_REQUEST
+            )
+
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
     def destroy(self, request, pk):

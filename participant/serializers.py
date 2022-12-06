@@ -85,6 +85,7 @@ class DatasetSerializer(serializers.ModelSerializer):
                 _("You cannot upload a file more than %(value)s MB"),
                 params={"value": MAX_FILE_SIZE / 1048576},
             )
+        return value
 
     class Meta:
         """_summary_"""
@@ -205,7 +206,7 @@ class ParticipantDatasetsSerializerForEmail(serializers.ModelSerializer):
         ret = super().to_representation(instance)
         data = []
         if ret.get("category"):
-            for key, value in json.loads(ret.get("category")).items():
+            for key, value in ret.get("category").items():
                 if value == True:
                     data.append(re.sub("_", " ", key).title())
                 ret["category"] = data
