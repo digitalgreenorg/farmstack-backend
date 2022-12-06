@@ -1,10 +1,9 @@
-import datetime, logging
-from asyncio import exceptions
+import datetime
+import logging
+
+# from asyncio import exceptions
 from asyncio.log import logger
 
-from core.constants import Constants
-from core.utils import Utils
-from datahub.models import UserOrganizationMap
 from django.conf import settings
 from django.core.cache import cache
 from django.shortcuts import render
@@ -23,6 +22,9 @@ from accounts.serializers import (
     UserCreateSerializer,
     UserUpdateSerializer,
 )
+from core.constants import Constants
+from core.utils import Utils
+from datahub.models import UserOrganizationMap
 from utils import login_helper, string_functions
 
 LOGGER = logging.getLogger(__name__)
@@ -107,7 +109,7 @@ class LoginViewset(GenericViewSet):
         email = serializer.validated_data["email"]
         user_obj = User.objects.filter(email=email)
         user = user_obj.first()
-        user_role_obj = UserRole.objects.filter(role_name=request.data.get("role")) 
+        user_role_obj = UserRole.objects.filter(role_name=request.data.get("role"))
         user_role = user_role_obj.first().id if user_role_obj else None
 
         try:
@@ -126,15 +128,10 @@ class LoginViewset(GenericViewSet):
             # check user role
             if user_role != user.role_id:
                 message = "This email is not registered as "
-                switcher = {
-                    1: "admin",
-                    3: "participant"
-                }
+                switcher = {1: "admin", 3: "participant"}
 
                 message += str(switcher.get(user_role, request.data.get("role")))
-                return Response({
-                    "message": message
-                }, status=status.HTTP_401_UNAUTHORIZED)
+                return Response({"message": message}, status=status.HTTP_401_UNAUTHORIZED)
 
             # check if user is suspended
             if cache.get(user.id) is not None:

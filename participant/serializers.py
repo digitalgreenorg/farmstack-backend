@@ -77,7 +77,7 @@ class DatasetSerializer(serializers.ModelSerializer):
         MAX_FILE_SIZE = (
             Constants.MAX_PUBLIC_FILE_SIZE
             if self.initial_data.get("is_public")
-            else Constants.MAX_FILE_SIZE
+            else Constants.MAX_SAMPLE_FILE_SIZE
         )
         filesize = value.size
         if filesize > MAX_FILE_SIZE:
