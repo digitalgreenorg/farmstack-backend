@@ -285,7 +285,7 @@ class ParticipantDatasetsViewSet(GenericViewSet):
             data["data_capture_end"] = formatted_date[1]
         category = data.get(Constants.CATEGORY)
         if category:
-            data[Constants.CATEGORY] = json.loads(category) if isinstance(category, str) else category
+            data[Constants.CATEGORY] = json.dumps(json.loads(category)) if isinstance(category, str) else category
         instance = self.get_object()
         serializer = self.get_serializer(instance, data=data, partial=True)
         serializer.is_valid(raise_exception=True)
