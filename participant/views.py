@@ -337,7 +337,7 @@ class ParticipantDatasetsViewSet(GenericViewSet):
         category = data.get(Constants.CATEGORY)
         if category:
             data[Constants.CATEGORY] = (
-                json.loads(category) if isinstance(category, str) else category
+                json.dumps(json.loads(category)) if isinstance(category, str) else category
             )
         instance = self.get_object()
 
