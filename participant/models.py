@@ -3,11 +3,12 @@ from sre_constants import CATEGORY
 from unicodedata import category
 
 import black
+from django.db import models
+
 from accounts.models import User
 from core import settings
 from core.base_models import TimeStampMixin
 from datahub.models import Datasets, Organization, UserOrganizationMap
-from django.db import models
 from utils.validators import validate_file_size
 
 CATEGORY = (
@@ -91,7 +92,9 @@ class Connectors(TimeStampMixin):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     user_map = models.ForeignKey(UserOrganizationMap, on_delete=models.PROTECT, blank=True, default="")
     project = models.ForeignKey(Project, on_delete=models.PROTECT, null=True)
-    department = models.ForeignKey(Department, on_delete=models.PROTECT, default="e459f452-2b4b-4129-ba8b-1e1180c87888")
+    department = models.ForeignKey(
+        Department, on_delete=models.PROTECT, default="e459f452-2b4b-4129-ba8b-1e1180c87888"
+    )
     dataset = models.ForeignKey(Datasets, on_delete=models.PROTECT)
     connector_name = models.CharField(max_length=255, unique=True)
     connector_type = models.CharField(max_length=255)

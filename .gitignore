@@ -153,3 +153,6 @@ db.sqlite3
 *.DS_Store
 # virtual enviroment 
 virtualenv
+
+#Settings file
+*.settings.py

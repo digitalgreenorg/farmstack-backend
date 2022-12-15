@@ -180,6 +180,7 @@ class ParticipantDatasetsSerializer(serializers.ModelSerializer):
             "geography",
             "crop_detail",
             "age_of_date",
+            "is_public",
         ]
 
 
@@ -205,7 +206,7 @@ class ParticipantDatasetsSerializerForEmail(serializers.ModelSerializer):
         ret = super().to_representation(instance)
         data = []
         if ret.get("category"):
-            for key, value in ret.get("category").items():
+            for key, value in json.loads(ret["category"]).items():
                 if value == True:
                     data.append(re.sub("_", " ", key).title())
                 ret["category"] = data
