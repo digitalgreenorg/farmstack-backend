@@ -154,5 +154,3 @@ db.sqlite3
 # virtual enviroment 
 virtualenv
 
-#Settings file
-*settings.py
