@@ -180,6 +180,7 @@ class ParticipantDatasetsSerializer(serializers.ModelSerializer):
             "geography",
             "crop_detail",
             "age_of_date",
+            "is_public",
         ]
 
 
