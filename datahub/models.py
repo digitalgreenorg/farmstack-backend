@@ -123,3 +123,23 @@ class Datasets(TimeStampMixin):
 
     class Meta:
         indexes = [models.Index(fields=["name"])]
+
+
+@auto_str
+class DatasetV2(TimeStampMixin):
+    """Datasets model of all the users"""
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    name = models.CharField(max_length=255)
+    user_map = models.ForeignKey(UserOrganizationMap, on_delete=models.PROTECT)
+    description = models.CharField(max_length=500, null=True, blank=True)
+    category = models.JSONField()
+    geography = models.CharField(max_length=255, blank=True)
+    data_capture_start = models.DateTimeField(null=True, blank=True)
+    data_capture_end = models.DateTimeField(null=True, blank=True)
+    status = models.BooleanField(default=True)
+    dataset = models.FileField(
+        upload_to=settings.SAMPLE_DATASETS_URL,
+    )
+
+    class Meta:
+        indexes = [models.Index(fields=["name"])]
