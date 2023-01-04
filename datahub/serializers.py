@@ -2,6 +2,7 @@ import logging
 
 from rest_framework import serializers
 
+from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.utils.translation import gettext as _
 
@@ -13,7 +14,7 @@ from accounts.serializers import (
     UserSerializer,
 )
 from core.constants import Constants
-from datahub.models import DatahubDocuments, Datasets, Organization, UserOrganizationMap
+from datahub.models import DatahubDocuments, Datasets, Organization, UserOrganizationMap, DatasetV2
 from participant.models import Connectors, SupportTicket
 from utils.validators import (
     validate_document_type,
@@ -436,3 +437,10 @@ class RecentDatasetListSerializer(serializers.ModelSerializer):
             LOGGER.error(error, exc_info=True)
 
         return None
+
+
+class DatasetV2Serializer(serializers.ModelSerializer):
+    """Serializer for DatasetV2 model to serialize the Meta Data of Datasets."""
+    class Meta:
+        model = DatasetV2
+        fields = ["id", "name", "dataset", "user_map", "description", "category", "geography", "data_capture_start", "data_capture_end"]
