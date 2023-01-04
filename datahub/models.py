@@ -127,13 +127,16 @@ class Datasets(TimeStampMixin):
 
 @auto_str
 class DatasetV2(TimeStampMixin):
-    """Datasets model of all the users"""
+    """
+    New version of model for dataset.
+    DatasetV2 model to store Meta data of Datasets created by the participants.
+    """
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    name = models.CharField(max_length=255)
+    name = models.CharField(max_length=255, unique=True)
     user_map = models.ForeignKey(UserOrganizationMap, on_delete=models.PROTECT)
     description = models.CharField(max_length=500, null=True, blank=True)
     category = models.JSONField()
-    geography = models.CharField(max_length=255, blank=True)
+    geography = models.CharField(max_length=255, null=True, blank=True)
     data_capture_start = models.DateTimeField(null=True, blank=True)
     data_capture_end = models.DateTimeField(null=True, blank=True)
     status = models.BooleanField(default=True)
