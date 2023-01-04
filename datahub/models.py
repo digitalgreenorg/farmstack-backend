@@ -140,9 +140,19 @@ class DatasetV2(TimeStampMixin):
     data_capture_start = models.DateTimeField(null=True, blank=True)
     data_capture_end = models.DateTimeField(null=True, blank=True)
     status = models.BooleanField(default=True)
-    dataset = models.FileField(
-        upload_to=settings.SAMPLE_DATASETS_URL,
-    )
+    # dataset = models.FileField(
+    #     upload_to=settings.SAMPLE_DATASETS_URL,
+    # )
 
     class Meta:
         indexes = [models.Index(fields=["name"])]
+
+
+@auto_str
+class DatasetV2File(TimeStampMixin):
+    """
+    Stores a single file (file paths/urls) entry for datasets with a reference to DatasetV2 instance.
+    related to :model:`datahub_datasetv2` (DatasetV2)
+    """
+    dataset = models.ForeignKey(DatasetV2, on_delete=models.PROTECT, related_name="datasets")
+    file = models.FileField(upload_to=settings.SAMPLE_DATASETS_URL, null=True, blank=True)
