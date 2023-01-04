@@ -128,8 +128,8 @@ class Datasets(TimeStampMixin):
 @auto_str
 class DatasetV2(TimeStampMixin):
     """
-    New version of model for dataset.
-    DatasetV2 model to store Meta data of Datasets created by the participants.
+    Stores a single dataset entry, related to :model:`datahub_userorganizationmap` (UserOrganizationMap).
+    New version of model for dataset - DatasetV2 to store Meta data of Datasets.
     """
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     name = models.CharField(max_length=255, unique=True)
