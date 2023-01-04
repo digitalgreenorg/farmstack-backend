@@ -41,7 +41,13 @@ from rest_framework.viewsets import GenericViewSet, ViewSet
 from uritemplate import partial
 from utils import file_operations, string_functions, validators
 
-from datahub.models import DatahubDocuments, Datasets, Organization, UserOrganizationMap, DatasetV2
+from datahub.models import (
+    DatahubDocuments,
+    Datasets,
+    Organization,
+    UserOrganizationMap,
+    DatasetV2,
+)
 from datahub.serializers import (
     DatahubDatasetsSerializer,
     DatahubThemeSerializer,
@@ -1422,6 +1428,7 @@ class DatahubDashboard(GenericViewSet):
 
 class DatasetV2ViewSet(GenericViewSet):
     """ViewSet for DatasetV2 model for create, update, detail/list view, & delete endpoints."""
+
     serializer_class = DatasetV2Serializer
     queryset = DatasetV2.objects.all()
 
@@ -1436,7 +1443,7 @@ class DatasetV2ViewSet(GenericViewSet):
         **Authorization**
         ``ROLE`` only authenticated users/participants with following roles are allowed to make a POST request to this endpoint.
             :role: `datahub_admin` (:role_id: `1`)
-            :role: `datahub_participant_root` (:role_id: `2`)
+            :role: `datahub_participant_root` (:role_id: `3`)
 
         **Context**
         ``DatasetV2``

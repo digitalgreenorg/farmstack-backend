@@ -14,7 +14,14 @@ from accounts.serializers import (
     UserSerializer,
 )
 from core.constants import Constants
-from datahub.models import DatahubDocuments, Datasets, Organization, UserOrganizationMap, DatasetV2
+from datahub.models import (
+    DatahubDocuments,
+    Datasets,
+    Organization,
+    UserOrganizationMap,
+    DatasetV2,
+    DatasetV2File,
+)
 from participant.models import Connectors, SupportTicket
 from utils.validators import (
     validate_document_type,
@@ -439,19 +446,71 @@ class RecentDatasetListSerializer(serializers.ModelSerializer):
         return None
 
 
+class DatasetV2FileSerializer(serializers.ModelSerializer):
+    """
+    Serializer for DatasetV2File model to serialize dataset files.
+    Following are the fields required by the serializer:
+        `id` (int): auto-generated Identifier
+        `dataset` (DatasetV2, FK): DatasetV2 reference object
+        `file` (File, mandatory): Dataset file
+    """
+
+    class Meta:
+        model = DatasetV2File
+        fields = ["id", "dataset", "file"]
+
+
 class DatasetV2Serializer(serializers.ModelSerializer):
     """
     Serializer for DatasetV2 model to serialize the Meta Data of Datasets.
     Following are the fields required by the serializer:
+        `id` (UUID): auto-generated Identifier
         `name` (String, unique, mandatory): Dataset name
-        `dataset` (Files, mandatory): Dataset files to be uploaded
         `user_map` (UUID, mandatory): User Organization map ID, related to :model:`datahub_userorganizationmap` (UserOrganizationMap)
         `description` (Text): Dataset description
         `category` (JSON, mandatory): Category as JSON object
         `geography` (String): Geography of the dataset
         `data_capture_start` (DateTime): Start DateTime of the dataset captured
         `data_capture_end` (DateTime): End DateTime of the dataset captured
+        `datasets` (Files, FK, read only): Dataset files stored
+        `upload_datasets` (List, mandatory): List of dataset files to be uploaded
     """
+
+    datasets = DatasetV2FileSerializer(many=True, read_only=True)
+    upload_datasets = serializers.ListField(
+        child=serializers.FileField(use_url=False, allow_empty_file=False),
+        write_only=True,
+    )
+
     class Meta:
         model = DatasetV2
-        fields = ["id", "name", "dataset", "user_map", "description", "category", "geography", "data_capture_start", "data_capture_end"]
+        fields = [
+            "id",
+            "name",
+            "user_map",
+            "description",
+            "category",
+            "geography",
+            "data_capture_start",
+            "data_capture_end",
+            "datasets",
+            "upload_datasets",
+        ]
+
+    def create(self, validated_data):
+        """
+        Override the create method to save meta data (DatasetV2) with multiple dataset files on to the referenced model (DatasetV2File).
+
+        **Parameters**
+        ``validated_data`` (Dict): Validated data from the serializer
+
+        **Returns**
+        ``dataset_obj`` (DatasetV2 instance): Save & return the dataset
+        """
+        uploaded_files = validated_data.pop("upload_datasets")
+        dataset_obj = DatasetV2.objects.create(**validated_data)
+
+        for file in uploaded_files:
+            DatasetV2File.objects.create(dataset=dataset_obj, file=file)
+
+        return dataset_obj
