@@ -142,6 +142,7 @@ def date_formater(date_range: list):
         logging.error("Invalid time formate: %s", error)
         return ["", ""]
 
+
 def one_day_date_formater(date_range: list):
     """This function accepts from date and to date as list and converts into valid date.
 
