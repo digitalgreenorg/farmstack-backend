@@ -1427,7 +1427,18 @@ class DatahubDashboard(GenericViewSet):
 
 
 class DatasetV2ViewSet(GenericViewSet):
-    """ViewSet for DatasetV2 model for create, update, detail/list view, & delete endpoints."""
+    """
+    ViewSet for DatasetV2 model for create, update, detail/list view, & delete endpoints.
+
+    **Context**
+    ``DatasetV2``
+        An instance of :model:`datahub_datasetv2`
+
+    **Serializer**
+    ``DatasetV2Serializer``
+        :serializer:`datahub.serializer.DatasetV2Serializer`
+
+    """
 
     serializer_class = DatasetV2Serializer
     queryset = DatasetV2.objects.all()
@@ -1444,17 +1455,24 @@ class DatasetV2ViewSet(GenericViewSet):
         ``ROLE`` only authenticated users/participants with following roles are allowed to make a POST request to this endpoint.
             :role: `datahub_admin` (:role_id: `1`)
             :role: `datahub_participant_root` (:role_id: `3`)
-
-        **Context**
-        ``DatasetV2``
-            An instance of :model:`datahub_datasetv2`
-
-        **Serializer**
-        ``DatasetV2Serializer``
-            :serializer:`datahub.serializer.DatasetV2Serializer`
-
         """
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         serializer.save()
         return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+    def list(self, request, *args, **kwargs):
+        """
+        ``GET`` method Endpoint: list action to view the list of Datasets via GET request. [see here][ref].
+
+        **Endpoint**
+        [ref]: /datahub/v2/dataset/
+
+        **Authorization**
+        ``ROLE`` only authenticated users/participants with following roles are allowed to make a GET request to this endpoint.
+            :role: `datahub_admin` (:role_id: `1`)
+            :role: `datahub_participant_root` (:role_id: `3`)
+        """
+        queryset = self.get_queryset()
+        serializer = self.get_serializer(queryset, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
