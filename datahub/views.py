@@ -41,7 +41,7 @@ from rest_framework.viewsets import GenericViewSet, ViewSet
 from uritemplate import partial
 from utils import file_operations, string_functions, validators
 
-from datahub.models import DatahubDocuments, Datasets, Organization, UserOrganizationMap
+from datahub.models import DatahubDocuments, Datasets, Organization, UserOrganizationMap, DatasetV2
 from datahub.serializers import (
     DatahubDatasetsSerializer,
     DatahubThemeSerializer,
@@ -59,6 +59,7 @@ from datahub.serializers import (
     TeamMemberUpdateSerializer,
     UserOrganizationCreateSerializer,
     UserOrganizationMapSerializer,
+    DatasetV2Serializer,
 )
 
 LOGGER = logging.getLogger(__name__)
@@ -1417,3 +1418,36 @@ class DatahubDashboard(GenericViewSet):
         except Exception as error:
             LOGGER.error(error, exc_info=True)
             return Response({}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+class DatasetV2ViewSet(GenericViewSet):
+    """ViewSet for DatasetV2 model for create, update, detail/list view, & delete endpoints."""
+    serializer_class = DatasetV2Serializer
+    queryset = DatasetV2.objects.all()
+
+    def create(self, request, *args, **kwargs):
+        """
+        ``POST`` method Endpoint: create action to save the Dataset's Meta data
+            with datasets sent through POST request. [see here][ref].
+
+        **Endpoint**
+        [ref]: /datahub/v2/dataset/
+
+        **Authorization**
+        ``ROLE`` only authenticated users/participants with following roles are allowed to make a POST request to this endpoint.
+            :role: `datahub_admin` (:role_id: `1`)
+            :role: `datahub_participant_root` (:role_id: `2`)
+
+        **Context**
+        ``DatasetV2``
+            An instance of :model:`datahub_datasetv2`
+
+        **Serializer**
+        ``DatasetV2Serializer``
+            :serializer:`datahub.serializer.DatasetV2Serializer`
+
+        """
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response(serializer.data, status=status.HTTP_201_CREATED)

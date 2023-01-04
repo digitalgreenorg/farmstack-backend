@@ -440,7 +440,18 @@ class RecentDatasetListSerializer(serializers.ModelSerializer):
 
 
 class DatasetV2Serializer(serializers.ModelSerializer):
-    """Serializer for DatasetV2 model to serialize the Meta Data of Datasets."""
+    """
+    Serializer for DatasetV2 model to serialize the Meta Data of Datasets.
+    Following are the fields required by the serializer:
+        `name` (String, unique, mandatory): Dataset name
+        `dataset` (Files, mandatory): Dataset files to be uploaded
+        `user_map` (UUID, mandatory): User Organization map ID, related to :model:`datahub_userorganizationmap` (UserOrganizationMap)
+        `description` (Text): Dataset description
+        `category` (JSON, mandatory): Category as JSON object
+        `geography` (String): Geography of the dataset
+        `data_capture_start` (DateTime): Start DateTime of the dataset captured
+        `data_capture_end` (DateTime): End DateTime of the dataset captured
+    """
     class Meta:
         model = DatasetV2
         fields = ["id", "name", "dataset", "user_map", "description", "category", "geography", "data_capture_start", "data_capture_end"]
