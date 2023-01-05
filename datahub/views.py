@@ -66,7 +66,7 @@ from datahub.serializers import (
     UserOrganizationCreateSerializer,
     UserOrganizationMapSerializer,
     DatasetV2Serializer,
-    DatasetV2TempFileSerializer
+    DatasetV2TempFileSerializer,
 )
 
 LOGGER = logging.getLogger(__name__)
@@ -1448,38 +1448,40 @@ class DatasetV2ViewSet(GenericViewSet):
     serializer_class = DatasetV2Serializer
     queryset = DatasetV2.objects.all()
 
-
     @action(detail=False, methods=["post", "delete"])
     def temp_datasets(self, request, *args, **kwargs):
         """
-        ``POST, DELETE`` method Endpoint: POST method to save the datasets in a temporary location
-            DELETE method to delete the files from temporay location. [see here][ref].
+        ``POST`` method Endpoint: POST method to save the datasets in a temporary location.
+        ``DELETE`` method Endpoint: DELETE method to delete the files from temporay location. [see here][ref]
 
         **Endpoint**
         [ref]: /datahub/v2/dataset/temp_datasets/
         """
         try:
             files = request.FILES.getlist("datasets")
+
             if request.method == "POST":
                 serializer = DatasetV2TempFileSerializer(data=request.data)
                 if not serializer.is_valid():
-                    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+                    return Response(
+                        serializer.errors, status=status.HTTP_400_BAD_REQUEST
+                    )
                 files_saved = []
                 for file in files:
-                    file_operations.file_save(file, file.name, settings.TEMP_DATASET_URL)
+                    file_operations.file_save(
+                        file, file.name, settings.TEMP_DATASET_URL
+                    )
                     files_saved.append(file.name)
                 data = {"datasets": files_saved}
                 return Response(data, status=status.HTTP_201_CREATED)
 
             elif request.method == "DELETE":
                 file_operations.remove_files(None, settings.TEMP_DATASET_URL)
-                return Response({}, status=status.HTTP_204_NO_CONTENT)
+                return Response(status=status.HTTP_204_NO_CONTENT)
 
         except Exception as error:
             LOGGER.error(error, exc_info=True)
-
         return Response(status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
 
     def create(self, request, *args, **kwargs):
         """
