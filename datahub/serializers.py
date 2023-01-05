@@ -446,6 +446,33 @@ class RecentDatasetListSerializer(serializers.ModelSerializer):
         return None
 
 
+class DatasetV2TempFileSerializer(serializers.Serializer):
+    """
+    Serializer for DatasetV2File model to serialize dataset files.
+    Following are the fields required by the serializer:
+        `datasets` (Files, mandatory): Multi upload Dataset files
+    """
+    def validate_datasets(self, files):
+        for file in files:
+            file_extension = str(file).split(".")[-1]
+            if file_extension not in Constants.DATASET_FILE_TYPES:
+                raise ValidationError(
+                        f"Document type not supported. Only following documents are allowed: {Constants.DATASET_FILE_TYPES}"
+                    )
+
+            if file.size > Constants.DATASET_MAX_FILE_SIZE * 1024 * 1024:
+                raise ValidationError(
+                f"You cannot upload/export file size more than {Constants.DATASET_MAX_FILE_SIZE}MB."
+            )
+
+        return files
+
+    datasets = serializers.ListField(
+            child=serializers.FileField(use_url=False, allow_empty_file=False),
+            write_only=True,
+            )
+
+
 class DatasetV2FileSerializer(serializers.ModelSerializer):
     """
     Serializer for DatasetV2File model to serialize dataset files.

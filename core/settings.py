@@ -199,6 +199,7 @@ ISSUE_ATTACHEMENT_URL = "users/tickets/"
 SOLUCTION_ATTACHEMENT_URL = "users/tickets/soluctions/"
 SAMPLE_DATASETS_URL = "users/datasets/sample_data/"
 CONNECTORS_CERTIFICATE_URL = "users/connectors/certificates/"
+TEMP_DATASET_URL = os.path.join(BASE_DIR, MEDIA_URL, "temp/")
 
 # Template Files.
 SINGLE_PULL_PROVIDER_TEMPLATE_XML = os.path.join(

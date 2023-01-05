@@ -78,11 +78,16 @@ def remove_files(file_key, destination):
     """Remove files"""
     try:
         fs = FileSystemStorage(destination)
-        for root, dirs, files in os.walk(destination):
-            for file in files:
-                if file.split(".")[0] == file_key:
-                    print("deleting: ", root+file)
-                    fs.delete(root + file)
+        if file_key:
+            for root, dirs, files in os.walk(destination):
+                for file in files:
+                    if file.split(".")[0] == file_key:
+                        print("deleting: ", root+file)
+                        fs.delete(root + file)
+        elif not file_key:
+            for file in os.listdir(destination):
+                fs.delete(file)
+
     except Exception as error:
         LOGGER.error(error, exc_info=True)
 
