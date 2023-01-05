@@ -3,6 +3,7 @@ from email.mime import application
 
 from accounts.models import User
 from core.base_models import TimeStampMixin
+from core.constants import Constants
 
 from django.conf import settings
 from django.db import models
@@ -139,10 +140,8 @@ class DatasetV2(TimeStampMixin):
     geography = models.CharField(max_length=255, null=True, blank=True)
     data_capture_start = models.DateTimeField(null=True, blank=True)
     data_capture_end = models.DateTimeField(null=True, blank=True)
+    constantly_update = models.BooleanField(default=False)
     status = models.BooleanField(default=True)
-    # dataset = models.FileField(
-    #     upload_to=settings.SAMPLE_DATASETS_URL,
-    # )
 
     class Meta:
         indexes = [models.Index(fields=["name"])]
@@ -153,6 +152,17 @@ class DatasetV2File(TimeStampMixin):
     """
     Stores a single file (file paths/urls) entry for datasets with a reference to DatasetV2 instance.
     related to :model:`datahub_datasetv2` (DatasetV2)
+
+    `Source` (enum): Enum to store file type
+        `file`: dataset of file type
+        `mysql`: dataset of mysql connection
+        `postgresql`: dataset of postgresql connection
     """
+    SOURCES = [
+                (Constants.SOURCE_FILE_TYPE, Constants.SOURCE_FILE_TYPE),
+                (Constants.SOURCE_MYSQL_FILE_TYPE, Constants.SOURCE_MYSQL_FILE_TYPE),
+                (Constants.SOURCE_POSTGRESQL_FILE_TYPE, Constants.SOURCE_POSTGRESQL_FILE_TYPE)
+            ]
     dataset = models.ForeignKey(DatasetV2, on_delete=models.PROTECT, related_name="datasets")
     file = models.FileField(upload_to=settings.SAMPLE_DATASETS_URL, null=True, blank=True)
+    source = models.CharField(max_length=50, choices=SOURCES)
