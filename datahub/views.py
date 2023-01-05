@@ -1476,3 +1476,19 @@ class DatasetV2ViewSet(GenericViewSet):
         queryset = self.get_queryset()
         serializer = self.get_serializer(queryset, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
+
+    def retrieve(self, request, pk=None, *args, **kwargs):
+        """
+        ``GET`` method Endpoint: retrieve action for the detail view of Dataset via GET request. [see here][ref].
+
+        **Endpoint**
+        [ref]: /datahub/v2/dataset/<id>/
+
+        **Authorization**
+        ``ROLE`` only authenticated users/participants with following roles are allowed to make a GET request to this endpoint.
+            :role: `datahub_admin` (:role_id: `1`)
+            :role: `datahub_participant_root` (:role_id: `3`)
+        """
+        obj = self.get_object()
+        serializer = self.get_serializer(obj)
+        return Response(serializer.data, status=status.HTTP_200_OK)

@@ -457,7 +457,7 @@ class DatasetV2FileSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = DatasetV2File
-        fields = ["id", "dataset", "file"]
+        fields = ["id", "dataset", "file", "source"]
 
 
 class DatasetV2Serializer(serializers.ModelSerializer):
@@ -491,6 +491,7 @@ class DatasetV2Serializer(serializers.ModelSerializer):
             "description",
             "category",
             "geography",
+            "constantly_update",
             "data_capture_start",
             "data_capture_end",
             "datasets",
