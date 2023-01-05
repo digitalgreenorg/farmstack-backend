@@ -115,15 +115,6 @@
     email: "vineet@digitalgreen.org"
     status: True
     role: 1
-- model: accounts.user
-  pk: "2f0c183f-0a5e-484a-ab8c-1f76f450b54f"
-  fields:
-    created_at: "2022-07-01 05:21:55.463786"
-    updated_at: "2022-07-01 05:21:55.464100"
-    first_name: "Samuel"
-    email: "samuelabate@digitalgreen.org"
-    status: True
-    role: 1
 
 - model: participant.department
   pk: "e459f452-2b4b-4129-ba8b-1e1180c87888"
@@ -141,3 +132,4 @@
     department: "e459f452-2b4b-4129-ba8b-1e1180c87888"
     created_at: "2022-07-01 05:30:55.463786"
     updated_at: "2022-07-01 05:30:55.464100"
+
