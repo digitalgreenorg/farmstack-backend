@@ -1,25 +1,15 @@
-import json, time, re
+import json
 import logging
 import os
+import re
 import subprocess
+import time
+from datetime import datetime
 from sre_compile import isstring
 from struct import unpack
 
 import pandas as pd
 import requests
-from datetime import datetime
-from accounts.models import User
-from core.constants import Constants
-from core.utils import (
-    Utils,
-    CustomPagination,
-    DefaultPagination,
-    csv_and_xlsx_file_validatation,
-    date_formater,
-    one_day_date_formater,
-    read_contents_from_csv_or_xlsx_file,
-)
-from datahub.models import Datasets, Organization, UserOrganizationMap
 from django.db.models import Q
 from django.db.models.functions import Lower
 from django.shortcuts import render
@@ -30,9 +20,19 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.viewsets import GenericViewSet, ViewSet
 from uritemplate import partial
-from utils import string_functions
-from utils.connector_utils import run_containers, stop_containers
 
+from accounts.models import User
+from core.constants import Constants
+from core.utils import (
+    CustomPagination,
+    DefaultPagination,
+    Utils,
+    csv_and_xlsx_file_validatation,
+    date_formater,
+    one_day_date_formater,
+    read_contents_from_csv_or_xlsx_file,
+)
+from datahub.models import Datasets, Organization, UserOrganizationMap
 from participant.models import (
     Connectors,
     ConnectorsMap,
@@ -50,18 +50,21 @@ from participant.serializers import (
     ConnectorsProviderRelationSerializer,
     ConnectorsRetriveSerializer,
     ConnectorsSerializer,
+    ConnectorsSerializerForEmail,
+    DatabaseConfigSerializer,
     DatasetSerializer,
     DepartmentSerializer,
     ParticipantDatasetsDetailSerializer,
     ParticipantDatasetsDropDownSerializer,
     ParticipantDatasetsSerializer,
-    ParticipantSupportTicketSerializer,
-    ProjectSerializer,
-    ProjectDepartmentSerializer,
-    TicketSupportSerializer,
     ParticipantDatasetsSerializerForEmail,
-    ConnectorsSerializerForEmail,
+    ParticipantSupportTicketSerializer,
+    ProjectDepartmentSerializer,
+    ProjectSerializer,
+    TicketSupportSerializer,
 )
+from utils import string_functions
+from utils.connector_utils import run_containers, stop_containers
 
 LOGGER = logging.getLogger(__name__)
 
@@ -1450,3 +1453,146 @@ class ParticipantProjectViewSet(GenericViewSet):
         project.status = False
         self.perform_create(project)
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+import json
+
+import mysql.connector as mysql
+from django.http import HttpResponse
+from rest_framework import status
+from rest_framework.decorators import api_view
+from rest_framework.response import Response
+
+from .serializers import DatabaseConfigSerializer
+
+class DataBaseViewSet(GenericViewSet):
+    """
+    This class handles the participant Datsets CRUD operations.
+    """
+
+    parser_class = JSONParser
+    serializer_class = ProjectSerializer
+    queryset = Project
+    pagination_class = CustomPagination
+
+    def perform_create(self, serializer):
+        """
+        This function performs the create operation of requested serializer.
+        Args:
+            serializer (_type_): serializer class object.
+
+        Returns:
+            _type_: Returns the saved details.
+        """
+        return serializer.save()
+
+    def create(self, request, *args, **kwargs):
+        """POST method: create action to save an object by sending a POST request"""
+        serializer = self.get_serializer(data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        self.perform_create(serializer)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+    def update(self, request, pk):
+        """PUT method: update or send a PUT request on an object of the Product model"""
+        instance = self.get_object()
+        serializer = self.get_serializer(instance, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        self.perform_create(serializer)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+    def retrieve(self, request, pk):
+        """GET method: retrieve an object or instance of the Product model"""
+        try:
+            queryset = Project.objects.filter(
+                Q(status=True, id=pk) | Q(project_name=Constants.DEFAULT, id=pk)
+            )
+            serializer = ProjectDepartmentSerializer(queryset, many=True)
+            if serializer.data:
+                return Response(serializer.data[0], status=status.HTTP_200_OK)
+        except Exception as error:
+            LOGGER.error(error, exc_info=True)
+            return Response({"message": error}, status=status.HTTP_200_OK)
+        return Response({}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    @action(detail=False, methods=["post"])
+    def project_list(self, request, *args, **kwargs):
+        """GET method: query all the list of objects from the Product model"""
+        data = []
+        org_id = request.data.get(Constants.ORG_ID)
+        filters = {Constants.ORGANIZATION: org_id} if org_id else {}
+        data = (
+            Project.objects.select_related(Constants.DEPARTMENT_ORGANIZATION)
+            # .filter(Q(status=True, **filters) | Q(project_name=Constants.DEFAULT))
+            .filter(status=True, **filters)
+            .exclude(project_name=Constants.DEFAULT)
+            .order_by(Constants.UPDATED_AT)
+            .reverse()
+            .all()
+        )
+        page = self.paginate_queryset(data)
+        project_serializer = ProjectDepartmentSerializer(page, many=True)
+        return self.get_paginated_response(project_serializer.data)
+
+    def list(self, request, *args, **kwargs):
+        """GET method: query all the list of objects from the Product model"""
+        data = []
+        department = request.query_params.get(Constants.DEPARTMENT)
+        org_id = request.query_params.get(Constants.ORG_ID)
+        # filters = {Constants.DEPARTMENT: department} if department else {}
+        filters = (
+            {Constants.DEPARTMENT: department, Constants.ORGANIZATION: org_id}
+            if department or org_id
+            else {}
+        )
+        data = (
+            Project.objects.select_related(Constants.DEPARTMENT_ORGANIZATION)
+            .filter(Q(status=True, **filters) | Q(project_name=Constants.DEFAULT))
+            # .filter(status=True, **filters)
+            # .exclude(project_name=Constants.DEFAULT)
+            .order_by(Constants.UPDATED_AT)
+            .reverse()
+            .all()
+        )
+        project_serializer = ProjectDepartmentSerializer(data, many=True)
+        return Response(project_serializer.data)
+
+    def destroy(self, request, pk):
+        """DELETE method: delete an object"""
+        Connectors.objects.filter(project=pk).update(
+            project="3526bd39-4514-43fe-bbc4-ee0980bde252"
+        )
+        project = self.get_object()
+        project.status = False
+        self.perform_create(project)
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+    @action(detail=False, methods=["post"])
+    def database_config(self,request):
+        serializer = DatabaseConfigSerializer(data=request.data)
+        if serializer.is_valid():
+            # Test the database configuration
+            config = serializer.validated_data
+            try:
+                # Try to connect to the database using the provided configuration
+                connection = mysql.connect(**config)
+            except Exception as e:
+                # Return an error message if the connection fails
+                return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+            else:
+                # Return a success message if the connection succeeds
+                mydb = connection
+
+                mycursor = mydb.cursor()
+
+                mycursor.execute("show tables;")
+
+                table_list = mycursor.fetchall()
+                # print(table_list)
+                #flatten
+                table_list = [element for innerList in table_list for element in innerList]
+            return  HttpResponse(json.dumps(table_list), content_type="application/json")
+
+        else:
+            # Return an error message if the serializer is invalid
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)

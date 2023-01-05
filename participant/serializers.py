@@ -492,3 +492,15 @@ class ConnectorListSerializer(serializers.ModelSerializer):
     class Meta:
         model = Connectors
         fields = ["id", "connector_name"]
+
+from rest_framework import serializers
+
+class DatabaseConfigSerializer(serializers.Serializer):
+    host = serializers.CharField(max_length=200)
+    port = serializers.IntegerField()
+    username = serializers.CharField(max_length=200)
+    password = serializers.CharField(max_length=200)
+    database = serializers.CharField(max_length=200)
+
+
+
