@@ -200,7 +200,7 @@ SOLUCTION_ATTACHEMENT_URL = "users/tickets/soluctions/"
 SAMPLE_DATASETS_URL = "users/datasets/sample_data/"
 CONNECTORS_CERTIFICATE_URL = "users/connectors/certificates/"
 TEMP_DATASET_URL = os.path.join(BASE_DIR, MEDIA_URL, "users/datasets/temp/")
-DATASET_FILES_URL = os.path.join(BASE_DIR, MEDIA_URL, "users/datasets/datasets/")
+DATASET_FILES_URL = os.path.join(MEDIA_URL, "users/datasets/datasets/")
 
 # Template Files.
 SINGLE_PULL_PROVIDER_TEMPLATE_XML = os.path.join(
