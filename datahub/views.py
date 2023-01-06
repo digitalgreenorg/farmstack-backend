@@ -22,6 +22,7 @@ from core.utils import (
 from django.conf import settings
 from django.contrib.admin.utils import get_model_from_relation
 from django.core.files.base import ContentFile
+from django.core.files.storage import FileSystemStorage
 from django.db import transaction
 from django.db.models import DEFERRED, F, Q
 from django.shortcuts import render
@@ -1476,7 +1477,9 @@ class DatasetV2ViewSet(GenericViewSet):
                 return Response(data, status=status.HTTP_201_CREATED)
 
             elif request.method == "DELETE":
-                file_operations.remove_files(None, settings.TEMP_DATASET_URL)
+                fs = FileSystemStorage(settings.TEMP_DATASET_URL)
+                file_to_remove = settings.TEMP_DATASET_URL+request.data.get('file_name')
+                fs.delete(file_to_remove)
                 return Response(status=status.HTTP_204_NO_CONTENT)
 
         except Exception as error:

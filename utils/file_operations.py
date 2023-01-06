@@ -47,6 +47,9 @@ def file_path(destination):
 def files_move(source, destination):
     """Move files or dirs"""
     try:
+        if not os.path.exists(destination):
+            os.makedirs(destination)  # create directory
+
         # check for uploading files and get file keys to be replaced
         file_keys = []
         for root, dirs, files in os.walk(source):
