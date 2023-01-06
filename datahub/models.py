@@ -164,5 +164,5 @@ class DatasetV2File(TimeStampMixin):
                 (Constants.SOURCE_POSTGRESQL_FILE_TYPE, Constants.SOURCE_POSTGRESQL_FILE_TYPE)
             ]
     dataset = models.ForeignKey(DatasetV2, on_delete=models.PROTECT, related_name="datasets")
-    file = models.FileField(upload_to=settings.SAMPLE_DATASETS_URL, null=True, blank=True)
+    file = models.FileField(upload_to=settings.DATASET_FILES_URL, null=True, blank=True)
     source = models.CharField(max_length=50, choices=SOURCES)
