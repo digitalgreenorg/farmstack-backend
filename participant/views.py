@@ -1,25 +1,15 @@
-import json, time, re
+import json
 import logging
 import os
+import re
 import subprocess
+import time
+from datetime import datetime
 from sre_compile import isstring
 from struct import unpack
 
 import pandas as pd
 import requests
-from datetime import datetime
-from accounts.models import User
-from core.constants import Constants
-from core.utils import (
-    Utils,
-    CustomPagination,
-    DefaultPagination,
-    csv_and_xlsx_file_validatation,
-    date_formater,
-    one_day_date_formater,
-    read_contents_from_csv_or_xlsx_file,
-)
-from datahub.models import Datasets, Organization, UserOrganizationMap
 from django.db.models import Q
 from django.db.models.functions import Lower
 from django.shortcuts import render
@@ -30,9 +20,19 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.viewsets import GenericViewSet, ViewSet
 from uritemplate import partial
-from utils import string_functions
-from utils.connector_utils import run_containers, stop_containers
 
+from accounts.models import User
+from core.constants import Constants
+from core.utils import (
+    CustomPagination,
+    DefaultPagination,
+    Utils,
+    csv_and_xlsx_file_validatation,
+    date_formater,
+    one_day_date_formater,
+    read_contents_from_csv_or_xlsx_file,
+)
+from datahub.models import Datasets, Organization, UserOrganizationMap
 from participant.models import (
     Connectors,
     ConnectorsMap,
@@ -50,21 +50,32 @@ from participant.serializers import (
     ConnectorsProviderRelationSerializer,
     ConnectorsRetriveSerializer,
     ConnectorsSerializer,
+    ConnectorsSerializerForEmail,
+    DatabaseConfigSerializer,
     DatasetSerializer,
     DepartmentSerializer,
     ParticipantDatasetsDetailSerializer,
     ParticipantDatasetsDropDownSerializer,
     ParticipantDatasetsSerializer,
-    ParticipantSupportTicketSerializer,
-    ProjectSerializer,
-    ProjectDepartmentSerializer,
-    TicketSupportSerializer,
     ParticipantDatasetsSerializerForEmail,
-    ConnectorsSerializerForEmail,
+    ParticipantSupportTicketSerializer,
+    ProjectDepartmentSerializer,
+    ProjectSerializer,
+    TicketSupportSerializer,
 )
+from utils import string_functions
+from utils.connector_utils import run_containers, stop_containers
 
 LOGGER = logging.getLogger(__name__)
+import json
 
+import mysql.connector as mysql
+from django.http import HttpResponse
+from rest_framework import status
+from rest_framework.decorators import api_view
+from rest_framework.response import Response
+
+from .serializers import DatabaseConfigSerializer
 
 class ParticipantSupportViewSet(GenericViewSet):
     """
@@ -1450,3 +1461,51 @@ class ParticipantProjectViewSet(GenericViewSet):
         project.status = False
         self.perform_create(project)
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+
+
+class DataBaseViewSet(GenericViewSet):
+    """
+    This class handles the participant Datsets CRUD operations.
+    """
+
+    parser_class = JSONParser
+    serializer_class = ProjectSerializer
+    queryset = Project
+    pagination_class = CustomPagination
+
+    permission_classes=[IsAuthenticated]
+
+    @action(detail=False, methods=["post"])
+    def database_config(self,request):
+        serializer = DatabaseConfigSerializer(data=request.data)
+        if serializer.is_valid():
+            # Test the database configuration
+            config = serializer.validated_data
+            try:
+                # Try to connect to the database using the provided configuration
+                connection = mysql.connect(**config)
+            except Exception as e:
+                # Return an error message if the connection fails
+                return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+            else:
+                # Return a success message if the connection succeeds
+                mydb = connection
+
+                mycursor = mydb.cursor()
+
+                db_name=request.data['database']
+                
+                mycursor.execute("use "+db_name+";")
+                mycursor.execute("show tables;")
+
+                table_list = mycursor.fetchall()
+                # print(table_list)
+                #flatten
+                
+                table_list = [element for innerList in table_list for element in innerList]
+                return HttpResponse(json.dumps(table_list), status=status.HTTP_200_OK)
+        else:
+            # Return an error message if the serializer is invalid
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
