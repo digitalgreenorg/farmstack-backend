@@ -22,7 +22,6 @@ from core.utils import (
 from django.conf import settings
 from django.contrib.admin.utils import get_model_from_relation
 from django.core.files.base import ContentFile
-from django.core.files.storage import FileSystemStorage
 from django.db import transaction
 from django.db.models import DEFERRED, F, Q
 from django.shortcuts import render
@@ -771,7 +770,7 @@ class DatahubThemeView(GenericViewSet):
                 data = {"banner": "null", "button_color": "null"}
 
             elif banner and not button_color:
-                file_name = file_operations.get_file_name(str(banner), "banner")
+                file_name = file_operations.transform_file_name(str(banner), "banner")
                 file_operations.file_save(banner, file_name, settings.THEME_ROOT)
                 data = {"banner": file_name, "button_color": "null"}
 
@@ -785,7 +784,7 @@ class DatahubThemeView(GenericViewSet):
                 data = {"banner": "null", "button_color": settings.CSS_FILE_NAME}
 
             elif banner and button_color:
-                file_name = file_operations.get_file_name(str(banner), "banner")
+                file_name = file_operations.transform_file_name(str(banner), "banner")
                 file_operations.file_save(banner, file_name, settings.THEME_ROOT)
 
                 css = ".btn { background-color: " + button_color + "; }"
@@ -848,7 +847,7 @@ class DatahubThemeView(GenericViewSet):
                 data = {"banner": "null", "button_color": "null"}
 
             elif banner and button_color is None:
-                file_name = file_operations.get_file_name(str(banner), "banner")
+                file_name = file_operations.transform_file_name(str(banner), "banner")
                 file_operations.file_save(banner, file_name, settings.THEME_ROOT)
                 data = {"banner": file_name, "button_color": "null"}
 
@@ -862,7 +861,7 @@ class DatahubThemeView(GenericViewSet):
                 data = {"banner": "null", "button_color": settings.CSS_FILE_NAME}
 
             elif banner and button_color:
-                file_name = file_operations.get_file_name(str(banner), "banner")
+                file_name = file_operations.transform_file_name(str(banner), "banner")
                 file_operations.file_save(banner, file_name, settings.THEME_ROOT)
 
                 css = ".btn { background-color: " + button_color + "; }"
@@ -1469,6 +1468,7 @@ class DatasetV2ViewSet(GenericViewSet):
                     )
                 files_saved = []
                 for file in files:
+                    file_operations.remove_files(file.name, settings.TEMP_DATASET_URL)
                     file_operations.file_save(
                         file, file.name, settings.TEMP_DATASET_URL
                     )
@@ -1477,9 +1477,9 @@ class DatasetV2ViewSet(GenericViewSet):
                 return Response(data, status=status.HTTP_201_CREATED)
 
             elif request.method == "DELETE":
-                fs = FileSystemStorage(settings.TEMP_DATASET_URL)
-                file_to_remove = settings.TEMP_DATASET_URL+request.data.get('file_name')
-                fs.delete(file_to_remove)
+                file_operations.remove_files(
+                    request.data.get("file_name"), settings.TEMP_DATASET_URL
+                )
                 return Response(status=status.HTTP_204_NO_CONTENT)
 
         except Exception as error:
