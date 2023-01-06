@@ -1475,97 +1475,97 @@ class DataBaseViewSet(GenericViewSet):
     queryset = Project
     pagination_class = CustomPagination
 
-    def perform_create(self, serializer):
-        """
-        This function performs the create operation of requested serializer.
-        Args:
-            serializer (_type_): serializer class object.
+    # def perform_create(self, serializer):
+    #     """
+    #     This function performs the create operation of requested serializer.
+    #     Args:
+    #         serializer (_type_): serializer class object.
 
-        Returns:
-            _type_: Returns the saved details.
-        """
-        return serializer.save()
+    #     Returns:
+    #         _type_: Returns the saved details.
+    #     """
+    #     return serializer.save()
 
-    def create(self, request, *args, **kwargs):
-        """POST method: create action to save an object by sending a POST request"""
-        serializer = self.get_serializer(data=request.data, partial=True)
-        serializer.is_valid(raise_exception=True)
-        self.perform_create(serializer)
-        return Response(serializer.data, status=status.HTTP_201_CREATED)
+    # def create(self, request, *args, **kwargs):
+    #     """POST method: create action to save an object by sending a POST request"""
+    #     serializer = self.get_serializer(data=request.data, partial=True)
+    #     serializer.is_valid(raise_exception=True)
+    #     self.perform_create(serializer)
+    #     return Response(serializer.data, status=status.HTTP_201_CREATED)
 
-    def update(self, request, pk):
-        """PUT method: update or send a PUT request on an object of the Product model"""
-        instance = self.get_object()
-        serializer = self.get_serializer(instance, data=request.data, partial=True)
-        serializer.is_valid(raise_exception=True)
-        self.perform_create(serializer)
-        return Response(serializer.data, status=status.HTTP_201_CREATED)
+    # def update(self, request, pk):
+    #     """PUT method: update or send a PUT request on an object of the Product model"""
+    #     instance = self.get_object()
+    #     serializer = self.get_serializer(instance, data=request.data, partial=True)
+    #     serializer.is_valid(raise_exception=True)
+    #     self.perform_create(serializer)
+    #     return Response(serializer.data, status=status.HTTP_201_CREATED)
 
-    def retrieve(self, request, pk):
-        """GET method: retrieve an object or instance of the Product model"""
-        try:
-            queryset = Project.objects.filter(
-                Q(status=True, id=pk) | Q(project_name=Constants.DEFAULT, id=pk)
-            )
-            serializer = ProjectDepartmentSerializer(queryset, many=True)
-            if serializer.data:
-                return Response(serializer.data[0], status=status.HTTP_200_OK)
-        except Exception as error:
-            LOGGER.error(error, exc_info=True)
-            return Response({"message": error}, status=status.HTTP_200_OK)
-        return Response({}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    # def retrieve(self, request, pk):
+    #     """GET method: retrieve an object or instance of the Product model"""
+    #     try:
+    #         queryset = Project.objects.filter(
+    #             Q(status=True, id=pk) | Q(project_name=Constants.DEFAULT, id=pk)
+    #         )
+    #         serializer = ProjectDepartmentSerializer(queryset, many=True)
+    #         if serializer.data:
+    #             return Response(serializer.data[0], status=status.HTTP_200_OK)
+    #     except Exception as error:
+    #         LOGGER.error(error, exc_info=True)
+    #         return Response({"message": error}, status=status.HTTP_200_OK)
+    #     return Response({}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-    @action(detail=False, methods=["post"])
-    def project_list(self, request, *args, **kwargs):
-        """GET method: query all the list of objects from the Product model"""
-        data = []
-        org_id = request.data.get(Constants.ORG_ID)
-        filters = {Constants.ORGANIZATION: org_id} if org_id else {}
-        data = (
-            Project.objects.select_related(Constants.DEPARTMENT_ORGANIZATION)
-            # .filter(Q(status=True, **filters) | Q(project_name=Constants.DEFAULT))
-            .filter(status=True, **filters)
-            .exclude(project_name=Constants.DEFAULT)
-            .order_by(Constants.UPDATED_AT)
-            .reverse()
-            .all()
-        )
-        page = self.paginate_queryset(data)
-        project_serializer = ProjectDepartmentSerializer(page, many=True)
-        return self.get_paginated_response(project_serializer.data)
+    # @action(detail=False, methods=["post"])
+    # def project_list(self, request, *args, **kwargs):
+    #     """GET method: query all the list of objects from the Product model"""
+    #     data = []
+    #     org_id = request.data.get(Constants.ORG_ID)
+    #     filters = {Constants.ORGANIZATION: org_id} if org_id else {}
+    #     data = (
+    #         Project.objects.select_related(Constants.DEPARTMENT_ORGANIZATION)
+    #         # .filter(Q(status=True, **filters) | Q(project_name=Constants.DEFAULT))
+    #         .filter(status=True, **filters)
+    #         .exclude(project_name=Constants.DEFAULT)
+    #         .order_by(Constants.UPDATED_AT)
+    #         .reverse()
+    #         .all()
+    #     )
+    #     page = self.paginate_queryset(data)
+    #     project_serializer = ProjectDepartmentSerializer(page, many=True)
+    #     return self.get_paginated_response(project_serializer.data)
 
-    def list(self, request, *args, **kwargs):
-        """GET method: query all the list of objects from the Product model"""
-        data = []
-        department = request.query_params.get(Constants.DEPARTMENT)
-        org_id = request.query_params.get(Constants.ORG_ID)
-        # filters = {Constants.DEPARTMENT: department} if department else {}
-        filters = (
-            {Constants.DEPARTMENT: department, Constants.ORGANIZATION: org_id}
-            if department or org_id
-            else {}
-        )
-        data = (
-            Project.objects.select_related(Constants.DEPARTMENT_ORGANIZATION)
-            .filter(Q(status=True, **filters) | Q(project_name=Constants.DEFAULT))
-            # .filter(status=True, **filters)
-            # .exclude(project_name=Constants.DEFAULT)
-            .order_by(Constants.UPDATED_AT)
-            .reverse()
-            .all()
-        )
-        project_serializer = ProjectDepartmentSerializer(data, many=True)
-        return Response(project_serializer.data)
+    # def list(self, request, *args, **kwargs):
+    #     """GET method: query all the list of objects from the Product model"""
+    #     data = []
+    #     department = request.query_params.get(Constants.DEPARTMENT)
+    #     org_id = request.query_params.get(Constants.ORG_ID)
+    #     # filters = {Constants.DEPARTMENT: department} if department else {}
+    #     filters = (
+    #         {Constants.DEPARTMENT: department, Constants.ORGANIZATION: org_id}
+    #         if department or org_id
+    #         else {}
+    #     )
+    #     data = (
+    #         Project.objects.select_related(Constants.DEPARTMENT_ORGANIZATION)
+    #         .filter(Q(status=True, **filters) | Q(project_name=Constants.DEFAULT))
+    #         # .filter(status=True, **filters)
+    #         # .exclude(project_name=Constants.DEFAULT)
+    #         .order_by(Constants.UPDATED_AT)
+    #         .reverse()
+    #         .all()
+    #     )
+    #     project_serializer = ProjectDepartmentSerializer(data, many=True)
+    #     return Response(project_serializer.data)
 
-    def destroy(self, request, pk):
-        """DELETE method: delete an object"""
-        Connectors.objects.filter(project=pk).update(
-            project="3526bd39-4514-43fe-bbc4-ee0980bde252"
-        )
-        project = self.get_object()
-        project.status = False
-        self.perform_create(project)
-        return Response(status=status.HTTP_204_NO_CONTENT)
+    # def destroy(self, request, pk):
+    #     """DELETE method: delete an object"""
+    #     Connectors.objects.filter(project=pk).update(
+    #         project="3526bd39-4514-43fe-bbc4-ee0980bde252"
+    #     )
+    #     project = self.get_object()
+    #     project.status = False
+    #     self.perform_create(project)
+    #     return Response(status=status.HTTP_204_NO_CONTENT)
 
     @action(detail=False, methods=["post"])
     def database_config(self,request):
@@ -1585,6 +1585,9 @@ class DataBaseViewSet(GenericViewSet):
 
                 mycursor = mydb.cursor()
 
+                db_name=request.data['database']
+                
+                mycursor.execute("use "+db_name+";")
                 mycursor.execute("show tables;")
 
                 table_list = mycursor.fetchall()
