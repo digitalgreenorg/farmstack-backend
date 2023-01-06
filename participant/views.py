@@ -67,7 +67,15 @@ from utils import string_functions
 from utils.connector_utils import run_containers, stop_containers
 
 LOGGER = logging.getLogger(__name__)
+import json
 
+import mysql.connector as mysql
+from django.http import HttpResponse
+from rest_framework import status
+from rest_framework.decorators import api_view
+from rest_framework.response import Response
+
+from .serializers import DatabaseConfigSerializer
 
 class ParticipantSupportViewSet(GenericViewSet):
     """
@@ -1455,15 +1463,7 @@ class ParticipantProjectViewSet(GenericViewSet):
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
-import json
 
-import mysql.connector as mysql
-from django.http import HttpResponse
-from rest_framework import status
-from rest_framework.decorators import api_view
-from rest_framework.response import Response
-
-from .serializers import DatabaseConfigSerializer
 
 class DataBaseViewSet(GenericViewSet):
     """
@@ -1503,9 +1503,9 @@ class DataBaseViewSet(GenericViewSet):
                 table_list = mycursor.fetchall()
                 # print(table_list)
                 #flatten
+                
                 table_list = [element for innerList in table_list for element in innerList]
-            return  HttpResponse(json.dumps(table_list), content_type="application/json")
-
+                return HttpResponse(json.dumps(table_list), status=status.HTTP_200_OK)
         else:
             # Return an error message if the serializer is invalid
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)

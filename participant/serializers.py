@@ -496,11 +496,11 @@ class ConnectorListSerializer(serializers.ModelSerializer):
 from rest_framework import serializers
 
 class DatabaseConfigSerializer(serializers.Serializer):
-    host = serializers.CharField(max_length=200)
+    host = serializers.CharField(max_length=200,allow_blank=False)
     port = serializers.IntegerField()
-    username = serializers.CharField(max_length=200)
-    password = serializers.CharField(max_length=200)
-    database = serializers.CharField(max_length=200)
+    username = serializers.CharField(max_length=200,allow_blank=False)
+    password = serializers.CharField(max_length=200,allow_blank=False)
+    database = serializers.CharField(max_length=200,allow_blank=False)
 
 
 
