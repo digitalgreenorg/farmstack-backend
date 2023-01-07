@@ -1,10 +1,9 @@
 import logging, os
 
-from rest_framework import serializers
-
 from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.utils.translation import gettext as _
+from rest_framework import serializers
 
 from accounts import models
 from accounts.models import User, UserRole
@@ -453,25 +452,33 @@ class DatasetV2TempFileSerializer(serializers.Serializer):
     Following are the fields required by the serializer:
         `datasets` (Files, mandatory): Multi upload Dataset files
     """
+
     def validate_datasets(self, files):
         for file in files:
             file_extension = str(file).split(".")[-1]
             if file_extension not in Constants.DATASET_FILE_TYPES:
                 raise ValidationError(
-                        f"Document type not supported. Only following documents are allowed: {Constants.DATASET_FILE_TYPES}"
-                    )
+                    f"Document type not supported. Only following documents are allowed: {Constants.DATASET_FILE_TYPES}"
+                )
 
             if file.size > Constants.DATASET_MAX_FILE_SIZE * 1024 * 1024:
                 raise ValidationError(
-                f"You cannot upload/export file size more than {Constants.DATASET_MAX_FILE_SIZE}MB."
-            )
+                    f"You cannot upload/export file size more than {Constants.DATASET_MAX_FILE_SIZE}MB."
+                )
 
         return files
 
+    def validate_dataset_name(self, name):
+        queryset = DatasetV2.objects.filter(name=name).exists()
+        if queryset:
+            raise ValidationError("dataset with this name already exists.")
+        return name
+
+    dataset_name = serializers.CharField(allow_null=False)
     datasets = serializers.ListField(
-            child=serializers.FileField(use_url=False, allow_empty_file=False),
-            write_only=True,
-            )
+        child=serializers.FileField(use_url=False, allow_empty_file=False),
+        write_only=True,
+    )
 
 
 class DatasetV2FileSerializer(serializers.ModelSerializer):
@@ -544,7 +551,9 @@ class DatasetV2Serializer(serializers.ModelSerializer):
             if source_file.is_file():
                 file = file_rename(source_file.name, None)
                 print("FILE: ", file)
-                with open(settings.DATASET_FILES_URL + source_file.name, "wb+") as dest_file:
+                with open(
+                    settings.DATASET_FILES_URL + source_file.name, "wb+"
+                ) as dest_file:
                     pass
                     # DatasetV2File.objects.create(dataset=dataset_obj, file=file)
 
