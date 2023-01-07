@@ -1,5 +1,8 @@
 from django.core.files.storage import FileSystemStorage
+from django.utils import timezone
 import logging, os, shutil, cssutils
+
+from .validators import validate_image_type
 
 LOGGER = logging.getLogger(__name__)
 
@@ -95,7 +98,7 @@ def files_move(source: str, destination: str):
         LOGGER.error(error, exc_info=True)
 
 
-def transform_file_name(file_name: str, key: str):
+def file_rename(file: str, key: str):
     """
     Returns the desired file name for a file.
 
@@ -107,9 +110,16 @@ def transform_file_name(file_name: str, key: str):
     ``file_name`` (str): desired file name
     """
     try:
-        file_type = str(file_name).split(".")[1]
-        file_name = key + "." + file_type
-        return file_name
+        validate_image_type(file)
+        file_split = str(file).split(".")
+
+        if not key:
+            timestamp = str(timezone.now().timestamp())
+            file_to_save = file_split[:-1][0] + "-" + timestamp + "." + file_split[-1]
+        elif key:
+            file_to_save = key + "." + file_split[-1]
+        return file_to_save
+
     except Exception as error:
         LOGGER.error(error, exc_info=True)
 

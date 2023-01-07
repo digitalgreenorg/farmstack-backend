@@ -1,4 +1,4 @@
-import logging
+import logging, os
 
 from rest_framework import serializers
 
@@ -28,6 +28,7 @@ from utils.validators import (
     validate_file_size,
     validate_image_type,
 )
+from utils.file_operations import files_move, file_rename
 
 LOGGER = logging.getLogger(__name__)
 
@@ -538,7 +539,13 @@ class DatasetV2Serializer(serializers.ModelSerializer):
         uploaded_files = validated_data.pop("upload_datasets")
         dataset_obj = DatasetV2.objects.create(**validated_data)
 
-        for file in uploaded_files:
-            DatasetV2File.objects.create(dataset=dataset_obj, file=file)
+        # for file in uploaded_files:
+        for source_file in os.scandir(settings.TEMP_DATASET_URL):
+            if source_file.is_file():
+                file = file_rename(source_file.name, None)
+                print("FILE: ", file)
+                with open(settings.DATASET_FILES_URL + source_file.name, "wb+") as dest_file:
+                    pass
+                    # DatasetV2File.objects.create(dataset=dataset_obj, file=file)
 
         return dataset_obj

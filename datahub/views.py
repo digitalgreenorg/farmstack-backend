@@ -770,7 +770,7 @@ class DatahubThemeView(GenericViewSet):
                 data = {"banner": "null", "button_color": "null"}
 
             elif banner and not button_color:
-                file_name = file_operations.transform_file_name(str(banner), "banner")
+                file_name = file_operations.file_rename(str(banner), "banner")
                 file_operations.file_save(banner, file_name, settings.THEME_ROOT)
                 data = {"banner": file_name, "button_color": "null"}
 
@@ -784,7 +784,7 @@ class DatahubThemeView(GenericViewSet):
                 data = {"banner": "null", "button_color": settings.CSS_FILE_NAME}
 
             elif banner and button_color:
-                file_name = file_operations.transform_file_name(str(banner), "banner")
+                file_name = file_operations.file_rename(str(banner), "banner")
                 file_operations.file_save(banner, file_name, settings.THEME_ROOT)
 
                 css = ".btn { background-color: " + button_color + "; }"
@@ -847,7 +847,7 @@ class DatahubThemeView(GenericViewSet):
                 data = {"banner": "null", "button_color": "null"}
 
             elif banner and button_color is None:
-                file_name = file_operations.transform_file_name(str(banner), "banner")
+                file_name = file_operations.file_rename(str(banner), "banner")
                 file_operations.file_save(banner, file_name, settings.THEME_ROOT)
                 data = {"banner": file_name, "button_color": "null"}
 
@@ -861,7 +861,7 @@ class DatahubThemeView(GenericViewSet):
                 data = {"banner": "null", "button_color": settings.CSS_FILE_NAME}
 
             elif banner and button_color:
-                file_name = file_operations.transform_file_name(str(banner), "banner")
+                file_name = file_operations.file_rename(str(banner), "banner")
                 file_operations.file_save(banner, file_name, settings.THEME_ROOT)
 
                 css = ".btn { background-color: " + button_color + "; }"
