@@ -50,6 +50,28 @@ def remove_files(file_key: str, destination: str):
         LOGGER.error(error, exc_info=True)
 
 
+def move_directory(source: str, destination: str):
+    """
+    Move files from location to another on the file system.
+
+    **Parameters**
+    ``source`` (str): source directory to be moved
+    ``destination`` (str): directory or file path where the source needs to be moved
+    """
+    try:
+        if not os.path.exists(source):
+            LOGGER.error(f"{source} not found")
+            raise FileNotFoundError(f"{source} not found")
+        else:
+            # shutil.copyfileobj(source+file.name, destination)
+            shutil.move(os.path.join(source), os.path.join(destination))
+            LOGGER.info(f"Directory moved: directory {source} moved to {destination}")
+
+    except Exception as error:
+        LOGGER.error(error, exc_info=True)
+    return destination
+
+
 def create_directory(destination: str):
     """
     Create a directory at the destination or skip if exists.
@@ -79,6 +101,10 @@ def file_save(source_file, file_name: str, directory: str):
     try:
         fs = FileSystemStorage(directory)
         fs.save(directory+ file_name, source_file)
+        # with open(directory+file_name, "wb+") as dest_file:
+        #     for chunk in source_file.chunks():
+        #         dest_file.write(chunk)
+
         LOGGER.info(f"File saved: {directory+file_name}")
     except Exception as error:
         LOGGER.error(error, exc_info=True)
@@ -118,16 +144,14 @@ def files_move(source: str, destination: str):
     ``destination`` (str): directory or file path where to where the file needs to be saved
     """
     try:
-        if not os.path.exists(destination):
-            os.makedirs(destination)  # create directory
+        create_directory(destination)
 
-        for source_file in os.scandir(source):
-            if source_file.is_file():
-                with open(destination + source_file.name, "wb+") as dest_file:
-                    # shutil.copyfileobj(source+source_file.name, destination)
-                    shutil.copy(source + source_file.name, destination)
-                    remove_files(source_file.name, source)
-                    LOGGER.info(f"file moved: {source+source_file.name}")
+        with os.scandir(source) as file_path:
+            for file in file_path:
+                if file.is_file():
+                    # shutil.copyfileobj(source+file.name, destination)
+                    shutil.move(os.path.join(source, file.name), os.path.join(destination, file.name))
+                    LOGGER.info(f"File moved: {source+file.name}")
 
     except Exception as error:
         LOGGER.error(error, exc_info=True)

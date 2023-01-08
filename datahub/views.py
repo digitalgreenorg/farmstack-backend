@@ -1475,17 +1475,21 @@ class DatasetV2ViewSet(GenericViewSet):
                 """Create a temporary directory containing dataset files uploaded as source.
                 ``Example:``
                     Create below directories with dataset files uploaded
-                    /temp/<dataset-name>/source_file/<files>
+                    /temp/<dataset-name>/file/<files>
                 """
                 serializer = DatasetV2TempFileSerializer(data=request.data)
                 if not serializer.is_valid():
                     return Response(
                         serializer.errors, status=status.HTTP_400_BAD_REQUEST
                     )
-                dataset_directory_name = string_functions.format_dir_name(
-                        settings.TEMP_DATASET_URL, [request.data.get('dataset_name'), Constants.SOURCE_FILE]
+                directory_to_delete = string_functions.format_dir_name(
+                        settings.TEMP_DATASET_URL, [request.data.get('dataset_name')]
                         )
-                file_operations.delete_directory(dataset_directory_name)
+                file_operations.delete_directory(directory_to_delete)
+
+                dataset_directory_name = string_functions.format_dir_name(
+                        settings.TEMP_DATASET_URL, [request.data.get('dataset_name'), Constants.SOURCE_FILE_TYPE]
+                        )
                 directory_created = file_operations.create_directory(dataset_directory_name)
 
                 files_saved = []

@@ -29,7 +29,7 @@ from utils.validators import (
     validate_dataset_type,
     validate_dataset_size,
 )
-from utils.file_operations import files_move, file_rename
+from utils.file_operations import files_move, file_rename, move_directory, delete_directory
 from utils.string_functions import check_special_chars
 
 LOGGER = logging.getLogger(__name__)
@@ -559,18 +559,46 @@ class DatasetV2Serializer(serializers.ModelSerializer):
         **Returns**
         ``dataset_obj`` (DatasetV2 instance): Save & return the dataset
         """
+        # create meta dataset obj
         uploaded_files = validated_data.pop("upload_datasets")
         dataset_obj = DatasetV2.objects.create(**validated_data)
 
-        # for file in uploaded_files:
-        for source_file in os.scandir(settings.TEMP_DATASET_URL):
-            if source_file.is_file():
-                file = file_rename(source_file.name, None)
-                print("FILE: ", file)
-                with open(
-                    settings.DATASET_FILES_URL + source_file.name, "wb+"
-                ) as dest_file:
-                    pass
-                    # DatasetV2File.objects.create(dataset=dataset_obj, file=file)
+        """delete existing directory of the actual dataset if present"""
+        existing_dir = os.path.join(settings.DATASET_FILES_URL, validated_data.get("name"))
+        delete_directory(existing_dir)
+
+        """move the dataset directory from temp location to actual location of dataset files"""
+        directory_name = os.path.join(settings.TEMP_DATASET_URL, validated_data.get("name"))
+        move_directory(directory_name, settings.DATASET_FILES_URL)
+        newly_created_dir = os.path.join(existing_dir, "", "")
+
+        """find the type of dataset files uploaded or exported"""
+        to_find = [Constants.SOURCE_FILE_TYPE, Constants.SOURCE_MYSQL_FILE_TYPE, Constants.SOURCE_POSTGRESQL_FILE_TYPE]
+        directories_found = []
+        with os.scandir(newly_created_dir) as dest:
+           for element in dest:
+               if element.is_dir(follow_symlinks=False) and element.name in to_find:
+                   directories_found.append(element.name)
+
+        """
+        Retrieve the files and its file type.
+            files = [
+                ('file', 'media/users/datasets/datasets/wheat-dataset/file/image2.png'),
+                ('file', 'media/users/datasets/datasets/wheat-dataset/file/image1.png'),
+                ('mysql', 'media/users/datasets/datasets/wheat-dataset/mysql/export1.xls'),
+                ('mysql', 'media/users/datasets/datasets/wheat-dataset/mysql/export2.xls')
+            ]
+        """
+        files = []
+        for dir in directories_found:
+            directory  = os.path.join(newly_created_dir, dir, "", "")
+            with os.scandir(directory) as dest:
+                for element in dest:
+                    if element.is_file:
+                        file = (dir, element.path)
+                        files.append(file)
+
+        for file in files:
+            DatasetV2File.objects.create(dataset=dataset_obj, file=file[1], source=file[0])
 
         return dataset_obj
