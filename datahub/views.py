@@ -626,6 +626,7 @@ class DropDocumentView(GenericViewSet):
             file = serializer.validated_data[key]
             file_type = str(file).split(".")[-1]
             file_name = str(key) + "." + file_type
+            file_operations.remove_files(file_name, settings.TEMP_FILE_PATH)
             file_operations.file_save(file, file_name, settings.TEMP_FILE_PATH)
             return Response(
                 {key: [f"{file_name} uploading in progress ..."]},
@@ -771,11 +772,13 @@ class DatahubThemeView(GenericViewSet):
 
             elif banner and not button_color:
                 file_name = file_operations.file_rename(str(banner), "banner")
+                file_operations.remove_files(file_name, settings.THEME_ROOT)
                 file_operations.file_save(banner, file_name, settings.THEME_ROOT)
                 data = {"banner": file_name, "button_color": "null"}
 
             elif not banner and button_color:
                 css = ".btn { background-color: " + button_color + "; }"
+                file_operations.remove_files(file_name, settings.THEME_ROOT)
                 file_operations.file_save(
                     ContentFile(css),
                     settings.CSS_FILE_NAME,
@@ -785,9 +788,11 @@ class DatahubThemeView(GenericViewSet):
 
             elif banner and button_color:
                 file_name = file_operations.file_rename(str(banner), "banner")
+                file_operations.remove_files(file_name, settings.THEME_ROOT)
                 file_operations.file_save(banner, file_name, settings.THEME_ROOT)
 
                 css = ".btn { background-color: " + button_color + "; }"
+                file_operations.remove_files(file_name, settings.THEME_ROOT)
                 file_operations.file_save(
                     ContentFile(css),
                     settings.CSS_FILE_NAME,
@@ -848,11 +853,13 @@ class DatahubThemeView(GenericViewSet):
 
             elif banner and button_color is None:
                 file_name = file_operations.file_rename(str(banner), "banner")
+                file_operations.remove_files(file_name, settings.THEME_ROOT)
                 file_operations.file_save(banner, file_name, settings.THEME_ROOT)
                 data = {"banner": file_name, "button_color": "null"}
 
             elif not banner and button_color:
                 css = ".btn { background-color: " + button_color + "; }"
+                file_operations.remove_files(settings.CSS_FILE_NAME, settings.CSS_ROOT)
                 file_operations.file_save(
                     ContentFile(css),
                     settings.CSS_FILE_NAME,
@@ -862,9 +869,11 @@ class DatahubThemeView(GenericViewSet):
 
             elif banner and button_color:
                 file_name = file_operations.file_rename(str(banner), "banner")
+                file_operations.remove_files(file_name, settings.THEME_ROOT)
                 file_operations.file_save(banner, file_name, settings.THEME_ROOT)
 
                 css = ".btn { background-color: " + button_color + "; }"
+                file_operations.remove_files(settings.CSS_FILE_NAME, settings.CSS_ROOT)
                 file_operations.file_save(
                     ContentFile(css),
                     settings.CSS_FILE_NAME,
@@ -1461,25 +1470,33 @@ class DatasetV2ViewSet(GenericViewSet):
             files = request.FILES.getlist("datasets")
 
             if request.method == "POST":
+
                 serializer = DatasetV2TempFileSerializer(data=request.data)
                 if not serializer.is_valid():
                     return Response(
                         serializer.errors, status=status.HTTP_400_BAD_REQUEST
                     )
+                dataset_directory_name = string_functions.format_dir_name(settings.TEMP_DATASET_URL, request.data.get('dataset_name'))
+                file_operations.delete_directory(dataset_directory_name)
+                directory_created = file_operations.create_directory(dataset_directory_name)
+
                 files_saved = []
                 for file in files:
-                    file_operations.remove_files(file.name, settings.TEMP_DATASET_URL)
                     file_operations.file_save(
-                        file, file.name, settings.TEMP_DATASET_URL
+                        file, file.name, directory_created
                     )
                     files_saved.append(file.name)
                 data = {"datasets": files_saved}
                 return Response(data, status=status.HTTP_201_CREATED)
 
             elif request.method == "DELETE":
-                file_operations.remove_files(
-                    request.data.get("file_name"), settings.TEMP_DATASET_URL
-                )
+                serializer = DatasetV2TempFileSerializer(data=request.data, context={"request_method": request.method})
+                if not serializer.is_valid():
+                    return Response(
+                        serializer.errors, status=status.HTTP_400_BAD_REQUEST
+                    )
+                dataset_directory_name = string_functions.format_dir_name(settings.TEMP_DATASET_URL, request.data.get('dataset_name'))
+                file_operations.delete_directory(dataset_directory_name)
                 return Response(status=status.HTTP_204_NO_CONTENT)
 
         except Exception as error:

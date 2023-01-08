@@ -1,4 +1,4 @@
-import logging, os
+import logging, os, re
 
 from django.conf import settings
 from django.core.exceptions import ValidationError
@@ -26,8 +26,11 @@ from utils.validators import (
     validate_document_type,
     validate_file_size,
     validate_image_type,
+    validate_dataset_type,
+    validate_dataset_size,
 )
 from utils.file_operations import files_move, file_rename
+from utils.string_functions import check_special_chars
 
 LOGGER = logging.getLogger(__name__)
 
@@ -453,15 +456,25 @@ class DatasetV2TempFileSerializer(serializers.Serializer):
         `datasets` (Files, mandatory): Multi upload Dataset files
     """
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        """Remove fields based on the request type"""
+        if 'context' in kwargs:
+            if 'request_method' in kwargs['context']:
+                request_method = kwargs.get("context").get("request_method")
+                if request_method == "DELETE":
+                    # remove `datasets` fields as `DELETE` method only requires `dataset_name` field
+                    self.fields.pop("datasets")
+
     def validate_datasets(self, files):
         for file in files:
-            file_extension = str(file).split(".")[-1]
-            if file_extension not in Constants.DATASET_FILE_TYPES:
+            if not validate_dataset_type(file, Constants.DATASET_FILE_TYPES):
                 raise ValidationError(
                     f"Document type not supported. Only following documents are allowed: {Constants.DATASET_FILE_TYPES}"
                 )
 
-            if file.size > Constants.DATASET_MAX_FILE_SIZE * 1024 * 1024:
+            if not validate_dataset_size(file, Constants.DATASET_MAX_FILE_SIZE):
                 raise ValidationError(
                     f"You cannot upload/export file size more than {Constants.DATASET_MAX_FILE_SIZE}MB."
                 )
@@ -469,6 +482,9 @@ class DatasetV2TempFileSerializer(serializers.Serializer):
         return files
 
     def validate_dataset_name(self, name):
+        if check_special_chars(name):
+            raise ValidationError("dataset name cannot include special characters.")
+
         queryset = DatasetV2.objects.filter(name=name).exists()
         if queryset:
             raise ValidationError("dataset with this name already exists.")

@@ -41,3 +41,24 @@ def validate_document_type(file):
             "Document type not supported. Document type allowed: pdf, doc, docx"
         )
     return file
+
+
+def validate_dataset_type(file, extensions):
+    """
+    Validator function to check check for dataset types
+
+    """
+    file_extension = str(file).split(".")[-1]
+    if file_extension not in extensions:
+        return False
+    return True
+
+
+def validate_dataset_size(file, size):
+    """
+    Validator function to check check for dataset types
+
+    """
+    if file.size > size * 1024 * 1024:
+        return False
+    return True

@@ -1,10 +1,28 @@
 from django.core.files.storage import FileSystemStorage
 from django.utils import timezone
-import logging, os, shutil, cssutils
+import logging, os, shutil, cssutils, re
 
 from .validators import validate_image_type
 
 LOGGER = logging.getLogger(__name__)
+
+
+def delete_directory(directory: str):
+    """
+    Remove the file path or destination directory with all the files & directories under it.
+
+    **Parameters**
+    ``destination`` (str): directory or file path
+    """
+    try:
+        if not os.path.exists(directory):
+            LOGGER.error(f"{directory} not found")
+            raise FileNotFoundError(f"{directory} not found")
+        else:
+            shutil.rmtree(directory)
+            LOGGER.info(f"Deleting directory: {directory}")
+    except Exception as error:
+        LOGGER.error(error, exc_info=True)
 
 
 def remove_files(file_key: str, destination: str):
@@ -16,21 +34,39 @@ def remove_files(file_key: str, destination: str):
     ``destination`` (str): directory or file path
     """
     try:
+        # destination = rf"{destination}" + "/"
         fs = FileSystemStorage(destination)
-        for file in os.scandir(destination):
-            # deleting file based on file key, that is passed without extension
-            if file.is_file() and file.name.split(".")[:-1][0] == file_key:
-                LOGGER.info(f"Deleting file: {destination+file.name}")
-                fs.delete(destination + file.name)
-            # deleting file based on file name
-            elif file.is_file() and file.name == file_key:
-                LOGGER.info(f"Deleting file: {destination+file.name}")
-                fs.delete(destination + file.name)
+        with os.scandir(destination) as file_path:
+            for file in file_path:
+                # deleting file based on file key, that is passed without extension
+                if file.is_file() and file.name.split(".")[:-1][0] == file_key:
+                    LOGGER.info(f"Deleting file: {destination+file.name}")
+                    fs.delete(destination + file.name)
+                # deleting file based on file name
+                elif file.is_file() and file.name == file_key:
+                    LOGGER.info(f"Deleting file: {destination+file.name}")
+                    fs.delete(destination + file.name)
     except Exception as error:
         LOGGER.error(error, exc_info=True)
 
 
-def file_save(source_file, file_name: str, destination: str):
+def create_directory(destination: str):
+    """
+    Create a directory at the destination or skip if exists.
+
+    **Parameters**
+    ``directory`` (str): directory name
+    """
+    try:
+        if not os.path.exists(destination):
+            os.makedirs(destination)
+            LOGGER.info(f"Creating directory: {destination}")
+    except Exception as error:
+        LOGGER.error(error, exc_info=True)
+    return destination
+
+
+def file_save(source_file, file_name: str, directory: str):
     """
     Save or replace files at the preferred destination or file path.
 
@@ -39,16 +75,14 @@ def file_save(source_file, file_name: str, destination: str):
     ``file_name`` (str): file name to be saved
     ``destination`` (str): directory or file path where to save the file
     """
+
     try:
-        fs = FileSystemStorage(destination)
-        for file in os.scandir(destination):
-            if file.is_file() and file.name == file_name:
-                fs.delete(destination + file_name)
-        fs.save(destination + file_name, source_file)
-        LOGGER.info(f"File saved: {destination+file_name}")
+        fs = FileSystemStorage(directory)
+        fs.save(directory+ file_name, source_file)
+        LOGGER.info(f"File saved: {directory+file_name}")
     except Exception as error:
         LOGGER.error(error, exc_info=True)
-
+    return file_name
 
 def file_path(destination: str):
     """
