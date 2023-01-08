@@ -1460,8 +1460,10 @@ class DatasetV2ViewSet(GenericViewSet):
     @action(detail=False, methods=["post", "delete"])
     def temp_datasets(self, request, *args, **kwargs):
         """
-        ``POST`` method Endpoint: POST method to save the datasets in a temporary location.
-        ``DELETE`` method Endpoint: DELETE method to delete the files from temporay location. [see here][ref]
+        ``POST`` method Endpoint: POST method to save the datasets in a temporary location with 
+            under a newly created dataset name & source_file directory.
+        ``DELETE`` method Endpoint: DELETE method to delete the dataset named directory containing 
+            the datasets. [see here][ref]
 
         **Endpoint**
         [ref]: /datahub/v2/dataset/temp_datasets/
@@ -1470,13 +1472,19 @@ class DatasetV2ViewSet(GenericViewSet):
             files = request.FILES.getlist("datasets")
 
             if request.method == "POST":
-
+                """Create a temporary directory containing dataset files uploaded as source.
+                ``Example:``
+                    Create below directories with dataset files uploaded
+                    /temp/<dataset-name>/source_file/<files>
+                """
                 serializer = DatasetV2TempFileSerializer(data=request.data)
                 if not serializer.is_valid():
                     return Response(
                         serializer.errors, status=status.HTTP_400_BAD_REQUEST
                     )
-                dataset_directory_name = string_functions.format_dir_name(settings.TEMP_DATASET_URL, request.data.get('dataset_name'))
+                dataset_directory_name = string_functions.format_dir_name(
+                        settings.TEMP_DATASET_URL, [request.data.get('dataset_name'), Constants.SOURCE_FILE]
+                        )
                 file_operations.delete_directory(dataset_directory_name)
                 directory_created = file_operations.create_directory(dataset_directory_name)
 
@@ -1490,12 +1498,22 @@ class DatasetV2ViewSet(GenericViewSet):
                 return Response(data, status=status.HTTP_201_CREATED)
 
             elif request.method == "DELETE":
+                """
+                Delete the temporary directory containing datasets created by the POST endpoint 
+                with the dataset files uploaded as source.
+                ``Example:``
+                    Delete the below directory:
+                    /temp/<dataset-name>/
+                """
                 serializer = DatasetV2TempFileSerializer(data=request.data, context={"request_method": request.method})
                 if not serializer.is_valid():
                     return Response(
                         serializer.errors, status=status.HTTP_400_BAD_REQUEST
                     )
-                dataset_directory_name = string_functions.format_dir_name(settings.TEMP_DATASET_URL, request.data.get('dataset_name'))
+
+                dataset_directory_name = string_functions.format_dir_name(
+                        settings.TEMP_DATASET_URL, [request.data.get('dataset_name')]
+                        )
                 file_operations.delete_directory(dataset_directory_name)
                 return Response(status=status.HTTP_204_NO_CONTENT)
 

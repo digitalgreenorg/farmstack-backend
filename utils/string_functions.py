@@ -42,7 +42,7 @@ def check_special_chars(name: str):
     ``name`` (str): string to be checked
     """
     try:
-        special_char = re.compile(r'[@_!#$%^&*()<>?/\\|}{~:]')
+        special_char = re.compile(r'[@!#$%^&*()<>?/\\|}{~:]')
         if special_char.search(name):
             return True
         return False
@@ -51,16 +51,17 @@ def check_special_chars(name: str):
         LOGGER.error(error, exc_info=True)
 
 
-def format_dir_name(directory: str, name: str):
+def format_dir_name(directory: str, names: list):
     """
     Remove the white spaces from the directory to be created.
 
     **Parameters**
-    ``name`` (str): directory name to be formatted with a trailing slash
+    ``name`` (list): list of directory names to be formatted
 
     **Returns**
-    ``destination`` (str): formatted single white space directory name
+    ``destination`` (str): formatted single white space directory name or 
+        file path with a trailing slash
     """
-    name = re.sub(r'\s+', ' ', name)
-    destination = os.path.join(directory, name, "", "")
+    formatted_names = [re.sub(r'\s+', ' ', name) for name in names]
+    destination = os.path.join(directory, *formatted_names, "", "")
     return destination
