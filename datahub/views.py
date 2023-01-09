@@ -1482,10 +1482,6 @@ class DatasetV2ViewSet(GenericViewSet):
                     return Response(
                         serializer.errors, status=status.HTTP_400_BAD_REQUEST
                     )
-                directory_to_delete = string_functions.format_dir_name(
-                        settings.TEMP_DATASET_URL, [request.data.get('dataset_name')]
-                        )
-                file_operations.delete_directory(directory_to_delete)
 
                 dataset_directory_name = string_functions.format_dir_name(
                         settings.TEMP_DATASET_URL, [request.data.get('dataset_name'), Constants.SOURCE_FILE_TYPE]

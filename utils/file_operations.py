@@ -2,9 +2,58 @@ from django.core.files.storage import FileSystemStorage
 from django.utils import timezone
 import logging, os, shutil, cssutils, re
 
+from core.constants import Constants
 from .validators import validate_image_type
 
 LOGGER = logging.getLogger(__name__)
+
+
+def get_dataset_file_paths(directory: str, source_list: list):
+    """
+    Return a tuple containing dataset file source & dataset file paths uploaded.
+
+    **Parameters**
+    ``directory`` (str): directory or file path
+
+    Retrieve type of sources based on the directory name saved
+    ``Example``
+        for `file `source directory is 'media/users/datasets/datasets/wheat-dataset/file/
+        for `mysql `source directory is 'media/users/datasets/datasets/wheat-dataset/mysql/
+
+    **Returns**
+    ``file_paths`` (tuple): tuple containing file source & file paths
+
+    ``Example``
+        files = [
+            ('file', 'media/users/datasets/datasets/wheat-dataset/file/image2.png'),
+            ('file', 'media/users/datasets/datasets/wheat-dataset/file/image1.png'),
+            ('mysql', 'media/users/datasets/datasets/wheat-dataset/mysql/export1.xls'),
+            ('mysql', 'media/users/datasets/datasets/wheat-dataset/mysql/export2.xls')
+        ]
+    """
+
+    if not os.path.exists(directory):
+        LOGGER.error(f"{directory} not found")
+        raise FileNotFoundError(f"{directory} not found")
+    else:
+        """Retrieve type of sources based on the directory name saved"""
+        directories_found = []
+        with os.scandir(directory) as dest:
+           for element in dest:
+               if element.is_dir(follow_symlinks=False) and element.name in source_list:
+                   directories_found.append(element.name)
+
+        """Construct the tuple containing file source & file paths"""
+        file_paths = []
+        for dir in directories_found:
+            directory  = os.path.join(directory, dir, "", "")
+            with os.scandir(directory) as dest:
+                for element in dest:
+                    if element.is_file:
+                        file = (dir, element.path)
+                        file_paths.append(file)
+
+        return file_paths
 
 
 def delete_directory(directory: str):
@@ -99,11 +148,9 @@ def file_save(source_file, file_name: str, directory: str):
     """
 
     try:
-        fs = FileSystemStorage(directory)
-        fs.save(directory+ file_name, source_file)
-        # with open(directory+file_name, "wb+") as dest_file:
-        #     for chunk in source_file.chunks():
-        #         dest_file.write(chunk)
+        with open(directory+file_name, "wb+") as dest_file:
+            for chunk in source_file.chunks():
+                dest_file.write(chunk)
 
         LOGGER.info(f"File saved: {directory+file_name}")
     except Exception as error:

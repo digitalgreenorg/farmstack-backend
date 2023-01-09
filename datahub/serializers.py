@@ -29,7 +29,7 @@ from utils.validators import (
     validate_dataset_type,
     validate_dataset_size,
 )
-from utils.file_operations import files_move, file_rename, move_directory, delete_directory
+from utils.file_operations import files_move, file_rename, move_directory, delete_directory, get_dataset_file_paths
 from utils.string_functions import check_special_chars
 
 LOGGER = logging.getLogger(__name__)
@@ -484,10 +484,6 @@ class DatasetV2TempFileSerializer(serializers.Serializer):
     def validate_dataset_name(self, name):
         if check_special_chars(name):
             raise ValidationError("dataset name cannot include special characters.")
-
-        queryset = DatasetV2.objects.filter(name=name).exists()
-        if queryset:
-            raise ValidationError("dataset with this name already exists.")
         return name
 
     dataset_name = serializers.CharField(allow_null=False)
@@ -531,7 +527,13 @@ class DatasetV2Serializer(serializers.ModelSerializer):
     upload_datasets = serializers.ListField(
         child=serializers.FileField(use_url=False, allow_empty_file=False),
         write_only=True,
+        required=False
     )
+
+    def validate_name(self, name):
+        if check_special_chars(name):
+            raise ValidationError("dataset name cannot include special characters.")
+        return name
 
     class Meta:
         model = DatasetV2
@@ -560,8 +562,8 @@ class DatasetV2Serializer(serializers.ModelSerializer):
         ``dataset_obj`` (DatasetV2 instance): Save & return the dataset
         """
         # create meta dataset obj
-        uploaded_files = validated_data.pop("upload_datasets")
-        dataset_obj = DatasetV2.objects.create(**validated_data)
+        # uploaded_files = validated_data.pop("upload_datasets")
+        validated_data["name"] = re.sub(r'\s+', ' ', validated_data.get("name"))
 
         """delete existing directory of the actual dataset if present"""
         existing_dir = os.path.join(settings.DATASET_FILES_URL, validated_data.get("name"))
@@ -574,31 +576,15 @@ class DatasetV2Serializer(serializers.ModelSerializer):
 
         """find the type of dataset files uploaded or exported"""
         to_find = [Constants.SOURCE_FILE_TYPE, Constants.SOURCE_MYSQL_FILE_TYPE, Constants.SOURCE_POSTGRESQL_FILE_TYPE]
-        directories_found = []
-        with os.scandir(newly_created_dir) as dest:
-           for element in dest:
-               if element.is_dir(follow_symlinks=False) and element.name in to_find:
-                   directories_found.append(element.name)
 
-        """
-        Retrieve the files and its file type.
-            files = [
-                ('file', 'media/users/datasets/datasets/wheat-dataset/file/image2.png'),
-                ('file', 'media/users/datasets/datasets/wheat-dataset/file/image1.png'),
-                ('mysql', 'media/users/datasets/datasets/wheat-dataset/mysql/export1.xls'),
-                ('mysql', 'media/users/datasets/datasets/wheat-dataset/mysql/export2.xls')
-            ]
-        """
-        files = []
-        for dir in directories_found:
-            directory  = os.path.join(newly_created_dir, dir, "", "")
-            with os.scandir(directory) as dest:
-                for element in dest:
-                    if element.is_file:
-                        file = (dir, element.path)
-                        files.append(file)
+        try:
+            """Create the Meta dataset entry & its file references"""
+            files = get_dataset_file_paths(newly_created_dir, to_find)
+            if files:
+                dataset_obj = DatasetV2.objects.create(**validated_data)
+                for file in files:
+                    DatasetV2File.objects.create(dataset=dataset_obj, file=file[1], source=file[0])
 
-        for file in files:
-            DatasetV2File.objects.create(dataset=dataset_obj, file=file[1], source=file[0])
-
-        return dataset_obj
+                return dataset_obj
+        except Exception as error:
+            raise ValidationError(f"Dataset files are missing. Failed to create meta dataset.")
