@@ -29,7 +29,7 @@ from utils.validators import (
     validate_dataset_type,
     validate_dataset_size,
 )
-from utils.file_operations import files_move, file_rename, move_directory, delete_directory, get_dataset_file_paths
+from utils.file_operations import move_directory
 from utils.string_functions import check_special_chars
 
 LOGGER = logging.getLogger(__name__)
@@ -564,27 +564,22 @@ class DatasetV2Serializer(serializers.ModelSerializer):
         # create meta dataset obj
         # uploaded_files = validated_data.pop("upload_datasets")
         validated_data["name"] = re.sub(r'\s+', ' ', validated_data.get("name"))
-
-        """delete existing directory of the actual dataset if present"""
-        existing_dir = os.path.join(settings.DATASET_FILES_URL, validated_data.get("name"))
-        delete_directory(existing_dir)
-
-        """move the dataset directory from temp location to actual location of dataset files"""
-        directory_name = os.path.join(settings.TEMP_DATASET_URL, validated_data.get("name"))
-        move_directory(directory_name, settings.DATASET_FILES_URL)
-        newly_created_dir = os.path.join(existing_dir, "", "")
-
-        """find the type of dataset files uploaded or exported"""
-        to_find = [Constants.SOURCE_FILE_TYPE, Constants.SOURCE_MYSQL_FILE_TYPE, Constants.SOURCE_POSTGRESQL_FILE_TYPE]
+        file_paths = {}
 
         try:
-            """Create the Meta dataset entry & its file references"""
-            files = get_dataset_file_paths(newly_created_dir, to_find)
-            if files:
-                dataset_obj = DatasetV2.objects.create(**validated_data)
-                for file in files:
-                    DatasetV2File.objects.create(dataset=dataset_obj, file=file[1], source=file[0])
+            directory_created = move_directory(os.path.join(settings.TEMP_DATASET_URL, validated_data.get("name")), settings.DATASET_FILES_URL)
+            to_find = [Constants.SOURCE_FILE_TYPE, Constants.SOURCE_MYSQL_FILE_TYPE, Constants.SOURCE_POSTGRESQL_FILE_TYPE]
+            for file in to_find:
+                direct = os.path.join(directory_created, file)
+                if os.path.exists(direct):
+                    file_paths = {os.path.join(direct, f): file for f in os.listdir(direct) if os.path.isfile(os.path.join(direct, f))}
 
+            if file_paths:
+                dataset_obj = DatasetV2.objects.create(**validated_data)
+                for key,value in file_paths.items():
+                    DatasetV2File.objects.create(dataset=dataset_obj, file=key, source=value)
                 return dataset_obj
+                # return super().create(validated_data)
         except Exception as error:
+            LOGGER.error(error, exc_info=True)
             raise ValidationError(f"Dataset files are missing. Failed to create meta dataset.")

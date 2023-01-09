@@ -1,7 +1,7 @@
 import json
 import logging
 import os
-import shutil
+import shutil, re
 from calendar import c
 import django
 import pandas as pd
@@ -39,7 +39,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.viewsets import GenericViewSet, ViewSet
 from uritemplate import partial
-from utils import file_operations, string_functions, validators
+from utils import file_operations, string_functions,  validators
 
 from datahub.models import (
     DatahubDocuments,
@@ -1483,10 +1483,7 @@ class DatasetV2ViewSet(GenericViewSet):
                         serializer.errors, status=status.HTTP_400_BAD_REQUEST
                     )
 
-                dataset_directory_name = string_functions.format_dir_name(
-                        settings.TEMP_DATASET_URL, [request.data.get('dataset_name'), Constants.SOURCE_FILE_TYPE]
-                        )
-                directory_created = file_operations.create_directory(dataset_directory_name)
+                directory_created = file_operations.create_directory(settings.TEMP_DATASET_URL, [request.data.get('dataset_name'), Constants.SOURCE_FILE_TYPE])
 
                 files_saved = []
                 for file in files:
@@ -1511,10 +1508,15 @@ class DatasetV2ViewSet(GenericViewSet):
                         serializer.errors, status=status.HTTP_400_BAD_REQUEST
                     )
 
-                dataset_directory_name = string_functions.format_dir_name(
-                        settings.TEMP_DATASET_URL, [request.data.get('dataset_name')]
-                        )
-                file_operations.delete_directory(dataset_directory_name)
+                directory = string_functions.format_dir_name(settings.TEMP_DATASET_URL, [request.data.get('dataset_name')])
+                nested_dir = os.path.join(directory, request.data.get('source'))
+                for file in os.listdir(nested_dir):
+                    if os.path.isfile(os.path.join(nested_dir, file)) and file == request.data.get('file_name'):
+                        os.remove(os.path.join(nested_dir, file))
+                        LOGGER.info(f"Deleting file: {file}")
+                        data = {file: "File deleted"}
+                        return Response(data, status=status.HTTP_204_NO_CONTENT)
+
                 return Response(status=status.HTTP_204_NO_CONTENT)
 
         except Exception as error:

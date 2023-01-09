@@ -8,55 +8,7 @@ from .validators import validate_image_type
 LOGGER = logging.getLogger(__name__)
 
 
-def get_dataset_file_paths(directory: str, source_list: list):
-    """
-    Return a tuple containing dataset file source & dataset file paths uploaded.
-
-    **Parameters**
-    ``directory`` (str): directory or file path
-
-    Retrieve type of sources based on the directory name saved
-    ``Example``
-        for `file `source directory is 'media/users/datasets/datasets/wheat-dataset/file/
-        for `mysql `source directory is 'media/users/datasets/datasets/wheat-dataset/mysql/
-
-    **Returns**
-    ``file_paths`` (tuple): tuple containing file source & file paths
-
-    ``Example``
-        files = [
-            ('file', 'media/users/datasets/datasets/wheat-dataset/file/image2.png'),
-            ('file', 'media/users/datasets/datasets/wheat-dataset/file/image1.png'),
-            ('mysql', 'media/users/datasets/datasets/wheat-dataset/mysql/export1.xls'),
-            ('mysql', 'media/users/datasets/datasets/wheat-dataset/mysql/export2.xls')
-        ]
-    """
-
-    if not os.path.exists(directory):
-        LOGGER.error(f"{directory} not found")
-        raise FileNotFoundError(f"{directory} not found")
-    else:
-        """Retrieve type of sources based on the directory name saved"""
-        directories_found = []
-        with os.scandir(directory) as dest:
-           for element in dest:
-               if element.is_dir(follow_symlinks=False) and element.name in source_list:
-                   directories_found.append(element.name)
-
-        """Construct the tuple containing file source & file paths"""
-        file_paths = []
-        for dir in directories_found:
-            directory  = os.path.join(directory, dir, "", "")
-            with os.scandir(directory) as dest:
-                for element in dest:
-                    if element.is_file:
-                        file = (dir, element.path)
-                        file_paths.append(file)
-
-        return file_paths
-
-
-def delete_directory(directory: str):
+def delete_directory(directory: str, name: str):
     """
     Remove the file path or destination directory with all the files & directories under it.
 
@@ -64,12 +16,15 @@ def delete_directory(directory: str):
     ``destination`` (str): directory or file path
     """
     try:
+        directory = os.path.join(directory, re.sub(r'\s+', ' ', name), "", "")
+
         if not os.path.exists(directory):
             LOGGER.error(f"{directory} not found")
             raise FileNotFoundError(f"{directory} not found")
         else:
             shutil.rmtree(directory)
             LOGGER.info(f"Deleting directory: {directory}")
+        return directory
     except Exception as error:
         LOGGER.error(error, exc_info=True)
 
@@ -113,15 +68,14 @@ def move_directory(source: str, destination: str):
             raise FileNotFoundError(f"{source} not found")
         else:
             # shutil.copyfileobj(source+file.name, destination)
-            shutil.move(os.path.join(source), os.path.join(destination))
+            destination = shutil.move(os.path.join(source), os.path.join(destination))
             LOGGER.info(f"Directory moved: directory {source} moved to {destination}")
-
+            return destination
     except Exception as error:
         LOGGER.error(error, exc_info=True)
-    return destination
 
 
-def create_directory(destination: str):
+def create_directory(directory: str, names: list):
     """
     Create a directory at the destination or skip if exists.
 
@@ -129,12 +83,15 @@ def create_directory(destination: str):
     ``directory`` (str): directory name
     """
     try:
+        formatted_names = [re.sub(r'\s+', ' ', name) for name in names]
+        destination = os.path.join(directory, *formatted_names, "", "")
+
         if not os.path.exists(destination):
             os.makedirs(destination)
             LOGGER.info(f"Creating directory: {destination}")
+        return destination
     except Exception as error:
         LOGGER.error(error, exc_info=True)
-    return destination
 
 
 def file_save(source_file, file_name: str, directory: str):
