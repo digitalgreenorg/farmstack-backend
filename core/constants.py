@@ -149,3 +149,4 @@ class Constants:
     SOURCE_POSTGRESQL="source_postgresql"
     DATASET_FILE_TYPES = ["xls", "xlsx", "csv", "pdf", "jpeg", "jpg", "png", "tiff"]
     DATASET_MAX_FILE_SIZE = 50
+    DATASET_V2_URL = "dataset/v2"

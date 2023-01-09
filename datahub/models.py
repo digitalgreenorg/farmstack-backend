@@ -144,7 +144,7 @@ class DatasetV2(TimeStampMixin):
     status = models.BooleanField(default=True)
 
     class Meta:
-        indexes = [models.Index(fields=["name"])]
+        indexes = [models.Index(fields=["name", "category"])]
 
 
 @auto_str

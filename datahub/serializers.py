@@ -1,7 +1,7 @@
 import logging, os, re
 
 from django.conf import settings
-from django.core.exceptions import ValidationError
+from django.core.exceptions import ValidationError, ObjectDoesNotExist
 from django.utils.translation import gettext as _
 from rest_framework import serializers
 
@@ -29,7 +29,7 @@ from utils.validators import (
     validate_dataset_type,
     validate_dataset_size,
 )
-from utils.file_operations import move_directory
+from utils.file_operations import create_directory, move_directory
 from utils.string_functions import check_special_chars
 
 LOGGER = logging.getLogger(__name__)
@@ -471,6 +471,12 @@ class DatasetV2TempFileSerializer(serializers.Serializer):
                     self.fields.pop("file_name")
 
     def validate_datasets(self, files):
+        """
+        Validator function to check for dataset file types & dataset file size (Constants.DATASET_MAX_FILE_SIZE) in MB.
+
+        **Parameters**
+        ``files`` ([Files]): list of files to validate the file type included in Constants.DATASET_FILE_TYPES.
+        """
         for file in files:
             if not validate_dataset_type(file, Constants.DATASET_FILE_TYPES):
                 raise ValidationError(
@@ -485,6 +491,12 @@ class DatasetV2TempFileSerializer(serializers.Serializer):
         return files
 
     def validate_dataset_name(self, name):
+        """
+        Validator function to check if the dataset name includes special characters.
+
+        **Parameters**
+        ``name`` (str): dataset name to validate
+        """
         if check_special_chars(name):
             raise ValidationError("dataset name cannot include special characters.")
         name = re.sub(r'\s+', ' ', name)
@@ -573,6 +585,7 @@ class DatasetV2Serializer(serializers.ModelSerializer):
         file_paths = {}
 
         try:
+
             directory_created = move_directory(os.path.join(settings.TEMP_DATASET_URL, validated_data.get("name")), settings.DATASET_FILES_URL)
             to_find = [Constants.SOURCE_FILE_TYPE, Constants.SOURCE_MYSQL_FILE_TYPE, Constants.SOURCE_POSTGRESQL_FILE_TYPE]
             for file in to_find:
@@ -588,4 +601,4 @@ class DatasetV2Serializer(serializers.ModelSerializer):
                 # return super().create(validated_data)
         except Exception as error:
             LOGGER.error(error, exc_info=True)
-            raise ValidationError(f"Dataset files are missing. Failed to create meta dataset.")
+            raise ObjectDoesNotExist(f"Dataset files are missing. Failed to create meta dataset.")

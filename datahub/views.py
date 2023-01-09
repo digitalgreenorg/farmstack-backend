@@ -713,6 +713,7 @@ class DocumentSaveView(GenericViewSet):
             with transaction.atomic():
                 serializer.save()
                 # save the document files
+                file_operations.create_directory(settings.DOCUMENTS_ROOT, [])
                 file_operations.files_move(
                     settings.TEMP_FILE_PATH, settings.DOCUMENTS_ROOT
                 )
@@ -736,6 +737,7 @@ class DocumentSaveView(GenericViewSet):
 
             with transaction.atomic():
                 serializer.save()
+                file_operations.create_directory(settings.DOCUMENTS_ROOT, [])
                 file_operations.files_move(
                     settings.TEMP_FILE_PATH, settings.DOCUMENTS_ROOT
                 )

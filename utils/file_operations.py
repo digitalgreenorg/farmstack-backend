@@ -8,27 +8,6 @@ from .validators import validate_image_type
 LOGGER = logging.getLogger(__name__)
 
 
-def delete_directory(directory: str, name: str):
-    """
-    Remove the file path or destination directory with all the files & directories under it.
-
-    **Parameters**
-    ``destination`` (str): directory or file path
-    """
-    try:
-        directory = os.path.join(directory, re.sub(r'\s+', ' ', name), "", "")
-
-        if not os.path.exists(directory):
-            LOGGER.error(f"{directory} not found")
-            raise FileNotFoundError(f"{directory} not found")
-        else:
-            shutil.rmtree(directory)
-            LOGGER.info(f"Deleting directory: {directory}")
-        return directory
-    except Exception as error:
-        LOGGER.error(error, exc_info=True)
-
-
 def remove_files(file_key: str, destination: str):
     """
     Remove files from the file path or destination directory.
@@ -77,19 +56,21 @@ def move_directory(source: str, destination: str):
 
 def create_directory(directory: str, names: list):
     """
-    Create a directory at the destination or skip if exists.
+    Create a directory or directories at the destination or skip if exists.
 
     **Parameters**
     ``directory`` (str): directory name
+    ``name`` (list): list of nested directory names to create inside directory
     """
     try:
-        formatted_names = [re.sub(r'\s+', ' ', name) for name in names]
-        destination = os.path.join(directory, *formatted_names, "", "")
+        if names:
+            formatted_names = [re.sub(r'\s+', ' ', name) for name in names]
+            directory = os.path.join(directory, *formatted_names, "", "")
 
-        if not os.path.exists(destination):
-            os.makedirs(destination)
-            LOGGER.info(f"Creating directory: {destination}")
-        return destination
+        if not os.path.exists(directory):
+            os.makedirs(directory)
+            LOGGER.info(f"Creating directory: {directory}")
+        return directory
     except Exception as error:
         LOGGER.error(error, exc_info=True)
 
@@ -148,8 +129,6 @@ def files_move(source: str, destination: str):
     ``destination`` (str): directory or file path where to where the file needs to be saved
     """
     try:
-        create_directory(destination)
-
         with os.scandir(source) as file_path:
             for file in file_path:
                 if file.is_file():
