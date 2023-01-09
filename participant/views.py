@@ -1,3 +1,4 @@
+import ast
 import json
 import logging
 import os
@@ -7,7 +8,7 @@ import time
 from datetime import datetime
 from sre_compile import isstring
 from struct import unpack
-
+import ast
 import pandas as pd
 import requests
 from django.db.models import Q
@@ -76,6 +77,7 @@ from rest_framework.decorators import api_view
 from rest_framework.response import Response
 
 from .serializers import DatabaseConfigSerializer
+
 
 class ParticipantSupportViewSet(GenericViewSet):
     """
@@ -1479,33 +1481,70 @@ class DataBaseViewSet(GenericViewSet):
 
     @action(detail=False, methods=["post"])
     def database_config(self,request):
+        
         serializer = DatabaseConfigSerializer(data=request.data)
+        
         if serializer.is_valid():
             # Test the database configuration
             config = serializer.validated_data
+            cookie_data=serializer.data
             try:
                 # Try to connect to the database using the provided configuration
                 connection = mysql.connect(**config)
             except Exception as e:
                 # Return an error message if the connection fails
                 return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
-            else:
+                
                 # Return a success message if the connection succeeds
-                mydb = connection
+            mydb = connection
 
-                mycursor = mydb.cursor()
+            mycursor = mydb.cursor()
 
-                db_name=request.data['database']
-                
-                mycursor.execute("use "+db_name+";")
-                mycursor.execute("show tables;")
+            db_name=request.data['database']
+            
+            mycursor.execute("use "+db_name+";")
+            mycursor.execute("show tables;")
 
-                table_list = mycursor.fetchall()
-                # print(table_list)
-                #flatten
-                
-                table_list = [element for innerList in table_list for element in innerList]
-                return HttpResponse(json.dumps(table_list), status=status.HTTP_200_OK)
+            table_list = mycursor.fetchall()
+            # print(table_list)
+            #flatten
+            table_list = [element for innerList in table_list for element in innerList]
+            response=HttpResponse(json.dumps(table_list), status=status.HTTP_200_OK)
+            response.set_cookie('conn_details',cookie_data)
+            return  response
         else:
             # Return an error message if the serializer is invalid
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    @action(detail=False, methods=["post"])
+    def database_col_names(self,request):
+        conn_details = request.COOKIES.get('conn_details',request.data)
+        config = ast.literal_eval(conn_details)
+        try:
+            # Try to connect to the database using the provided configuration
+            connection = mysql.connect(**config)
+        except Exception as e:
+            # Return an error message if the connection fails
+            return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        else:
+            # Return a success message if the connection succeeds
+            mydb = connection
+
+            mycursor = mydb.cursor()
+
+            db_name=config['database']
+            table_name=request.data['table_name']
+
+            
+            mycursor.execute("use "+db_name+";")
+            mycursor.execute("SHOW COLUMNS FROM " +db_name +"." +table_name+";")
+
+            col_list = mycursor.fetchall()
+            print(col_list)
+
+            cols=[]
+            if len(col_list)>0: #Check if table having columns
+                for x in col_list:
+                    cols.append(x[0])
+            return HttpResponse(json.dumps(cols), status=status.HTTP_200_OK)
+
