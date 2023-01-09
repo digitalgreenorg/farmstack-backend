@@ -1466,7 +1466,7 @@ class DatasetV2ViewSet(GenericViewSet):
             the datasets. [see here][ref]
 
         **Endpoint**
-        [ref]: /datahub/v2/dataset/temp_datasets/
+        [ref]: /datahub/dataset/v2/temp_datasets/
         """
         try:
             files = request.FILES.getlist("datasets")
@@ -1477,13 +1477,15 @@ class DatasetV2ViewSet(GenericViewSet):
                     Create below directories with dataset files uploaded
                     /temp/<dataset-name>/file/<files>
                 """
-                serializer = DatasetV2TempFileSerializer(data=request.data)
+                serializer = DatasetV2TempFileSerializer(data=request.data, context={"request_method": request.method})
                 if not serializer.is_valid():
                     return Response(
                         serializer.errors, status=status.HTTP_400_BAD_REQUEST
                     )
 
-                directory_created = file_operations.create_directory(settings.TEMP_DATASET_URL, [request.data.get('dataset_name'), Constants.SOURCE_FILE_TYPE])
+                directory_created = file_operations.create_directory(settings.TEMP_DATASET_URL, 
+                                                                     [serializer.data.get("dataset_name"), 
+                                                                      serializer.data.get("source")])
 
                 files_saved = []
                 for file in files:
@@ -1491,7 +1493,9 @@ class DatasetV2ViewSet(GenericViewSet):
                         file, file.name, directory_created
                     )
                     files_saved.append(file.name)
+
                 data = {"datasets": files_saved}
+                data.update(serializer.data)
                 return Response(data, status=status.HTTP_201_CREATED)
 
             elif request.method == "DELETE":
@@ -1529,7 +1533,7 @@ class DatasetV2ViewSet(GenericViewSet):
             with datasets sent through POST request. [see here][ref].
 
         **Endpoint**
-        [ref]: /datahub/v2/dataset/
+        [ref]: /datahub/dataset/v2/
         """
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -1541,7 +1545,7 @@ class DatasetV2ViewSet(GenericViewSet):
         ``GET`` method Endpoint: list action to view the list of Datasets via GET request. [see here][ref].
 
         **Endpoint**
-        [ref]: /datahub/v2/dataset/
+        [ref]: /datahub/dataset/v2/
         """
         queryset = self.get_queryset()
         serializer = self.get_serializer(queryset, many=True)
@@ -1552,7 +1556,7 @@ class DatasetV2ViewSet(GenericViewSet):
         ``GET`` method Endpoint: retrieve action for the detail view of Dataset via GET request. [see here][ref].
 
         **Endpoint**
-        [ref]: /datahub/v2/dataset/<id>/
+        [ref]: /datahub/dataset/v2/<id>/
         """
         obj = self.get_object()
         serializer = self.get_serializer(obj)

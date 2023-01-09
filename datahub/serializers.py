@@ -466,6 +466,9 @@ class DatasetV2TempFileSerializer(serializers.Serializer):
                 if request_method == "DELETE":
                     # remove `datasets` fields as `DELETE` method only requires `dataset_name` field
                     self.fields.pop("datasets")
+                elif request_method == "POST":
+                    # remove `file_name` field as `POST` method only requires `dataset_name`, `datasets` & `source` fields
+                    self.fields.pop("file_name")
 
     def validate_datasets(self, files):
         for file in files:
@@ -484,6 +487,7 @@ class DatasetV2TempFileSerializer(serializers.Serializer):
     def validate_dataset_name(self, name):
         if check_special_chars(name):
             raise ValidationError("dataset name cannot include special characters.")
+        name = re.sub(r'\s+', ' ', name)
         return name
 
     dataset_name = serializers.CharField(allow_null=False)
@@ -491,6 +495,8 @@ class DatasetV2TempFileSerializer(serializers.Serializer):
         child=serializers.FileField(use_url=False, allow_empty_file=False),
         write_only=True,
     )
+    file_name = serializers.CharField(allow_null=False)
+    source = serializers.CharField(allow_null=False)
 
 
 class DatasetV2FileSerializer(serializers.ModelSerializer):
@@ -533,6 +539,7 @@ class DatasetV2Serializer(serializers.ModelSerializer):
     def validate_name(self, name):
         if check_special_chars(name):
             raise ValidationError("dataset name cannot include special characters.")
+        name = re.sub(r'\s+', ' ', name)
         return name
 
     class Meta:
@@ -563,7 +570,6 @@ class DatasetV2Serializer(serializers.ModelSerializer):
         """
         # create meta dataset obj
         # uploaded_files = validated_data.pop("upload_datasets")
-        validated_data["name"] = re.sub(r'\s+', ' ', validated_data.get("name"))
         file_paths = {}
 
         try:

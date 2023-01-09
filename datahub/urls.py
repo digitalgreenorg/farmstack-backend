@@ -32,7 +32,7 @@ router.register("theme", DatahubThemeView, basename=Constants.THEME)
 router.register(r"support", SupportViewSet, basename=Constants.SUPPORT_TICKETS)
 router.register(r"datasets", DatahubDatasetsViewSet, basename=Constants.DATAHUB_DATASETS)
 router.register(r"", DatahubDashboard, basename="")
-router.register(r"v2/dataset", DatasetV2ViewSet, basename="v2/dataset")
+router.register(r"dataset/v2", DatasetV2ViewSet, basename="dataset/v2")
 
 
 urlpatterns = [
