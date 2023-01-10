@@ -3,6 +3,7 @@ from email.mime import application
 
 from accounts.models import User
 from core.base_models import TimeStampMixin
+from core.constants import Constants
 
 from django.conf import settings
 from django.db import models
@@ -123,3 +124,45 @@ class Datasets(TimeStampMixin):
 
     class Meta:
         indexes = [models.Index(fields=["name"])]
+
+
+@auto_str
+class DatasetV2(TimeStampMixin):
+    """
+    Stores a single dataset entry, related to :model:`datahub_userorganizationmap` (UserOrganizationMap).
+    New version of model for dataset - DatasetV2 to store Meta data of Datasets.
+    """
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    name = models.CharField(max_length=255, unique=True)
+    user_map = models.ForeignKey(UserOrganizationMap, on_delete=models.PROTECT)
+    description = models.TextField(max_length=512, null=True, blank=True)
+    category = models.JSONField()
+    geography = models.CharField(max_length=255, null=True, blank=True)
+    data_capture_start = models.DateTimeField(null=True, blank=True)
+    data_capture_end = models.DateTimeField(null=True, blank=True)
+    constantly_update = models.BooleanField(default=False)
+    status = models.BooleanField(default=True)
+
+    class Meta:
+        indexes = [models.Index(fields=["name", "category"])]
+
+
+@auto_str
+class DatasetV2File(TimeStampMixin):
+    """
+    Stores a single file (file paths/urls) entry for datasets with a reference to DatasetV2 instance.
+    related to :model:`datahub_datasetv2` (DatasetV2)
+
+    `Source` (enum): Enum to store file type
+        `file`: dataset of file type
+        `mysql`: dataset of mysql connection
+        `postgresql`: dataset of postgresql connection
+    """
+    SOURCES = [
+                (Constants.SOURCE_FILE_TYPE, Constants.SOURCE_FILE_TYPE),
+                (Constants.SOURCE_MYSQL_FILE_TYPE, Constants.SOURCE_MYSQL_FILE_TYPE),
+                (Constants.SOURCE_POSTGRESQL_FILE_TYPE, Constants.SOURCE_POSTGRESQL_FILE_TYPE)
+            ]
+    dataset = models.ForeignKey(DatasetV2, on_delete=models.PROTECT, related_name="datasets")
+    file = models.FileField(upload_to=settings.DATASET_FILES_URL, null=True, blank=True)
+    source = models.CharField(max_length=50, choices=SOURCES)

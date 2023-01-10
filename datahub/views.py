@@ -1,7 +1,7 @@
 import json
 import logging
 import os
-import shutil
+import shutil, re
 from calendar import c
 import django
 import pandas as pd
@@ -39,9 +39,15 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.viewsets import GenericViewSet, ViewSet
 from uritemplate import partial
-from utils import file_operations, string_functions, validators
+from utils import file_operations, string_functions,  validators
 
-from datahub.models import DatahubDocuments, Datasets, Organization, UserOrganizationMap
+from datahub.models import (
+    DatahubDocuments,
+    Datasets,
+    Organization,
+    UserOrganizationMap,
+    DatasetV2,
+)
 from datahub.serializers import (
     DatahubDatasetsSerializer,
     DatahubThemeSerializer,
@@ -59,6 +65,8 @@ from datahub.serializers import (
     TeamMemberUpdateSerializer,
     UserOrganizationCreateSerializer,
     UserOrganizationMapSerializer,
+    DatasetV2Serializer,
+    DatasetV2TempFileSerializer,
 )
 
 LOGGER = logging.getLogger(__name__)
@@ -618,6 +626,7 @@ class DropDocumentView(GenericViewSet):
             file = serializer.validated_data[key]
             file_type = str(file).split(".")[-1]
             file_name = str(key) + "." + file_type
+            file_operations.remove_files(file_name, settings.TEMP_FILE_PATH)
             file_operations.file_save(file, file_name, settings.TEMP_FILE_PATH)
             return Response(
                 {key: [f"{file_name} uploading in progress ..."]},
@@ -704,6 +713,7 @@ class DocumentSaveView(GenericViewSet):
             with transaction.atomic():
                 serializer.save()
                 # save the document files
+                file_operations.create_directory(settings.DOCUMENTS_ROOT, [])
                 file_operations.files_move(
                     settings.TEMP_FILE_PATH, settings.DOCUMENTS_ROOT
                 )
@@ -727,6 +737,7 @@ class DocumentSaveView(GenericViewSet):
 
             with transaction.atomic():
                 serializer.save()
+                file_operations.create_directory(settings.DOCUMENTS_ROOT, [])
                 file_operations.files_move(
                     settings.TEMP_FILE_PATH, settings.DOCUMENTS_ROOT
                 )
@@ -762,12 +773,14 @@ class DatahubThemeView(GenericViewSet):
                 data = {"banner": "null", "button_color": "null"}
 
             elif banner and not button_color:
-                file_name = file_operations.get_file_name(str(banner), "banner")
+                file_name = file_operations.file_rename(str(banner), "banner")
+                file_operations.remove_files(file_name, settings.THEME_ROOT)
                 file_operations.file_save(banner, file_name, settings.THEME_ROOT)
                 data = {"banner": file_name, "button_color": "null"}
 
             elif not banner and button_color:
                 css = ".btn { background-color: " + button_color + "; }"
+                file_operations.remove_files(file_name, settings.THEME_ROOT)
                 file_operations.file_save(
                     ContentFile(css),
                     settings.CSS_FILE_NAME,
@@ -776,10 +789,12 @@ class DatahubThemeView(GenericViewSet):
                 data = {"banner": "null", "button_color": settings.CSS_FILE_NAME}
 
             elif banner and button_color:
-                file_name = file_operations.get_file_name(str(banner), "banner")
+                file_name = file_operations.file_rename(str(banner), "banner")
+                file_operations.remove_files(file_name, settings.THEME_ROOT)
                 file_operations.file_save(banner, file_name, settings.THEME_ROOT)
 
                 css = ".btn { background-color: " + button_color + "; }"
+                file_operations.remove_files(file_name, settings.THEME_ROOT)
                 file_operations.file_save(
                     ContentFile(css),
                     settings.CSS_FILE_NAME,
@@ -839,12 +854,14 @@ class DatahubThemeView(GenericViewSet):
                 data = {"banner": "null", "button_color": "null"}
 
             elif banner and button_color is None:
-                file_name = file_operations.get_file_name(str(banner), "banner")
+                file_name = file_operations.file_rename(str(banner), "banner")
+                file_operations.remove_files(file_name, settings.THEME_ROOT)
                 file_operations.file_save(banner, file_name, settings.THEME_ROOT)
                 data = {"banner": file_name, "button_color": "null"}
 
             elif not banner and button_color:
                 css = ".btn { background-color: " + button_color + "; }"
+                file_operations.remove_files(settings.CSS_FILE_NAME, settings.CSS_ROOT)
                 file_operations.file_save(
                     ContentFile(css),
                     settings.CSS_FILE_NAME,
@@ -853,10 +870,12 @@ class DatahubThemeView(GenericViewSet):
                 data = {"banner": "null", "button_color": settings.CSS_FILE_NAME}
 
             elif banner and button_color:
-                file_name = file_operations.get_file_name(str(banner), "banner")
+                file_name = file_operations.file_rename(str(banner), "banner")
+                file_operations.remove_files(file_name, settings.THEME_ROOT)
                 file_operations.file_save(banner, file_name, settings.THEME_ROOT)
 
                 css = ".btn { background-color: " + button_color + "; }"
+                file_operations.remove_files(settings.CSS_FILE_NAME, settings.CSS_ROOT)
                 file_operations.file_save(
                     ContentFile(css),
                     settings.CSS_FILE_NAME,
@@ -1417,3 +1436,130 @@ class DatahubDashboard(GenericViewSet):
         except Exception as error:
             LOGGER.error(error, exc_info=True)
             return Response({}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+class DatasetV2ViewSet(GenericViewSet):
+    """
+    ViewSet for DatasetV2 model for create, update, detail/list view, & delete endpoints.
+
+    **Context**
+    ``DatasetV2``
+        An instance of :model:`datahub_datasetv2`
+
+    **Serializer**
+    ``DatasetV2Serializer``
+        :serializer:`datahub.serializer.DatasetV2Serializer`
+
+    **Authorization**
+        ``ROLE`` only authenticated users/participants with following roles are allowed to make a POST request to this endpoint.
+            :role: `datahub_admin` (:role_id: `1`)
+            :role: `datahub_participant_root` (:role_id: `3`)
+    """
+
+    serializer_class = DatasetV2Serializer
+    queryset = DatasetV2.objects.all()
+
+    @action(detail=False, methods=["post", "delete"])
+    def temp_datasets(self, request, *args, **kwargs):
+        """
+        ``POST`` method Endpoint: POST method to save the datasets in a temporary location with 
+            under a newly created dataset name & source_file directory.
+        ``DELETE`` method Endpoint: DELETE method to delete the dataset named directory containing 
+            the datasets. [see here][ref]
+
+        **Endpoint**
+        [ref]: /datahub/dataset/v2/temp_datasets/
+        """
+        try:
+            files = request.FILES.getlist("datasets")
+
+            if request.method == "POST":
+                """Create a temporary directory containing dataset files uploaded as source.
+                ``Example:``
+                    Create below directories with dataset files uploaded
+                    /temp/<dataset-name>/file/<files>
+                """
+                serializer = DatasetV2TempFileSerializer(data=request.data, context={"request_method": request.method})
+                if not serializer.is_valid():
+                    return Response(
+                        serializer.errors, status=status.HTTP_400_BAD_REQUEST
+                    )
+
+                directory_created = file_operations.create_directory(settings.TEMP_DATASET_URL, 
+                                                                     [serializer.data.get("dataset_name"), 
+                                                                      serializer.data.get("source")])
+
+                files_saved = []
+                for file in files:
+                    file_operations.file_save(
+                        file, file.name, directory_created
+                    )
+                    files_saved.append(file.name)
+
+                data = {"datasets": files_saved}
+                data.update(serializer.data)
+                return Response(data, status=status.HTTP_201_CREATED)
+
+            elif request.method == "DELETE":
+                """
+                Delete the temporary directory containing datasets created by the POST endpoint 
+                with the dataset files uploaded as source.
+                ``Example:``
+                    Delete the below directory:
+                    /temp/<dataset-name>/
+                """
+                serializer = DatasetV2TempFileSerializer(data=request.data, context={"request_method": request.method})
+                if not serializer.is_valid():
+                    return Response(
+                        serializer.errors, status=status.HTTP_400_BAD_REQUEST
+                    )
+
+                directory = string_functions.format_dir_name(settings.TEMP_DATASET_URL, [request.data.get('dataset_name')])
+                nested_dir = os.path.join(directory, request.data.get('source'))
+                for file in os.listdir(nested_dir):
+                    if os.path.isfile(os.path.join(nested_dir, file)) and file == request.data.get('file_name'):
+                        os.remove(os.path.join(nested_dir, file))
+                        LOGGER.info(f"Deleting file: {file}")
+                        data = {file: "File deleted"}
+                        return Response(data, status=status.HTTP_204_NO_CONTENT)
+
+                return Response(status=status.HTTP_204_NO_CONTENT)
+
+        except Exception as error:
+            LOGGER.error(error, exc_info=True)
+        return Response(status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    def create(self, request, *args, **kwargs):
+        """
+        ``POST`` method Endpoint: create action to save the Dataset's Meta data
+            with datasets sent through POST request. [see here][ref].
+
+        **Endpoint**
+        [ref]: /datahub/dataset/v2/
+        """
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+    def list(self, request, *args, **kwargs):
+        """
+        ``GET`` method Endpoint: list action to view the list of Datasets via GET request. [see here][ref].
+
+        **Endpoint**
+        [ref]: /datahub/dataset/v2/
+        """
+        queryset = self.get_queryset()
+        serializer = self.get_serializer(queryset, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+    def retrieve(self, request, pk=None, *args, **kwargs):
+        """
+        ``GET`` method Endpoint: retrieve action for the detail view of Dataset via GET request. [see here][ref].
+
+        **Endpoint**
+        [ref]: /datahub/dataset/v2/<id>/
+        """
+        obj = self.get_object()
+        serializer = self.get_serializer(obj)
+        return Response(serializer.data, status=status.HTTP_200_OK)
