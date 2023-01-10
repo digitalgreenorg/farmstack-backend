@@ -1483,48 +1483,49 @@ class DataBaseViewSet(GenericViewSet):
     @action(detail=False, methods=["post"])
     def database_config(self,request):
         serializer = DatabaseConfigSerializer(data=request.data)
+        print(request.data)
+        serializer.is_valid()
+        # Test the database configuration
+        config = serializer.validated_data
+        cookie_data=serializer.data
+        try:
+            # Try to connect to the database using the provided configuration
+            mydb = mysql.connector.connect(**config)
 
-        if serializer.is_valid():
-            # Test the database configuration
-            config = serializer.validated_data
-            cookie_data=serializer.data
-            try:
-                # Try to connect to the database using the provided configuration
-                mydb = mysql.connector.connect(**config)
+            mycursor = mydb.cursor()
 
-                mycursor = mydb.cursor()
-
-                db_name=request.data['database']
-                
-                mycursor.execute("use "+db_name+";")
-                mycursor.execute("show tables;")
-
-                table_list = mycursor.fetchall()
-                # print(table_list)
-                #flatten
-                table_list = [element for innerList in table_list for element in innerList]
-                response=HttpResponse(json.dumps(table_list), status=status.HTTP_200_OK)
-                response.set_cookie('conn_details',cookie_data)
-                return  response
-            # except Exception as e:
-            except mysql.connector.Error as err:
-            # print(err)
-                if err.errno == mysql.connector.errorcode.ER_ACCESS_DENIED_ERROR:
-                    msg="Incorrect username or password"
-                    return Response({"username": [msg], "password": [msg]},status=status.HTTP_400_BAD_REQUEST)
-                elif err.errno == mysql.connector.errorcode.ER_DATABASE_NAME:
-                    msg="Database does not exist"
-                    return Response({"database":[msg]}, status=status.HTTP_400_BAD_REQUEST)
-        
-                msg=str(err)
-            # Return an error message if the connection fails
-                return Response({'error': [msg]}, status=status.HTTP_400_BAD_REQUEST)
-                
-                # Return a success message if the connection succeeds
+            db_name=request.data['database']
             
-        else:
-            # Return an error message if the serializer is invalid
-            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+            mycursor.execute("use "+db_name+";")
+            mycursor.execute("show tables;")
+
+            table_list = mycursor.fetchall()
+            # print(table_list)
+            #flatten
+            table_list = [element for innerList in table_list for element in innerList]
+            response=HttpResponse(json.dumps(table_list), status=status.HTTP_200_OK)
+            response.set_cookie('conn_details',cookie_data)
+            response.set_cookie('conn_details222',cookie_data)
+            response.set_cookie('conn_details22333',cookie_data)
+
+
+            return  response
+        # except Exception as e:
+        except mysql.connector.Error as err:
+        # print(err)
+            if err.errno == mysql.connector.errorcode.ER_ACCESS_DENIED_ERROR:
+                msg="Incorrect username or password"
+                return Response({"username": [msg], "password": [msg]},status=status.HTTP_400_BAD_REQUEST)
+            elif err.errno == mysql.connector.errorcode.ER_DATABASE_NAME:
+                msg="Database does not exist"
+                return Response({"database":[msg]}, status=status.HTTP_400_BAD_REQUEST)
+    
+            msg=str(err)
+            print(err)
+        # Return an error message if the connection fails
+            return Response({'error': [msg]}, status=status.HTTP_400_BAD_REQUEST)
+            
+            # Return a success message if the connection succeeds
 
     @action(detail=False, methods=["post"])
     def database_col_names(self,request):
@@ -1569,9 +1570,10 @@ class DataBaseViewSet(GenericViewSet):
             
 
     @action(detail=False, methods=["post"])
-    def database_col_names(self,request):
+    def database_make_xls(self,request):
         conn_details = request.COOKIES.get('conn_details',request.data)
         config = ast.literal_eval(conn_details)
+        
 
             # Return an error message if the connection fails
         try:
