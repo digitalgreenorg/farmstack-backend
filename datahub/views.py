@@ -1508,20 +1508,31 @@ class DatasetV2ViewSet(GenericViewSet):
                     Delete the below directory:
                     /temp/<dataset-name>/
                 """
-                serializer = DatasetV2TempFileSerializer(data=request.data, context={"request_method": request.method})
+                serializer = DatasetV2TempFileSerializer(data=request.data, context={"request_method": request.method, "query_params": request.query_params.get("delete_dir")})
+
                 if not serializer.is_valid():
                     return Response(
                         serializer.errors, status=status.HTTP_400_BAD_REQUEST
                     )
 
                 directory = string_functions.format_dir_name(settings.TEMP_DATASET_URL, [request.data.get('dataset_name')])
-                nested_dir = os.path.join(directory, request.data.get('source'))
-                for file in os.listdir(nested_dir):
-                    if os.path.isfile(os.path.join(nested_dir, file)) and file == request.data.get('file_name'):
-                        os.remove(os.path.join(nested_dir, file))
-                        LOGGER.info(f"Deleting file: {file}")
-                        data = {file: "File deleted"}
-                        return Response(data, status=status.HTTP_204_NO_CONTENT)
+
+                """Delete directory temp directory as requested"""
+                if request.query_params.get("delete_dir") and os.path.exists(directory):
+                    shutil.rmtree(directory)
+                    LOGGER.info(f"Deleting directory: {directory}")
+                    data = serializer.data
+                    return Response(data, status=status.HTTP_204_NO_CONTENT)
+
+                elif not request.query_params.get("delete_dir"):
+                    """Delete a single file as requested"""
+                    nested_dir = os.path.join(directory, request.data.get('source'))
+                    for file in os.listdir(nested_dir):
+                        if os.path.isfile(os.path.join(nested_dir, file)) and file == request.data.get('file_name'):
+                            os.remove(os.path.join(nested_dir, file))
+                            LOGGER.info(f"Deleting file: {file}")
+                            data = {file: "File deleted"}
+                            return Response(data, status=status.HTTP_204_NO_CONTENT)
 
                 return Response(status=status.HTTP_204_NO_CONTENT)
 

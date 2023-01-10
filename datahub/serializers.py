@@ -463,9 +463,14 @@ class DatasetV2TempFileSerializer(serializers.Serializer):
         if 'context' in kwargs:
             if 'request_method' in kwargs['context']:
                 request_method = kwargs.get("context").get("request_method")
-                if request_method == "DELETE":
-                    # remove `datasets` fields as `DELETE` method only requires `dataset_name` field
+                if request_method == "DELETE" and not kwargs.get("context").get("query_params"):
+                    # remove `datasets` field as `DELETE` method only requires `dataset_name`, `file_name` & `source` fields
                     self.fields.pop("datasets")
+                elif request_method == "DELETE" and kwargs.get("context").get("query_params"):
+                    # remove `datasets` & `file_name` fields as `DELETE` method to delete directory only requires `dataset_name` & `source` field
+                    self.fields.pop("datasets")
+                    self.fields.pop("file_name")
+                    self.fields.pop("source")
                 elif request_method == "POST":
                     # remove `file_name` field as `POST` method only requires `dataset_name`, `datasets` & `source` fields
                     self.fields.pop("file_name")
