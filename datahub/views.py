@@ -1521,7 +1521,7 @@ class DatasetV2ViewSet(GenericViewSet):
                 if request.query_params.get("delete_dir") and os.path.exists(directory):
                     shutil.rmtree(directory)
                     LOGGER.info(f"Deleting directory: {directory}")
-                    data = serializer.data
+                    data = {request.data.get('dataset_name'): "Dataset not created"}
                     return Response(data, status=status.HTTP_204_NO_CONTENT)
 
                 elif not request.query_params.get("delete_dir"):
