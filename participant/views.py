@@ -1478,7 +1478,7 @@ class DataBaseViewSet(GenericViewSet):
     queryset = Project
     pagination_class = CustomPagination
 
-    permission_classes=[IsAuthenticated]
+    # permission_classes=[IsAuthenticated]
 
     @action(detail=False, methods=["post"])
     def database_config(self,request):
@@ -1507,8 +1507,6 @@ class DataBaseViewSet(GenericViewSet):
             response.set_cookie('conn_details',cookie_data)
             # response.set_cookie('conn_details222',cookie_data)
             # response.set_cookie('conn_details22333',cookie_data)
-
-
             return  response
         # except Exception as e:
         except mysql.connector.Error as err:
@@ -1530,6 +1528,7 @@ class DataBaseViewSet(GenericViewSet):
     @action(detail=False, methods=["post"])
     def database_col_names(self,request):
         conn_details = request.COOKIES.get('conn_details',request.data)
+        print(conn_details)
         config = ast.literal_eval(conn_details)
 
             # Return an error message if the connection fails
@@ -1550,7 +1549,9 @@ class DataBaseViewSet(GenericViewSet):
             col_list = mycursor.fetchall()
             # import pdb; pdb.set_trace()
             cols=[column_details[0] for column_details in col_list]
-            return HttpResponse(json.dumps(cols), status=status.HTTP_200_OK)
+            response= HttpResponse(json.dumps(cols), status=status.HTTP_200_OK)
+            response.set_cookie('tl_name',table_name)
+            return response
 
         # except Exception as e:
             # print("Connected to database")
@@ -1571,29 +1572,49 @@ class DataBaseViewSet(GenericViewSet):
 
     @action(detail=False, methods=["post"])
     def database_xls_file(self,request):
-        conn_details = request.COOKIES.get('conn_details',request.data)
-        config = ast.literal_eval(conn_details)
         
+        conn_details = request.COOKIES.get('conn_details',request.data)
+
+        t_name=request.COOKIES.get('tl_name',request.data)
+        print(t_name)
+
+        config = ast.literal_eval(conn_details)
+        serializer = DatabaseConfigSerializer(data=config)
+        serializer.is_valid(raise_exception=True)
+
+        config = serializer.validated_data
+
 
             # Return an error message if the connection fails
         try:
             # Try to connect to the database using the provided configuration
-            connection = mysql.connector.connect(**config)
-            mydb = connection
-
+            mydb = mysql.connector.connect(**config)
             mycursor = mydb.cursor()
 
             db_name=config['database']
-            table_name=request.data['table_name']
+            # table_name=request.data['tl_name']
+            col_names=request.data['col']
+            print(type(col_names))
+            print(col_names)
 
             
             mycursor.execute("use "+db_name+";")
-            mycursor.execute("SHOW COLUMNS FROM " +db_name +"." +table_name+";")
+            # mycursor.execute("SHOW COLUMNS FROM " +db_name +"." +table_name+";")
+            col_names=ast.literal_eval(col_names)
+            col_names= ', '.join(col_names)
+            print(col_names)
+            query="select "+ col_names+" from "+t_name+" ;"
+            print(query)
+            mycursor.execute(query)
 
-            col_list = mycursor.fetchall()
+            result = mycursor.fetchall()
             # import pdb; pdb.set_trace()
-            cols=[column_details[0] for column_details in col_list]
-            return HttpResponse(json.dumps(cols), status=status.HTTP_200_OK)
+            df = pd.read_sql(query,mydb)
+            print(df)
+            xls_file=df.to_excel("xls_file.xls")
+
+
+            return HttpResponse(result, status=status.HTTP_200_OK)
 
         # except Exception as e:
             # print("Connected to database")
@@ -1606,8 +1627,8 @@ class DataBaseViewSet(GenericViewSet):
                 msg="Table does not exist"
                 return Response({"table":[msg]}, status=status.HTTP_400_BAD_REQUEST)
         
-        msg=str(err)
+            msg=str(err)
             # Return an error message if the connection fails
-        return Response({'error': [msg]}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({'error': [msg]}, status=status.HTTP_400_BAD_REQUEST)
             # Return a success message if the connection succeeds
             
