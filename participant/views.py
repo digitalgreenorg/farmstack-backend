@@ -8,6 +8,7 @@ import time
 from datetime import datetime
 from sre_compile import isstring
 from struct import unpack
+
 import mysql.connector
 import pandas as pd
 import requests
@@ -1481,10 +1482,7 @@ class DataBaseViewSet(GenericViewSet):
 
     @action(detail=False, methods=["post"])
     def database_config(self,request):
-        
-        
         serializer = DatabaseConfigSerializer(data=request.data)
-        
 
         if serializer.is_valid():
             # Test the database configuration
@@ -1527,6 +1525,48 @@ class DataBaseViewSet(GenericViewSet):
         else:
             # Return an error message if the serializer is invalid
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    @action(detail=False, methods=["post"])
+    def database_col_names(self,request):
+        conn_details = request.COOKIES.get('conn_details',request.data)
+        config = ast.literal_eval(conn_details)
+
+            # Return an error message if the connection fails
+        try:
+            # Try to connect to the database using the provided configuration
+            connection = mysql.connector.connect(**config)
+            mydb = connection
+
+            mycursor = mydb.cursor()
+
+            db_name=config['database']
+            table_name=request.data['table_name']
+
+            
+            mycursor.execute("use "+db_name+";")
+            mycursor.execute("SHOW COLUMNS FROM " +db_name +"." +table_name+";")
+
+            col_list = mycursor.fetchall()
+            # import pdb; pdb.set_trace()
+            cols=[column_details[0] for column_details in col_list]
+            return HttpResponse(json.dumps(cols), status=status.HTTP_200_OK)
+
+        # except Exception as e:
+            # print("Connected to database")
+        except mysql.connector.Error as err:
+            # print(err)
+            if err.errno == mysql.connector.errorcode.ER_ACCESS_DENIED_ERROR:
+                msg="Incorrect username or password"
+                return Response({"username": [msg], "password": [msg]},status=status.HTTP_400_BAD_REQUEST)
+            elif err.errno == mysql.connector.errorcode.ER_NO_SUCH_TABLE:
+                msg="Table does not exist"
+                return Response({"table":[msg]}, status=status.HTTP_400_BAD_REQUEST)
+        
+        msg=str(err)
+            # Return an error message if the connection fails
+        return Response({'error': [msg]}, status=status.HTTP_400_BAD_REQUEST)
+            # Return a success message if the connection succeeds
+            
 
     @action(detail=False, methods=["post"])
     def database_col_names(self,request):
