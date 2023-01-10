@@ -1483,8 +1483,8 @@ class DataBaseViewSet(GenericViewSet):
     @action(detail=False, methods=["post"])
     def database_config(self,request):
         serializer = DatabaseConfigSerializer(data=request.data)
-        print(request.data)
-        serializer.is_valid()
+        # print(request.data)
+        serializer.is_valid(raise_exception=True)
         # Test the database configuration
         config = serializer.validated_data
         cookie_data=serializer.data
@@ -1505,8 +1505,8 @@ class DataBaseViewSet(GenericViewSet):
             table_list = [element for innerList in table_list for element in innerList]
             response=HttpResponse(json.dumps(table_list), status=status.HTTP_200_OK)
             response.set_cookie('conn_details',cookie_data)
-            response.set_cookie('conn_details222',cookie_data)
-            response.set_cookie('conn_details22333',cookie_data)
+            # response.set_cookie('conn_details222',cookie_data)
+            # response.set_cookie('conn_details22333',cookie_data)
 
 
             return  response
@@ -1570,7 +1570,7 @@ class DataBaseViewSet(GenericViewSet):
             
 
     @action(detail=False, methods=["post"])
-    def database_make_xls(self,request):
+    def database_xls_file(self,request):
         conn_details = request.COOKIES.get('conn_details',request.data)
         config = ast.literal_eval(conn_details)
         
