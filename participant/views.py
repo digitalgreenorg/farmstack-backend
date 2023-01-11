@@ -1639,11 +1639,11 @@ class DataBaseViewSet(GenericViewSet):
             # import pdb; pdb.set_trace()
             dataset_name=request.data["dataset_name"]
             print(dataset_name)
-            db_type=request.COOKIES.get('database_type',request.data)
+            source=request.data['source']
 
             file_name=request.data["file_name"]
 
-            file_path=file_ops.create_directory(settings.TEMP_DATASET_URL,[dataset_name,db_type])
+            file_path=file_ops.create_directory(settings.TEMP_DATASET_URL,[dataset_name,source])
 
             df = pd.read_sql(query,mydb)
             print(df)
