@@ -63,6 +63,7 @@ def create_directory(directory: str, names: list):
     ``name`` (list): list of nested directory names to create inside directory
     """
     try:
+        print(os.path.join(directory, names[0]))
         if names:
             formatted_names = [re.sub(r'\s+', ' ', name) for name in names]
             directory = os.path.join(directory, *formatted_names, "", "")
@@ -70,6 +71,7 @@ def create_directory(directory: str, names: list):
         if not os.path.exists(directory):
             os.makedirs(directory)
             LOGGER.info(f"Creating directory: {directory}")
+        print("DIRE", directory)
         return directory
     except Exception as error:
         LOGGER.error(error, exc_info=True)

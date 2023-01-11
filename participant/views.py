@@ -8,10 +8,11 @@ import time
 from datetime import datetime
 from sre_compile import isstring
 from struct import unpack
-
+import datetime
 import mysql.connector
 import pandas as pd
 import requests
+from django.conf import settings
 from django.db.models import Q
 from django.db.models.functions import Lower
 from django.shortcuts import render
@@ -1465,7 +1466,19 @@ class ParticipantProjectViewSet(GenericViewSet):
         self.perform_create(project)
         return Response(status=status.HTTP_204_NO_CONTENT)
 
-
+def update_cookies(response):
+    max_age = 1 * 24 * 60 * 60
+    expires = datetime.datetime.strftime(
+        datetime.datetime.utcnow() + datetime.timedelta(seconds=max_age),
+        "%a, %d-%b-%Y %H:%M:%S GMT",
+        )
+    response.set_cookie("dummy","dummy",
+    max_age=max_age,
+    expires=expires,
+    secure=False,
+    )
+    # response.set_cookie( domain=os.environ.get(PUBLIC_DOMAIN))
+    return response
 
 
 class DataBaseViewSet(GenericViewSet):
@@ -1503,20 +1516,11 @@ class DataBaseViewSet(GenericViewSet):
             # print(table_list)
             #flatten
             table_list = [element for innerList in table_list for element in innerList]
+            
             response=HttpResponse(json.dumps(table_list), status=status.HTTP_200_OK)
-            max_age = 1 * 24 * 60 * 60
-            expires = datetime.datetime.strftime(
-                datetime.datetime.utcnow() + datetime.timedelta(seconds=max_age),
-                "%a, %d-%b-%Y %H:%M:%S GMT",
-                )
-            response.set_cookie(
-            "db_name",
-            db_name,
-            max_age=max_age,
-            expires=expires,
-            secure=False,
-            )
-            response.set_cookie( domain=os.environ.get(PUBLIC_DOMAIN))
+            response=update_cookies(response)
+            
+            
             response.set_cookie('conn_details', cookie_data)
             return  response
         # except Exception as e:
@@ -1623,6 +1627,9 @@ class DataBaseViewSet(GenericViewSet):
             df = pd.read_sql(query,mydb)
             print(df)
             xls_file=df.to_excel("xls_file.xls")
+            from utils import file_operations as file_ops
+
+            file_ops.create_directory(settings.DATASET_FILES_URL,["file"])
 
 
             return HttpResponse(result, status=status.HTTP_200_OK)
