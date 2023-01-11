@@ -1478,7 +1478,7 @@ def update_cookies(key,value,response):
     expires=expires,
     secure=False,
     )
-    # response.set_cookie( domain=os.environ.get(PUBLIC_DOMAIN))
+    response.set_cookie( domain=os.environ.get(PUBLIC_DOMAIN))
     return response
 
 
