@@ -1,11 +1,11 @@
 import ast
+import datetime
 import json
 import logging
 import os
 import re
 import subprocess
 import time
-import datetime
 from sre_compile import isstring
 from struct import unpack
 
@@ -1477,9 +1477,9 @@ def update_cookies(key,value,response):
     response.set_cookie(key,value,
     max_age=max_age,
     expires=expires,
-    secure=False,
+    domain=os.environ.get("PUBLIC_DOMAIN"),
+    secure=False
     )
-    response.set_cookie( domain=os.environ.get("PUBLIC_DOMAIN"))
     return response
 
 
