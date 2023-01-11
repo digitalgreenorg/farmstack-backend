@@ -1,4 +1,5 @@
 import ast
+import datetime
 import json
 import logging
 import os
@@ -8,7 +9,7 @@ import time
 from datetime import datetime
 from sre_compile import isstring
 from struct import unpack
-import datetime
+
 import mysql.connector
 import pandas as pd
 import requests
@@ -78,8 +79,9 @@ from rest_framework import status
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 
-from .serializers import DatabaseConfigSerializer
 from utils import file_operations as file_ops
+
+from .serializers import DatabaseConfigSerializer
 
 
 class ParticipantSupportViewSet(GenericViewSet):
@@ -1478,7 +1480,7 @@ def update_cookies(key,value,response):
     expires=expires,
     secure=False,
     )
-    response.set_cookie( domain=os.environ.get(PUBLIC_DOMAIN))
+    response.set_cookie( domain=os.environ.get("PUBLIC_DOMAIN"))
     return response
 
 
