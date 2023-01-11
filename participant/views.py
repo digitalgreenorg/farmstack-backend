@@ -1504,9 +1504,20 @@ class DataBaseViewSet(GenericViewSet):
             #flatten
             table_list = [element for innerList in table_list for element in innerList]
             response=HttpResponse(json.dumps(table_list), status=status.HTTP_200_OK)
-            response.set_cookie('conn_details',cookie_data)
-            # response.set_cookie('conn_details222',cookie_data)
-            # response.set_cookie('conn_details22333',cookie_data)
+            max_age = 1 * 24 * 60 * 60
+            expires = datetime.datetime.strftime(
+                datetime.datetime.utcnow() + datetime.timedelta(seconds=max_age),
+                "%a, %d-%b-%Y %H:%M:%S GMT",
+                )
+            response.set_cookie(
+            "db_name",
+            db_name,
+            max_age=max_age,
+            expires=expires,
+            secure=False,
+            )
+            response.set_cookie( domain=os.environ.get(PUBLIC_DOMAIN))
+            response.set_cookie('conn_details', cookie_data)
             return  response
         # except Exception as e:
         except mysql.connector.Error as err:
