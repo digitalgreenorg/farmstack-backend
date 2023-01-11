@@ -1540,6 +1540,25 @@ class DatasetV2ViewSet(GenericViewSet):
             LOGGER.error(error, exc_info=True)
         return Response(status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
+    @action(detail=False, methods=["get", "put"])
+    def category(self, request, *args, **kwargs):
+        """
+        ``GET`` method: GET method to retrieve the dataset category & sub categories from JSON file obj
+        ``PUT`` method: PUT method to edit the dataset categories and/or sub categories and write it to JSON file obj. [see here][ref]
+
+        **Endpoint**
+        [ref]: /datahub/dataset/v2/category/
+        """
+        if request.method == "GET":
+            try:
+                file = open(Constants.CATEGORIES_FILE, "r")
+                data = json.loads(file.read())
+                file.close()
+                return Response(data, status=status.HTTP_200_OK)
+            except Exception as error:
+                LOGGER.error(error, exc_info=True)
+
+
     def create(self, request, *args, **kwargs):
         """
         ``POST`` method Endpoint: create action to save the Dataset's Meta data
