@@ -79,6 +79,7 @@ from rest_framework.decorators import api_view
 from rest_framework.response import Response
 
 from .serializers import DatabaseConfigSerializer
+from utils import file_operations as file_ops
 
 
 class ParticipantSupportViewSet(GenericViewSet):
@@ -1477,7 +1478,7 @@ def update_cookies(response):
     expires=expires,
     secure=False,
     )
-    # response.set_cookie( domain=os.environ.get(PUBLIC_DOMAIN))
+    response.set_cookie( domain=os.environ.get(PUBLIC_DOMAIN))
     return response
 
 
@@ -1495,6 +1496,10 @@ class DataBaseViewSet(GenericViewSet):
 
     @action(detail=False, methods=["post"])
     def database_config(self,request):
+        '''Get the database login details
+        test the connection
+        if valid connection
+        return the table names in the database'''
         serializer = DatabaseConfigSerializer(data=request.data)
         # print(request.data)
         serializer.is_valid(raise_exception=True)
@@ -1522,6 +1527,7 @@ class DataBaseViewSet(GenericViewSet):
             
             
             response.set_cookie('conn_details', cookie_data)
+            response.set_cookie('database_type',request.data['database_type'])
             return  response
         # except Exception as e:
         except mysql.connector.Error as err:
@@ -1542,8 +1548,11 @@ class DataBaseViewSet(GenericViewSet):
 
     @action(detail=False, methods=["post"])
     def database_col_names(self,request):
+        ''' From cookies get the database details
+        Get the table name from request
+        Fetch the column names of the table
+        Return the column names of the table '''
         conn_details = request.COOKIES.get('conn_details',request.data)
-        print(conn_details)
         config = ast.literal_eval(conn_details)
 
             # Return an error message if the connection fails
@@ -1587,11 +1596,15 @@ class DataBaseViewSet(GenericViewSet):
 
     @action(detail=False, methods=["post"])
     def database_xls_file(self,request):
+        '''Get the databse login details from cookies
+        Get the dataset name and file name from request body'''
         
         conn_details = request.COOKIES.get('conn_details',request.data)
 
         t_name=request.COOKIES.get('tl_name',request.data)
+        db_type=request.COOKIES.get('database_type',request.data)
         print(t_name)
+        print(db_type)
 
         config = ast.literal_eval(conn_details)
         serializer = DatabaseConfigSerializer(data=config)
@@ -1624,15 +1637,21 @@ class DataBaseViewSet(GenericViewSet):
 
             result = mycursor.fetchall()
             # import pdb; pdb.set_trace()
+            dataset_name=request.data["dataset_name"]
+            print(dataset_name)
+            db_type=request.COOKIES.get('database_type',request.data)
+
+            file_name=request.data["file_name"]
+
+            file_path=file_ops.create_directory(settings.TEMP_DATASET_URL,[dataset_name,db_type])
+
             df = pd.read_sql(query,mydb)
             print(df)
-            xls_file=df.to_excel("xls_file.xls")
-            from utils import file_operations as file_ops
+            xls_file=df.to_excel(file_path+"/demo1.xls")
+                    
+            result=os.listdir(file_path) #list of all the files in the directory
 
-            file_ops.create_directory(settings.DATASET_FILES_URL,["file"])
-
-
-            return HttpResponse(result, status=status.HTTP_200_OK)
+            return HttpResponse(json.dumps(result),status=status.HTTP_200_OK)
 
         # except Exception as e:
             # print("Connected to database")
