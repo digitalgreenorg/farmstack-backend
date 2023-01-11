@@ -86,7 +86,6 @@ def file_save(source_file, file_name: str, directory: str):
     ``file_name`` (str): file name to be saved
     ``destination`` (str): directory or file path where to save the file
     """
-    print("XLS:::::", source_file, type(source_file))
     try:
         with open(directory+file_name, "wb+") as dest_file:
             for chunk in source_file.chunks():

@@ -1467,18 +1467,18 @@ class ParticipantProjectViewSet(GenericViewSet):
         self.perform_create(project)
         return Response(status=status.HTTP_204_NO_CONTENT)
 
-def update_cookies(response):
+def update_cookies(key,value,response):
     max_age = 1 * 24 * 60 * 60
     expires = datetime.datetime.strftime(
         datetime.datetime.utcnow() + datetime.timedelta(seconds=max_age),
         "%a, %d-%b-%Y %H:%M:%S GMT",
         )
-    response.set_cookie("dummy","dummy",
+    response.set_cookie(key,value,
     max_age=max_age,
     expires=expires,
     secure=False,
     )
-    response.set_cookie( domain=os.environ.get(PUBLIC_DOMAIN))
+    # response.set_cookie( domain=os.environ.get(PUBLIC_DOMAIN))
     return response
 
 
@@ -1492,11 +1492,11 @@ class DataBaseViewSet(GenericViewSet):
     queryset = Project
     pagination_class = CustomPagination
 
-    # permission_classes=[IsAuthenticated]
+    permission_classes=[IsAuthenticated]
 
     @action(detail=False, methods=["post"])
     def database_config(self,request):
-        '''Get the database login details
+        '''Get the database login details from reuest
         test the connection
         if valid connection
         return the table names in the database'''
@@ -1512,7 +1512,7 @@ class DataBaseViewSet(GenericViewSet):
 
             mycursor = mydb.cursor()
 
-            db_name=request.data['database']
+            db_name=request.data.get('database')
             
             mycursor.execute("use "+db_name+";")
             mycursor.execute("show tables;")
@@ -1523,29 +1523,20 @@ class DataBaseViewSet(GenericViewSet):
             table_list = [element for innerList in table_list for element in innerList]
             
             response=HttpResponse(json.dumps(table_list), status=status.HTTP_200_OK)
-            response=update_cookies(response)
-            
-            
-            response.set_cookie('conn_details', cookie_data)
-            response.set_cookie('database_type',request.data['database_type'])
+            response=update_cookies("conn_details",cookie_data,response)
             return  response
         # except Exception as e:
         except mysql.connector.Error as err:
-        # print(err)
+            # print(err)
             if err.errno == mysql.connector.errorcode.ER_ACCESS_DENIED_ERROR:
-                msg="Incorrect username or password"
-                return Response({"username": [msg], "password": [msg]},status=status.HTTP_400_BAD_REQUEST)
-            elif err.errno == mysql.connector.errorcode.ER_DATABASE_NAME:
-                msg="Database does not exist"
-                return Response({"database":[msg]}, status=status.HTTP_400_BAD_REQUEST)
-    
-            msg=str(err)
-            print(err)
-        # Return an error message if the connection fails
-            return Response({'error': [msg]}, status=status.HTTP_400_BAD_REQUEST)
-            
+                return Response({"username": ["Incorrect username or password"], "password": [msg]},status=status.HTTP_400_BAD_REQUEST)
+            elif err.errno == mysql.connector.errorcode.ER_NO_SUCH_TABLE:
+                return Response({"table":["Table does not exist"]}, status=status.HTTP_400_BAD_REQUEST)
+            # Return an error message if the connection fails
+            return Response({'error': [str(err)]}, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            return Response(str(e),status=status.HTTP_400_BAD_REQUEST)
             # Return a success message if the connection succeeds
-
     @action(detail=False, methods=["post"])
     def database_col_names(self,request):
         ''' From cookies get the database details
@@ -1564,7 +1555,7 @@ class DataBaseViewSet(GenericViewSet):
             mycursor = mydb.cursor()
 
             db_name=config['database']
-            table_name=request.data['table_name']
+            table_name=request.data.get('table_name')
 
             
             mycursor.execute("use "+db_name+";")
@@ -1574,7 +1565,6 @@ class DataBaseViewSet(GenericViewSet):
             # import pdb; pdb.set_trace()
             cols=[column_details[0] for column_details in col_list]
             response= HttpResponse(json.dumps(cols), status=status.HTTP_200_OK)
-            response.set_cookie('tl_name',table_name)
             return response
 
         # except Exception as e:
@@ -1582,29 +1572,25 @@ class DataBaseViewSet(GenericViewSet):
         except mysql.connector.Error as err:
             # print(err)
             if err.errno == mysql.connector.errorcode.ER_ACCESS_DENIED_ERROR:
-                msg="Incorrect username or password"
-                return Response({"username": [msg], "password": [msg]},status=status.HTTP_400_BAD_REQUEST)
+                return Response({"username": ["Incorrect username or password"], "password": [msg]},status=status.HTTP_400_BAD_REQUEST)
             elif err.errno == mysql.connector.errorcode.ER_NO_SUCH_TABLE:
-                msg="Table does not exist"
-                return Response({"table":[msg]}, status=status.HTTP_400_BAD_REQUEST)
-        
-        msg=str(err)
+                return Response({"table":["Table does not exist"]}, status=status.HTTP_400_BAD_REQUEST)
             # Return an error message if the connection fails
-        return Response({'error': [msg]}, status=status.HTTP_400_BAD_REQUEST)
-            # Return a success message if the connection succeeds
+            return Response({'error': [str(err)]}, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            return Response(str(e),status=status.HTTP_400_BAD_REQUEST)
+    
+
             
 
     @action(detail=False, methods=["post"])
     def database_xls_file(self,request):
         '''Get the databse login details from cookies
-        Get the dataset name and file name from request body'''
+        Get the table name, column list, dataset name and file name from request body'''
         
         conn_details = request.COOKIES.get('conn_details',request.data)
 
-        t_name=request.COOKIES.get('tl_name',request.data)
-        db_type=request.COOKIES.get('database_type',request.data)
-        print(t_name)
-        print(db_type)
+        t_name=request.data.get('table_name')
 
         config = ast.literal_eval(conn_details)
         serializer = DatabaseConfigSerializer(data=config)
@@ -1621,8 +1607,7 @@ class DataBaseViewSet(GenericViewSet):
 
             db_name=config['database']
             # table_name=request.data['tl_name']
-            col_names=request.data['col']
-            print(type(col_names))
+            col_names=request.data.get('col')
             print(col_names)
 
             
@@ -1630,24 +1615,21 @@ class DataBaseViewSet(GenericViewSet):
             # mycursor.execute("SHOW COLUMNS FROM " +db_name +"." +table_name+";")
             col_names=ast.literal_eval(col_names)
             col_names= ', '.join(col_names)
-            print(col_names)
             query="select "+ col_names+" from "+t_name+" ;"
-            print(query)
             mycursor.execute(query)
 
             result = mycursor.fetchall()
             # import pdb; pdb.set_trace()
-            dataset_name=request.data["dataset_name"]
-            print(dataset_name)
-            source=request.data['source']
+            dataset_name=request.data.get("dataset_name")
+            # print(dataset_name)
+            source=request.data.get('source')
 
-            file_name=request.data["file_name"]
+            file_name=request.data.get("file_name")
 
             file_path=file_ops.create_directory(settings.TEMP_DATASET_URL,[dataset_name,source])
 
             df = pd.read_sql(query,mydb)
-            print(df)
-            xls_file=df.to_excel(file_path+"/demo1.xls")
+            xls_file=df.to_excel(file_path+"/"+file_name+".xls")
                     
             result=os.listdir(file_path) #list of all the files in the directory
 
@@ -1658,14 +1640,14 @@ class DataBaseViewSet(GenericViewSet):
         except mysql.connector.Error as err:
             # print(err)
             if err.errno == mysql.connector.errorcode.ER_ACCESS_DENIED_ERROR:
-                msg="Incorrect username or password"
-                return Response({"username": [msg], "password": [msg]},status=status.HTTP_400_BAD_REQUEST)
+                return Response({"username": ["Incorrect username or password"], "password": ["Incorrect username or password"]},status=status.HTTP_400_BAD_REQUEST)
             elif err.errno == mysql.connector.errorcode.ER_NO_SUCH_TABLE:
-                msg="Table does not exist"
-                return Response({"table":[msg]}, status=status.HTTP_400_BAD_REQUEST)
+                return Response({"table":["Table does not exist"]}, status=status.HTTP_400_BAD_REQUEST)
         
-            msg=str(err)
+            
             # Return an error message if the connection fails
-            return Response({'error': [msg]}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({'error': [str(err)]}, status=status.HTTP_400_BAD_REQUEST)
             # Return a success message if the connection succeeds
+        except Exception as e:
+            return Response(str(e),status=status.HTTP_400_BAD_REQUEST)
             
