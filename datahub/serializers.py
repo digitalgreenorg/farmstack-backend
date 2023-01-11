@@ -1,9 +1,9 @@
-import logging
+import logging, os, re
 
-from rest_framework import serializers
-
-from django.core.exceptions import ValidationError
+from django.conf import settings
+from django.core.exceptions import ValidationError, ObjectDoesNotExist
 from django.utils.translation import gettext as _
+from rest_framework import serializers
 
 from accounts import models
 from accounts.models import User, UserRole
@@ -13,13 +13,24 @@ from accounts.serializers import (
     UserSerializer,
 )
 from core.constants import Constants
-from datahub.models import DatahubDocuments, Datasets, Organization, UserOrganizationMap
+from datahub.models import (
+    DatahubDocuments,
+    Datasets,
+    Organization,
+    UserOrganizationMap,
+    DatasetV2,
+    DatasetV2File,
+)
 from participant.models import Connectors, SupportTicket
 from utils.validators import (
     validate_document_type,
     validate_file_size,
     validate_image_type,
+    validate_dataset_type,
+    validate_dataset_size,
 )
+from utils.file_operations import create_directory, move_directory
+from utils.string_functions import check_special_chars
 
 LOGGER = logging.getLogger(__name__)
 
@@ -436,3 +447,158 @@ class RecentDatasetListSerializer(serializers.ModelSerializer):
             LOGGER.error(error, exc_info=True)
 
         return None
+
+
+class DatasetV2TempFileSerializer(serializers.Serializer):
+    """
+    Serializer for DatasetV2File model to serialize dataset files.
+    Following are the fields required by the serializer:
+        `datasets` (Files, mandatory): Multi upload Dataset files
+    """
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        """Remove fields based on the request type"""
+        if 'context' in kwargs:
+            if 'request_method' in kwargs['context']:
+                request_method = kwargs.get("context").get("request_method")
+                if request_method == "DELETE":
+                    # remove `datasets` fields as `DELETE` method only requires `dataset_name` field
+                    self.fields.pop("datasets")
+                elif request_method == "POST":
+                    # remove `file_name` field as `POST` method only requires `dataset_name`, `datasets` & `source` fields
+                    self.fields.pop("file_name")
+
+    def validate_datasets(self, files):
+        """
+        Validator function to check for dataset file types & dataset file size (Constants.DATASET_MAX_FILE_SIZE) in MB.
+
+        **Parameters**
+        ``files`` ([Files]): list of files to validate the file type included in Constants.DATASET_FILE_TYPES.
+        """
+        for file in files:
+            if not validate_dataset_type(file, Constants.DATASET_FILE_TYPES):
+                raise ValidationError(
+                    f"Document type not supported. Only following documents are allowed: {Constants.DATASET_FILE_TYPES}"
+                )
+
+            if not validate_dataset_size(file, Constants.DATASET_MAX_FILE_SIZE):
+                raise ValidationError(
+                    f"You cannot upload/export file size more than {Constants.DATASET_MAX_FILE_SIZE}MB."
+                )
+
+        return files
+
+    def validate_dataset_name(self, name):
+        """
+        Validator function to check if the dataset name includes special characters.
+
+        **Parameters**
+        ``name`` (str): dataset name to validate
+        """
+        if check_special_chars(name):
+            raise ValidationError("dataset name cannot include special characters.")
+        name = re.sub(r'\s+', ' ', name)
+        return name
+
+    dataset_name = serializers.CharField(allow_null=False)
+    datasets = serializers.ListField(
+        child=serializers.FileField(use_url=False, allow_empty_file=False),
+        write_only=True,
+    )
+    file_name = serializers.CharField(allow_null=False)
+    source = serializers.CharField(allow_null=False)
+
+
+class DatasetV2FileSerializer(serializers.ModelSerializer):
+    """
+    Serializer for DatasetV2File model to serialize dataset files.
+    Following are the fields required by the serializer:
+        `id` (int): auto-generated Identifier
+        `dataset` (DatasetV2, FK): DatasetV2 reference object
+        `file` (File, mandatory): Dataset file
+    """
+
+    class Meta:
+        model = DatasetV2File
+        fields = ["id", "dataset", "file", "source"]
+
+
+class DatasetV2Serializer(serializers.ModelSerializer):
+    """
+    Serializer for DatasetV2 model to serialize the Meta Data of Datasets.
+    Following are the fields required by the serializer:
+        `id` (UUID): auto-generated Identifier
+        `name` (String, unique, mandatory): Dataset name
+        `user_map` (UUID, mandatory): User Organization map ID, related to :model:`datahub_userorganizationmap` (UserOrganizationMap)
+        `description` (Text): Dataset description
+        `category` (JSON, mandatory): Category as JSON object
+        `geography` (String): Geography of the dataset
+        `data_capture_start` (DateTime): Start DateTime of the dataset captured
+        `data_capture_end` (DateTime): End DateTime of the dataset captured
+        `datasets` (Files, FK, read only): Dataset files stored
+        `upload_datasets` (List, mandatory): List of dataset files to be uploaded
+    """
+
+    datasets = DatasetV2FileSerializer(many=True, read_only=True)
+    upload_datasets = serializers.ListField(
+        child=serializers.FileField(use_url=False, allow_empty_file=False),
+        write_only=True,
+        required=False
+    )
+
+    def validate_name(self, name):
+        if check_special_chars(name):
+            raise ValidationError("dataset name cannot include special characters.")
+        name = re.sub(r'\s+', ' ', name)
+        return name
+
+    class Meta:
+        model = DatasetV2
+        fields = [
+            "id",
+            "name",
+            "user_map",
+            "description",
+            "category",
+            "geography",
+            "constantly_update",
+            "data_capture_start",
+            "data_capture_end",
+            "datasets",
+            "upload_datasets",
+        ]
+
+    def create(self, validated_data):
+        """
+        Override the create method to save meta data (DatasetV2) with multiple dataset files on to the referenced model (DatasetV2File).
+
+        **Parameters**
+        ``validated_data`` (Dict): Validated data from the serializer
+
+        **Returns**
+        ``dataset_obj`` (DatasetV2 instance): Save & return the dataset
+        """
+        # create meta dataset obj
+        # uploaded_files = validated_data.pop("upload_datasets")
+        file_paths = {}
+
+        try:
+
+            directory_created = move_directory(os.path.join(settings.TEMP_DATASET_URL, validated_data.get("name")), settings.DATASET_FILES_URL)
+            to_find = [Constants.SOURCE_FILE_TYPE, Constants.SOURCE_MYSQL_FILE_TYPE, Constants.SOURCE_POSTGRESQL_FILE_TYPE]
+            for file in to_find:
+                direct = os.path.join(directory_created, file)
+                if os.path.exists(direct):
+                    file_paths = {os.path.join(direct, f): file for f in os.listdir(direct) if os.path.isfile(os.path.join(direct, f))}
+
+            if file_paths:
+                dataset_obj = DatasetV2.objects.create(**validated_data)
+                for key,value in file_paths.items():
+                    DatasetV2File.objects.create(dataset=dataset_obj, file=key, source=value)
+                return dataset_obj
+                # return super().create(validated_data)
+        except Exception as error:
+            LOGGER.error(error, exc_info=True)
+            raise ObjectDoesNotExist(f"Dataset files are missing. Failed to create meta dataset.")
