@@ -1,12 +1,11 @@
 import ast
-import datetime
 import json
 import logging
 import os
 import re
 import subprocess
 import time
-from datetime import datetime
+import datetime
 from sre_compile import isstring
 from struct import unpack
 
@@ -1610,8 +1609,6 @@ class DataBaseViewSet(GenericViewSet):
             db_name=config['database']
             # table_name=request.data['tl_name']
             col_names=request.data.get('col')
-            print(col_names)
-
             
             mycursor.execute("use "+db_name+";")
             # mycursor.execute("SHOW COLUMNS FROM " +db_name +"." +table_name+";")
