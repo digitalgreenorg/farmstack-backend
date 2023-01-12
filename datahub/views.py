@@ -47,6 +47,7 @@ from datahub.models import (
     DatahubDocuments,
     Datasets,
     DatasetV2,
+    DatasetV2File,
     Organization,
     UserOrganizationMap,
 )
@@ -1465,9 +1466,9 @@ class DatasetV2ViewSet(GenericViewSet):
     @action(detail=False, methods=["post", "delete"])
     def temp_datasets(self, request, *args, **kwargs):
         """
-        ``POST`` method Endpoint: POST method to save the datasets in a temporary location with 
+        ``POST`` method Endpoint: POST method to save the datasets in a temporary location with
             under a newly created dataset name & source_file directory.
-        ``DELETE`` method Endpoint: DELETE method to delete the dataset named directory containing 
+        ``DELETE`` method Endpoint: DELETE method to delete the dataset named directory containing
             the datasets. [see here][ref]
 
         **Endpoint**
@@ -1482,21 +1483,25 @@ class DatasetV2ViewSet(GenericViewSet):
                     Create below directories with dataset files uploaded
                     /temp/<dataset-name>/file/<files>
                 """
-                serializer = DatasetV2TempFileSerializer(data=request.data, context={"request_method": request.method})
+                serializer = DatasetV2TempFileSerializer(
+                    data=request.data, context={"request_method": request.method}
+                )
                 if not serializer.is_valid():
                     return Response(
                         serializer.errors, status=status.HTTP_400_BAD_REQUEST
                     )
 
-                directory_created = file_operations.create_directory(settings.TEMP_DATASET_URL, 
-                                                                     [serializer.data.get("dataset_name"), 
-                                                                      serializer.data.get("source")])
+                directory_created = file_operations.create_directory(
+                    settings.TEMP_DATASET_URL,
+                    [
+                        serializer.data.get("dataset_name"),
+                        serializer.data.get("source"),
+                    ],
+                )
 
                 files_saved = []
                 for file in files:
-                    file_operations.file_save(
-                        file, file.name, directory_created
-                    )
+                    file_operations.file_save(file, file.name, directory_created)
                     files_saved.append(file.name)
 
                 data = {"datasets": files_saved}
@@ -1505,33 +1510,43 @@ class DatasetV2ViewSet(GenericViewSet):
 
             elif request.method == "DELETE":
                 """
-                Delete the temporary directory containing datasets created by the POST endpoint 
+                Delete the temporary directory containing datasets created by the POST endpoint
                 with the dataset files uploaded as source.
                 ``Example:``
                     Delete the below directory:
                     /temp/<dataset-name>/
                 """
-                serializer = DatasetV2TempFileSerializer(data=request.data, context={"request_method": request.method, "query_params": request.query_params.get("delete_dir")})
+                serializer = DatasetV2TempFileSerializer(
+                    data=request.data,
+                    context={
+                        "request_method": request.method,
+                        "query_params": request.query_params.get("delete_dir"),
+                    },
+                )
 
                 if not serializer.is_valid():
                     return Response(
                         serializer.errors, status=status.HTTP_400_BAD_REQUEST
                     )
 
-                directory = string_functions.format_dir_name(settings.TEMP_DATASET_URL, [request.data.get('dataset_name')])
+                directory = string_functions.format_dir_name(
+                    settings.TEMP_DATASET_URL, [request.data.get("dataset_name")]
+                )
 
                 """Delete directory temp directory as requested"""
                 if request.query_params.get("delete_dir") and os.path.exists(directory):
                     shutil.rmtree(directory)
                     LOGGER.info(f"Deleting directory: {directory}")
-                    data = {request.data.get('dataset_name'): "Dataset not created"}
+                    data = {request.data.get("dataset_name"): "Dataset not created"}
                     return Response(data, status=status.HTTP_204_NO_CONTENT)
 
                 elif not request.query_params.get("delete_dir"):
                     """Delete a single file as requested"""
-                    nested_dir = os.path.join(directory, request.data.get('source'))
+                    nested_dir = os.path.join(directory, request.data.get("source"))
                     for file in os.listdir(nested_dir):
-                        if os.path.isfile(os.path.join(nested_dir, file)) and file == request.data.get('file_name'):
+                        if os.path.isfile(
+                            os.path.join(nested_dir, file)
+                        ) and file == request.data.get("file_name"):
                             os.remove(os.path.join(nested_dir, file))
                             LOGGER.info(f"Deleting file: {file}")
                             data = {file: "File deleted"}
@@ -1547,7 +1562,7 @@ class DatasetV2ViewSet(GenericViewSet):
     def category(self, request, *args, **kwargs):
         """
         ``GET`` method: GET method to retrieve the dataset category & sub categories from JSON file obj
-        ``POST`` method: POST method to create and/or edit the dataset categories & 
+        ``POST`` method: POST method to create and/or edit the dataset categories &
             sub categories and finally write it to JSON file obj. [see here][ref]
 
         **Endpoint**
@@ -1561,7 +1576,9 @@ class DatasetV2ViewSet(GenericViewSet):
                 return Response(data, status=status.HTTP_200_OK)
             except Exception as error:
                 LOGGER.error(error, exc_info=True)
-                raise custom_exceptions.NotFoundException(detail=f"Categories not found")
+                raise custom_exceptions.NotFoundException(
+                    detail="Categories not found"
+                )
         elif request.method == "POST":
             try:
                 data = request.data
@@ -1601,9 +1618,6 @@ class DatasetV2ViewSet(GenericViewSet):
             serializer = self.get_serializer(page, many=True)
             return self.get_paginated_response(serializer.data)
 
-
-
-
     def retrieve(self, request, pk=None, *args, **kwargs):
         """
         ``GET`` method Endpoint: retrieve action for the detail view of Dataset via GET request. [see here][ref].
@@ -1612,15 +1626,5 @@ class DatasetV2ViewSet(GenericViewSet):
         [ref]: /datahub/dataset/v2/<id>/
         """
         obj = self.get_object()
-        dataset_file_obj = DatasetV2File.objects.filter(dataset_id=obj.id)
-        serializer_files = DatasetV2FileSerializer(data=dataset_file_obj, many=True)
-        serializer_files.is_valid(raise_exception=True)
-        data = list(serializer_files.data)
-        print("serializer", data, type(data))
-        for file in data:
-            # print("FILE PATH: ", file.file)
-            file["content"] = read_contents_from_csv_or_xlsx_file(str(file.file))
-            print(file)
-
         serializer = self.get_serializer(obj)
         return Response(serializer.data, status=status.HTTP_200_OK)

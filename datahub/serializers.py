@@ -3,7 +3,7 @@ import logging, os, re
 from django.conf import settings
 from django.core.exceptions import ValidationError, ObjectDoesNotExist
 from django.utils.translation import gettext as _
-from rest_framework import serializers
+from rest_framework import serializers, status
 
 from accounts import models
 from accounts.models import User, UserRole
@@ -31,6 +31,7 @@ from utils.validators import (
 )
 from utils.file_operations import create_directory, move_directory
 from utils.string_functions import check_special_chars
+from utils.custom_exceptions import NotFoundException
 
 LOGGER = logging.getLogger(__name__)
 
@@ -628,9 +629,10 @@ class DatasetV2Serializer(serializers.ModelSerializer):
             if file_paths:
                 dataset_obj = DatasetV2.objects.create(**validated_data)
                 for key,value in file_paths.items():
-                    DatasetV2File.objects.create(dataset=dataset_obj, file=key, source=value)
+                    DatasetV2File.objects.create(dataset=dataset_obj, file=key.replace("media/", ''), source=value)
                 return dataset_obj
                 # return super().create(validated_data)
         except Exception as error:
             LOGGER.error(error, exc_info=True)
-            raise ObjectDoesNotExist(f"Dataset files are missing. Failed to create meta dataset.")
+            raise NotFoundException(detail="Dataset files are not uploaded or missing. Failed to create meta dataset.",
+                                    status_code=status.HTTP_400_BAD_REQUEST)
