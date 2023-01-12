@@ -1620,11 +1620,23 @@ class DatasetV2ViewSet(GenericViewSet):
 
     def retrieve(self, request, pk=None, *args, **kwargs):
         """
-        ``GET`` method Endpoint: retrieve action for the detail view of Dataset via GET request. [see here][ref].
+        ``GET`` method Endpoint: retrieve action for the detail view of Dataset via GET request
+            Returns dataset object view with content of XLX/XLSX file and file URLS. [see here][ref].
 
         **Endpoint**
         [ref]: /datahub/dataset/v2/<id>/
         """
         obj = self.get_object()
-        serializer = self.get_serializer(obj)
-        return Response(serializer.data, status=status.HTTP_200_OK)
+        serializer = self.get_serializer(obj).data
+
+        dataset_file_obj = DatasetV2File.objects.filter(dataset_id=obj.id)
+        data = []
+        for file in dataset_file_obj:
+            path_ = os.path.join("/media/", str(file.file))
+            file_path = {}
+            file_path["content"] = read_contents_from_csv_or_xlsx_file(path_)
+            file_path["file"] = path_
+            data.append(file_path)
+
+        serializer["datasets"] = data
+        return Response(serializer, status=status.HTTP_200_OK)
