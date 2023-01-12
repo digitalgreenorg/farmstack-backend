@@ -1,8 +1,10 @@
 import json
 import logging
 import os
-import shutil, re
+import re
+import shutil
 from calendar import c
+
 import django
 import pandas as pd
 from accounts.models import User, UserRole
@@ -39,20 +41,22 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.viewsets import GenericViewSet, ViewSet
 from uritemplate import partial
-from utils import file_operations, string_functions,  validators, custom_exceptions
+from utils import custom_exceptions, file_operations, string_functions, validators
 
 from datahub.models import (
     DatahubDocuments,
     Datasets,
+    DatasetV2,
     Organization,
     UserOrganizationMap,
-    DatasetV2,
 )
 from datahub.serializers import (
     DatahubDatasetsSerializer,
     DatahubThemeSerializer,
     DatasetSerializer,
     DatasetUpdateSerializer,
+    DatasetV2Serializer,
+    DatasetV2TempFileSerializer,
     DropDocumentSerializer,
     OrganizationSerializer,
     ParticipantSerializer,
@@ -65,8 +69,6 @@ from datahub.serializers import (
     TeamMemberUpdateSerializer,
     UserOrganizationCreateSerializer,
     UserOrganizationMapSerializer,
-    DatasetV2Serializer,
-    DatasetV2TempFileSerializer,
 )
 
 LOGGER = logging.getLogger(__name__)
@@ -1600,6 +1602,8 @@ class DatasetV2ViewSet(GenericViewSet):
             return self.get_paginated_response(serializer.data)
 
 
+
+
     def retrieve(self, request, pk=None, *args, **kwargs):
         """
         ``GET`` method Endpoint: retrieve action for the detail view of Dataset via GET request. [see here][ref].
@@ -1608,5 +1612,15 @@ class DatasetV2ViewSet(GenericViewSet):
         [ref]: /datahub/dataset/v2/<id>/
         """
         obj = self.get_object()
+        dataset_file_obj = DatasetV2File.objects.filter(dataset_id=obj.id)
+        serializer_files = DatasetV2FileSerializer(data=dataset_file_obj, many=True)
+        serializer_files.is_valid(raise_exception=True)
+        data = list(serializer_files.data)
+        print("serializer", data, type(data))
+        for file in data:
+            # print("FILE PATH: ", file.file)
+            file["content"] = read_contents_from_csv_or_xlsx_file(str(file.file))
+            print(file)
+
         serializer = self.get_serializer(obj)
         return Response(serializer.data, status=status.HTTP_200_OK)
