@@ -1458,6 +1458,7 @@ class DatasetV2ViewSet(GenericViewSet):
 
     serializer_class = DatasetV2Serializer
     queryset = DatasetV2.objects.all()
+    pagination_class = CustomPagination
 
     @action(detail=False, methods=["post", "delete"])
     def temp_datasets(self, request, *args, **kwargs):
@@ -1592,7 +1593,12 @@ class DatasetV2ViewSet(GenericViewSet):
         """
         queryset = self.get_queryset()
         serializer = self.get_serializer(queryset, many=True)
-        return Response(serializer.data, status=status.HTTP_200_OK)
+        # return Response(serializer.data, status=status.HTTP_200_OK)
+        page = self.paginate_queryset(queryset)
+        if page is not None:
+            serializer = self.get_serializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
+
 
     def retrieve(self, request, pk=None, *args, **kwargs):
         """

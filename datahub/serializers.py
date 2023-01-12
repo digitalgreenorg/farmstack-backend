@@ -546,6 +546,31 @@ class DatasetV2Serializer(serializers.ModelSerializer):
         `upload_datasets` (List, mandatory): List of dataset files to be uploaded
     """
 
+    class OrganizationRetriveSerializer(serializers.ModelSerializer):
+        class Meta:
+            model = Organization
+            fields = [
+                "org_email",
+                "org_description",
+                "name",
+                "logo",
+                "phone_number",
+                "address",
+            ]
+
+    class UserSerializer(serializers.ModelSerializer):
+        class Meta:
+            model = User
+            fields = ["id", "first_name", "last_name", "email"]
+
+    organization = OrganizationRetriveSerializer(
+        allow_null=True, required=False, read_only=True, source="user_map.organization"
+    )
+
+    user = UserSerializer(
+        allow_null=True, required=False, read_only=True, source="user_map.user"
+            )
+
     datasets = DatasetV2FileSerializer(many=True, read_only=True)
     upload_datasets = serializers.ListField(
         child=serializers.FileField(use_url=False, allow_empty_file=False),
@@ -571,6 +596,8 @@ class DatasetV2Serializer(serializers.ModelSerializer):
             "constantly_update",
             "data_capture_start",
             "data_capture_end",
+            "organization",
+            "user",
             "datasets",
             "upload_datasets",
         ]
