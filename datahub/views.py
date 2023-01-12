@@ -39,7 +39,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.viewsets import GenericViewSet, ViewSet
 from uritemplate import partial
-from utils import file_operations, string_functions,  validators
+from utils import file_operations, string_functions,  validators, custom_exceptions
 
 from datahub.models import (
     DatahubDocuments,
@@ -1540,24 +1540,35 @@ class DatasetV2ViewSet(GenericViewSet):
             LOGGER.error(error, exc_info=True)
         return Response(status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-    @action(detail=False, methods=["get", "put"])
+    @action(detail=False, methods=["get", "post"])
     def category(self, request, *args, **kwargs):
         """
         ``GET`` method: GET method to retrieve the dataset category & sub categories from JSON file obj
-        ``PUT`` method: PUT method to edit the dataset categories and/or sub categories and write it to JSON file obj. [see here][ref]
+        ``POST`` method: POST method to create and/or edit the dataset categories & 
+            sub categories and finally write it to JSON file obj. [see here][ref]
 
         **Endpoint**
         [ref]: /datahub/dataset/v2/category/
+        [JSON File Object]: "/categories.json"
         """
         if request.method == "GET":
             try:
-                file = open(Constants.CATEGORIES_FILE, "r")
-                data = json.loads(file.read())
-                file.close()
+                with open(Constants.CATEGORIES_FILE, "r") as json_obj:
+                    data = json.loads(json_obj.read())
                 return Response(data, status=status.HTTP_200_OK)
             except Exception as error:
                 LOGGER.error(error, exc_info=True)
-
+                raise custom_exceptions.NotFoundException(detail=f"Categories not found")
+        elif request.method == "POST":
+            try:
+                data = request.data
+                with open(Constants.CATEGORIES_FILE, "w+", encoding="utf8") as json_obj:
+                    json.dump(data, json_obj, ensure_ascii=False)
+                    LOGGER.info(f"Updated Categories: {Constants.CATEGORIES_FILE}")
+                return Response(data, status=status.HTTP_201_CREATED)
+            except Exception as error:
+                LOGGER.error(error, exc_info=True)
+                raise exceptions.InternalServerError("Internal Server Error")
 
     def create(self, request, *args, **kwargs):
         """
