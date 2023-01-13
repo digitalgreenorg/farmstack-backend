@@ -1542,15 +1542,12 @@ class DatasetV2ViewSet(GenericViewSet):
 
                 elif not request.query_params.get("delete_dir"):
                     """Delete a single file as requested"""
-                    nested_dir = os.path.join(directory, request.data.get("source"))
-                    for file in os.listdir(nested_dir):
-                        if os.path.isfile(
-                            os.path.join(nested_dir, file)
-                        ) and file == request.data.get("file_name"):
-                            os.remove(os.path.join(nested_dir, file))
-                            LOGGER.info(f"Deleting file: {file}")
-                            data = {file: "File deleted"}
-                            return Response(data, status=status.HTTP_204_NO_CONTENT)
+                    file_name = request.data.get("file_name")
+                    file_path = os.path.join(directory, request.data.get("source"), file_name)
+                    os.remove(file_path)
+                    LOGGER.info(f"Deleting file: {file_name}")
+                    data = {file_name: "File deleted"}
+                    return Response(data, status=status.HTTP_204_NO_CONTENT)
 
                 return Response(status=status.HTTP_204_NO_CONTENT)
 
@@ -1611,12 +1608,13 @@ class DatasetV2ViewSet(GenericViewSet):
         [ref]: /datahub/dataset/v2/
         """
         queryset = self.get_queryset()
-        serializer = self.get_serializer(queryset, many=True)
+        # serializer = self.get_serializer(queryset, many=True)
         # return Response(serializer.data, status=status.HTTP_200_OK)
         page = self.paginate_queryset(queryset)
         if page is not None:
             serializer = self.get_serializer(page, many=True)
             return self.get_paginated_response(serializer.data)
+        return Response([], status=status.HTTP_404_NOT_FOUND)
 
     def retrieve(self, request, pk=None, *args, **kwargs):
         """
