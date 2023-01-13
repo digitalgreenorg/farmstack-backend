@@ -158,11 +158,16 @@ class DatasetV2File(TimeStampMixin):
         `mysql`: dataset of mysql connection
         `postgresql`: dataset of postgresql connection
     """
+
+    def dataset_directory_path(instance, filename):
+        # file will be uploaded to MEDIA_ROOT/user_<id>/<filename>
+        return 'datasets/{0}/{1}'.format(instance.dataset.name, filename)
+
     SOURCES = [
                 (Constants.SOURCE_FILE_TYPE, Constants.SOURCE_FILE_TYPE),
                 (Constants.SOURCE_MYSQL_FILE_TYPE, Constants.SOURCE_MYSQL_FILE_TYPE),
                 (Constants.SOURCE_POSTGRESQL_FILE_TYPE, Constants.SOURCE_POSTGRESQL_FILE_TYPE)
             ]
     dataset = models.ForeignKey(DatasetV2, on_delete=models.PROTECT, related_name="datasets")
-    file = models.FileField(upload_to=settings.DATASET_FILES_URL, null=True, blank=True)
+    file = models.FileField(upload_to=dataset_directory_path, null=True, blank=True)
     source = models.CharField(max_length=50, choices=SOURCES)

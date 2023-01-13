@@ -155,3 +155,7 @@ db.sqlite3
 
 # project related
 *categories.json
+
+# Temporary directories
+tmp/
+temp/
