@@ -1549,7 +1549,7 @@ class DatasetV2ViewSet(GenericViewSet):
         exclude, filters = {}, {}
         if others:
             exclude = {Constants.USER_MAP_ORGANIZATION: org_id} if org_id else {}
-            filters = {Constants.APPROVAL_STATUS: Constants.APPROVED}
+            # filters = {Constants.APPROVAL_STATUS: Constants.APPROVED}
         else:
             filters = {Constants.USER_MAP_ORGANIZATION: org_id} if org_id else {}
         try:
