@@ -53,6 +53,7 @@ from datahub.models import (
 )
 from datahub.serializers import (
     DatahubDatasetsSerializer,
+    DatahubDatasetsV2Serializer,
     DatahubThemeSerializer,
     DatasetSerializer,
     DatasetUpdateSerializer,
@@ -1638,3 +1639,84 @@ class DatasetV2ViewSet(GenericViewSet):
 
         serializer["datasets"] = data
         return Response(serializer, status=status.HTTP_200_OK)
+
+    @action(detail=False, methods=["post"])
+    def dataset_filters(self, request, *args, **kwargs):
+        """This function get the filter args in body. based on the filter args orm filters the data."""
+        data = request.data
+        org_id = data.pop(Constants.ORG_ID, "")
+        others = data.pop(Constants.OTHERS, "")
+        # user_id = data.pop(Constants.USER_ID, "")
+        exclude, filters, range = {}, {}, {}
+        if others:
+            exclude = {Constants.USER_MAP_ORGANIZATION: org_id} if org_id else {}
+        else:
+            filters = {Constants.USER_MAP_ORGANIZATION: org_id} if org_id else {}
+        created_at__range = request.data.pop(Constants.CREATED_AT__RANGE, None)
+        if created_at__range:
+            range[Constants.CREATED_AT__RANGE] = date_formater(created_at__range)
+        try:
+            data = (
+                DatasetV2.objects.select_related(
+                    Constants.USER_MAP,
+                    Constants.USER_MAP_USER,
+                    Constants.USER_MAP_ORGANIZATION,
+                )
+                .filter(status=True, **data, **filters, **range)
+                .exclude(**exclude)
+                .order_by(Constants.UPDATED_AT)
+                .reverse()
+                .all()
+            )
+        except Exception as error:  # type: ignore
+            logging.error("Error while filtering the datasets. ERROR: %s", error)
+            return Response(
+                f"Invalid filter fields: {list(request.data.keys())}", status=500
+            )
+
+        page = self.paginate_queryset(data)
+        participant_serializer = DatahubDatasetsV2Serializer(page, many=True)
+        return self.get_paginated_response(participant_serializer.data)
+
+    @action(detail=False, methods=["post"])
+    def filters_data(self, request, *args, **kwargs):
+        """This function provides the filters data"""
+        data = request.data
+        org_id = data.pop(Constants.ORG_ID, "")
+        others = data.pop(Constants.OTHERS, "")
+        # user_id = data.pop(Constants.USER_ID, "")
+        exclude, filters = {}, {}
+        if others:
+            exclude = {Constants.USER_MAP_ORGANIZATION: org_id} if org_id else {}
+            filters = {Constants.APPROVAL_STATUS: Constants.APPROVED}
+        else:
+            filters = {Constants.USER_MAP_ORGANIZATION: org_id} if org_id else {}
+        try:
+            geography = (
+                DatasetV2.objects.values_list(Constants.GEOGRAPHY, flat=True)
+                .filter(status=True, **filters)
+                .exclude(geography="null")
+                .exclude(geography__isnull=True)
+                .exclude(geography="")
+                .exclude(**exclude)
+                .all()
+                .distinct()
+            )
+            # crop_detail = (
+            #     Datasets.objects.values_list(Constants.CROP_DETAIL, flat=True)
+            #     .filter(status=True, **filters)
+            #     .exclude(crop_detail="null")
+            #     .exclude(crop_detail__isnull=True)
+            #     .exclude(crop_detail="")
+            #     .exclude(**exclude)
+            #     .all()
+            #     .distinct()
+            # )
+        except Exception as error:  # type: ignore
+            logging.error("Error while filtering the datasets. ERROR: %s", error)
+            return Response(
+                f"Invalid filter fields: {list(request.data.keys())}", status=500
+            )
+        return Response(
+            {"geography": geography}, status=200
+        )
