@@ -8,8 +8,8 @@ import subprocess
 import time
 from sre_compile import isstring
 from struct import unpack
-
-import mysql.connector
+from contextlib import closing
+import mysql.connector, psycopg2
 import pandas as pd
 import requests
 from django.conf import settings
@@ -79,8 +79,6 @@ from rest_framework.decorators import api_view
 from rest_framework.response import Response
 
 from utils import file_operations as file_ops
-
-from .serializers import DatabaseConfigSerializer
 
 
 class ParticipantSupportViewSet(GenericViewSet):
@@ -1469,6 +1467,7 @@ class ParticipantProjectViewSet(GenericViewSet):
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 def update_cookies(key,value,response):
+    """Update or set cookies with an expiry time"""
     max_age = 1 * 24 * 60 * 60
     expires = datetime.datetime.strftime(
         datetime.datetime.utcnow() + datetime.timedelta(seconds=max_age),
@@ -1487,57 +1486,77 @@ class DataBaseViewSet(GenericViewSet):
     """
     This class handles the participant external Databases  operations.
     """
-
     parser_class = JSONParser
-    serializer_class = ProjectSerializer
-    queryset = Project
-    pagination_class = CustomPagination
-
+    serializer_class = DatabaseConfigSerializer
     permission_classes=[IsAuthenticated]
 
     @action(detail=False, methods=["post"])
     def database_config(self,request):
-        '''Get the database login details from reuest
-        test the connection
-        if valid connection
-        return the table names in the database'''
-        serializer = DatabaseConfigSerializer(data=request.data)
-        # print(request.data)
+        """
+        Configure the database connection based on the database type.
+        Return tables retrieved from the database and set database configuration in the cookies.
+        """
+        database_type = request.data.get("database_type")
+        serializer = self.get_serializer(data=request.data, context={"source": database_type})
         serializer.is_valid(raise_exception=True)
-        # Test the database configuration
-        config = serializer.validated_data
+
+        # Use serializer.data before popping or removing validated_data.pop("database_type")
         cookie_data=serializer.data
-        try:
-            # Try to connect to the database using the provided configuration
-            mydb = mysql.connector.connect(**config)
+        serializer.validated_data.pop("database_type")
+        config = serializer.validated_data
+        cookie_data.pop("database_type")
 
-            mycursor = mydb.cursor()
+        if database_type == Constants.SOURCE_MYSQL_FILE_TYPE:
+            """Create a MySQL connection object on valid database credentials and return tables"""
+            LOGGER.info(f"Connecting to {database_type}")
 
-            db_name=request.data.get('database')
-            
-            mycursor.execute("use "+db_name+";")
-            mycursor.execute("show tables;")
+            try:
+                # Try to connect to the database using the provided configuration
+                mydb = mysql.connector.connect(**config)
+                mycursor = mydb.cursor()
+                db_name=request.data.get('database')
+                mycursor.execute("use "+db_name+";")
+                mycursor.execute("show tables;")
+                table_list = mycursor.fetchall()
+                table_list = [element for innerList in table_list for element in innerList]
 
-            table_list = mycursor.fetchall()
-            # print(table_list)
-            #flatten
-            table_list = [element for innerList in table_list for element in innerList]
-            
-            response=HttpResponse(json.dumps(table_list), status=status.HTTP_200_OK)
-            response=update_cookies("conn_details",cookie_data,response)
-            return  response
-        # except Exception as e:
-        except mysql.connector.Error as err:
-            # print(err)
-            if err.errno == mysql.connector.errorcode.ER_ACCESS_DENIED_ERROR:
-                return Response({"username": ["Incorrect username or password"], "password": [msg]},status=status.HTTP_400_BAD_REQUEST)
-            elif err.errno == mysql.connector.errorcode.ER_NO_SUCH_TABLE:
-                return Response({"table":["Table does not exist"]}, status=status.HTTP_400_BAD_REQUEST)
-            # Return an error message if the connection fails
-            return Response({'error': [str(err)]}, status=status.HTTP_400_BAD_REQUEST)
-        except Exception as e:
-            return Response(str(e),status=status.HTTP_400_BAD_REQUEST)
-            # Return a success message if the connection succeeds
+                # send the tables as a list in response body
+                response=HttpResponse(json.dumps(table_list), status=status.HTTP_200_OK)
+                # set the cookies in response
+                response=update_cookies("conn_details",cookie_data,response)
+                return  response
+            except mysql.connector.Error as err:
+                if err.errno == mysql.connector.errorcode.ER_ACCESS_DENIED_ERROR:
+                    return Response({"username": ["Incorrect username or password"], "password": ["Incorrect username or password"]}, status=status.HTTP_400_BAD_REQUEST)
+                elif err.errno == mysql.connector.errorcode.ER_NO_SUCH_TABLE:
+                    return Response({"table":["Table does not exist"]}, status=status.HTTP_400_BAD_REQUEST)
+                # Return an error message if the connection fails
+                return Response({'error': [str(err)]}, status=status.HTTP_400_BAD_REQUEST)
+            except Exception as e:
+                return Response(str(e),status=status.HTTP_400_BAD_REQUEST)
+                # Return a success message if the connection succeeds
+
+        elif database_type == Constants.SOURCE_POSTGRESQL_FILE_TYPE:
+            """Create a PostgreSQL connection object on valid database credentials"""
+            LOGGER.info(f"Connecting to {database_type}")
+            try:
+                with closing(psycopg2.connect(**config)) as conn:
+                    with closing(conn.cursor()) as cursor:
+                        cursor = conn.cursor()
+                        cursor.execute("SELECT table_name FROM information_schema.tables WHERE table_schema='public';")
+                        table_list = cursor.fetchall()
+                        tables = [table for inner_list in table_list for table in inner_list]
+
+                        # send the tables as a list in response body
+                        response =  HttpResponse(json.dumps(tables), status=status.HTTP_200_OK)
+                        # set the cookies in response
+                        response=update_cookies("conn_details",cookie_data,response)
+                return response
+            except psycopg2.Error as error:
+                LOGGER.error(error, exc_info=True)
+                return Response({"message": ["Invalid credentials or configuration details. Connection Failed."]}, status=status.HTTP_400_BAD_REQUEST)
+
+
     @action(detail=False, methods=["post"])
     def database_col_names(self,request):
         ''' From cookies get the database details
