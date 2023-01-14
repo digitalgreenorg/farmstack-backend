@@ -55,7 +55,8 @@ from participant.serializers import (
     ConnectorsSerializer,
     ConnectorsSerializerForEmail,
     DatabaseConfigSerializer,
-    DatabaseDataSerializer,
+    DatabaseColumnRetrieveSerializer,
+    DatabaseDataExportSerializer,
     DatasetSerializer,
     DepartmentSerializer,
     ParticipantDatasetsDetailSerializer,
@@ -1532,7 +1533,6 @@ class DataBaseViewSet(GenericViewSet):
                 return Response({'error': [str(err)]}, status=status.HTTP_400_BAD_REQUEST)
             except Exception as e:
                 return Response(str(e),status=status.HTTP_400_BAD_REQUEST)
-                # Return a success message if the connection succeeds
 
         elif database_type == Constants.SOURCE_POSTGRESQL_FILE_TYPE:
             """Create a PostgreSQL connection object on valid database credentials"""
@@ -1545,10 +1545,10 @@ class DataBaseViewSet(GenericViewSet):
                         cursor.execute("SELECT table_name FROM information_schema.tables WHERE table_schema='public';")
                         table_list = cursor.fetchall()
 
-                tables = [table for inner_list in table_list for table in inner_list]
                 # send the tables as a list in response body & set cookies
+                tables = [table for inner_list in table_list for table in inner_list]
                 response =  HttpResponse(json.dumps(tables), status=status.HTTP_200_OK)
-                response=update_cookies("conn_details",cookie_data,response)
+                response = update_cookies("conn_details",cookie_data,response)
                 return response
             except psycopg2.Error as error:
                 LOGGER.error(error, exc_info=True)
@@ -1564,7 +1564,7 @@ class DataBaseViewSet(GenericViewSet):
         table_name=request.data.get('table_name')
         config.pop("database_type")     # remove database_type before passing it to db conn
 
-        serializer = DatabaseDataSerializer(data=request.data)
+        serializer = DatabaseColumnRetrieveSerializer(data=request.data)
         if not serializer.is_valid():
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
@@ -1613,8 +1613,7 @@ class DataBaseViewSet(GenericViewSet):
                     return Response({"message": ["Table does not exist."]}, status=status.HTTP_400_BAD_REQUEST)
 
                 cols=[column_details[0] for column_details in col_list]
-                response= HttpResponse(json.dumps(cols), status=status.HTTP_200_OK)
-                return response
+                return HttpResponse(json.dumps(cols), status=status.HTTP_200_OK)
             except psycopg2.Error as error:
                 LOGGER.error(error, exc_info=True)
         return Response({"message": ["Connection Failed."]}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
@@ -1622,67 +1621,71 @@ class DataBaseViewSet(GenericViewSet):
 
     @action(detail=False, methods=["post"])
     def database_xls_file(self,request):
-        '''Get the databse login details from cookies
-        Get the table name, column list, dataset name and file name from request body'''
-        
+        """
+        Export the data extracted from the database by reading the db config from cookies to a temporary location.
+        """
         conn_details = request.COOKIES.get('conn_details',request.data)
-
-        t_name=request.data.get('table_name')
-
         config = ast.literal_eval(conn_details)
-        serializer = DatabaseConfigSerializer(data=config)
+        database_type = config.get("database_type")
+        serializer = DatabaseDataExportSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
-        config = serializer.validated_data
+        t_name = request.data.get('table_name')
+        col_names = request.data.get('col')
+        col_names = ast.literal_eval(col_names)
+        col_names = ', '.join(col_names)
+        dataset_name = request.data.get("dataset_name")
+        source = request.data.get('source')
+        file_name = request.data.get("file_name")
+        config.pop("database_type")     # remove database_type before passing it to db conn
 
+        if database_type == Constants.SOURCE_MYSQL_FILE_TYPE:
+            """Create a PostgreSQL connection object on valid database credentials"""
+            LOGGER.info(f"Connecting to {database_type}")
 
-            # Return an error message if the connection fails
-        try:
-            # Try to connect to the database using the provided configuration
-            mydb = mysql.connector.connect(**config)
-            mycursor = mydb.cursor()
+            try:
+                mydb = mysql.connector.connect(**config)
+                mycursor = mydb.cursor()
+                db_name = config['database']
+                mycursor.execute("use "+db_name+";")
+                query="select "+ col_names+" from "+t_name+" ;"
+                mycursor.execute(query)
+                result = mycursor.fetchall()
 
-            db_name=config['database']
-            # table_name=request.data['tl_name']
-            col_names=request.data.get('col')
-            
-            mycursor.execute("use "+db_name+";")
-            # mycursor.execute("SHOW COLUMNS FROM " +db_name +"." +table_name+";")
-            col_names=ast.literal_eval(col_names)
-            col_names= ', '.join(col_names)
-            query="select "+ col_names+" from "+t_name+" ;"
-            mycursor.execute(query)
+                # save the list of files to a temp directory
+                file_path = file_ops.create_directory(settings.TEMP_DATASET_URL,[dataset_name,source])
+                df = pd.read_sql(query,mydb)
+                xls_file = df.to_excel(file_path+"/"+file_name+".xls")
+                result = os.listdir(file_path)
+                return HttpResponse(json.dumps(result),status=status.HTTP_200_OK)
 
-            result = mycursor.fetchall()
-            # import pdb; pdb.set_trace()
-            dataset_name=request.data.get("dataset_name")
-            # print(dataset_name)
-            source=request.data.get('source')
+            except mysql.connector.Error as err:
+                LOGGER.error(err, exc_info=True)
+                if err.errno == mysql.connector.errorcode.ER_ACCESS_DENIED_ERROR:
+                    return Response({"username": ["Incorrect username or password"], "password": ["Incorrect username or password"]},status=status.HTTP_400_BAD_REQUEST)
+                elif err.errno == mysql.connector.errorcode.ER_NO_SUCH_TABLE:
+                    return Response({"table":["Table does not exist"]}, status=status.HTTP_400_BAD_REQUEST)
+                # Return an error message if the connection fails
+                return Response({'error': [str(err)]}, status=status.HTTP_400_BAD_REQUEST)
 
-            file_name=request.data.get("file_name")
+        elif database_type == Constants.SOURCE_POSTGRESQL_FILE_TYPE:
+            """Create a PostgreSQL connection object on valid database credentials"""
+            LOGGER.info(f"Connecting to {database_type}")
+            try:
+                with closing(psycopg2.connect(**config)) as conn:
+                    try:
+                        sql_query = ("SELECT {0} FROM {1};".format(col_names, t_name))
+                        df = pd.read_sql(sql_query, conn)
+                    except pd.errors.DatabaseError as error:
+                        LOGGER.error(error, exc_info=True)
+                        return Response({"message": ["Table or column names does not exist."]}, status=status.HTTP_400_BAD_REQUEST)
 
-            file_path=file_ops.create_directory(settings.TEMP_DATASET_URL,[dataset_name,source])
+                file_path = file_ops.create_directory(settings.TEMP_DATASET_URL, [dataset_name, source])
+                df.to_excel(os.path.join(file_path, file_name+".xls"))
+                result = os.listdir(file_path)
+                return HttpResponse(json.dumps(result), status=status.HTTP_200_OK)
 
-            df = pd.read_sql(query,mydb)
-            xls_file=df.to_excel(file_path+"/"+file_name+".xls")
-                    
-            result=os.listdir(file_path) #list of all the files in the directory
+            except psycopg2.Error as error:
+                LOGGER.error(error, exc_info=True)
 
-            return HttpResponse(json.dumps(result),status=status.HTTP_200_OK)
-
-        # except Exception as e:
-            # print("Connected to database")
-        except mysql.connector.Error as err:
-            # print(err)
-            if err.errno == mysql.connector.errorcode.ER_ACCESS_DENIED_ERROR:
-                return Response({"username": ["Incorrect username or password"], "password": ["Incorrect username or password"]},status=status.HTTP_400_BAD_REQUEST)
-            elif err.errno == mysql.connector.errorcode.ER_NO_SUCH_TABLE:
-                return Response({"table":["Table does not exist"]}, status=status.HTTP_400_BAD_REQUEST)
-        
-            
-            # Return an error message if the connection fails
-            return Response({'error': [str(err)]}, status=status.HTTP_400_BAD_REQUEST)
-            # Return a success message if the connection succeeds
-        except Exception as e:
-            return Response(str(e),status=status.HTTP_400_BAD_REQUEST)
-            
+        return Response({"message": ["Connection Failed."]}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

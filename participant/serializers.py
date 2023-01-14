@@ -526,5 +526,13 @@ class DatabaseConfigSerializer(serializers.Serializer):
     dbname = serializers.CharField(max_length=200, allow_blank=False)
 
 
-class DatabaseDataSerializer(serializers.Serializer):
+class DatabaseColumnRetrieveSerializer(serializers.Serializer):
     table_name = serializers.CharField(max_length=200, allow_blank=False)
+
+
+class DatabaseDataExportSerializer(serializers.Serializer):
+    table_name = serializers.CharField(max_length=200, allow_blank=False)
+    col = serializers.ListField(allow_empty=False)
+    dataset_name = serializers.CharField(max_length=200, allow_blank=False)
+    source = serializers.CharField(max_length=200, allow_blank=False)
+    file_name = serializers.CharField(max_length=200, allow_blank=False)
