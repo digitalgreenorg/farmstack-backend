@@ -55,6 +55,7 @@ from participant.serializers import (
     ConnectorsSerializer,
     ConnectorsSerializerForEmail,
     DatabaseConfigSerializer,
+    DatabaseDataSerializer,
     DatasetSerializer,
     DepartmentSerializer,
     ParticipantDatasetsDetailSerializer,
@@ -1499,12 +1500,9 @@ class DataBaseViewSet(GenericViewSet):
         database_type = request.data.get("database_type")
         serializer = self.get_serializer(data=request.data, context={"source": database_type})
         serializer.is_valid(raise_exception=True)
-
-        # Use serializer.data before popping or removing validated_data.pop("database_type")
         cookie_data=serializer.data
-        serializer.validated_data.pop("database_type")
         config = serializer.validated_data
-        cookie_data.pop("database_type")
+        config.pop("database_type")     # remove database_type before passing it to db conn
 
         if database_type == Constants.SOURCE_MYSQL_FILE_TYPE:
             """Create a MySQL connection object on valid database credentials and return tables"""
@@ -1540,17 +1538,17 @@ class DataBaseViewSet(GenericViewSet):
             """Create a PostgreSQL connection object on valid database credentials"""
             LOGGER.info(f"Connecting to {database_type}")
             try:
+                tables = []
                 with closing(psycopg2.connect(**config)) as conn:
                     with closing(conn.cursor()) as cursor:
                         cursor = conn.cursor()
                         cursor.execute("SELECT table_name FROM information_schema.tables WHERE table_schema='public';")
                         table_list = cursor.fetchall()
-                        tables = [table for inner_list in table_list for table in inner_list]
 
-                        # send the tables as a list in response body
-                        response =  HttpResponse(json.dumps(tables), status=status.HTTP_200_OK)
-                        # set the cookies in response
-                        response=update_cookies("conn_details",cookie_data,response)
+                tables = [table for inner_list in table_list for table in inner_list]
+                # send the tables as a list in response body & set cookies
+                response =  HttpResponse(json.dumps(tables), status=status.HTTP_200_OK)
+                response=update_cookies("conn_details",cookie_data,response)
                 return response
             except psycopg2.Error as error:
                 LOGGER.error(error, exc_info=True)
@@ -1559,49 +1557,68 @@ class DataBaseViewSet(GenericViewSet):
 
     @action(detail=False, methods=["post"])
     def database_col_names(self,request):
-        ''' From cookies get the database details
-        Get the table name from request
-        Fetch the column names of the table
-        Return the column names of the table '''
+        """Return the column names as a list from the requested table by reading the db config from cookies."""
         conn_details = request.COOKIES.get('conn_details',request.data)
         config = ast.literal_eval(conn_details)
+        database_type = config.get("database_type")
+        table_name=request.data.get('table_name')
+        config.pop("database_type")     # remove database_type before passing it to db conn
 
-            # Return an error message if the connection fails
-        try:
-            # Try to connect to the database using the provided configuration
-            connection = mysql.connector.connect(**config)
-            mydb = connection
+        serializer = DatabaseDataSerializer(data=request.data)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-            mycursor = mydb.cursor()
+        if database_type == Constants.SOURCE_MYSQL_FILE_TYPE:
+            """Create a PostgreSQL connection object on valid database credentials"""
+            LOGGER.info(f"Connecting to {database_type}")
+            try:
+                # Try to connect to the database using the provided configuration
+                connection = mysql.connector.connect(**config)
+                mydb = connection
+                mycursor = mydb.cursor()
+                db_name=config['database']
+                mycursor.execute("use "+db_name+";")
+                mycursor.execute("SHOW COLUMNS FROM " +db_name +"." +table_name+";")
 
-            db_name=config['database']
-            table_name=request.data.get('table_name')
+                # Fetch columns & return as a response
+                col_list = mycursor.fetchall()
+                cols=[column_details[0] for column_details in col_list]
+                response= HttpResponse(json.dumps(cols), status=status.HTTP_200_OK)
+                return response
 
-            
-            mycursor.execute("use "+db_name+";")
-            mycursor.execute("SHOW COLUMNS FROM " +db_name +"." +table_name+";")
+            except mysql.connector.Error as err:
+                if err.errno == mysql.connector.errorcode.ER_ACCESS_DENIED_ERROR:
+                    return Response({"username": ["Incorrect username or password"], "password": ["Incorrect username or password"]},status=status.HTTP_400_BAD_REQUEST)
+                elif err.errno == mysql.connector.errorcode.ER_NO_SUCH_TABLE:
+                    return Response({"table":["Table does not exist"]}, status=status.HTTP_400_BAD_REQUEST)
+                # Return an error message if the connection fails
+                return Response({'error': [str(err)]}, status=status.HTTP_400_BAD_REQUEST)
+            except Exception as e:
+                LOGGER.error(e, exc_info=True)
+                return Response(str(e),status=status.HTTP_400_BAD_REQUEST)
 
-            col_list = mycursor.fetchall()
-            # import pdb; pdb.set_trace()
-            cols=[column_details[0] for column_details in col_list]
-            response= HttpResponse(json.dumps(cols), status=status.HTTP_200_OK)
-            return response
+        elif database_type == Constants.SOURCE_POSTGRESQL_FILE_TYPE:
+            """Create a PostgreSQL connection object on valid database credentials"""
+            LOGGER.info(f"Connecting to {database_type}")
+            try:
+                col_list = []
+                with closing(psycopg2.connect(**config)) as conn:
+                    with closing(conn.cursor()) as cursor:
+                        cursor = conn.cursor()
+                        # Fetch columns & return as a response
+                        cursor.execute("SELECT column_name FROM information_schema.columns WHERE table_name='{0}';".format(table_name))
+                        col_list = cursor.fetchall()
 
-        # except Exception as e:
-            # print("Connected to database")
-        except mysql.connector.Error as err:
-            # print(err)
-            if err.errno == mysql.connector.errorcode.ER_ACCESS_DENIED_ERROR:
-                return Response({"username": ["Incorrect username or password"], "password": [msg]},status=status.HTTP_400_BAD_REQUEST)
-            elif err.errno == mysql.connector.errorcode.ER_NO_SUCH_TABLE:
-                return Response({"table":["Table does not exist"]}, status=status.HTTP_400_BAD_REQUEST)
-            # Return an error message if the connection fails
-            return Response({'error': [str(err)]}, status=status.HTTP_400_BAD_REQUEST)
-        except Exception as e:
-            return Response(str(e),status=status.HTTP_400_BAD_REQUEST)
-    
+                if len(col_list) <= 0:
+                    return Response({"message": ["Table does not exist."]}, status=status.HTTP_400_BAD_REQUEST)
 
-            
+                cols=[column_details[0] for column_details in col_list]
+                response= HttpResponse(json.dumps(cols), status=status.HTTP_200_OK)
+                return response
+            except psycopg2.Error as error:
+                LOGGER.error(error, exc_info=True)
+        return Response({"message": ["Connection Failed."]}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
 
     @action(detail=False, methods=["post"])
     def database_xls_file(self,request):

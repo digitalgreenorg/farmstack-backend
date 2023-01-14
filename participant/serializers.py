@@ -524,3 +524,7 @@ class DatabaseConfigSerializer(serializers.Serializer):
     # postgresql
     user = serializers.CharField(max_length=200, allow_blank=False)
     dbname = serializers.CharField(max_length=200, allow_blank=False)
+
+
+class DatabaseDataSerializer(serializers.Serializer):
+    table_name = serializers.CharField(max_length=200, allow_blank=False)
