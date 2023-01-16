@@ -1552,9 +1552,12 @@ class DataBaseViewSet(GenericViewSet):
             except Exception as error:
                 LOGGER.error(error, exc_info=True)
                 if str(error).__contains__("password authentication failed for user"):
-                    return Response({"password": ["Invalid credentials details. Connection Failed."]}, status=status.HTTP_400_BAD_REQUEST)
+                    return Response({"user": ["Invalid username or password"], "password":["Invalid username or password."]}, status=status.HTTP_400_BAD_REQUEST)
                 elif str(error).__contains__("does not exist"):
                     return Response({"dbname": ["Invalid database name. Connection Failed."]}, status=status.HTTP_400_BAD_REQUEST)
+                else:
+                    return Response({"host": ["Invalid host or port. Connection Failed."], "port": ["Invalid host or port. Connection Failed."]}, status=status.HTTP_400_BAD_REQUEST)
+
 
 
     @action(detail=False, methods=["post"])
@@ -1668,8 +1671,11 @@ class DataBaseViewSet(GenericViewSet):
                     return Response({"username": ["Incorrect username or password"], "password": ["Incorrect username or password"]},status=status.HTTP_400_BAD_REQUEST)
                 elif err.errno == mysql.connector.errorcode.ER_NO_SUCH_TABLE:
                     return Response({"table_name":["Table does not exist"]}, status=status.HTTP_400_BAD_REQUEST)
+                # elif err.errno == mysql.connector.errorcode.ER_KEY_COLUMN_DOES_NOT_EXITS:
+                elif str(err).__contains__("Unknown column"):
+                    return Response({"col":["Columns does not exist."]}, status=status.HTTP_400_BAD_REQUEST)
                 # Return an error message if the connection fails
-                return Response({'error': [str(err)]}, status=status.HTTP_400_BAD_REQUEST)
+                return Response({'': [str(err)]}, status=status.HTTP_400_BAD_REQUEST)
 
         elif database_type == Constants.SOURCE_POSTGRESQL_FILE_TYPE:
             """Create a PostgreSQL connection object on valid database credentials"""
