@@ -1555,7 +1555,6 @@ class DataBaseViewSet(GenericViewSet):
                     return Response({"password": ["Invalid credentials details. Connection Failed."]}, status=status.HTTP_400_BAD_REQUEST)
                 elif str(error).__contains__("does not exist"):
                     return Response({"dbname": ["Invalid database name. Connection Failed."]}, status=status.HTTP_400_BAD_REQUEST)
-            return Response({"host": ["Connection Failed."]}, status=status.HTTP_400_BAD_REQUEST)
 
 
     @action(detail=False, methods=["post"])
@@ -1593,7 +1592,9 @@ class DataBaseViewSet(GenericViewSet):
                 if err.errno == mysql.connector.errorcode.ER_ACCESS_DENIED_ERROR:
                     return Response({"username": ["Incorrect username or password"], "password": ["Incorrect username or password"]},status=status.HTTP_400_BAD_REQUEST)
                 elif err.errno == mysql.connector.errorcode.ER_NO_SUCH_TABLE:
-                    return Response({"table":["Table does not exist"]}, status=status.HTTP_400_BAD_REQUEST)
+                    return Response({"table_name":["Table does not exist"]}, status=status.HTTP_400_BAD_REQUEST)
+                elif err.errno == mysql.connector.errorcode.ER_KEY_COLUMN_DOES_NOT_EXITS:
+                    return Response({"col":["Columns does not exist."]}, status=status.HTTP_400_BAD_REQUEST)
                 # Return an error message if the connection fails
                 return Response({'error': [str(err)]}, status=status.HTTP_400_BAD_REQUEST)
             except Exception as e:
@@ -1613,13 +1614,12 @@ class DataBaseViewSet(GenericViewSet):
                         col_list = cursor.fetchall()
 
                 if len(col_list) <= 0:
-                    return Response({"message": ["Table does not exist."]}, status=status.HTTP_400_BAD_REQUEST)
+                    return Response({"table_name": ["Table does not exist."]}, status=status.HTTP_400_BAD_REQUEST)
 
                 cols=[column_details[0] for column_details in col_list]
                 return HttpResponse(json.dumps(cols), status=status.HTTP_200_OK)
             except psycopg2.Error as error:
                 LOGGER.error(error, exc_info=True)
-        return Response({"message": ["Connection Failed."]}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
     @action(detail=False, methods=["post"])
@@ -1667,7 +1667,7 @@ class DataBaseViewSet(GenericViewSet):
                 if err.errno == mysql.connector.errorcode.ER_ACCESS_DENIED_ERROR:
                     return Response({"username": ["Incorrect username or password"], "password": ["Incorrect username or password"]},status=status.HTTP_400_BAD_REQUEST)
                 elif err.errno == mysql.connector.errorcode.ER_NO_SUCH_TABLE:
-                    return Response({"table":["Table does not exist"]}, status=status.HTTP_400_BAD_REQUEST)
+                    return Response({"table_name":["Table does not exist"]}, status=status.HTTP_400_BAD_REQUEST)
                 # Return an error message if the connection fails
                 return Response({'error': [str(err)]}, status=status.HTTP_400_BAD_REQUEST)
 
@@ -1681,7 +1681,7 @@ class DataBaseViewSet(GenericViewSet):
                         df = pd.read_sql(sql_query, conn)
                     except pd.errors.DatabaseError as error:
                         LOGGER.error(error, exc_info=True)
-                        return Response({"message": ["Table or column names does not exist."]}, status=status.HTTP_400_BAD_REQUEST)
+                        return Response({"col": ["Columns does not exist."]}, status=status.HTTP_400_BAD_REQUEST)
 
                 file_path = file_ops.create_directory(settings.TEMP_DATASET_URL, [dataset_name, source])
                 df.to_excel(os.path.join(file_path, file_name+".xls"))
@@ -1690,5 +1690,3 @@ class DataBaseViewSet(GenericViewSet):
 
             except psycopg2.Error as error:
                 LOGGER.error(error, exc_info=True)
-
-        return Response({"message": ["Connection Failed."]}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
