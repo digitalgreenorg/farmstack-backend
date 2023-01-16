@@ -1541,7 +1541,6 @@ class DataBaseViewSet(GenericViewSet):
                 tables = []
                 with closing(psycopg2.connect(**config)) as conn:
                     with closing(conn.cursor()) as cursor:
-                        cursor = conn.cursor()
                         cursor.execute("SELECT table_name FROM information_schema.tables WHERE table_schema='public';")
                         table_list = cursor.fetchall()
 
@@ -1550,9 +1549,13 @@ class DataBaseViewSet(GenericViewSet):
                 response =  HttpResponse(json.dumps(tables), status=status.HTTP_200_OK)
                 response = update_cookies("conn_details",cookie_data,response)
                 return response
-            except psycopg2.Error as error:
+            except Exception as error:
                 LOGGER.error(error, exc_info=True)
-                return Response({"message": ["Invalid credentials or configuration details. Connection Failed."]}, status=status.HTTP_400_BAD_REQUEST)
+                if str(error).__contains__("password authentication failed for user"):
+                    return Response({"password": ["Invalid credentials details. Connection Failed."]}, status=status.HTTP_400_BAD_REQUEST)
+                elif str(error).__contains__("does not exist"):
+                    return Response({"dbname": ["Invalid database name. Connection Failed."]}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({"host": ["Connection Failed."]}, status=status.HTTP_400_BAD_REQUEST)
 
 
     @action(detail=False, methods=["post"])
