@@ -1,9 +1,6 @@
 import logging
-
-from rest_framework import serializers
-
-from django.core.exceptions import ValidationError
-from django.utils.translation import gettext as _
+import os
+import re
 
 from accounts import models
 from accounts.models import User, UserRole
@@ -13,12 +10,29 @@ from accounts.serializers import (
     UserSerializer,
 )
 from core.constants import Constants
-from datahub.models import DatahubDocuments, Datasets, Organization, UserOrganizationMap
+from django.conf import settings
+from django.core.exceptions import ObjectDoesNotExist, ValidationError
+from django.utils.translation import gettext as _
 from participant.models import Connectors, SupportTicket
+from rest_framework import serializers, status
+from utils.custom_exceptions import NotFoundException
+from utils.file_operations import create_directory, move_directory
+from utils.string_functions import check_special_chars
 from utils.validators import (
+    validate_dataset_size,
+    validate_dataset_type,
     validate_document_type,
     validate_file_size,
     validate_image_type,
+)
+
+from datahub.models import (
+    DatahubDocuments,
+    Datasets,
+    DatasetV2,
+    DatasetV2File,
+    Organization,
+    UserOrganizationMap,
 )
 
 LOGGER = logging.getLogger(__name__)
@@ -121,37 +135,23 @@ class ParticipantSerializer(serializers.ModelSerializer):
         exclude = Constants.EXCLUDE_DATES
 
     dataset_count = serializers.SerializerMethodField(method_name="get_dataset_count")
-    connector_count = serializers.SerializerMethodField(
-        method_name="get_connector_count"
-    )
+    connector_count = serializers.SerializerMethodField(method_name="get_connector_count")
 
     def get_dataset_count(self, user_org_map):
-        return Datasets.objects.filter(
-            status=True, user_map__user=user_org_map.user.id
-        ).count()
+        return Datasets.objects.filter(status=True, user_map__user=user_org_map.user.id).count()
 
     def get_connector_count(self, user_org_map):
-        return Connectors.objects.filter(
-            status=True, user_map__user=user_org_map.user.id
-        ).count()
+        return Connectors.objects.filter(status=True, user_map__user=user_org_map.user.id).count()
 
 
 class DropDocumentSerializer(serializers.Serializer):
     """DropDocumentSerializer class"""
 
-    governing_law = serializers.FileField(
-        validators=[validate_file_size, validate_document_type]
-    )
-    privacy_policy = serializers.FileField(
-        validators=[validate_file_size, validate_document_type]
-    )
+    governing_law = serializers.FileField(validators=[validate_file_size, validate_document_type])
+    privacy_policy = serializers.FileField(validators=[validate_file_size, validate_document_type])
     tos = serializers.FileField(validators=[validate_file_size, validate_document_type])
-    limitations_of_liabilities = serializers.FileField(
-        validators=[validate_file_size, validate_document_type]
-    )
-    warranty = serializers.FileField(
-        validators=[validate_file_size, validate_document_type]
-    )
+    limitations_of_liabilities = serializers.FileField(validators=[validate_file_size, validate_document_type])
+    warranty = serializers.FileField(validators=[validate_file_size, validate_document_type])
 
 
 class PolicyDocumentSerializer(serializers.ModelSerializer):
@@ -192,9 +192,7 @@ class TeamMemberListSerializer(serializers.Serializer):
     email = serializers.EmailField()
     first_name = serializers.CharField()
     last_name = serializers.CharField()
-    role = serializers.PrimaryKeyRelatedField(
-        queryset=UserRole.objects.all(), read_only=False
-    )
+    role = serializers.PrimaryKeyRelatedField(queryset=UserRole.objects.all(), read_only=False)
     profile_picture = serializers.FileField()
     status = serializers.BooleanField()
     on_boarded = serializers.BooleanField()
@@ -242,9 +240,7 @@ class DatasetSerializer(serializers.ModelSerializer):
         Validator function to check the file size limit.
         """
         MAX_FILE_SIZE = (
-            Constants.MAX_PUBLIC_FILE_SIZE
-            if self.initial_data.get("is_public")
-            else Constants.MAX_FILE_SIZE
+            Constants.MAX_PUBLIC_FILE_SIZE if self.initial_data.get("is_public") else Constants.MAX_FILE_SIZE
         )
         filesize = value.size
         if filesize > MAX_FILE_SIZE:
@@ -349,9 +345,7 @@ class DatahubDatasetsSerializer(serializers.ModelSerializer):
     organization = OrganizationDatsetsListRetriveSerializer(
         required=False, allow_null=True, read_only=True, source="user_map.organization"
     )
-    user = UserDatasetSerializer(
-        required=False, allow_null=True, read_only=True, source="user_map.user"
-    )
+    user = UserDatasetSerializer(required=False, allow_null=True, read_only=True, source="user_map.user")
 
     class Meta:
         model = Datasets
@@ -373,9 +367,7 @@ class RecentSupportTicketSerializer(serializers.ModelSerializer):
         allow_null=True, required=False, read_only=True, source="user_map.organization"
     )
 
-    user = UserSerializer(
-        allow_null=True, required=False, read_only=True, source="user_map.user"
-    )
+    user = UserSerializer(allow_null=True, required=False, read_only=True, source="user_map.user")
 
     class Meta:
         model = SupportTicket
@@ -410,21 +402,15 @@ class RecentDatasetListSerializer(serializers.ModelSerializer):
         model = Datasets
         fields = ["id", "name", "updated_at", "connector_count", "activity"]
 
-    connector_count = serializers.SerializerMethodField(
-        method_name="get_connector_count"
-    )
+    connector_count = serializers.SerializerMethodField(method_name="get_connector_count")
     activity = serializers.SerializerMethodField(method_name="get_activity")
 
     def get_connector_count(self, datasets_queryset):
-        return Connectors.objects.filter(
-            status=True, dataset_id=datasets_queryset.id
-        ).count()
+        return Connectors.objects.filter(status=True, dataset_id=datasets_queryset.id).count()
 
     def get_activity(self, datasets_queryset):
         try:
-            datasets_queryset = Datasets.objects.filter(
-                status=True, id=datasets_queryset.id
-            )
+            datasets_queryset = Datasets.objects.filter(status=True, id=datasets_queryset.id)
             if datasets_queryset:
                 if datasets_queryset.first().status == True:
                     return Constants.ACTIVE
@@ -436,3 +422,222 @@ class RecentDatasetListSerializer(serializers.ModelSerializer):
             LOGGER.error(error, exc_info=True)
 
         return None
+
+
+class DatasetV2TempFileSerializer(serializers.Serializer):
+    """
+    Serializer for DatasetV2File model to serialize dataset files.
+    Following are the fields required by the serializer:
+        `datasets` (Files, mandatory): Multi upload Dataset files
+    """
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        """Remove fields based on the request type"""
+        if "context" in kwargs:
+            if "request_method" in kwargs["context"]:
+                request_method = kwargs.get("context").get("request_method")
+                if request_method == "DELETE" and not kwargs.get("context").get("query_params"):
+                    # remove `datasets` field as `DELETE` method only requires `dataset_name`, `file_name` & `source` fields
+                    self.fields.pop("datasets")
+                elif request_method == "DELETE" and kwargs.get("context").get("query_params"):
+                    # remove `datasets` & `file_name` fields as `DELETE` method to delete directory only requires `dataset_name` & `source` field
+                    self.fields.pop("datasets")
+                    self.fields.pop("file_name")
+                    self.fields.pop("source")
+                elif request_method == "POST":
+                    # remove `file_name` field as `POST` method only requires `dataset_name`, `datasets` & `source` fields
+                    self.fields.pop("file_name")
+
+    def validate_datasets(self, files):
+        """
+        Validator function to check for dataset file types & dataset file size (Constants.DATASET_MAX_FILE_SIZE) in MB.
+
+        **Parameters**
+        ``files`` ([Files]): list of files to validate the file type included in Constants.DATASET_FILE_TYPES.
+        """
+        for file in files:
+            if not validate_dataset_type(file, Constants.DATASET_FILE_TYPES):
+                raise ValidationError(
+                    f"Document type not supported. Only following documents are allowed: {Constants.DATASET_FILE_TYPES}"
+                )
+
+            if not validate_dataset_size(file, Constants.DATASET_MAX_FILE_SIZE):
+                raise ValidationError(
+                    f"You cannot upload/export file size more than {Constants.DATASET_MAX_FILE_SIZE}MB."
+                )
+
+        return files
+
+    def validate_dataset_name(self, name):
+        """
+        Validator function to check if the dataset name includes special characters.
+
+        **Parameters**
+        ``name`` (str): dataset name to validate
+        """
+        if check_special_chars(name):
+            raise ValidationError("dataset name cannot include special characters.")
+        name = re.sub(r"\s+", " ", name)
+        return name
+
+    dataset_name = serializers.CharField(allow_null=False)
+    datasets = serializers.ListField(
+        child=serializers.FileField(use_url=False, allow_empty_file=False),
+        write_only=True,
+    )
+    file_name = serializers.CharField(allow_null=False)
+    source = serializers.CharField(allow_null=False)
+
+
+class DatasetV2FileSerializer(serializers.ModelSerializer):
+    """
+    Serializer for DatasetV2File model to serialize dataset files.
+    Following are the fields required by the serializer:
+        `id` (int): auto-generated Identifier
+        `dataset` (DatasetV2, FK): DatasetV2 reference object
+        `file` (File, mandatory): Dataset file
+    """
+
+    class Meta:
+        model = DatasetV2File
+        fields = ["id", "dataset", "file", "source"]
+
+
+class DatasetV2Serializer(serializers.ModelSerializer):
+    """
+    Serializer for DatasetV2 model to serialize the Meta Data of Datasets.
+    Following are the fields required by the serializer:
+        `id` (UUID): auto-generated Identifier
+        `name` (String, unique, mandatory): Dataset name
+        `user_map` (UUID, mandatory): User Organization map ID, related to :model:`datahub_userorganizationmap` (UserOrganizationMap)
+        `description` (Text): Dataset description
+        `category` (JSON, mandatory): Category as JSON object
+        `geography` (String): Geography of the dataset
+        `data_capture_start` (DateTime): Start DateTime of the dataset captured
+        `data_capture_end` (DateTime): End DateTime of the dataset captured
+        `datasets` (Files, FK, read only): Dataset files stored
+        `upload_datasets` (List, mandatory): List of dataset files to be uploaded
+    """
+
+    class OrganizationRetriveSerializer(serializers.ModelSerializer):
+        class Meta:
+            model = Organization
+            fields = [
+                "org_email",
+                "org_description",
+                "name",
+                "logo",
+                "phone_number",
+                "address",
+            ]
+
+    class UserSerializer(serializers.ModelSerializer):
+        class Meta:
+            model = User
+            fields = ["id", "first_name", "last_name", "email"]
+
+    organization = OrganizationRetriveSerializer(
+        allow_null=True, required=False, read_only=True, source="user_map.organization"
+    )
+
+    user = UserSerializer(allow_null=True, required=False, read_only=True, source="user_map.user")
+
+    datasets = DatasetV2FileSerializer(many=True, read_only=True)
+    upload_datasets = serializers.ListField(
+        child=serializers.FileField(use_url=False, allow_empty_file=False), write_only=True, required=False
+    )
+
+    def validate_name(self, name):
+        if check_special_chars(name):
+            raise ValidationError("dataset name cannot include special characters.")
+        name = re.sub(r"\s+", " ", name)
+        return name
+
+    class Meta:
+        model = DatasetV2
+        fields = [
+            "id",
+            "name",
+            "user_map",
+            "description",
+            "category",
+            "geography",
+            "constantly_update",
+            "data_capture_start",
+            "data_capture_end",
+            "organization",
+            "user",
+            "datasets",
+            "upload_datasets",
+        ]
+
+    def create(self, validated_data):
+        """
+        Override the create method to save meta data (DatasetV2) with multiple dataset files on to the referenced model (DatasetV2File).
+
+        **Parameters**
+        ``validated_data`` (Dict): Validated data from the serializer
+
+        **Returns**
+        ``dataset_obj`` (DatasetV2 instance): Save & return the dataset
+        """
+        # create meta dataset obj
+        # uploaded_files = validated_data.pop("upload_datasets")
+        file_paths = {}
+
+        try:
+
+            directory_created = move_directory(
+                os.path.join(settings.TEMP_DATASET_URL, validated_data.get("name")), settings.DATASET_FILES_URL
+            )
+            to_find = [
+                Constants.SOURCE_FILE_TYPE,
+                Constants.SOURCE_MYSQL_FILE_TYPE,
+                Constants.SOURCE_POSTGRESQL_FILE_TYPE,
+            ]
+            for file in to_find:
+                direct = os.path.join(directory_created, file)
+                if os.path.exists(direct):
+                    file_paths = {
+                        os.path.join(direct, f): file
+                        for f in os.listdir(direct)
+                        if os.path.isfile(os.path.join(direct, f))
+                    }
+
+            if file_paths:
+                dataset_obj = DatasetV2.objects.create(**validated_data)
+                for key, value in file_paths.items():
+                    DatasetV2File.objects.create(dataset=dataset_obj, file=key.replace("media/", ""), source=value)
+                return dataset_obj
+                # return super().create(validated_data)
+        except Exception as error:
+            LOGGER.error(error, exc_info=True)
+            raise NotFoundException(
+                detail="Dataset files are not uploaded or missing. Failed to create meta dataset.",
+                status_code=status.HTTP_400_BAD_REQUEST,
+            )
+
+
+class DatahubDatasetsV2Serializer(serializers.ModelSerializer):
+    user_id = serializers.PrimaryKeyRelatedField(
+        queryset=models.User.objects.all(), required=True, source="user_map.user"
+    )
+    organization_id = serializers.PrimaryKeyRelatedField(
+        queryset=Organization.objects.all(),
+        allow_null=True,
+        required=False,
+        source="user_map.organization",
+    )
+
+    organization = DatahubDatasetsSerializer.OrganizationDatsetsListRetriveSerializer(
+        required=False, allow_null=True, read_only=True, source="user_map.organization"
+    )
+    user = DatahubDatasetsSerializer.UserDatasetSerializer(
+        required=False, allow_null=True, read_only=True, source="user_map.user"
+    )
+
+    class Meta:
+        model = DatasetV2
+        fields = Constants.ALL

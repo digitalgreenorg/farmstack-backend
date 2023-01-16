@@ -1,25 +1,18 @@
-import json, time, re
+import ast
+import datetime
+import json
 import logging
 import os
+import re
 import subprocess
+import time
 from sre_compile import isstring
 from struct import unpack
 
+import mysql.connector
 import pandas as pd
 import requests
-from datetime import datetime
-from accounts.models import User
-from core.constants import Constants
-from core.utils import (
-    Utils,
-    CustomPagination,
-    DefaultPagination,
-    csv_and_xlsx_file_validatation,
-    date_formater,
-    one_day_date_formater,
-    read_contents_from_csv_or_xlsx_file,
-)
-from datahub.models import Datasets, Organization, UserOrganizationMap
+from django.conf import settings
 from django.db.models import Q
 from django.db.models.functions import Lower
 from django.shortcuts import render
@@ -30,9 +23,19 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.viewsets import GenericViewSet, ViewSet
 from uritemplate import partial
-from utils import string_functions
-from utils.connector_utils import run_containers, stop_containers
 
+from accounts.models import User
+from core.constants import Constants
+from core.utils import (
+    CustomPagination,
+    DefaultPagination,
+    Utils,
+    csv_and_xlsx_file_validatation,
+    date_formater,
+    one_day_date_formater,
+    read_contents_from_csv_or_xlsx_file,
+)
+from datahub.models import Datasets, Organization, UserOrganizationMap
 from participant.models import (
     Connectors,
     ConnectorsMap,
@@ -50,20 +53,34 @@ from participant.serializers import (
     ConnectorsProviderRelationSerializer,
     ConnectorsRetriveSerializer,
     ConnectorsSerializer,
+    ConnectorsSerializerForEmail,
+    DatabaseConfigSerializer,
     DatasetSerializer,
     DepartmentSerializer,
     ParticipantDatasetsDetailSerializer,
     ParticipantDatasetsDropDownSerializer,
     ParticipantDatasetsSerializer,
-    ParticipantSupportTicketSerializer,
-    ProjectSerializer,
-    ProjectDepartmentSerializer,
-    TicketSupportSerializer,
     ParticipantDatasetsSerializerForEmail,
-    ConnectorsSerializerForEmail,
+    ParticipantSupportTicketSerializer,
+    ProjectDepartmentSerializer,
+    ProjectSerializer,
+    TicketSupportSerializer,
 )
+from utils import string_functions
+from utils.connector_utils import run_containers, stop_containers
 
 LOGGER = logging.getLogger(__name__)
+import json
+
+import mysql.connector
+from django.http import HttpResponse
+from rest_framework import status
+from rest_framework.decorators import api_view
+from rest_framework.response import Response
+
+from utils import file_operations as file_ops
+
+from .serializers import DatabaseConfigSerializer
 
 
 class ParticipantSupportViewSet(GenericViewSet):
@@ -1450,3 +1467,186 @@ class ParticipantProjectViewSet(GenericViewSet):
         project.status = False
         self.perform_create(project)
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+def update_cookies(key,value,response):
+    max_age = 1 * 24 * 60 * 60
+    expires = datetime.datetime.strftime(
+        datetime.datetime.utcnow() + datetime.timedelta(seconds=max_age),
+        "%a, %d-%b-%Y %H:%M:%S GMT",
+        )
+    response.set_cookie(key,value,
+    max_age=max_age,
+    expires=expires,
+    domain=os.environ.get("PUBLIC_DOMAIN"),
+    secure=False
+    )
+    return response
+
+
+class DataBaseViewSet(GenericViewSet):
+    """
+    This class handles the participant external Databases  operations.
+    """
+
+    parser_class = JSONParser
+    serializer_class = ProjectSerializer
+    queryset = Project
+    pagination_class = CustomPagination
+
+    permission_classes=[IsAuthenticated]
+
+    @action(detail=False, methods=["post"])
+    def database_config(self,request):
+        '''Get the database login details from reuest
+        test the connection
+        if valid connection
+        return the table names in the database'''
+        serializer = DatabaseConfigSerializer(data=request.data)
+        # print(request.data)
+        serializer.is_valid(raise_exception=True)
+        # Test the database configuration
+        config = serializer.validated_data
+        cookie_data=serializer.data
+        try:
+            # Try to connect to the database using the provided configuration
+            mydb = mysql.connector.connect(**config)
+
+            mycursor = mydb.cursor()
+
+            db_name=request.data.get('database')
+            
+            mycursor.execute("use "+db_name+";")
+            mycursor.execute("show tables;")
+
+            table_list = mycursor.fetchall()
+            # print(table_list)
+            #flatten
+            table_list = [element for innerList in table_list for element in innerList]
+            
+            response=HttpResponse(json.dumps(table_list), status=status.HTTP_200_OK)
+            response=update_cookies("conn_details",cookie_data,response)
+            return  response
+        # except Exception as e:
+        except mysql.connector.Error as err:
+            # print(err)
+            if err.errno == mysql.connector.errorcode.ER_ACCESS_DENIED_ERROR:
+                return Response({"username": ["Incorrect username or password"], "password": [msg]},status=status.HTTP_400_BAD_REQUEST)
+            elif err.errno == mysql.connector.errorcode.ER_NO_SUCH_TABLE:
+                return Response({"table":["Table does not exist"]}, status=status.HTTP_400_BAD_REQUEST)
+            # Return an error message if the connection fails
+            return Response({'error': [str(err)]}, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            return Response(str(e),status=status.HTTP_400_BAD_REQUEST)
+            # Return a success message if the connection succeeds
+    @action(detail=False, methods=["post"])
+    def database_col_names(self,request):
+        ''' From cookies get the database details
+        Get the table name from request
+        Fetch the column names of the table
+        Return the column names of the table '''
+        conn_details = request.COOKIES.get('conn_details',request.data)
+        config = ast.literal_eval(conn_details)
+
+            # Return an error message if the connection fails
+        try:
+            # Try to connect to the database using the provided configuration
+            connection = mysql.connector.connect(**config)
+            mydb = connection
+
+            mycursor = mydb.cursor()
+
+            db_name=config['database']
+            table_name=request.data.get('table_name')
+
+            
+            mycursor.execute("use "+db_name+";")
+            mycursor.execute("SHOW COLUMNS FROM " +db_name +"." +table_name+";")
+
+            col_list = mycursor.fetchall()
+            # import pdb; pdb.set_trace()
+            cols=[column_details[0] for column_details in col_list]
+            response= HttpResponse(json.dumps(cols), status=status.HTTP_200_OK)
+            return response
+
+        # except Exception as e:
+            # print("Connected to database")
+        except mysql.connector.Error as err:
+            # print(err)
+            if err.errno == mysql.connector.errorcode.ER_ACCESS_DENIED_ERROR:
+                return Response({"username": ["Incorrect username or password"], "password": [msg]},status=status.HTTP_400_BAD_REQUEST)
+            elif err.errno == mysql.connector.errorcode.ER_NO_SUCH_TABLE:
+                return Response({"table":["Table does not exist"]}, status=status.HTTP_400_BAD_REQUEST)
+            # Return an error message if the connection fails
+            return Response({'error': [str(err)]}, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            return Response(str(e),status=status.HTTP_400_BAD_REQUEST)
+    
+
+            
+
+    @action(detail=False, methods=["post"])
+    def database_xls_file(self,request):
+        '''Get the databse login details from cookies
+        Get the table name, column list, dataset name and file name from request body'''
+        
+        conn_details = request.COOKIES.get('conn_details',request.data)
+
+        t_name=request.data.get('table_name')
+
+        config = ast.literal_eval(conn_details)
+        serializer = DatabaseConfigSerializer(data=config)
+        serializer.is_valid(raise_exception=True)
+
+        config = serializer.validated_data
+
+
+            # Return an error message if the connection fails
+        try:
+            # Try to connect to the database using the provided configuration
+            mydb = mysql.connector.connect(**config)
+            mycursor = mydb.cursor()
+
+            db_name=config['database']
+            # table_name=request.data['tl_name']
+            col_names=request.data.get('col')
+            
+            mycursor.execute("use "+db_name+";")
+            # mycursor.execute("SHOW COLUMNS FROM " +db_name +"." +table_name+";")
+            col_names=ast.literal_eval(col_names)
+            col_names= ', '.join(col_names)
+            query="select "+ col_names+" from "+t_name+" ;"
+            mycursor.execute(query)
+
+            result = mycursor.fetchall()
+            # import pdb; pdb.set_trace()
+            dataset_name=request.data.get("dataset_name")
+            # print(dataset_name)
+            source=request.data.get('source')
+
+            file_name=request.data.get("file_name")
+
+            file_path=file_ops.create_directory(settings.TEMP_DATASET_URL,[dataset_name,source])
+
+            df = pd.read_sql(query,mydb)
+            xls_file=df.to_excel(file_path+"/"+file_name+".xls")
+                    
+            result=os.listdir(file_path) #list of all the files in the directory
+
+            return HttpResponse(json.dumps(result),status=status.HTTP_200_OK)
+
+        # except Exception as e:
+            # print("Connected to database")
+        except mysql.connector.Error as err:
+            # print(err)
+            if err.errno == mysql.connector.errorcode.ER_ACCESS_DENIED_ERROR:
+                return Response({"username": ["Incorrect username or password"], "password": ["Incorrect username or password"]},status=status.HTTP_400_BAD_REQUEST)
+            elif err.errno == mysql.connector.errorcode.ER_NO_SUCH_TABLE:
+                return Response({"table":["Table does not exist"]}, status=status.HTTP_400_BAD_REQUEST)
+        
+            
+            # Return an error message if the connection fails
+            return Response({'error': [str(err)]}, status=status.HTTP_400_BAD_REQUEST)
+            # Return a success message if the connection succeeds
+        except Exception as e:
+            return Response(str(e),status=status.HTTP_400_BAD_REQUEST)
+            

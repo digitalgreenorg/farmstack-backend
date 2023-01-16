@@ -1,8 +1,10 @@
 import json
 import logging
 import os
+import re
 import shutil
 from calendar import c
+
 import django
 import pandas as pd
 from accounts.models import User, UserRole
@@ -39,14 +41,24 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.viewsets import GenericViewSet, ViewSet
 from uritemplate import partial
-from utils import file_operations, string_functions, validators
+from utils import custom_exceptions, file_operations, string_functions, validators
 
-from datahub.models import DatahubDocuments, Datasets, Organization, UserOrganizationMap
+from datahub.models import (
+    DatahubDocuments,
+    Datasets,
+    DatasetV2,
+    DatasetV2File,
+    Organization,
+    UserOrganizationMap,
+)
 from datahub.serializers import (
     DatahubDatasetsSerializer,
+    DatahubDatasetsV2Serializer,
     DatahubThemeSerializer,
     DatasetSerializer,
     DatasetUpdateSerializer,
+    DatasetV2Serializer,
+    DatasetV2TempFileSerializer,
     DropDocumentSerializer,
     OrganizationSerializer,
     ParticipantSerializer,
@@ -109,9 +121,7 @@ class TeamMemberViewSet(GenericViewSet):
         """PUT method: update or send a PUT request on an object of the Product model"""
         instance = self.get_object()
         # request.data["role"] = UserRole.objects.get(role_name=request.data["role"]).id
-        serializer = TeamMemberUpdateSerializer(
-            instance, data=request.data, partial=True
-        )
+        serializer = TeamMemberUpdateSerializer(instance, data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
         serializer.save()
         return Response(serializer.data, status=status.HTTP_201_CREATED)
@@ -150,15 +160,9 @@ class OrganizationViewSet(GenericViewSet):
         """POST method: create action to save an organization object using User ID (IMPORTANT: Using USER ID instead of Organization ID)"""
         try:
             user_obj = User.objects.get(id=request.data.get(Constants.USER_ID))
-            org_queryset = Organization.objects.filter(
-                org_email=request.data.get(Constants.ORG_EMAIL), status=True
-            )
+            org_queryset = Organization.objects.filter(org_email=request.data.get(Constants.ORG_EMAIL), status=True)
             user_org_queryset = (
-                UserOrganizationMap.objects.filter(
-                    organization_id=org_queryset.first().id
-                )
-                if org_queryset
-                else None
+                UserOrganizationMap.objects.filter(organization_id=org_queryset.first().id) if org_queryset else None
             )
 
             if not user_obj:
@@ -177,9 +181,7 @@ class OrganizationViewSet(GenericViewSet):
                 with transaction.atomic():
                     # create organization and userorganizationmap object
                     print("Creating org & user_org_map")
-                    org_serializer = OrganizationSerializer(
-                        data=request.data, partial=True
-                    )
+                    org_serializer = OrganizationSerializer(data=request.data, partial=True)
                     org_serializer.is_valid(raise_exception=True)
                     org_queryset = self.perform_create(org_serializer)
 
@@ -223,9 +225,7 @@ class OrganizationViewSet(GenericViewSet):
     def list(self, request, *args, **kwargs):
         """GET method: query the list of Organization objects"""
         user_org_queryset = (
-            UserOrganizationMap.objects.select_related(
-                Constants.USER, Constants.ORGANIZATION
-            )
+            UserOrganizationMap.objects.select_related(Constants.USER, Constants.ORGANIZATION)
             .filter(organization__status=True)
             .all()
         )
@@ -256,11 +256,7 @@ class OrganizationViewSet(GenericViewSet):
         """PUT method: update or PUT request for Organization using User ID of the User (IMPORTANT: Using USER ID instead of Organization ID)"""
         user_obj = User.objects.get(id=pk, status=True)
         user_org_queryset = (
-            UserOrganizationMap.objects.prefetch_related(
-                Constants.USER, Constants.ORGANIZATION
-            )
-            .filter(user=pk)
-            .all()
+            UserOrganizationMap.objects.prefetch_related(Constants.USER, Constants.ORGANIZATION).filter(user=pk).all()
         )
 
         if not user_org_queryset:
@@ -288,9 +284,7 @@ class OrganizationViewSet(GenericViewSet):
     def destroy(self, request, pk):
         """DELETE method: delete an object"""
         user_obj = User.objects.get(id=pk, status=True)
-        user_org_queryset = UserOrganizationMap.objects.select_related(
-            Constants.ORGANIZATION
-        ).get(user_id=pk)
+        user_org_queryset = UserOrganizationMap.objects.select_related(Constants.ORGANIZATION).get(user_id=pk)
         org_queryset = Organization.objects.get(id=user_org_queryset.organization_id)
         org_queryset.status = False
         self.perform_create(org_queryset)
@@ -321,9 +315,7 @@ class ParticipantViewSet(GenericViewSet):
     def create(self, request, *args, **kwargs):
         """POST method: create action to save an object by sending a POST request"""
         org_queryset = list(
-            Organization.objects.filter(
-                org_email=self.request.data.get(Constants.ORG_EMAIL, "")
-            ).values()
+            Organization.objects.filter(org_email=self.request.data.get(Constants.ORG_EMAIL, "")).values()
         )
         if not org_queryset:
             org_serializer = OrganizationSerializer(data=request.data, partial=True)
@@ -347,28 +339,20 @@ class ParticipantViewSet(GenericViewSet):
 
         try:
             datahub_admin = User.objects.filter(role_id=1).first()
-            admin_full_name = string_functions.get_full_name(
-                datahub_admin.first_name, datahub_admin.last_name
-            )
+            admin_full_name = string_functions.get_full_name(datahub_admin.first_name, datahub_admin.last_name)
             participant_full_name = string_functions.get_full_name(
                 request.data.get("first_name"), request.data.get("last_name")
             )
 
             data = {
-                Constants.datahub_name: os.environ.get(
-                    Constants.DATAHUB_NAME, Constants.datahub_name
-                ),
+                Constants.datahub_name: os.environ.get(Constants.DATAHUB_NAME, Constants.datahub_name),
                 "participant_admin_name": participant_full_name,
                 "participant_organization_name": request.data.get("name"),
                 "datahub_admin": admin_full_name,
-                Constants.datahub_site: os.environ.get(
-                    Constants.DATAHUB_SITE, Constants.datahub_site
-                ),
+                Constants.datahub_site: os.environ.get(Constants.DATAHUB_SITE, Constants.datahub_site),
             }
 
-            email_render = render(
-                request, Constants.WHEN_DATAHUB_ADMIN_ADDS_PARTICIPANT, data
-            )
+            email_render = render(request, Constants.WHEN_DATAHUB_ADMIN_ADDS_PARTICIPANT, data)
             mail_body = email_render.content.decode("utf-8")
             Utils().send_email(
                 to_email=request.data.get("email"),
@@ -378,18 +362,14 @@ class ParticipantViewSet(GenericViewSet):
             )
         except Exception as error:
             LOGGER.error(error, exc_info=True)
-            return Response(
-                {"message": ["An error occured"]}, status=status.HTTP_200_OK
-            )
+            return Response({"message": ["An error occured"]}, status=status.HTTP_200_OK)
 
         return Response(user_org_serializer.data, status=status.HTTP_201_CREATED)
 
     def list(self, request, *args, **kwargs):
         """GET method: query all the list of objects from the Product model"""
         roles = (
-            UserOrganizationMap.objects.select_related(
-                Constants.USER, Constants.ORGANIZATION
-            )
+            UserOrganizationMap.objects.select_related(Constants.USER, Constants.ORGANIZATION)
             .filter(user__status=True, user__role=3)
             .all()
         )
@@ -400,9 +380,7 @@ class ParticipantViewSet(GenericViewSet):
     def retrieve(self, request, pk):
         """GET method: retrieve an object or instance of the Product model"""
         roles = (
-            UserOrganizationMap.objects.prefetch_related(
-                Constants.USER, Constants.ORGANIZATION
-            )
+            UserOrganizationMap.objects.prefetch_related(Constants.USER, Constants.ORGANIZATION)
             .filter(user__status=True, user__role=3, user=pk)
             .all()
         )
@@ -414,43 +392,29 @@ class ParticipantViewSet(GenericViewSet):
     def update(self, request, *args, **kwargs):
         """PUT method: update or send a PUT request on an object of the Product model"""
         participant = self.get_object()
-        user_serializer = self.get_serializer(
-            participant, data=request.data, partial=True
-        )
+        user_serializer = self.get_serializer(participant, data=request.data, partial=True)
         user_serializer.is_valid(raise_exception=True)
         organization = Organization.objects.get(id=request.data.get(Constants.ID))
-        organization_serializer = OrganizationSerializer(
-            organization, data=request.data, partial=True
-        )
+        organization_serializer = OrganizationSerializer(organization, data=request.data, partial=True)
         organization_serializer.is_valid(raise_exception=True)
 
         try:
             datahub_admin = User.objects.filter(role_id=1).first()
-            admin_full_name = string_functions.get_full_name(
-                datahub_admin.first_name, datahub_admin.last_name
-            )
-            participant_full_name = string_functions.get_full_name(
-                participant.first_name, participant.last_name
-            )
+            admin_full_name = string_functions.get_full_name(datahub_admin.first_name, datahub_admin.last_name)
+            participant_full_name = string_functions.get_full_name(participant.first_name, participant.last_name)
 
             data = {
-                Constants.datahub_name: os.environ.get(
-                    Constants.DATAHUB_NAME, Constants.datahub_name
-                ),
+                Constants.datahub_name: os.environ.get(Constants.DATAHUB_NAME, Constants.datahub_name),
                 "participant_admin_name": participant_full_name,
                 "participant_organization_name": organization.name,
                 "datahub_admin": admin_full_name,
-                Constants.datahub_site: os.environ.get(
-                    Constants.DATAHUB_SITE, Constants.datahub_site
-                ),
+                Constants.datahub_site: os.environ.get(Constants.DATAHUB_SITE, Constants.datahub_site),
             }
 
             # update data & trigger_email
             self.perform_create(user_serializer)
             self.perform_create(organization_serializer)
-            email_render = render(
-                request, Constants.DATAHUB_ADMIN_UPDATES_PARTICIPANT_ORGANIZATION, data
-            )
+            email_render = render(request, Constants.DATAHUB_ADMIN_UPDATES_PARTICIPANT_ORGANIZATION, data)
             mail_body = email_render.content.decode("utf-8")
             Utils().send_email(
                 to_email=participant.email,
@@ -466,16 +430,12 @@ class ParticipantViewSet(GenericViewSet):
             return Response(data, status=status.HTTP_201_CREATED)
         except Exception as error:
             LOGGER.error(error, exc_info=True)
-            return Response(
-                {"message": ["An error occured"]}, status=status.HTTP_200_OK
-            )
+            return Response({"message": ["An error occured"]}, status=status.HTTP_200_OK)
 
     def destroy(self, request, pk):
         """DELETE method: delete an object"""
         participant = self.get_object()
-        user_organization = UserOrganizationMap.objects.select_related(
-            Constants.ORGANIZATION
-        ).get(user_id=pk)
+        user_organization = UserOrganizationMap.objects.select_related(Constants.ORGANIZATION).get(user_id=pk)
         organization = Organization.objects.get(id=user_organization.organization_id)
 
         if participant.status is not False and organization.status is not False:
@@ -484,23 +444,15 @@ class ParticipantViewSet(GenericViewSet):
 
             try:
                 datahub_admin = User.objects.filter(role_id=1).first()
-                admin_full_name = string_functions.get_full_name(
-                    datahub_admin.first_name, datahub_admin.last_name
-                )
-                participant_full_name = string_functions.get_full_name(
-                    participant.first_name, participant.last_name
-                )
+                admin_full_name = string_functions.get_full_name(datahub_admin.first_name, datahub_admin.last_name)
+                participant_full_name = string_functions.get_full_name(participant.first_name, participant.last_name)
 
                 data = {
-                    Constants.datahub_name: os.environ.get(
-                        Constants.DATAHUB_NAME, Constants.datahub_name
-                    ),
+                    Constants.datahub_name: os.environ.get(Constants.DATAHUB_NAME, Constants.datahub_name),
                     "participant_admin_name": participant_full_name,
                     "participant_organization_name": organization.name,
                     "datahub_admin": admin_full_name,
-                    Constants.datahub_site: os.environ.get(
-                        Constants.DATAHUB_SITE, Constants.datahub_site
-                    ),
+                    Constants.datahub_site: os.environ.get(Constants.DATAHUB_SITE, Constants.datahub_site),
                 }
 
                 # delete data & trigger_email
@@ -525,9 +477,7 @@ class ParticipantViewSet(GenericViewSet):
                 )
             except Exception as error:
                 LOGGER.error(error, exc_info=True)
-                return Response(
-                    {"message": ["An error occured"]}, status=status.HTTP_200_OK
-                )
+                return Response({"message": ["An error occured"]}, status=status.HTTP_200_OK)
 
         elif participant.status is False and organization.status is False:
             return Response(
@@ -562,11 +512,7 @@ class MailInvitationViewSet(GenericViewSet):
                     emails_not_found.append(email)
 
             for user in User.objects.filter(email__in=emails_found):
-                full_name = (
-                    user.first_name + " " + str(user.last_name)
-                    if user.last_name
-                    else user.first_name
-                )
+                full_name = user.first_name + " " + str(user.last_name) if user.last_name else user.first_name
                 data = {
                     "datahub_name": os.environ.get("DATAHUB_NAME", "datahub_name"),
                     "participant_admin_name": full_name,
@@ -574,16 +520,13 @@ class MailInvitationViewSet(GenericViewSet):
                 }
 
                 # render email from query_email template
-                email_render = render(
-                    request, "datahub_admin_invites_participants.html", data
-                )
+                email_render = render(request, "datahub_admin_invites_participants.html", data)
                 mail_body = email_render.content.decode("utf-8")
 
                 Utils().send_email(
                     to_email=[user.email],
                     content=mail_body,
-                    subject=os.environ.get("DATAHUB_NAME", "datahub_name")
-                    + Constants.PARTICIPANT_INVITATION_SUBJECT,
+                    subject=os.environ.get("DATAHUB_NAME", "datahub_name") + Constants.PARTICIPANT_INVITATION_SUBJECT,
                 )
 
             failed = f"No participants found for emails: {emails_not_found}"
@@ -618,6 +561,7 @@ class DropDocumentView(GenericViewSet):
             file = serializer.validated_data[key]
             file_type = str(file).split(".")[-1]
             file_name = str(key) + "." + file_type
+            file_operations.remove_files(file_name, settings.TEMP_FILE_PATH)
             file_operations.file_save(file, file_name, settings.TEMP_FILE_PATH)
             return Response(
                 {key: [f"{file_name} uploading in progress ..."]},
@@ -656,16 +600,10 @@ class DocumentSaveView(GenericViewSet):
             file_paths = file_operations.file_path(settings.DOCUMENTS_URL)
             datahub_obj = DatahubDocuments.objects.last()
             content = {
-                Constants.GOVERNING_LAW: datahub_obj.governing_law
-                if datahub_obj
-                else None,
-                Constants.PRIVACY_POLICY: datahub_obj.privacy_policy
-                if datahub_obj
-                else None,
+                Constants.GOVERNING_LAW: datahub_obj.governing_law if datahub_obj else None,
+                Constants.PRIVACY_POLICY: datahub_obj.privacy_policy if datahub_obj else None,
                 Constants.TOS: datahub_obj.tos if datahub_obj else None,
-                Constants.LIMITATIONS_OF_LIABILITIES: datahub_obj.limitations_of_liabilities
-                if datahub_obj
-                else None,
+                Constants.LIMITATIONS_OF_LIABILITIES: datahub_obj.limitations_of_liabilities if datahub_obj else None,
                 Constants.WARRANTY: datahub_obj.warranty if datahub_obj else None,
             }
 
@@ -673,9 +611,7 @@ class DocumentSaveView(GenericViewSet):
                 Constants.GOVERNING_LAW: file_paths.get("governing_law"),
                 Constants.PRIVACY_POLICY: file_paths.get("privacy_policy"),
                 Constants.TOS: file_paths.get("tos"),
-                Constants.LIMITATIONS_OF_LIABILITIES: file_paths.get(
-                    "limitations_of_liabilities"
-                ),
+                Constants.LIMITATIONS_OF_LIABILITIES: file_paths.get("limitations_of_liabilities"),
                 Constants.WARRANTY: file_paths.get("warranty"),
             }
             if not datahub_obj and not file_paths:
@@ -704,9 +640,8 @@ class DocumentSaveView(GenericViewSet):
             with transaction.atomic():
                 serializer.save()
                 # save the document files
-                file_operations.files_move(
-                    settings.TEMP_FILE_PATH, settings.DOCUMENTS_ROOT
-                )
+                file_operations.create_directory(settings.DOCUMENTS_ROOT, [])
+                file_operations.files_move(settings.TEMP_FILE_PATH, settings.DOCUMENTS_ROOT)
                 return Response(
                     {"message": "Documents and content saved!"},
                     status=status.HTTP_201_CREATED,
@@ -727,9 +662,8 @@ class DocumentSaveView(GenericViewSet):
 
             with transaction.atomic():
                 serializer.save()
-                file_operations.files_move(
-                    settings.TEMP_FILE_PATH, settings.DOCUMENTS_ROOT
-                )
+                file_operations.create_directory(settings.DOCUMENTS_ROOT, [])
+                file_operations.files_move(settings.TEMP_FILE_PATH, settings.DOCUMENTS_ROOT)
                 return Response(
                     {"message": "Documents and content updated!"},
                     status=status.HTTP_201_CREATED,
@@ -762,12 +696,14 @@ class DatahubThemeView(GenericViewSet):
                 data = {"banner": "null", "button_color": "null"}
 
             elif banner and not button_color:
-                file_name = file_operations.get_file_name(str(banner), "banner")
+                file_name = file_operations.file_rename(str(banner), "banner")
+                file_operations.remove_files(file_name, settings.THEME_ROOT)
                 file_operations.file_save(banner, file_name, settings.THEME_ROOT)
                 data = {"banner": file_name, "button_color": "null"}
 
             elif not banner and button_color:
                 css = ".btn { background-color: " + button_color + "; }"
+                file_operations.remove_files(file_name, settings.THEME_ROOT)
                 file_operations.file_save(
                     ContentFile(css),
                     settings.CSS_FILE_NAME,
@@ -776,10 +712,12 @@ class DatahubThemeView(GenericViewSet):
                 data = {"banner": "null", "button_color": settings.CSS_FILE_NAME}
 
             elif banner and button_color:
-                file_name = file_operations.get_file_name(str(banner), "banner")
+                file_name = file_operations.file_rename(str(banner), "banner")
+                file_operations.remove_files(file_name, settings.THEME_ROOT)
                 file_operations.file_save(banner, file_name, settings.THEME_ROOT)
 
                 css = ".btn { background-color: " + button_color + "; }"
+                file_operations.remove_files(file_name, settings.THEME_ROOT)
                 file_operations.file_save(
                     ContentFile(css),
                     settings.CSS_FILE_NAME,
@@ -806,9 +744,7 @@ class DatahubThemeView(GenericViewSet):
         data = {}
 
         try:
-            css_attribute = file_operations.get_css_attributes(
-                css_path, "background-color"
-            )
+            css_attribute = file_operations.get_css_attributes(css_path, "background-color")
 
             if not css_path and not file_paths:
                 data = {"banner": "null", "css": "null"}
@@ -839,12 +775,14 @@ class DatahubThemeView(GenericViewSet):
                 data = {"banner": "null", "button_color": "null"}
 
             elif banner and button_color is None:
-                file_name = file_operations.get_file_name(str(banner), "banner")
+                file_name = file_operations.file_rename(str(banner), "banner")
+                file_operations.remove_files(file_name, settings.THEME_ROOT)
                 file_operations.file_save(banner, file_name, settings.THEME_ROOT)
                 data = {"banner": file_name, "button_color": "null"}
 
             elif not banner and button_color:
                 css = ".btn { background-color: " + button_color + "; }"
+                file_operations.remove_files(settings.CSS_FILE_NAME, settings.CSS_ROOT)
                 file_operations.file_save(
                     ContentFile(css),
                     settings.CSS_FILE_NAME,
@@ -853,10 +791,12 @@ class DatahubThemeView(GenericViewSet):
                 data = {"banner": "null", "button_color": settings.CSS_FILE_NAME}
 
             elif banner and button_color:
-                file_name = file_operations.get_file_name(str(banner), "banner")
+                file_name = file_operations.file_rename(str(banner), "banner")
+                file_operations.remove_files(file_name, settings.THEME_ROOT)
                 file_operations.file_save(banner, file_name, settings.THEME_ROOT)
 
                 css = ".btn { background-color: " + button_color + "; }"
+                file_operations.remove_files(settings.CSS_FILE_NAME, settings.CSS_ROOT)
                 file_operations.file_save(
                     ContentFile(css),
                     settings.CSS_FILE_NAME,
@@ -921,9 +861,7 @@ class SupportViewSet(GenericViewSet):
             )
         except django.core.exceptions.FieldError as error:  # type: ignore
             logging.error(f"Error while filtering the ticketd ERROR: {error}")
-            return Response(
-                f"Invalid filter fields: {list(request.data.keys())}", status=400
-            )
+            return Response(f"Invalid filter fields: {list(request.data.keys())}", status=400)
 
         page = self.paginate_queryset(data)
         participant_serializer = ParticipantSupportTicketSerializer(page, many=True)
@@ -992,18 +930,12 @@ class DatahubDatasetsViewSet(GenericViewSet):
         """
         return serializer.save()
 
-    def trigger_email(
-        self, request, template, to_email, subject, first_name, last_name, dataset_name
-    ):
+    def trigger_email(self, request, template, to_email, subject, first_name, last_name, dataset_name):
         # trigger email to the participant as they are being added
         try:
             datahub_admin = User.objects.filter(role_id=1).first()
-            admin_full_name = string_functions.get_full_name(
-                datahub_admin.first_name, datahub_admin.last_name
-            )
-            participant_full_name = string_functions.get_full_name(
-                first_name, last_name
-            )
+            admin_full_name = string_functions.get_full_name(datahub_admin.first_name, datahub_admin.last_name)
+            participant_full_name = string_functions.get_full_name(first_name, last_name)
 
             data = {
                 "datahub_name": os.environ.get("DATAHUB_NAME", "datahub_name"),
@@ -1030,9 +962,7 @@ class DatahubDatasetsViewSet(GenericViewSet):
         data = request.data
 
         if not data.get("is_public"):
-            if not csv_and_xlsx_file_validatation(
-                request.data.get(Constants.SAMPLE_DATASET)
-            ):
+            if not csv_and_xlsx_file_validatation(request.data.get(Constants.SAMPLE_DATASET)):
                 return Response(
                     {
                         Constants.SAMPLE_DATASET: [
@@ -1086,9 +1016,7 @@ class DatahubDatasetsViewSet(GenericViewSet):
         if participant_serializer.data:
             data = participant_serializer.data[0]
             if not data.get("is_public"):
-                data[Constants.CONTENT] = read_contents_from_csv_or_xlsx_file(
-                    data.get(Constants.SAMPLE_DATASET)
-                )
+                data[Constants.CONTENT] = read_contents_from_csv_or_xlsx_file(data.get(Constants.SAMPLE_DATASET))
             return Response(data, status=status.HTTP_200_OK)
         return Response({}, status=status.HTTP_200_OK)
 
@@ -1099,9 +1027,7 @@ class DatahubDatasetsViewSet(GenericViewSet):
         data = {key: value for key, value in data.items() if value != "null"}
         if not data.get("is_public"):
             if data.get(Constants.SAMPLE_DATASET):
-                if not csv_and_xlsx_file_validatation(
-                    data.get(Constants.SAMPLE_DATASET)
-                ):
+                if not csv_and_xlsx_file_validatation(data.get(Constants.SAMPLE_DATASET)):
                     return Response(
                         {
                             Constants.SAMPLE_DATASET: [
@@ -1112,15 +1038,11 @@ class DatahubDatasetsViewSet(GenericViewSet):
                     )
         category = data.get(Constants.CATEGORY)
         if category:
-            data[Constants.CATEGORY] = (
-                json.loads(category) if isinstance(category, str) else category
-            )
+            data[Constants.CATEGORY] = json.loads(category) if isinstance(category, str) else category
         instance = self.get_object()
 
         # trigger email to the participant
-        user_map_queryset = UserOrganizationMap.objects.select_related(
-            Constants.USER
-        ).get(id=instance.user_map_id)
+        user_map_queryset = UserOrganizationMap.objects.select_related(Constants.USER).get(id=instance.user_map_id)
         user_obj = user_map_queryset.user
 
         # reset the approval status b/c the user modified the dataset after an approval
@@ -1157,9 +1079,7 @@ class DatahubDatasetsViewSet(GenericViewSet):
                 instance.name,
             )
 
-        elif data.get(Constants.IS_ENABLED) == str(True) or data.get(
-            Constants.IS_ENABLED
-        ) == str("true"):
+        elif data.get(Constants.IS_ENABLED) == str(True) or data.get(Constants.IS_ENABLED) == str("true"):
             self.trigger_email(
                 request,
                 "datahub_admin_enables_dataset.html",
@@ -1170,9 +1090,7 @@ class DatahubDatasetsViewSet(GenericViewSet):
                 instance.name,
             )
 
-        elif data.get(Constants.IS_ENABLED) == str(False) or data.get(
-            Constants.IS_ENABLED
-        ) == str("false"):
+        elif data.get(Constants.IS_ENABLED) == str(False) or data.get(Constants.IS_ENABLED) == str("false"):
             self.trigger_email(
                 request,
                 "datahub_admin_disables_dataset.html",
@@ -1222,9 +1140,7 @@ class DatahubDatasetsViewSet(GenericViewSet):
             )
         except Exception as error:  # type: ignore
             logging.error("Error while filtering the datasets. ERROR: %s", error)
-            return Response(
-                f"Invalid filter fields: {list(request.data.keys())}", status=500
-            )
+            return Response(f"Invalid filter fields: {list(request.data.keys())}", status=500)
 
         page = self.paginate_queryset(data)
         participant_serializer = DatahubDatasetsSerializer(page, many=True)
@@ -1266,12 +1182,8 @@ class DatahubDatasetsViewSet(GenericViewSet):
             )
         except Exception as error:  # type: ignore
             logging.error("Error while filtering the datasets. ERROR: %s", error)
-            return Response(
-                f"Invalid filter fields: {list(request.data.keys())}", status=500
-            )
-        return Response(
-            {"geography": geography, "crop_detail": crop_detail}, status=200
-        )
+            return Response(f"Invalid filter fields: {list(request.data.keys())}", status=500)
+        return Response({"geography": geography, "crop_detail": crop_detail}, status=200)
 
     @action(detail=False, methods=["post"])
     def search_datasets(self, request, *args, **kwargs):
@@ -1284,9 +1196,7 @@ class DatahubDatasetsViewSet(GenericViewSet):
 
         if others:
             exclude = {Constants.USER_MAP_ORGANIZATION: org_id} if org_id else {}
-            filters = (
-                {Constants.NAME_ICONTAINS: search_pattern} if search_pattern else {}
-            )
+            filters = {Constants.NAME_ICONTAINS: search_pattern} if search_pattern else {}
         else:
             filters = (
                 {
@@ -1332,16 +1242,12 @@ class DatahubDashboard(GenericViewSet):
         try:
             # total_participants = User.objects.filter(role_id=3, status=True).count()
             total_participants = (
-                UserOrganizationMap.objects.select_related(
-                    Constants.USER, Constants.ORGANIZATION
-                )
+                UserOrganizationMap.objects.select_related(Constants.USER, Constants.ORGANIZATION)
                 .filter(user__role=3, user__status=True)
                 .count()
             )
             total_datasets = (
-                Datasets.objects.select_related(
-                    "user_map", "user_map__user", "user_map__organization"
-                )
+                Datasets.objects.select_related("user_map", "user_map__user", "user_map__organization")
                 .filter(
                     user_map__user__status=True,
                     status=True,
@@ -1355,9 +1261,7 @@ class DatahubDashboard(GenericViewSet):
             active_connectors = Connectors.objects.filter(status=True).count()
             total_data_exchange = {"total_data": 50, "unit": "Gbs"}
 
-            datasets = Datasets.objects.filter(status=True).values_list(
-                "category", flat=True
-            )
+            datasets = Datasets.objects.filter(status=True).values_list("category", flat=True)
             categories = set()
             categories_dict = {}
 
@@ -1374,16 +1278,12 @@ class DatahubDashboard(GenericViewSet):
                             categories_dict[key] += 1
 
             open_support_tickets = SupportTicket.objects.filter(status="open").count()
-            closed_support_tickets = SupportTicket.objects.filter(
-                status="closed"
-            ).count()
+            closed_support_tickets = SupportTicket.objects.filter(status="closed").count()
             hold_support_tickets = SupportTicket.objects.filter(status="hold").count()
 
             # retrieve 3 recent support tickets
             recent_tickets_queryset = SupportTicket.objects.order_by("updated_at")[0:3]
-            recent_tickets_serializer = RecentSupportTicketSerializer(
-                recent_tickets_queryset, many=True
-            )
+            recent_tickets_serializer = RecentSupportTicketSerializer(recent_tickets_queryset, many=True)
             support_tickets = {
                 "open_requests": open_support_tickets,
                 "closed_requests": closed_support_tickets,
@@ -1393,15 +1293,9 @@ class DatahubDashboard(GenericViewSet):
 
             # retrieve 3 recent updated datasets
             # datasets_queryset = Datasets.objects.order_by("updated_at")[0:3]
-            datasets_queryset = (
-                Datasets.objects.filter(status=True).order_by("-updated_at").all()
-            )
-            datasets_queryset_pages = self.paginate_queryset(
-                datasets_queryset
-            )  # paginaged connectors list
-            datasets_serializer = RecentDatasetListSerializer(
-                datasets_queryset_pages, many=True
-            )
+            datasets_queryset = Datasets.objects.filter(status=True).order_by("-updated_at").all()
+            datasets_queryset_pages = self.paginate_queryset(datasets_queryset)  # paginaged connectors list
+            datasets_serializer = RecentDatasetListSerializer(datasets_queryset_pages, many=True)
 
             data = {
                 "total_participants": total_participants,
@@ -1417,3 +1311,316 @@ class DatahubDashboard(GenericViewSet):
         except Exception as error:
             LOGGER.error(error, exc_info=True)
             return Response({}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+class DatasetV2ViewSet(GenericViewSet):
+    """
+    ViewSet for DatasetV2 model for create, update, detail/list view, & delete endpoints.
+
+    **Context**
+    ``DatasetV2``
+        An instance of :model:`datahub_datasetv2`
+
+    **Serializer**
+    ``DatasetV2Serializer``
+        :serializer:`datahub.serializer.DatasetV2Serializer`
+
+    **Authorization**
+        ``ROLE`` only authenticated users/participants with following roles are allowed to make a POST request to this endpoint.
+            :role: `datahub_admin` (:role_id: `1`)
+            :role: `datahub_participant_root` (:role_id: `3`)
+    """
+
+    serializer_class = DatasetV2Serializer
+    queryset = DatasetV2.objects.all()
+    pagination_class = CustomPagination
+
+    @action(detail=False, methods=["post", "delete"])
+    def temp_datasets(self, request, *args, **kwargs):
+        """
+        ``POST`` method Endpoint: POST method to save the datasets in a temporary location with
+            under a newly created dataset name & source_file directory.
+        ``DELETE`` method Endpoint: DELETE method to delete the dataset named directory containing
+            the datasets. [see here][ref]
+
+        **Endpoint**
+        [ref]: /datahub/dataset/v2/temp_datasets/
+        """
+        try:
+            files = request.FILES.getlist("datasets")
+
+            if request.method == "POST":
+                """Create a temporary directory containing dataset files uploaded as source.
+                ``Example:``
+                    Create below directories with dataset files uploaded
+                    /temp/<dataset-name>/file/<files>
+                """
+                serializer = DatasetV2TempFileSerializer(data=request.data, context={"request_method": request.method})
+                if not serializer.is_valid():
+                    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+                directory_created = file_operations.create_directory(
+                    settings.TEMP_DATASET_URL,
+                    [
+                        serializer.data.get("dataset_name"),
+                        serializer.data.get("source"),
+                    ],
+                )
+
+                files_saved = []
+                for file in files:
+                    file_operations.file_save(file, file.name, directory_created)
+                    files_saved.append(file.name)
+
+                data = {"datasets": files_saved}
+                data.update(serializer.data)
+                return Response(data, status=status.HTTP_201_CREATED)
+
+            elif request.method == "DELETE":
+                """
+                Delete the temporary directory containing datasets created by the POST endpoint
+                with the dataset files uploaded as source.
+                ``Example:``
+                    Delete the below directory:
+                    /temp/<dataset-name>/
+                """
+                serializer = DatasetV2TempFileSerializer(
+                    data=request.data,
+                    context={
+                        "request_method": request.method,
+                        "query_params": request.query_params.get("delete_dir"),
+                    },
+                )
+
+                if not serializer.is_valid():
+                    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+                directory = string_functions.format_dir_name(
+                    settings.TEMP_DATASET_URL, [request.data.get("dataset_name")]
+                )
+
+                """Delete directory temp directory as requested"""
+                if request.query_params.get("delete_dir") and os.path.exists(directory):
+                    shutil.rmtree(directory)
+                    LOGGER.info(f"Deleting directory: {directory}")
+                    data = {request.data.get("dataset_name"): "Dataset not created"}
+                    return Response(data, status=status.HTTP_204_NO_CONTENT)
+
+                elif not request.query_params.get("delete_dir"):
+                    """Delete a single file as requested"""
+                    file_name = request.data.get("file_name")
+                    file_path = os.path.join(directory, request.data.get("source"), file_name)
+                    os.remove(file_path)
+                    LOGGER.info(f"Deleting file: {file_name}")
+                    data = {file_name: "File deleted"}
+                    return Response(data, status=status.HTTP_204_NO_CONTENT)
+
+                return Response(status=status.HTTP_204_NO_CONTENT)
+
+        except Exception as error:
+            LOGGER.error(error, exc_info=True)
+        return Response(status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    @action(detail=False, methods=["get", "post"])
+    def category(self, request, *args, **kwargs):
+        """
+        ``GET`` method: GET method to retrieve the dataset category & sub categories from JSON file obj
+        ``POST`` method: POST method to create and/or edit the dataset categories &
+            sub categories and finally write it to JSON file obj. [see here][ref]
+
+        **Endpoint**
+        [ref]: /datahub/dataset/v2/category/
+        [JSON File Object]: "/categories.json"
+        """
+        if request.method == "GET":
+            try:
+                with open(Constants.CATEGORIES_FILE, "r") as json_obj:
+                    data = json.loads(json_obj.read())
+                return Response(data, status=status.HTTP_200_OK)
+            except Exception as error:
+                LOGGER.error(error, exc_info=True)
+                raise custom_exceptions.NotFoundException(detail="Categories not found")
+        elif request.method == "POST":
+            try:
+                data = request.data
+                with open(Constants.CATEGORIES_FILE, "w+", encoding="utf8") as json_obj:
+                    json.dump(data, json_obj, ensure_ascii=False)
+                    LOGGER.info(f"Updated Categories: {Constants.CATEGORIES_FILE}")
+                return Response(data, status=status.HTTP_201_CREATED)
+            except Exception as error:
+                LOGGER.error(error, exc_info=True)
+                raise exceptions.InternalServerError("Internal Server Error")
+
+    def create(self, request, *args, **kwargs):
+        """
+        ``POST`` method Endpoint: create action to save the Dataset's Meta data
+            with datasets sent through POST request. [see here][ref].
+
+        **Endpoint**
+        [ref]: /datahub/dataset/v2/
+        """
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+    def list(self, request, *args, **kwargs):
+        """
+        ``GET`` method Endpoint: list action to view the list of Datasets via GET request. [see here][ref].
+
+        **Endpoint**
+        [ref]: /datahub/dataset/v2/
+        """
+        queryset = self.get_queryset()
+        # serializer = self.get_serializer(queryset, many=True)
+        # return Response(serializer.data, status=status.HTTP_200_OK)
+        page = self.paginate_queryset(queryset)
+        if page is not None:
+            serializer = self.get_serializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
+        return Response([], status=status.HTTP_404_NOT_FOUND)
+
+    def retrieve(self, request, pk=None, *args, **kwargs):
+        """
+        ``GET`` method Endpoint: retrieve action for the detail view of Dataset via GET request
+            Returns dataset object view with content of XLX/XLSX file and file URLS. [see here][ref].
+
+        **Endpoint**
+        [ref]: /datahub/dataset/v2/<id>/
+        """
+        obj = self.get_object()
+        serializer = self.get_serializer(obj).data
+
+        dataset_file_obj = DatasetV2File.objects.filter(dataset_id=obj.id)
+        data = []
+        for file in dataset_file_obj:
+            path_ = os.path.join("/media/", str(file.file))
+            file_path = {}
+            file_path["content"] = read_contents_from_csv_or_xlsx_file(path_)
+            file_path["file"] = path_
+            data.append(file_path)
+
+        serializer["datasets"] = data
+        return Response(serializer, status=status.HTTP_200_OK)
+
+    @action(detail=False, methods=["post"])
+    def dataset_filters(self, request, *args, **kwargs):
+        """This function get the filter args in body. based on the filter args orm filters the data."""
+        data = request.data
+        org_id = data.pop(Constants.ORG_ID, "")
+        others = data.pop(Constants.OTHERS, "")
+        user_id = data.pop(Constants.USER_ID, "")
+        exclude, filters, range = {}, {}, {}
+        if others:
+            exclude = {Constants.USER_MAP_ORGANIZATION: org_id} if org_id else {}
+        else:
+            filters = {Constants.USER_MAP_ORGANIZATION: org_id} if org_id else {}
+        created_at__range = request.data.pop(Constants.CREATED_AT__RANGE, None)
+        if created_at__range:
+            range[Constants.CREATED_AT__RANGE] = date_formater(created_at__range)
+        try:
+            data = (
+                DatasetV2.objects.select_related(
+                    Constants.USER_MAP,
+                    Constants.USER_MAP_USER,
+                    Constants.USER_MAP_ORGANIZATION,
+                )
+                .filter(status=True, **data, **filters, **range)
+                .exclude(**exclude)
+                .order_by(Constants.UPDATED_AT)
+                .reverse()
+                .all()
+            )
+        except Exception as error:  # type: ignore
+            logging.error("Error while filtering the datasets. ERROR: %s", error)
+            return Response(f"Invalid filter fields: {list(request.data.keys())}", status=500)
+
+        page = self.paginate_queryset(data)
+        participant_serializer = DatahubDatasetsV2Serializer(page, many=True)
+        return self.get_paginated_response(participant_serializer.data)
+
+    @action(detail=False, methods=["post"])
+    def filters_data(self, request, *args, **kwargs):
+        """This function provides the filters data"""
+        data = request.data
+        org_id = data.pop(Constants.ORG_ID, "")
+        others = data.pop(Constants.OTHERS, "")
+        user_id = data.pop(Constants.USER_ID, "")
+        exclude, filters = {}, {}
+        if others:
+            exclude = {Constants.USER_MAP_ORGANIZATION: org_id} if org_id else {}
+            # filters = {Constants.APPROVAL_STATUS: Constants.APPROVED}
+        else:
+            filters = {Constants.USER_MAP_ORGANIZATION: org_id} if org_id else {}
+        try:
+            geography = (
+                DatasetV2.objects.values_list(Constants.GEOGRAPHY, flat=True)
+                .filter(status=True, **filters)
+                .exclude(geography="null")
+                .exclude(geography__isnull=True)
+                .exclude(geography="")
+                .exclude(**exclude)
+                .all()
+                .distinct()
+            )
+            # crop_detail = (
+            #     Datasets.objects.values_list(Constants.CROP_DETAIL, flat=True)
+            #     .filter(status=True, **filters)
+            #     .exclude(crop_detail="null")
+            #     .exclude(crop_detail__isnull=True)
+            #     .exclude(crop_detail="")
+            #     .exclude(**exclude)
+            #     .all()
+            #     .distinct()
+            # )
+        except Exception as error:  # type: ignore
+            logging.error("Error while filtering the datasets. ERROR: %s", error)
+            return Response(f"Invalid filter fields: {list(request.data.keys())}", status=500)
+        return Response({"geography": geography}, status=200)
+
+    @action(detail=False, methods=["post"])
+    def search_datasets(self, request, *args, **kwargs):
+        data = request.data
+        org_id = data.pop(Constants.ORG_ID, "")
+        others = data.pop(Constants.OTHERS, "")
+        user_id = data.pop(Constants.USER_ID, "")
+        search_pattern = data.pop(Constants.SEARCH_PATTERNS, "")
+        exclude, filters = {}, {}
+
+        if others:
+            exclude = {Constants.USER_MAP_ORGANIZATION: org_id} if org_id else {}
+            filters = {Constants.NAME_ICONTAINS: search_pattern} if search_pattern else {}
+        else:
+            filters = (
+                {
+                    Constants.USER_MAP_ORGANIZATION: org_id,
+                    Constants.NAME_ICONTAINS: search_pattern,
+                }
+                if org_id
+                else {}
+            )
+        try:
+            data = (
+                DatasetV2.objects.select_related(
+                    Constants.USER_MAP,
+                    Constants.USER_MAP_USER,
+                    Constants.USER_MAP_ORGANIZATION,
+                )
+                .filter(user_map__user__status=True, status=True, **data, **filters)
+                .exclude(**exclude)
+                .order_by(Constants.UPDATED_AT)
+                .reverse()
+                .all()
+            )
+            page = self.paginate_queryset(data)
+            participant_serializer = DatahubDatasetsV2Serializer(page, many=True)
+            return self.get_paginated_response(participant_serializer.data)
+        except Exception as error:  # type: ignore
+            logging.error("Error while filtering the datasets. ERROR: %s", error)
+            return Response(
+                f"Invalid filter fields: {list(request.data.keys())}",
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+
+    
+
