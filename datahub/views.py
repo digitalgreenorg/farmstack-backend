@@ -1355,7 +1355,8 @@ class DatasetV2ViewSet(GenericViewSet):
                     Create below directories with dataset files uploaded
                     /temp/<dataset-name>/file/<files>
                 """
-                serializer = DatasetV2TempFileSerializer(data=request.data, context={"request_method": request.method})
+                # serializer = DatasetV2TempFileSerializer(data=request.data, context={"request_method": request.method})
+                serializer = DatasetV2TempFileSerializer(data=request.data, context={"request_method": request.method, "dataset_exists": request.query_params.get("dataset_exists"), "queryset": self.queryset})
                 if not serializer.is_valid():
                     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
@@ -1464,6 +1465,14 @@ class DatasetV2ViewSet(GenericViewSet):
         serializer.save()
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
+    def update(self, request, pk, *args, **kwargs):
+        """PUT method: to update the crop data for admin user"""
+        datasetv2 = self.get_object()
+        serializer = self.get_serializer(datasetv2, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+
     def list(self, request, *args, **kwargs):
         """
         ``GET`` method Endpoint: list action to view the list of Datasets via GET request. [see here][ref].
@@ -1496,6 +1505,7 @@ class DatasetV2ViewSet(GenericViewSet):
         for file in dataset_file_obj:
             path_ = os.path.join("/media/", str(file.file))
             file_path = {}
+            file_path["id"] = file.id
             file_path["content"] = read_contents_from_csv_or_xlsx_file(path_)
             file_path["file"] = path_
             data.append(file_path)
