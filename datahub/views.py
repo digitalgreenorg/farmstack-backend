@@ -1466,12 +1466,36 @@ class DatasetV2ViewSet(GenericViewSet):
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
     def update(self, request, pk, *args, **kwargs):
-        """PUT method: to update the crop data for admin user"""
+        """
+        ``PUT`` method: PUT method to edit or update the dataset (DatasetV2) and its files (DatasetV2File). [see here][ref]
+
+        **Endpoint**
+        [ref]: /datahub/dataset/v2/<uuid>
+        """
         datasetv2 = self.get_object()
         serializer = self.get_serializer(datasetv2, data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
         serializer.save()
         return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+    @action(detail=False, methods=["delete"])
+    def dataset_files(self, request, *args, **kwargs):
+        """
+        ``DELETE`` method: DELETE method to delete the dataset files (DatasetV2File) referenced by DatasetV2 model. [see here][ref]
+
+        **Endpoint**
+        [ref]: /datahub/dataset/v2/dataset_files/
+        """
+        file_id = request.data.get("file_id")
+        dataset_file = DatasetV2File.objects.filter(id=file_id)
+        if dataset_file.exists():
+            LOGGER.info(f"Deleting file: {dataset_file[0].id}")
+            file_path = os.path.join("media", str(dataset_file[0].file))
+            if os.path.exists(file_path):
+                os.remove(file_path)
+            dataset_file.delete()
+            return Response({"file_id": ["File deleted"]}, status=status.HTTP_204_NO_CONTENT)
+        return Response({"file_id": ["File not found"]}, status=status.HTTP_400_BAD_REQUEST)
 
     def list(self, request, *args, **kwargs):
         """
