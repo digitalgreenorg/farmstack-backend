@@ -12,6 +12,7 @@ from struct import unpack
 import mysql.connector
 import pandas as pd
 import requests
+import xlwt
 from django.conf import settings
 from django.db.models import Q
 from django.db.models.functions import Lower
@@ -1493,7 +1494,7 @@ class DataBaseViewSet(GenericViewSet):
     queryset = Project
     pagination_class = CustomPagination
 
-    permission_classes=[IsAuthenticated]
+    # permission_classes=[IsAuthenticated]
 
     @action(detail=False, methods=["post"])
     def database_config(self,request):
@@ -1649,4 +1650,27 @@ class DataBaseViewSet(GenericViewSet):
             # Return a success message if the connection succeeds
         except Exception as e:
             return Response(str(e),status=status.HTTP_400_BAD_REQUEST)
-            
+
+    @action(detail=False, methods=["post"])
+    def database_live_api_export(self,request):
+        '''This is an API to fetch the data from an External API with an auth token
+        and store it in JSON format.'''
+        try:
+            url=request.data.get('url')
+            # print(url)
+            headers=request.data.get('api_key')
+            # print(headers)
+            response = requests.get(url, request.headers)
+            data=response.json()
+            # LOGGER.info(data)
+            # print(data)
+
+            # print(type(data))
+            # import json
+            json_data=json.dumps(data)
+            # print(type(json_data))
+
+            return HttpResponse(json_data,status=status.HTTP_200_OK)
+        except Exception as e:
+            return Response(str(e),status=status.HTTP_400_BAD_REQUEST)
+
