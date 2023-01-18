@@ -12,6 +12,7 @@ from contextlib import closing
 import mysql.connector, psycopg2
 import pandas as pd
 import requests
+import xlwt
 from django.conf import settings
 from django.db.models import Q
 from django.db.models.functions import Lower
@@ -1696,3 +1697,34 @@ class DataBaseViewSet(GenericViewSet):
 
             except psycopg2.Error as error:
                 LOGGER.error(error, exc_info=True)
+
+
+
+    @action(detail=False, methods=["post"])
+    def database_live_api_export(self,request):
+        '''This is an API to fetch the data from an External API with an auth token
+        and store it in JSON format.'''
+        try:
+            url=request.data.get('url')
+            headers=request.data.get('api_key')
+            response = requests.get(url, request.headers)
+            data=response.json()
+            json_data=json.dumps(data)
+            dataset_name=request.data.get("dataset_name")
+            source=request.data.get('source')
+
+            file_name=request.data.get("file_name")
+
+            file_path=file_ops.create_directory(settings.TEMP_DATASET_URL,[dataset_name,source])
+            with open(file_path+"/"+file_name+".json", 'w') as outfile:
+                outfile.write(json_data)
+            
+                    
+            result=os.listdir(file_path) 
+
+
+            return Response(result,status=status.HTTP_200_OK)
+        except Exception as e:
+            return Response(str(e),status=status.HTTP_400_BAD_REQUEST)
+
+
