@@ -1612,3 +1612,26 @@ class DatasetV2ViewSet(GenericViewSet):
             logging.error("Error while filtering the datasets. ERROR: %s", error)
             return Response(f"Invalid filter fields: {list(request.data.keys())}", status=500)
         return Response({"geography": geography}, status=200)
+
+    def destroy(self, request, pk, *args, **kwargs):
+        """
+        ``DELETE`` method: DELETE method to delete the DatasetV2 instance and its reference DatasetV2File instances, 
+        along with dataset files stored at the URL. [see here][ref]
+
+        **Endpoint**
+        [ref]: /datahub/dataset/v2/
+        """
+        dataset_obj = self.get_object()
+        if dataset_obj:
+            dataset_files = DatasetV2File.objects.filter(dataset_id=dataset_obj.id)
+            dataset_dir = os.path.join(settings.DATASET_FILES_URL, str(dataset_obj.name))
+
+            if os.path.exists(dataset_dir):
+                shutil.rmtree(dataset_dir)
+                LOGGER.info(f"Deleting file: {dataset_dir}")
+
+            # delete DatasetV2File & DatasetV2 instances
+            LOGGER.info(f"Deleting dataset obj: {dataset_obj}")
+            dataset_files.delete()
+            dataset_obj.delete()
+            return Response(status=status.HTTP_204_NO_CONTENT)
