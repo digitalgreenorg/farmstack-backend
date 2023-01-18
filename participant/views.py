@@ -1669,8 +1669,22 @@ class DataBaseViewSet(GenericViewSet):
             # import json
             json_data=json.dumps(data)
             # print(type(json_data))
+            dataset_name=request.data.get("dataset_name")
+            # print(dataset_name)
+            source=request.data.get('source')
 
-            return HttpResponse(json_data,status=status.HTTP_200_OK)
+            file_name=request.data.get("file_name")
+
+            file_path=file_ops.create_directory(settings.TEMP_DATASET_URL,[dataset_name,source])
+            with open('file_name', 'w') as outfile:
+                outfile.write(json_data)
+            # df = pd.read_sql(query,mydb)
+            
+                    
+            result=os.listdir(file_path) #list of all the files in the directory
+
+
+            return HttpResponse(result,status=status.HTTP_200_OK)
         except Exception as e:
             return Response(str(e),status=status.HTTP_400_BAD_REQUEST)
 
