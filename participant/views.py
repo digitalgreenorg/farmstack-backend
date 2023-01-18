@@ -1494,7 +1494,7 @@ class DataBaseViewSet(GenericViewSet):
     queryset = Project
     pagination_class = CustomPagination
 
-    # permission_classes=[IsAuthenticated]
+    permission_classes=[IsAuthenticated]
 
     @action(detail=False, methods=["post"])
     def database_config(self,request):
@@ -1657,20 +1657,11 @@ class DataBaseViewSet(GenericViewSet):
         and store it in JSON format.'''
         try:
             url=request.data.get('url')
-            # print(url)
             headers=request.data.get('api_key')
-            # print(headers)
             response = requests.get(url, request.headers)
             data=response.json()
-            # LOGGER.info(data)
-            # print(data)
-
-            # print(type(data))
-            # import json
             json_data=json.dumps(data)
-            # print(type(json_data))
             dataset_name=request.data.get("dataset_name")
-            # print(dataset_name)
             source=request.data.get('source')
 
             file_name=request.data.get("file_name")
@@ -1678,10 +1669,9 @@ class DataBaseViewSet(GenericViewSet):
             file_path=file_ops.create_directory(settings.TEMP_DATASET_URL,[dataset_name,source])
             with open(file_path+"/"+file_name+".json", 'w') as outfile:
                 outfile.write(json_data)
-            # df = pd.read_sql(query,mydb)
             
                     
-            result=os.listdir(file_path) #list of all the files in the directory
+            result=os.listdir(file_path) 
 
 
             return Response(result,status=status.HTTP_200_OK)
