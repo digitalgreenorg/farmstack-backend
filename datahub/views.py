@@ -1473,6 +1473,8 @@ class DatasetV2ViewSet(GenericViewSet):
         **Endpoint**
         [ref]: /datahub/dataset/v2/<uuid>
         """
+        to_delete = request.data.pop("deleted", [])
+        self.dataset_files(request, to_delete)
         datasetv2 = self.get_object()
         serializer = self.get_serializer(datasetv2, data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
@@ -1480,23 +1482,26 @@ class DatasetV2ViewSet(GenericViewSet):
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
     @action(detail=False, methods=["delete"])
-    def dataset_files(self, request, *args, **kwargs):
+    def dataset_files(self, request, id=[]):
         """
         ``DELETE`` method: DELETE method to delete the dataset files (DatasetV2File) referenced by DatasetV2 model. [see here][ref]
 
         **Endpoint**
         [ref]: /datahub/dataset/v2/dataset_files/
         """
-        file_id = request.data.get("file_id")
-        dataset_file = DatasetV2File.objects.filter(id=file_id)
-        if dataset_file.exists():
-            LOGGER.info(f"Deleting file: {dataset_file[0].id}")
-            file_path = os.path.join("media", str(dataset_file[0].file))
-            if os.path.exists(file_path):
-                os.remove(file_path)
-            dataset_file.delete()
-            return Response({"file_id": ["File deleted"]}, status=status.HTTP_204_NO_CONTENT)
-        return Response({"file_id": ["File not found"]}, status=status.HTTP_400_BAD_REQUEST)
+        file_ids= [request.data.get("file_id")] if not id else id
+
+        ids = {}
+        for file_id in file_ids:
+            dataset_file = DatasetV2File.objects.filter(id=file_id)
+            if dataset_file.exists():
+                LOGGER.info(f"Deleting file: {dataset_file[0].id}")
+                file_path = os.path.join("media", str(dataset_file[0].file))
+                if os.path.exists(file_path):
+                    os.remove(file_path)
+                dataset_file.delete()
+                ids[file_id] = "File deleted"
+        return Response(ids, status=status.HTTP_204_NO_CONTENT)
 
     def list(self, request, *args, **kwargs):
         """
