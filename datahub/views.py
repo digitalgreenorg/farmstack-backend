@@ -1411,10 +1411,11 @@ class DatasetV2ViewSet(GenericViewSet):
                     """Delete a single file as requested"""
                     file_name = request.data.get("file_name")
                     file_path = os.path.join(directory, request.data.get("source"), file_name)
-                    os.remove(file_path)
-                    LOGGER.info(f"Deleting file: {file_name}")
-                    data = {file_name: "File deleted"}
-                    return Response(data, status=status.HTTP_204_NO_CONTENT)
+                    if os.path.exists(file_path):
+                        os.remove(file_path)
+                        LOGGER.info(f"Deleting file: {file_name}")
+                        data = {file_name: "File deleted"}
+                        return Response(data, status=status.HTTP_204_NO_CONTENT)
 
                 return Response(status=status.HTTP_204_NO_CONTENT)
 
