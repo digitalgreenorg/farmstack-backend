@@ -1473,10 +1473,11 @@ class DatasetV2ViewSet(GenericViewSet):
         **Endpoint**
         [ref]: /datahub/dataset/v2/<uuid>
         """
-        to_delete = request.data.pop("deleted", [])
+        data = request.data
+        to_delete = data.pop("deleted", [])
         self.dataset_files(request, to_delete)
         datasetv2 = self.get_object()
-        serializer = self.get_serializer(datasetv2, data=request.data, partial=True)
+        serializer = self.get_serializer(datasetv2, data=data, partial=True)
         serializer.is_valid(raise_exception=True)
         serializer.save()
         return Response(serializer.data, status=status.HTTP_201_CREATED)
@@ -1489,11 +1490,11 @@ class DatasetV2ViewSet(GenericViewSet):
         **Endpoint**
         [ref]: /datahub/dataset/v2/dataset_files/
         """
-        file_ids= [request.data.get("file_id")] if not id else id
+        file_ids= request.data.get("file_id") if not id else id
 
         ids = {}
         for file_id in file_ids:
-            dataset_file = DatasetV2File.objects.filter(id=file_id)
+            dataset_file = DatasetV2File.objects.filter(id=int(file_id))
             if dataset_file.exists():
                 LOGGER.info(f"Deleting file: {dataset_file[0].id}")
                 file_path = os.path.join("media", str(dataset_file[0].file))
@@ -1538,6 +1539,7 @@ class DatasetV2ViewSet(GenericViewSet):
             file_path["id"] = file.id
             file_path["content"] = read_contents_from_csv_or_xlsx_file(path_)
             file_path["file"] = path_
+            file_path["source"] = file.source
             data.append(file_path)
 
         serializer["datasets"] = data
