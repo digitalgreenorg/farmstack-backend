@@ -1473,9 +1473,9 @@ class DatasetV2ViewSet(GenericViewSet):
         **Endpoint**
         [ref]: /datahub/dataset/v2/<uuid>
         """
-        setattr(request, "_mutable", True)
+        setattr(request.data, "_mutable", True)
         data = request.data
-        to_delete = data.pop("deleted", [])
+        to_delete = ast.literal_eval(data.get("deleted", "[]"))
         self.dataset_files(data, to_delete)
         datasetv2 = self.get_object()
         serializer = self.get_serializer(datasetv2, data=data, partial=True)
@@ -1491,10 +1491,8 @@ class DatasetV2ViewSet(GenericViewSet):
         **Endpoint**
         [ref]: /datahub/dataset/v2/dataset_files/
         """
-        file_ids = ast.literal_eval(id)
-
         ids = {}
-        for file_id in file_ids:
+        for file_id in id:
             dataset_file = DatasetV2File.objects.filter(id=int(file_id))
             if dataset_file.exists():
                 LOGGER.info(f"Deleting file: {dataset_file[0].id}")

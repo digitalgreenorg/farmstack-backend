@@ -674,15 +674,16 @@ class DatasetV2Serializer(serializers.ModelSerializer):
         #             DatasetV2File.objects.create(dataset=instance, file=path_to_save.replace("media/", ""), source=sub_file[0])
 
         # save the files at actual dataset location & update in DatasetV2File table
-        file_paths = plazy.list_files(root=temp_directory, is_include_root=True)
-        if file_paths:
-            for file_path in file_paths:
-                directory_created = create_directory(os.path.join(settings.DATASET_FILES_URL), [instance.name, file_path.split("/")[-2]])
-                shutil.copy(file_path, directory_created)
+        if os.path.exists(temp_directory):
+            file_paths = plazy.list_files(root=temp_directory, is_include_root=True) if os.path.exists(temp_directory) else None
+            if file_paths:
+                for file_path in file_paths:
+                    directory_created = create_directory(os.path.join(settings.DATASET_FILES_URL), [instance.name, file_path.split("/")[-2]])
+                    shutil.copy(file_path, directory_created)
 
-                path_to_save = os.path.join(directory_created, file_path.split("/")[-1])
-                if not DatasetV2File.objects.filter(file=path_to_save.replace("media/", "")):
-                    DatasetV2File.objects.create(dataset=instance, file=path_to_save.replace("media/", ""), source=file_path.split("/")[-2])
+                    path_to_save = os.path.join(directory_created, file_path.split("/")[-1])
+                    if not DatasetV2File.objects.filter(file=path_to_save.replace("media/", "")):
+                        DatasetV2File.objects.create(dataset=instance, file=path_to_save.replace("media/", ""), source=file_path.split("/")[-2])
 
             # delete the temp directory
             shutil.rmtree(temp_directory)
