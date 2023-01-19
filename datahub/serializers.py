@@ -1,6 +1,6 @@
 import logging
 import os
-import re, shutil
+import re, shutil, plazy
 
 from accounts import models
 from accounts.models import User, UserRole
@@ -603,20 +603,29 @@ class DatasetV2Serializer(serializers.ModelSerializer):
                 Constants.SOURCE_MYSQL_FILE_TYPE,
                 Constants.SOURCE_POSTGRESQL_FILE_TYPE,
             ]
-            for file in to_find:
-                direct = os.path.join(directory_created, file)
-                if os.path.exists(direct):
-                    file_paths.update({
-                        os.path.join(direct, f): file
-                        for f in os.listdir(direct)
-                        if os.path.isfile(os.path.join(direct, f))
-                    })
+            # for file in to_find:
+            #     direct = os.path.join(directory_created, file)
+            #     if os.path.exists(direct):
+            #         file_paths.update({
+            #             os.path.join(direct, f): file
+            #             for f in os.listdir(direct)
+            #             if os.path.isfile(os.path.join(direct, f))
+            #         })
+
+            # if file_paths:
+            #     dataset_obj = DatasetV2.objects.create(**validated_data)
+            #     for key, value in file_paths.items():
+            #         DatasetV2File.objects.create(dataset=dataset_obj, file=key.replace("media/", ""), source=value)
+            #     return dataset_obj
+
+            file_paths = plazy.list_files(root=directory_created, is_include_root=True)
 
             if file_paths:
                 dataset_obj = DatasetV2.objects.create(**validated_data)
-                for key, value in file_paths.items():
-                    DatasetV2File.objects.create(dataset=dataset_obj, file=key.replace("media/", ""), source=value)
+                for file_path in file_paths:
+                    DatasetV2File.objects.create(dataset=dataset_obj, file=file_path.replace("media/", ""), source=file_path.split("/")[-2])
                 return dataset_obj
+
                 # return super().create(validated_data)
         except Exception as error:
             LOGGER.error(error, exc_info=True)
@@ -645,24 +654,35 @@ class DatasetV2Serializer(serializers.ModelSerializer):
             ]
 
         # iterate through temp_directory to fetch file paths & file names
-        for sub_dir in to_find:
-            direct = os.path.join(temp_directory, sub_dir)
-            if os.path.exists(direct):
-                file_paths.update({
-                    os.path.join(direct, f): [sub_dir, f]
-                    for f in os.listdir(direct)
-                    if os.path.isfile(os.path.join(direct, f))
-                })
+        # for sub_dir in to_find:
+        #     direct = os.path.join(temp_directory, sub_dir)
+        #     if os.path.exists(direct):
+        #         file_paths.update({
+        #             os.path.join(direct, f): [sub_dir, f]
+        #             for f in os.listdir(direct)
+        #             if os.path.isfile(os.path.join(direct, f))
+        #         })
+
+        # # save the files at actual dataset location & update in DatasetV2File table
+        # if file_paths:
+        #     for file_path, sub_file in file_paths.items():
+        #         directory_created = create_directory(os.path.join(settings.DATASET_FILES_URL), [instance.name, sub_file[0]])
+        #         shutil.copy(file_path, directory_created)
+
+        #         path_to_save = os.path.join(directory_created, sub_file[1])
+        #         if not DatasetV2File.objects.filter(file=path_to_save.replace("media/", "")):
+        #             DatasetV2File.objects.create(dataset=instance, file=path_to_save.replace("media/", ""), source=sub_file[0])
 
         # save the files at actual dataset location & update in DatasetV2File table
+        file_paths = plazy.list_files(root=temp_directory, is_include_root=True)
         if file_paths:
-            for file_path, sub_file in file_paths.items():
-                directory_created = create_directory(os.path.join(settings.DATASET_FILES_URL), [instance.name, sub_file[0]])
+            for file_path in file_paths:
+                directory_created = create_directory(os.path.join(settings.DATASET_FILES_URL), [instance.name, file_path.split("/")[-2]])
                 shutil.copy(file_path, directory_created)
 
-                path_to_save = os.path.join(directory_created, sub_file[1])
+                path_to_save = os.path.join(directory_created, file_path.split("/")[-1])
                 if not DatasetV2File.objects.filter(file=path_to_save.replace("media/", "")):
-                    DatasetV2File.objects.create(dataset=instance, file=path_to_save.replace("media/", ""), source=sub_file[0])
+                    DatasetV2File.objects.create(dataset=instance, file=path_to_save.replace("media/", ""), source=file_path.split("/")[-2])
 
             # delete the temp directory
             shutil.rmtree(temp_directory)
@@ -672,6 +692,9 @@ class DatasetV2Serializer(serializers.ModelSerializer):
 
 
 class DatahubDatasetsV2Serializer(serializers.ModelSerializer):
+    """
+    Serializer for filtered list of datasets.
+    """
     user_id = serializers.PrimaryKeyRelatedField(
         queryset=models.User.objects.all(), required=True, source="user_map.user"
     )
