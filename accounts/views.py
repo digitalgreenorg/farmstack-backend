@@ -1,6 +1,6 @@
 import datetime
 import logging
-
+import os
 # from asyncio import exceptions
 from asyncio.log import logger
 
@@ -28,6 +28,44 @@ from datahub.models import UserOrganizationMap
 from utils import login_helper, string_functions
 
 LOGGER = logging.getLogger(__name__)
+from rest_framework.parsers import JSONParser, MultiPartParser
+
+from core.utils import (
+    CustomPagination,
+    Utils,
+    csv_and_xlsx_file_validatation,
+    date_formater,
+    read_contents_from_csv_or_xlsx_file,
+)
+from datahub.serializers import(
+    DatahubDatasetsSerializer,
+    DatahubDatasetsV2Serializer,
+    DatahubThemeSerializer,
+    DatasetSerializer,
+    DatasetUpdateSerializer,
+    DatasetV2Serializer,
+    DatasetV2TempFileSerializer,
+    DropDocumentSerializer,
+    OrganizationSerializer,
+    ParticipantSerializer,
+    PolicyDocumentSerializer,
+    RecentDatasetListSerializer,
+    RecentSupportTicketSerializer,
+    TeamMemberCreateSerializer,
+    TeamMemberDetailsSerializer,
+    TeamMemberListSerializer,
+    TeamMemberUpdateSerializer,
+    UserOrganizationCreateSerializer,
+    UserOrganizationMapSerializer,
+)
+from datahub.models import (
+    DatahubDocuments,
+    Datasets,
+    DatasetV2,
+    DatasetV2File,
+    Organization,
+    UserOrganizationMap,
+)
 
 
 @permission_classes([])
@@ -374,3 +412,84 @@ class VerifyLoginOTPViewset(GenericViewSet):
             {"message": "Please click on resend OTP and enter the new OTP"},
             status=status.HTTP_403_FORBIDDEN,
         )
+
+@permission_classes([])
+class SelfRegisterParticipantViewSet(GenericViewSet):
+    """
+    This class handles the participant CRUD operations.
+    """
+
+    parser_class = JSONParser
+    serializer_class = UserCreateSerializer
+    queryset = User.objects.all()
+    pagination_class = CustomPagination
+
+    def perform_create(self, serializer):
+        """
+        This function performs the create operation of requested serializer.
+        Args:
+            serializer (_type_): serializer class object.
+
+        Returns:
+            _type_: Returns the saved details.
+        """
+        return serializer.save()
+
+    def create(self, request, *args, **kwargs):
+        """POST method: create action to save an object by sending a POST request"""
+        org_queryset = list(
+            Organization.objects.filter(org_email=self.request.data.get(Constants.ORG_EMAIL, "")).values()
+        )
+        if not org_queryset:
+            org_serializer = OrganizationSerializer(data=request.data, partial=True)
+            org_serializer.is_valid(raise_exception=True)
+            org_queryset = self.perform_create(org_serializer)
+            org_id = org_queryset.id
+        else:
+            org_id = org_queryset[0].get(Constants.ID)
+        
+        request.data._mutable=True
+
+        request.data.update({'role':3})
+        user_serializer = UserCreateSerializer(data=request.data)
+        user_serializer.is_valid(raise_exception=True)
+        user_saved = self.perform_create(user_serializer)
+
+        user_org_serializer = UserOrganizationMapSerializer(
+            data={
+                Constants.USER: user_saved.id,
+                Constants.ORGANIZATION: org_id,
+            }
+        )
+        user_org_serializer.is_valid(raise_exception=True)
+        self.perform_create(user_org_serializer)
+        try:
+            datahub_admin = User.objects.filter(role_id=1).first()
+            admin_full_name = string_functions.get_full_name(datahub_admin.first_name, datahub_admin.last_name)
+            participant_full_name = string_functions.get_full_name(
+                request.data.get("first_name"), request.data.get("last_name")
+            )
+
+            data = {
+                Constants.datahub_name: os.environ.get(Constants.DATAHUB_NAME, Constants.datahub_name),
+                "participant_admin_name": participant_full_name,
+                "participant_organization_name": request.data.get("name"),
+                "datahub_admin": admin_full_name,
+                Constants.datahub_site: os.environ.get(Constants.DATAHUB_SITE, Constants.datahub_site),
+            }
+
+            email_render = render(request, Constants.WHEN_DATAHUB_ADMIN_ADDS_PARTICIPANT, data)
+            mail_body = email_render.content.decode("utf-8")
+            Utils().send_email(
+                to_email=request.data.get("email"),
+                content=mail_body,
+                subject=Constants.PARTICIPANT_ORG_ADDITION_SUBJECT
+                + os.environ.get(Constants.DATAHUB_NAME, Constants.datahub_name),
+            )
+        except Exception as error:
+            LOGGER.error(error, exc_info=True)
+            return Response({"message": ["An error occured"]}, status=status.HTTP_200_OK)
+
+        return Response(user_org_serializer.data, status=status.HTTP_201_CREATED)
+
+    
