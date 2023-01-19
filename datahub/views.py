@@ -1640,3 +1640,48 @@ class DatasetV2ViewSet(GenericViewSet):
             dataset_files.delete()
             dataset_obj.delete()
             return Response(status=status.HTTP_204_NO_CONTENT)
+          
+    @action(detail=False, methods=["post"])
+    def search_datasets(self, request, *args, **kwargs):
+        data = request.data
+        org_id = data.pop(Constants.ORG_ID, "")
+        others = data.pop(Constants.OTHERS, "")
+        user_id = data.pop(Constants.USER_ID, "")
+        search_pattern = data.pop(Constants.SEARCH_PATTERNS, "")
+        exclude, filters = {}, {}
+
+        if others:
+            exclude = {Constants.USER_MAP_ORGANIZATION: org_id} if org_id else {}
+            filters = {Constants.NAME_ICONTAINS: search_pattern} if search_pattern else {}
+        else:
+            filters = (
+                {
+                    Constants.USER_MAP_ORGANIZATION: org_id,
+                    Constants.NAME_ICONTAINS: search_pattern,
+                }
+                if org_id
+                else {}
+            )
+        try:
+            data = (
+                DatasetV2.objects.select_related(
+                    Constants.USER_MAP,
+                    Constants.USER_MAP_USER,
+                    Constants.USER_MAP_ORGANIZATION,
+                )
+                .filter(user_map__user__status=True, status=True, **data, **filters)
+                .exclude(**exclude)
+                .order_by(Constants.UPDATED_AT)
+                .reverse()
+                .all()
+            )
+            page = self.paginate_queryset(data)
+            participant_serializer = DatahubDatasetsV2Serializer(page, many=True)
+            return self.get_paginated_response(participant_serializer.data)
+        except Exception as error:  # type: ignore
+            logging.error("Error while filtering the datasets. ERROR: %s", error)
+            return Response(
+                f"Invalid filter fields: {list(request.data.keys())}",
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+          
