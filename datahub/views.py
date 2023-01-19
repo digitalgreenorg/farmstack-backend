@@ -2,7 +2,7 @@ import json
 import logging
 import os
 import re
-import shutil
+import shutil, ast
 from calendar import c
 
 import django
@@ -1473,9 +1473,10 @@ class DatasetV2ViewSet(GenericViewSet):
         **Endpoint**
         [ref]: /datahub/dataset/v2/<uuid>
         """
+        setattr(request, "_mutable", True)
         data = request.data
         to_delete = data.pop("deleted", [])
-        self.dataset_files(request, to_delete)
+        self.dataset_files(data, to_delete)
         datasetv2 = self.get_object()
         serializer = self.get_serializer(datasetv2, data=data, partial=True)
         serializer.is_valid(raise_exception=True)
@@ -1490,7 +1491,7 @@ class DatasetV2ViewSet(GenericViewSet):
         **Endpoint**
         [ref]: /datahub/dataset/v2/dataset_files/
         """
-        file_ids= request.data.get("file_id") if not id else id
+        file_ids = ast.literal_eval(id)
 
         ids = {}
         for file_id in file_ids:
