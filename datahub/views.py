@@ -1473,6 +1473,7 @@ class DatasetV2ViewSet(GenericViewSet):
         **Endpoint**
         [ref]: /datahub/dataset/v2/<uuid>
         """
+        setattr(request.data, "_mutable", True)
         to_delete = request.data.pop("deleted", [])
         self.dataset_files(request, to_delete)
         datasetv2 = self.get_object()
@@ -1489,7 +1490,7 @@ class DatasetV2ViewSet(GenericViewSet):
         **Endpoint**
         [ref]: /datahub/dataset/v2/dataset_files/
         """
-        file_ids= [request.data.get("file_id")] if not id else id
+        file_ids= request.data.get("file_id") if not id else id
 
         ids = {}
         for file_id in file_ids:
