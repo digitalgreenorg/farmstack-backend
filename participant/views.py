@@ -12,7 +12,9 @@ from contextlib import closing
 import mysql.connector, psycopg2
 import pandas as pd
 import requests
+import xlwt
 from django.conf import settings
+from django.core.exceptions import ValidationError
 from django.db.models import Q
 from django.db.models.functions import Lower
 from django.shortcuts import render
@@ -35,7 +37,7 @@ from core.utils import (
     one_day_date_formater,
     read_contents_from_csv_or_xlsx_file,
 )
-from datahub.models import Datasets, Organization, UserOrganizationMap
+from datahub.models import Datasets, Organization, UserOrganizationMap, DatasetV2
 from participant.models import (
     Connectors,
     ConnectorsMap,
@@ -1630,6 +1632,12 @@ class DataBaseViewSet(GenericViewSet):
         """
         Export the data extracted from the database by reading the db config from cookies to a temporary location.
         """
+        dataset_name = request.data.get("dataset_name")
+
+        if not request.query_params.get("dataset_exists"):
+            if DatasetV2.objects.filter(name=dataset_name).exists():
+                return Response({"dataset_name": ["dataset v2 with this name already exists."]}, status=status.HTTP_400_BAD_REQUEST)
+
         conn_details = request.COOKIES.get('conn_details',request.data)
         config = ast.literal_eval(conn_details)
         database_type = config.get("database_type")
@@ -1640,7 +1648,6 @@ class DataBaseViewSet(GenericViewSet):
         col_names = request.data.get('col')
         col_names = ast.literal_eval(col_names)
         col_names = ', '.join(col_names)
-        dataset_name = request.data.get("dataset_name")
         source = request.data.get('source')
         file_name = request.data.get("file_name")
         config.pop("database_type")     # remove database_type before passing it to db conn
@@ -1696,3 +1703,34 @@ class DataBaseViewSet(GenericViewSet):
 
             except psycopg2.Error as error:
                 LOGGER.error(error, exc_info=True)
+
+
+
+    @action(detail=False, methods=["post"])
+    def database_live_api_export(self,request):
+        '''This is an API to fetch the data from an External API with an auth token
+        and store it in JSON format.'''
+        try:
+            url=request.data.get('url')
+            headers=request.data.get('api_key')
+            response = requests.get(url, request.headers)
+            data=response.json()
+            json_data=json.dumps(data)
+            dataset_name=request.data.get("dataset_name")
+            source=request.data.get('source')
+
+            file_name=request.data.get("file_name")
+
+            file_path=file_ops.create_directory(settings.TEMP_DATASET_URL,[dataset_name,source])
+            with open(file_path+"/"+file_name+".json", 'w') as outfile:
+                outfile.write(json_data)
+            
+                    
+            result=os.listdir(file_path) 
+
+
+            return Response(result,status=status.HTTP_200_OK)
+        except Exception as e:
+            return Response(str(e),status=status.HTTP_400_BAD_REQUEST)
+
+
