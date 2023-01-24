@@ -11,6 +11,9 @@ from struct import unpack
 
 import mysql.connector
 import pandas as pd
+import operator
+from functools import reduce
+
 import requests
 from django.conf import settings
 from django.db.models import Q
@@ -354,7 +357,9 @@ class ParticipantDatasetsViewSet(GenericViewSet):
         category = data.get(Constants.CATEGORY)
         if category:
             data[Constants.CATEGORY] = (
-                json.dumps(json.loads(category)) if isinstance(category, str) else category
+                json.dumps(json.loads(category))
+                if isinstance(category, str)
+                else category
             )
         instance = self.get_object()
 
@@ -433,6 +438,7 @@ class ParticipantDatasetsViewSet(GenericViewSet):
         org_id = data.pop(Constants.ORG_ID, "")
         others = data.pop(Constants.OTHERS, "")
         user_id = data.pop(Constants.USER_ID, "")
+        categories = data.pop(Constants.CATEGORY, None)
         exclude, filters = {}, {}
         if others:
             exclude = {Constants.USER_MAP_ORGANIZATION: org_id} if org_id else {}
@@ -446,24 +452,46 @@ class ParticipantDatasetsViewSet(GenericViewSet):
                 created_at__range
             )
         try:
-            data = (
-                Datasets.objects.select_related(
-                    Constants.USER_MAP,
-                    Constants.USER_MAP_USER,
-                    Constants.USER_MAP_ORGANIZATION,
+            if categories is not None:
+
+                data = (
+                    Datasets.objects.select_related(
+                        Constants.USER_MAP,
+                        Constants.USER_MAP_USER,
+                        Constants.USER_MAP_ORGANIZATION,
+                    )
+                    .filter(status=True, **data, **filters, **cretated_range)
+                    .filter(
+                        reduce(
+                            operator.or_,
+                            (Q(category__contains=cat) for cat in categories),
+                        )
+                    )
+                    .exclude(**exclude)
+                    .order_by(Constants.UPDATED_AT)
+                    .reverse()
+                    .all()
                 )
-                .filter(
-                    user_map__user__status=True,
-                    status=True,
-                    **data,
-                    **filters,
-                    **cretated_range,
+
+            else:
+                data = (
+                    Datasets.objects.select_related(
+                        Constants.USER_MAP,
+                        Constants.USER_MAP_USER,
+                        Constants.USER_MAP_ORGANIZATION,
+                    )
+                    .filter(
+                        user_map__user__status=True,
+                        status=True,
+                        **data,
+                        **filters,
+                        **cretated_range,
+                    )
+                    .exclude(**exclude)
+                    .order_by(Constants.UPDATED_AT)
+                    .reverse()
+                    .all()
                 )
-                .exclude(**exclude)
-                .order_by(Constants.UPDATED_AT)
-                .reverse()
-                .all()
-            )
         except Exception as error:  # type: ignore
             logging.error("Error while filtering the datasets. ERROR: %s", error)
             return Response(
@@ -512,13 +540,20 @@ class ParticipantDatasetsViewSet(GenericViewSet):
                 .all()
                 .distinct()
             )
+            with open(Constants.CATEGORIES_FILE, "r") as json_obj:
+                category_detail = json.loads(json_obj.read())
         except Exception as error:  # type: ignore
             logging.error("Error while filtering the datasets. ERROR: %s", error)
             return Response(
                 f"Invalid filter fields: {list(request.data.keys())}", status=500
             )
         return Response(
-            {"geography": geography, "crop_detail": crop_detail}, status=200
+            {
+                "geography": geography,
+                "crop_detail": crop_detail,
+                "category_detail": category_detail,
+            },
+            status=200,
         )
 
     @action(detail=False, methods=["post"])
@@ -1468,17 +1503,20 @@ class ParticipantProjectViewSet(GenericViewSet):
         self.perform_create(project)
         return Response(status=status.HTTP_204_NO_CONTENT)
 
-def update_cookies(key,value,response):
+
+def update_cookies(key, value, response):
     max_age = 1 * 24 * 60 * 60
     expires = datetime.datetime.strftime(
         datetime.datetime.utcnow() + datetime.timedelta(seconds=max_age),
         "%a, %d-%b-%Y %H:%M:%S GMT",
-        )
-    response.set_cookie(key,value,
-    max_age=max_age,
-    expires=expires,
-    domain=os.environ.get("PUBLIC_DOMAIN"),
-    secure=False
+    )
+    response.set_cookie(
+        key,
+        value,
+        max_age=max_age,
+        expires=expires,
+        domain=os.environ.get("PUBLIC_DOMAIN"),
+        secure=False,
     )
     return response
 
@@ -1493,61 +1531,68 @@ class DataBaseViewSet(GenericViewSet):
     queryset = Project
     pagination_class = CustomPagination
 
-    permission_classes=[IsAuthenticated]
+    permission_classes = [IsAuthenticated]
 
     @action(detail=False, methods=["post"])
-    def database_config(self,request):
-        '''Get the database login details from reuest
+    def database_config(self, request):
+        """Get the database login details from reuest
         test the connection
         if valid connection
-        return the table names in the database'''
+        return the table names in the database"""
         serializer = DatabaseConfigSerializer(data=request.data)
         # print(request.data)
         serializer.is_valid(raise_exception=True)
         # Test the database configuration
         config = serializer.validated_data
-        cookie_data=serializer.data
+        cookie_data = serializer.data
         try:
             # Try to connect to the database using the provided configuration
             mydb = mysql.connector.connect(**config)
 
             mycursor = mydb.cursor()
 
-            db_name=request.data.get('database')
-            
-            mycursor.execute("use "+db_name+";")
+            db_name = request.data.get("database")
+
+            mycursor.execute("use " + db_name + ";")
             mycursor.execute("show tables;")
 
             table_list = mycursor.fetchall()
             # print(table_list)
-            #flatten
+            # flatten
             table_list = [element for innerList in table_list for element in innerList]
-            
-            response=HttpResponse(json.dumps(table_list), status=status.HTTP_200_OK)
-            response=update_cookies("conn_details",cookie_data,response)
-            return  response
+
+            response = HttpResponse(json.dumps(table_list), status=status.HTTP_200_OK)
+            response = update_cookies("conn_details", cookie_data, response)
+            return response
         # except Exception as e:
         except mysql.connector.Error as err:
             # print(err)
             if err.errno == mysql.connector.errorcode.ER_ACCESS_DENIED_ERROR:
-                return Response({"username": ["Incorrect username or password"], "password": [msg]},status=status.HTTP_400_BAD_REQUEST)
+                return Response(
+                    {"username": ["Incorrect username or password"], "password": [msg]},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
             elif err.errno == mysql.connector.errorcode.ER_NO_SUCH_TABLE:
-                return Response({"table":["Table does not exist"]}, status=status.HTTP_400_BAD_REQUEST)
+                return Response(
+                    {"table": ["Table does not exist"]},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
             # Return an error message if the connection fails
-            return Response({'error': [str(err)]}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({"error": [str(err)]}, status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
-            return Response(str(e),status=status.HTTP_400_BAD_REQUEST)
+            return Response(str(e), status=status.HTTP_400_BAD_REQUEST)
             # Return a success message if the connection succeeds
+
     @action(detail=False, methods=["post"])
-    def database_col_names(self,request):
-        ''' From cookies get the database details
+    def database_col_names(self, request):
+        """From cookies get the database details
         Get the table name from request
         Fetch the column names of the table
-        Return the column names of the table '''
-        conn_details = request.COOKIES.get('conn_details',request.data)
+        Return the column names of the table"""
+        conn_details = request.COOKIES.get("conn_details", request.data)
         config = ast.literal_eval(conn_details)
 
-            # Return an error message if the connection fails
+        # Return an error message if the connection fails
         try:
             # Try to connect to the database using the provided configuration
             connection = mysql.connector.connect(**config)
@@ -1555,43 +1600,45 @@ class DataBaseViewSet(GenericViewSet):
 
             mycursor = mydb.cursor()
 
-            db_name=config['database']
-            table_name=request.data.get('table_name')
+            db_name = config["database"]
+            table_name = request.data.get("table_name")
 
-            
-            mycursor.execute("use "+db_name+";")
-            mycursor.execute("SHOW COLUMNS FROM " +db_name +"." +table_name+";")
+            mycursor.execute("use " + db_name + ";")
+            mycursor.execute("SHOW COLUMNS FROM " + db_name + "." + table_name + ";")
 
             col_list = mycursor.fetchall()
             # import pdb; pdb.set_trace()
-            cols=[column_details[0] for column_details in col_list]
-            response= HttpResponse(json.dumps(cols), status=status.HTTP_200_OK)
+            cols = [column_details[0] for column_details in col_list]
+            response = HttpResponse(json.dumps(cols), status=status.HTTP_200_OK)
             return response
 
         # except Exception as e:
-            # print("Connected to database")
+        # print("Connected to database")
         except mysql.connector.Error as err:
             # print(err)
             if err.errno == mysql.connector.errorcode.ER_ACCESS_DENIED_ERROR:
-                return Response({"username": ["Incorrect username or password"], "password": [msg]},status=status.HTTP_400_BAD_REQUEST)
+                return Response(
+                    {"username": ["Incorrect username or password"], "password": [msg]},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
             elif err.errno == mysql.connector.errorcode.ER_NO_SUCH_TABLE:
-                return Response({"table":["Table does not exist"]}, status=status.HTTP_400_BAD_REQUEST)
+                return Response(
+                    {"table": ["Table does not exist"]},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
             # Return an error message if the connection fails
-            return Response({'error': [str(err)]}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({"error": [str(err)]}, status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
-            return Response(str(e),status=status.HTTP_400_BAD_REQUEST)
-    
-
-            
+            return Response(str(e), status=status.HTTP_400_BAD_REQUEST)
 
     @action(detail=False, methods=["post"])
-    def database_xls_file(self,request):
-        '''Get the databse login details from cookies
-        Get the table name, column list, dataset name and file name from request body'''
-        
-        conn_details = request.COOKIES.get('conn_details',request.data)
+    def database_xls_file(self, request):
+        """Get the databse login details from cookies
+        Get the table name, column list, dataset name and file name from request body"""
 
-        t_name=request.data.get('table_name')
+        conn_details = request.COOKIES.get("conn_details", request.data)
+
+        t_name = request.data.get("table_name")
 
         config = ast.literal_eval(conn_details)
         serializer = DatabaseConfigSerializer(data=config)
@@ -1599,54 +1646,62 @@ class DataBaseViewSet(GenericViewSet):
 
         config = serializer.validated_data
 
-
-            # Return an error message if the connection fails
+        # Return an error message if the connection fails
         try:
             # Try to connect to the database using the provided configuration
             mydb = mysql.connector.connect(**config)
             mycursor = mydb.cursor()
 
-            db_name=config['database']
+            db_name = config["database"]
             # table_name=request.data['tl_name']
-            col_names=request.data.get('col')
-            
-            mycursor.execute("use "+db_name+";")
+            col_names = request.data.get("col")
+
+            mycursor.execute("use " + db_name + ";")
             # mycursor.execute("SHOW COLUMNS FROM " +db_name +"." +table_name+";")
-            col_names=ast.literal_eval(col_names)
-            col_names= ', '.join(col_names)
-            query="select "+ col_names+" from "+t_name+" ;"
+            col_names = ast.literal_eval(col_names)
+            col_names = ", ".join(col_names)
+            query = "select " + col_names + " from " + t_name + " ;"
             mycursor.execute(query)
 
             result = mycursor.fetchall()
             # import pdb; pdb.set_trace()
-            dataset_name=request.data.get("dataset_name")
+            dataset_name = request.data.get("dataset_name")
             # print(dataset_name)
-            source=request.data.get('source')
+            source = request.data.get("source")
 
-            file_name=request.data.get("file_name")
+            file_name = request.data.get("file_name")
 
-            file_path=file_ops.create_directory(settings.TEMP_DATASET_URL,[dataset_name,source])
+            file_path = file_ops.create_directory(
+                settings.TEMP_DATASET_URL, [dataset_name, source]
+            )
 
-            df = pd.read_sql(query,mydb)
-            xls_file=df.to_excel(file_path+"/"+file_name+".xls")
-                    
-            result=os.listdir(file_path) #list of all the files in the directory
+            df = pd.read_sql(query, mydb)
+            xls_file = df.to_excel(file_path + "/" + file_name + ".xls")
 
-            return HttpResponse(json.dumps(result),status=status.HTTP_200_OK)
+            result = os.listdir(file_path)  # list of all the files in the directory
+
+            return HttpResponse(json.dumps(result), status=status.HTTP_200_OK)
 
         # except Exception as e:
-            # print("Connected to database")
+        # print("Connected to database")
         except mysql.connector.Error as err:
             # print(err)
             if err.errno == mysql.connector.errorcode.ER_ACCESS_DENIED_ERROR:
-                return Response({"username": ["Incorrect username or password"], "password": ["Incorrect username or password"]},status=status.HTTP_400_BAD_REQUEST)
+                return Response(
+                    {
+                        "username": ["Incorrect username or password"],
+                        "password": ["Incorrect username or password"],
+                    },
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
             elif err.errno == mysql.connector.errorcode.ER_NO_SUCH_TABLE:
-                return Response({"table":["Table does not exist"]}, status=status.HTTP_400_BAD_REQUEST)
-        
-            
+                return Response(
+                    {"table": ["Table does not exist"]},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
             # Return an error message if the connection fails
-            return Response({'error': [str(err)]}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({"error": [str(err)]}, status=status.HTTP_400_BAD_REQUEST)
             # Return a success message if the connection succeeds
         except Exception as e:
-            return Response(str(e),status=status.HTTP_400_BAD_REQUEST)
-            
+            return Response(str(e), status=status.HTTP_400_BAD_REQUEST)

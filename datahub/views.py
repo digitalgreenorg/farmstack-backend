@@ -4,10 +4,11 @@ import os
 import re
 import shutil
 from calendar import c
-
 import django
 import pandas as pd
+import operator
 from accounts.models import User, UserRole
+from functools import reduce
 from accounts.serializers import (
     UserCreateSerializer,
     UserSerializer,
@@ -1222,6 +1223,7 @@ class DatahubDatasetsViewSet(GenericViewSet):
         org_id = data.pop(Constants.ORG_ID, "")
         others = data.pop(Constants.OTHERS, "")
         user_id = data.pop(Constants.USER_ID, "")
+        categories = data.pop(Constants.CATEGORY, None)
         exclude, filters, range = {}, {}, {}
         if others:
             exclude = {Constants.USER_MAP_ORGANIZATION: org_id} if org_id else {}
@@ -1231,18 +1233,40 @@ class DatahubDatasetsViewSet(GenericViewSet):
         if created_at__range:
             range[Constants.CREATED_AT__RANGE] = date_formater(created_at__range)
         try:
-            data = (
-                Datasets.objects.select_related(
-                    Constants.USER_MAP,
-                    Constants.USER_MAP_USER,
-                    Constants.USER_MAP_ORGANIZATION,
+            if categories is not None:
+
+                data = (
+                    Datasets.objects.select_related(
+                        Constants.USER_MAP,
+                        Constants.USER_MAP_USER,
+                        Constants.USER_MAP_ORGANIZATION,
+                    )
+                    .filter(status=True, **data, **filters, **range)
+                    .filter(
+                        reduce(
+                            operator.or_,
+                            (Q(category__contains=cat) for cat in categories),
+                        )
+                    )
+                    .exclude(**exclude)
+                    .order_by(Constants.UPDATED_AT)
+                    .reverse()
+                    .all()
                 )
-                .filter(status=True, **data, **filters, **range)
-                .exclude(**exclude)
-                .order_by(Constants.UPDATED_AT)
-                .reverse()
-                .all()
-            )
+
+            else:
+                data = (
+                    Datasets.objects.select_related(
+                        Constants.USER_MAP,
+                        Constants.USER_MAP_USER,
+                        Constants.USER_MAP_ORGANIZATION,
+                    )
+                    .filter(status=True, **data, **filters, **range)
+                    .exclude(**exclude)
+                    .order_by(Constants.UPDATED_AT)
+                    .reverse()
+                    .all()
+                )
         except Exception as error:  # type: ignore
             logging.error("Error while filtering the datasets. ERROR: %s", error)
             return Response(
@@ -1287,13 +1311,20 @@ class DatahubDatasetsViewSet(GenericViewSet):
                 .all()
                 .distinct()
             )
+            with open(Constants.CATEGORIES_FILE, "r") as json_obj:
+                category_detail = json.loads(json_obj.read())
         except Exception as error:  # type: ignore
             logging.error("Error while filtering the datasets. ERROR: %s", error)
             return Response(
                 f"Invalid filter fields: {list(request.data.keys())}", status=500
             )
         return Response(
-            {"geography": geography, "crop_detail": crop_detail}, status=200
+            {
+                "geography": geography,
+                "crop_detail": crop_detail,
+                "category_detail": category_detail,
+            },
+            status=200,
         )
 
     @action(detail=False, methods=["post"])
@@ -1544,7 +1575,9 @@ class DatasetV2ViewSet(GenericViewSet):
                 elif not request.query_params.get("delete_dir"):
                     """Delete a single file as requested"""
                     file_name = request.data.get("file_name")
-                    file_path = os.path.join(directory, request.data.get("source"), file_name)
+                    file_path = os.path.join(
+                        directory, request.data.get("source"), file_name
+                    )
                     os.remove(file_path)
                     LOGGER.info(f"Deleting file: {file_name}")
                     data = {file_name: "File deleted"}
@@ -1574,9 +1607,7 @@ class DatasetV2ViewSet(GenericViewSet):
                 return Response(data, status=status.HTTP_200_OK)
             except Exception as error:
                 LOGGER.error(error, exc_info=True)
-                raise custom_exceptions.NotFoundException(
-                    detail="Categories not found"
-                )
+                raise custom_exceptions.NotFoundException(detail="Categories not found")
         elif request.method == "POST":
             try:
                 data = request.data
@@ -1647,6 +1678,7 @@ class DatasetV2ViewSet(GenericViewSet):
         org_id = data.pop(Constants.ORG_ID, "")
         others = data.pop(Constants.OTHERS, "")
         # user_id = data.pop(Constants.USER_ID, "")
+        categories = data.pop(Constants.CATEGORY, None)
         exclude, filters, range = {}, {}, {}
         if others:
             exclude = {Constants.USER_MAP_ORGANIZATION: org_id} if org_id else {}
@@ -1656,18 +1688,38 @@ class DatasetV2ViewSet(GenericViewSet):
         if created_at__range:
             range[Constants.CREATED_AT__RANGE] = date_formater(created_at__range)
         try:
-            data = (
-                DatasetV2.objects.select_related(
-                    Constants.USER_MAP,
-                    Constants.USER_MAP_USER,
-                    Constants.USER_MAP_ORGANIZATION,
+            if categories is not None:
+                data = (
+                    DatasetV2.objects.select_related(
+                        Constants.USER_MAP,
+                        Constants.USER_MAP_USER,
+                        Constants.USER_MAP_ORGANIZATION,
+                    )
+                    .filter(status=True, **data, **filters, **range)
+                    .filter(
+                        reduce(
+                            operator.or_,
+                            (Q(category__contains=cat) for cat in categories),
+                        )
+                    )
+                    .exclude(**exclude)
+                    .order_by(Constants.UPDATED_AT)
+                    .reverse()
+                    .all()
                 )
-                .filter(status=True, **data, **filters, **range)
-                .exclude(**exclude)
-                .order_by(Constants.UPDATED_AT)
-                .reverse()
-                .all()
-            )
+            else:
+                data = (
+                    DatasetV2.objects.select_related(
+                        Constants.USER_MAP,
+                        Constants.USER_MAP_USER,
+                        Constants.USER_MAP_ORGANIZATION,
+                    )
+                    .filter(status=True, **data, **filters, **range)
+                    .exclude(**exclude)
+                    .order_by(Constants.UPDATED_AT)
+                    .reverse()
+                    .all()
+                )
         except Exception as error:  # type: ignore
             logging.error("Error while filtering the datasets. ERROR: %s", error)
             return Response(
@@ -1712,11 +1764,17 @@ class DatasetV2ViewSet(GenericViewSet):
             #     .all()
             #     .distinct()
             # )
+            with open(Constants.CATEGORIES_FILE, "r") as json_obj:
+                category_detail = json.loads(json_obj.read())
         except Exception as error:  # type: ignore
             logging.error("Error while filtering the datasets. ERROR: %s", error)
             return Response(
                 f"Invalid filter fields: {list(request.data.keys())}", status=500
             )
         return Response(
-            {"geography": geography}, status=200
+            {
+                "geography": geography,
+                "category_detail": category_detail,
+            },
+            status=200,
         )
