@@ -143,9 +143,8 @@ class DatasetsMicrositeViewSet(GenericViewSet):
         for file in dataset_file_obj:
             path_ = os.path.join("/media/", str(file.file))
             file_path = {}
-            file_path["id"] = file.id
             file_path["content"] = read_contents_from_csv_or_xlsx_file(path_)
-            # file_path["file"] = path_
+            file_path["file"] = path_.split("/")[-1]
             file_path["source"] = file.source
             data.append(file_path)
 
