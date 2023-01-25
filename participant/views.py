@@ -8,14 +8,16 @@ import subprocess
 import time
 from sre_compile import isstring
 from struct import unpack
-
-import mysql.connector
+from contextlib import closing
+import mysql.connector, psycopg2
 import pandas as pd
 import operator
 from functools import reduce
 
 import requests
+import xlwt
 from django.conf import settings
+from django.core.exceptions import ValidationError
 from django.db.models import Q
 from django.db.models.functions import Lower
 from django.shortcuts import render
@@ -38,7 +40,7 @@ from core.utils import (
     one_day_date_formater,
     read_contents_from_csv_or_xlsx_file,
 )
-from datahub.models import Datasets, Organization, UserOrganizationMap
+from datahub.models import Datasets, Organization, UserOrganizationMap, DatasetV2
 from participant.models import (
     Connectors,
     ConnectorsMap,
@@ -58,6 +60,8 @@ from participant.serializers import (
     ConnectorsSerializer,
     ConnectorsSerializerForEmail,
     DatabaseConfigSerializer,
+    DatabaseColumnRetrieveSerializer,
+    DatabaseDataExportSerializer,
     DatasetSerializer,
     DepartmentSerializer,
     ParticipantDatasetsDetailSerializer,
@@ -82,8 +86,6 @@ from rest_framework.decorators import api_view
 from rest_framework.response import Response
 
 from utils import file_operations as file_ops
-
-from .serializers import DatabaseConfigSerializer
 
 
 class ParticipantSupportViewSet(GenericViewSet):
@@ -1591,6 +1593,9 @@ class DataBaseViewSet(GenericViewSet):
         Return the column names of the table"""
         conn_details = request.COOKIES.get("conn_details", request.data)
         config = ast.literal_eval(conn_details)
+        database_type = config.get("database_type")
+        table_name = request.data.get("table_name")
+        config.pop("database_type")  # remove database_type before passing it to db conn
 
         # Return an error message if the connection fails
         try:
@@ -1641,7 +1646,8 @@ class DataBaseViewSet(GenericViewSet):
         t_name = request.data.get("table_name")
 
         config = ast.literal_eval(conn_details)
-        serializer = DatabaseConfigSerializer(data=config)
+        database_type = config.get("database_type")
+        serializer = DatabaseDataExportSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
         config = serializer.validated_data

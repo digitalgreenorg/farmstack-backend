@@ -2,7 +2,7 @@ import json
 import logging
 import os
 import re
-import shutil
+import shutil, ast
 from calendar import c
 import django
 import pandas as pd
@@ -1515,8 +1515,14 @@ class DatasetV2ViewSet(GenericViewSet):
                     Create below directories with dataset files uploaded
                     /temp/<dataset-name>/file/<files>
                 """
+                # serializer = DatasetV2TempFileSerializer(data=request.data, context={"request_method": request.method})
                 serializer = DatasetV2TempFileSerializer(
-                    data=request.data, context={"request_method": request.method}
+                    data=request.data,
+                    context={
+                        "request_method": request.method,
+                        "dataset_exists": request.query_params.get("dataset_exists"),
+                        "queryset": self.queryset,
+                    },
                 )
                 if not serializer.is_valid():
                     return Response(
@@ -1578,10 +1584,11 @@ class DatasetV2ViewSet(GenericViewSet):
                     file_path = os.path.join(
                         directory, request.data.get("source"), file_name
                     )
-                    os.remove(file_path)
-                    LOGGER.info(f"Deleting file: {file_name}")
-                    data = {file_name: "File deleted"}
-                    return Response(data, status=status.HTTP_204_NO_CONTENT)
+                    if os.path.exists(file_path):
+                        os.remove(file_path)
+                        LOGGER.info(f"Deleting file: {file_name}")
+                        data = {file_name: "File deleted"}
+                        return Response(data, status=status.HTTP_204_NO_CONTENT)
 
                 return Response(status=status.HTTP_204_NO_CONTENT)
 
@@ -1632,6 +1639,43 @@ class DatasetV2ViewSet(GenericViewSet):
         serializer.save()
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
+    def update(self, request, pk, *args, **kwargs):
+        """
+        ``PUT`` method: PUT method to edit or update the dataset (DatasetV2) and its files (DatasetV2File). [see here][ref]
+
+        **Endpoint**
+        [ref]: /datahub/dataset/v2/<uuid>
+        """
+        setattr(request.data, "_mutable", True)
+        data = request.data
+        to_delete = ast.literal_eval(data.get("deleted", "[]"))
+        self.dataset_files(data, to_delete)
+        datasetv2 = self.get_object()
+        serializer = self.get_serializer(datasetv2, data=data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+    @action(detail=False, methods=["delete"])
+    def dataset_files(self, request, id=[]):
+        """
+        ``DELETE`` method: DELETE method to delete the dataset files (DatasetV2File) referenced by DatasetV2 model. [see here][ref]
+
+        **Endpoint**
+        [ref]: /datahub/dataset/v2/dataset_files/
+        """
+        ids = {}
+        for file_id in id:
+            dataset_file = DatasetV2File.objects.filter(id=int(file_id))
+            if dataset_file.exists():
+                LOGGER.info(f"Deleting file: {dataset_file[0].id}")
+                file_path = os.path.join("media", str(dataset_file[0].file))
+                if os.path.exists(file_path):
+                    os.remove(file_path)
+                dataset_file.delete()
+                ids[file_id] = "File deleted"
+        return Response(ids, status=status.HTTP_204_NO_CONTENT)
+
     def list(self, request, *args, **kwargs):
         """
         ``GET`` method Endpoint: list action to view the list of Datasets via GET request. [see here][ref].
@@ -1664,8 +1708,10 @@ class DatasetV2ViewSet(GenericViewSet):
         for file in dataset_file_obj:
             path_ = os.path.join("/media/", str(file.file))
             file_path = {}
+            file_path["id"] = file.id
             file_path["content"] = read_contents_from_csv_or_xlsx_file(path_)
             file_path["file"] = path_
+            file_path["source"] = file.source
             data.append(file_path)
 
         serializer["datasets"] = data
@@ -1677,8 +1723,8 @@ class DatasetV2ViewSet(GenericViewSet):
         data = request.data
         org_id = data.pop(Constants.ORG_ID, "")
         others = data.pop(Constants.OTHERS, "")
-        # user_id = data.pop(Constants.USER_ID, "")
         categories = data.pop(Constants.CATEGORY, None)
+        user_id = data.pop(Constants.USER_ID, "")
         exclude, filters, range = {}, {}, {}
         if others:
             exclude = {Constants.USER_MAP_ORGANIZATION: org_id} if org_id else {}
@@ -1736,11 +1782,11 @@ class DatasetV2ViewSet(GenericViewSet):
         data = request.data
         org_id = data.pop(Constants.ORG_ID, "")
         others = data.pop(Constants.OTHERS, "")
-        # user_id = data.pop(Constants.USER_ID, "")
+        user_id = data.pop(Constants.USER_ID, "")
         exclude, filters = {}, {}
         if others:
             exclude = {Constants.USER_MAP_ORGANIZATION: org_id} if org_id else {}
-            filters = {Constants.APPROVAL_STATUS: Constants.APPROVED}
+            # filters = {Constants.APPROVAL_STATUS: Constants.APPROVED}
         else:
             filters = {Constants.USER_MAP_ORGANIZATION: org_id} if org_id else {}
         try:
@@ -1772,9 +1818,76 @@ class DatasetV2ViewSet(GenericViewSet):
                 f"Invalid filter fields: {list(request.data.keys())}", status=500
             )
         return Response(
-            {
-                "geography": geography,
-                "category_detail": category_detail,
-            },
-            status=200,
+            {"geography": geography, "category_detail": category_detail}, status=200
         )
+
+    def destroy(self, request, pk, *args, **kwargs):
+        """
+        ``DELETE`` method: DELETE method to delete the DatasetV2 instance and its reference DatasetV2File instances,
+        along with dataset files stored at the URL. [see here][ref]
+
+        **Endpoint**
+        [ref]: /datahub/dataset/v2/
+        """
+        dataset_obj = self.get_object()
+        if dataset_obj:
+            dataset_files = DatasetV2File.objects.filter(dataset_id=dataset_obj.id)
+            dataset_dir = os.path.join(
+                settings.DATASET_FILES_URL, str(dataset_obj.name)
+            )
+
+            if os.path.exists(dataset_dir):
+                shutil.rmtree(dataset_dir)
+                LOGGER.info(f"Deleting file: {dataset_dir}")
+
+            # delete DatasetV2File & DatasetV2 instances
+            LOGGER.info(f"Deleting dataset obj: {dataset_obj}")
+            dataset_files.delete()
+            dataset_obj.delete()
+            return Response(status=status.HTTP_204_NO_CONTENT)
+
+    @action(detail=False, methods=["post"])
+    def search_datasets(self, request, *args, **kwargs):
+        data = request.data
+        org_id = data.pop(Constants.ORG_ID, "")
+        others = data.pop(Constants.OTHERS, "")
+        user_id = data.pop(Constants.USER_ID, "")
+        search_pattern = data.pop(Constants.SEARCH_PATTERNS, "")
+        exclude, filters = {}, {}
+
+        if others:
+            exclude = {Constants.USER_MAP_ORGANIZATION: org_id} if org_id else {}
+            filters = (
+                {Constants.NAME_ICONTAINS: search_pattern} if search_pattern else {}
+            )
+        else:
+            filters = (
+                {
+                    Constants.USER_MAP_ORGANIZATION: org_id,
+                    Constants.NAME_ICONTAINS: search_pattern,
+                }
+                if org_id
+                else {}
+            )
+        try:
+            data = (
+                DatasetV2.objects.select_related(
+                    Constants.USER_MAP,
+                    Constants.USER_MAP_USER,
+                    Constants.USER_MAP_ORGANIZATION,
+                )
+                .filter(user_map__user__status=True, status=True, **data, **filters)
+                .exclude(**exclude)
+                .order_by(Constants.UPDATED_AT)
+                .reverse()
+                .all()
+            )
+            page = self.paginate_queryset(data)
+            participant_serializer = DatahubDatasetsV2Serializer(page, many=True)
+            return self.get_paginated_response(participant_serializer.data)
+        except Exception as error:  # type: ignore
+            logging.error("Error while filtering the datasets. ERROR: %s", error)
+            return Response(
+                f"Invalid filter fields: {list(request.data.keys())}",
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
