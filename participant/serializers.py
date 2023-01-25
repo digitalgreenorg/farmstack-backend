@@ -496,11 +496,43 @@ class ConnectorListSerializer(serializers.ModelSerializer):
 from rest_framework import serializers
 
 class DatabaseConfigSerializer(serializers.Serializer):
-    host = serializers.CharField(max_length=200,allow_blank=False)
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        """Remove fields based on the request type"""
+        if "context" in kwargs:
+            if "source" in kwargs["context"]:
+                source = kwargs.get("context").get("source")
+                if not source == Constants.SOURCE_MYSQL_FILE_TYPE:
+                    self.fields.pop("username")
+                    self.fields.pop("database")
+                elif not source == Constants.SOURCE_POSTGRESQL_FILE_TYPE:
+                    self.fields.pop("user")
+                    self.fields.pop("dbname")
+
+
+    host = serializers.CharField(max_length=200, allow_blank=False)
     port = serializers.IntegerField()
-    username = serializers.CharField(max_length=200,allow_blank=False)
-    password = serializers.CharField(max_length=200,allow_blank=False)
-    database = serializers.CharField(max_length=200,allow_blank=False)
+    password = serializers.CharField(max_length=200, allow_blank=False)
+    database_type = serializers.CharField(max_length=200, allow_blank=False)
+
+    # for mysql
+    username = serializers.CharField(max_length=200, allow_blank=False)
+    database = serializers.CharField(max_length=200, allow_blank=False)
+
+    # postgresql
+    user = serializers.CharField(max_length=200, allow_blank=False)
+    dbname = serializers.CharField(max_length=200, allow_blank=False)
 
 
+class DatabaseColumnRetrieveSerializer(serializers.Serializer):
+    table_name = serializers.CharField(max_length=200, allow_blank=False)
 
+
+class DatabaseDataExportSerializer(serializers.Serializer):
+    table_name = serializers.CharField(max_length=200, allow_blank=False)
+    col = serializers.ListField(allow_empty=False)
+    dataset_name = serializers.CharField(max_length=200, allow_blank=False)
+    source = serializers.CharField(max_length=200, allow_blank=False)
+    file_name = serializers.CharField(max_length=200, allow_blank=False)
