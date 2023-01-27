@@ -133,7 +133,7 @@ class DatasetV2(TimeStampMixin):
     New version of model for dataset - DatasetV2 to store Meta data of Datasets.
     """
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    name = models.CharField(max_length=255, unique=True)
+    name = models.CharField(max_length=100, unique=True)
     user_map = models.ForeignKey(UserOrganizationMap, on_delete=models.PROTECT)
     description = models.TextField(max_length=512, null=True, blank=True)
     category = models.JSONField()
@@ -169,5 +169,5 @@ class DatasetV2File(TimeStampMixin):
                 (Constants.SOURCE_POSTGRESQL_FILE_TYPE, Constants.SOURCE_POSTGRESQL_FILE_TYPE)
             ]
     dataset = models.ForeignKey(DatasetV2, on_delete=models.PROTECT, related_name="datasets")
-    file = models.FileField(upload_to=dataset_directory_path, null=True, blank=True)
+    file = models.FileField(max_length=255, upload_to=dataset_directory_path, null=True, blank=True)
     source = models.CharField(max_length=50, choices=SOURCES)
