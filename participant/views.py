@@ -1711,7 +1711,7 @@ class DataBaseViewSet(GenericViewSet):
             # Return a success message if the connection succeeds
         except Exception as e:
             return Response(str(e),status=status.HTTP_400_BAD_REQUEST)
-            
+
     @action(detail=False, methods=["post"])
     def database_live_api_export(self,request):
         '''This is an API to fetch the data from an External API with an auth token
@@ -1730,14 +1730,10 @@ class DataBaseViewSet(GenericViewSet):
             file_path=file_ops.create_directory(settings.TEMP_DATASET_URL,[dataset_name,source])
             with open(file_path+"/"+file_name+".json", 'w') as outfile:
                 outfile.write(json_data)
-            
-                    
-            result=os.listdir(file_path) 
 
+            result=os.listdir(file_path) 
 
             return Response(result,status=status.HTTP_200_OK)
         except Exception as e:
             return Response(str(e),status=status.HTTP_400_BAD_REQUEST)
-
-
 

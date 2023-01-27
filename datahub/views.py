@@ -29,7 +29,7 @@ from django.db import transaction
 from django.db.models import DEFERRED, F, Q
 from django.shortcuts import render
 from drf_braces.mixins import MultipleSerializersViewMixin
-from participant.models import Connectors, SupportTicket
+from participant.models import SupportTicket, Connectors
 from participant.serializers import (
     ParticipantSupportTicketSerializer,
     TicketSupportSerializer,
@@ -64,14 +64,14 @@ from datahub.serializers import (
     OrganizationSerializer,
     ParticipantSerializer,
     PolicyDocumentSerializer,
-    RecentDatasetListSerializer,
-    RecentSupportTicketSerializer,
     TeamMemberCreateSerializer,
     TeamMemberDetailsSerializer,
     TeamMemberListSerializer,
     TeamMemberUpdateSerializer,
     UserOrganizationCreateSerializer,
     UserOrganizationMapSerializer,
+    RecentSupportTicketSerializer,
+    RecentDatasetListSerializer,
 )
 
 LOGGER = logging.getLogger(__name__)
@@ -182,8 +182,7 @@ class OrganizationViewSet(GenericViewSet):
 
             if user_org_queryset:
                 return Response(
-                    {"message": ["User is already associated with an organization"]},
-                    status=status.HTTP_400_BAD_REQUEST,
+                        {"message": ["User is already associated with an organization"]}, status=status.HTTP_400_BAD_REQUEST
                 )
 
             elif not org_queryset and not user_org_queryset:
@@ -207,7 +206,7 @@ class OrganizationViewSet(GenericViewSet):
                     data = {
                         "user_map": user_org_serializer.data.get("id"),
                         "org_id": org_queryset.id,
-                        "organization": org_serializer.data,
+                        "organization": org_serializer.data
                     }
                     return Response(data, status=status.HTTP_201_CREATED)
 
@@ -225,7 +224,7 @@ class OrganizationViewSet(GenericViewSet):
                     self.perform_create(user_org_serializer)
                     data = {
                         "user_map": user_org_serializer.data.get("id"),
-                        "org_id": org_queryset.first().id,
+                        "org_id":  org_queryset.first().id,
                     }
                     return Response(data, status=status.HTTP_201_CREATED)
 
@@ -249,9 +248,10 @@ class OrganizationViewSet(GenericViewSet):
     def retrieve(self, request, pk):
         """GET method: retrieve an object of Organization using User ID of the User (IMPORTANT: Using USER ID instead of Organization ID)"""
         user_obj = User.objects.get(id=pk, status=True)
-        user_org_queryset = UserOrganizationMap.objects.prefetch_related(
-            Constants.USER, Constants.ORGANIZATION
-        ).filter(organization__status=True, user=pk)
+        user_org_queryset = (
+            UserOrganizationMap.objects.prefetch_related(Constants.USER, Constants.ORGANIZATION)
+            .filter(organization__status=True, user=pk)
+        )
 
         if not user_org_queryset:
             data = {Constants.USER: {"id": user_obj.id}, Constants.ORGANIZATION: "null"}
@@ -468,7 +468,7 @@ class ParticipantViewSet(GenericViewSet):
             Utils().send_email(
                 to_email=participant.email,
                 content=mail_body,
-                subject=Constants.PARTICIPANT_ORG_UPDATION_SUBJECT
+                subject=Constants.PARTICIPANT_ORG_UPDATION_SUBJECT 
                 + os.environ.get(Constants.DATAHUB_NAME, Constants.datahub_name),
             )
 
@@ -1042,7 +1042,7 @@ class DatahubDatasetsViewSet(GenericViewSet):
             Utils().send_email(
                 to_email=to_email,
                 content=mail_body,
-                subject=subject + os.environ.get("DATAHUB_NAME", "datahub_name"),
+                subject= subject + os.environ.get("DATAHUB_NAME", "datahub_name"),
             )
 
         except Exception as error:
@@ -1140,6 +1140,9 @@ class DatahubDatasetsViewSet(GenericViewSet):
                 json.loads(category) if isinstance(category, str) else category
             )
         instance = self.get_object()
+        serializer = DatasetUpdateSerializer(instance, data=data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        self.perform_create(serializer)
 
         # trigger email to the participant
         user_map_queryset = UserOrganizationMap.objects.select_related(
@@ -1160,26 +1163,10 @@ class DatahubDatasetsViewSet(GenericViewSet):
         data = request.data
 
         if data.get(Constants.APPROVAL_STATUS) == Constants.APPROVED:
-            self.trigger_email(
-                request,
-                "datahub_admin_approves_dataset.html",
-                user_obj.email,
-                Constants.APPROVED_NEW_DATASET_SUBJECT,
-                user_obj.first_name,
-                user_obj.last_name,
-                instance.name,
-            )
+            self.trigger_email(request, "datahub_admin_approves_dataset.html", user_obj.email, Constants.APPROVED_NEW_DATASET_SUBJECT, user_obj.first_name, user_obj.last_name, instance.name)
 
         elif data.get(Constants.APPROVAL_STATUS) == Constants.REJECTED:
-            self.trigger_email(
-                request,
-                "datahub_admin_rejects_dataset.html",
-                user_obj.email,
-                Constants.REJECTED_NEW_DATASET_SUBJECT,
-                user_obj.first_name,
-                user_obj.last_name,
-                instance.name,
-            )
+            self.trigger_email(request, "datahub_admin_rejects_dataset.html", user_obj.email, Constants.REJECTED_NEW_DATASET_SUBJECT, user_obj.first_name, user_obj.last_name, instance.name)
 
         elif data.get(Constants.IS_ENABLED) == str(True) or data.get(
             Constants.IS_ENABLED
@@ -1292,7 +1279,8 @@ class DatahubDatasetsViewSet(GenericViewSet):
             filters = {Constants.USER_MAP_ORGANIZATION: org_id} if org_id else {}
         try:
             geography = (
-                Datasets.objects.values_list(Constants.GEOGRAPHY, flat=True)
+                Datasets.objects
+                .values_list(Constants.GEOGRAPHY, flat=True)
                 .filter(status=True, **filters)
                 .exclude(geography="null")
                 .exclude(geography__isnull=True)
@@ -1302,7 +1290,8 @@ class DatahubDatasetsViewSet(GenericViewSet):
                 .distinct()
             )
             crop_detail = (
-                Datasets.objects.values_list(Constants.CROP_DETAIL, flat=True)
+                Datasets.objects
+                .values_list(Constants.CROP_DETAIL, flat=True)
                 .filter(status=True, **filters)
                 .exclude(crop_detail="null")
                 .exclude(crop_detail__isnull=True)
@@ -1352,11 +1341,11 @@ class DatahubDatasetsViewSet(GenericViewSet):
             )
         try:
             data = (
-                Datasets.objects.select_related(
-                    Constants.USER_MAP,
-                    Constants.USER_MAP_USER,
-                    Constants.USER_MAP_ORGANIZATION,
-                )
+                    Datasets.objects.select_related(
+                        Constants.USER_MAP,
+                        Constants.USER_MAP_USER,
+                        Constants.USER_MAP_ORGANIZATION,
+                    )
                 .filter(user_map__user__status=True, status=True, **data, **filters)
                 .exclude(**exclude)
                 .order_by(Constants.UPDATED_AT)
@@ -1377,7 +1366,6 @@ class DatahubDatasetsViewSet(GenericViewSet):
 
 class DatahubDashboard(GenericViewSet):
     """Datahub Dashboard viewset"""
-
     pagination_class = CustomPagination
 
     @action(detail=False, methods=["get"])
@@ -1420,10 +1408,10 @@ class DatahubDashboard(GenericViewSet):
                     for element in data.keys():
                         categories.add(element)
 
-            categories_dict = {key: 0 for key in categories}
+            categories_dict = {key:0 for key in categories}
             for data in datasets:
                 if data and type(data) == dict:
-                    for key, value in data.items():
+                    for key,value in data.items():
                         if value == True:
                             categories_dict[key] += 1
 
@@ -1457,15 +1445,7 @@ class DatahubDashboard(GenericViewSet):
                 datasets_queryset_pages, many=True
             )
 
-            data = {
-                "total_participants": total_participants,
-                "total_datasets": total_datasets,
-                "active_connectors": active_connectors,
-                "total_data_exchange": total_data_exchange,
-                "categories": categories_dict,
-                "support_tickets": support_tickets,
-                "datasets": self.get_paginated_response(datasets_serializer.data).data,
-            }
+            data = {"total_participants": total_participants, "total_datasets": total_datasets, "active_connectors": active_connectors, "total_data_exchange": total_data_exchange, "categories": categories_dict, "support_tickets": support_tickets, "datasets": self.get_paginated_response(datasets_serializer.data).data}
             return Response(data, status=status.HTTP_200_OK)
 
         except Exception as error:
@@ -1891,3 +1871,4 @@ class DatasetV2ViewSet(GenericViewSet):
                 f"Invalid filter fields: {list(request.data.keys())}",
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
+
