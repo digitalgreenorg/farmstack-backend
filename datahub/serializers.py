@@ -488,9 +488,9 @@ class DatasetV2TempFileSerializer(serializers.Serializer):
 
         return name
 
-    dataset_name = serializers.CharField(allow_null=False)
+    dataset_name = serializers.CharField(max_length=100, allow_null=False)
     datasets = serializers.ListField(
-        child=serializers.FileField(use_url=False, allow_empty_file=False),
+        child=serializers.FileField(max_length=255, use_url=False, allow_empty_file=False),
         write_only=True,
     )
     file_name = serializers.CharField(allow_null=False)
@@ -552,7 +552,7 @@ class DatasetV2Serializer(serializers.ModelSerializer):
 
     datasets = DatasetV2FileSerializer(many=True, read_only=True)
     upload_datasets = serializers.ListField(
-        child=serializers.FileField(use_url=False, allow_empty_file=False), write_only=True, required=False
+        child=serializers.FileField(max_length=255, use_url=False, allow_empty_file=False), write_only=True, required=False
     )
 
     def validate_name(self, name):

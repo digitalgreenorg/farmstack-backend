@@ -1,0 +1,45 @@
+[
+    {
+        "category": "Agriculture Data",
+        "status": true,
+        "children": [
+            {
+                "sub_category": "Horticulture",
+                "status": true
+            },
+            {
+                "sub_category" : "Monoculture", 
+                "status" : false
+            }
+        ]
+    },
+    {
+        "category": "Research Data",
+        "status": false,
+        "children": [
+            {
+                "sub_category": "Soil Parameters",
+                "status": false
+            },
+            {
+                "sub_category": "Pesticides",
+                "status": false
+            }
+        ]
+    },
+    {
+        "category": "Farmers Data",
+        "status": true,
+        "children": [
+            {
+                "sub_category": "Yield Data",
+                "status": true
+            },
+            {
+                "sub_category": "Farmer Demographics",
+                "status": true
+            }
+        ]
+    }
+
+]

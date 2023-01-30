@@ -11,6 +11,9 @@ from struct import unpack
 from contextlib import closing
 import mysql.connector, psycopg2
 import pandas as pd
+import operator
+from functools import reduce
+
 import requests
 import xlwt
 from django.conf import settings
@@ -356,7 +359,9 @@ class ParticipantDatasetsViewSet(GenericViewSet):
         category = data.get(Constants.CATEGORY)
         if category:
             data[Constants.CATEGORY] = (
-                json.dumps(json.loads(category)) if isinstance(category, str) else category
+                json.dumps(json.loads(category))
+                if isinstance(category, str)
+                else category
             )
         instance = self.get_object()
 
@@ -435,6 +440,7 @@ class ParticipantDatasetsViewSet(GenericViewSet):
         org_id = data.pop(Constants.ORG_ID, "")
         others = data.pop(Constants.OTHERS, "")
         user_id = data.pop(Constants.USER_ID, "")
+        categories = data.pop(Constants.CATEGORY, None)
         exclude, filters = {}, {}
         if others:
             exclude = {Constants.USER_MAP_ORGANIZATION: org_id} if org_id else {}
@@ -448,24 +454,46 @@ class ParticipantDatasetsViewSet(GenericViewSet):
                 created_at__range
             )
         try:
-            data = (
-                Datasets.objects.select_related(
-                    Constants.USER_MAP,
-                    Constants.USER_MAP_USER,
-                    Constants.USER_MAP_ORGANIZATION,
+            if categories is not None:
+
+                data = (
+                    Datasets.objects.select_related(
+                        Constants.USER_MAP,
+                        Constants.USER_MAP_USER,
+                        Constants.USER_MAP_ORGANIZATION,
+                    )
+                    .filter(status=True, **data, **filters, **cretated_range)
+                    .filter(
+                        reduce(
+                            operator.or_,
+                            (Q(category__contains=cat) for cat in categories),
+                        )
+                    )
+                    .exclude(**exclude)
+                    .order_by(Constants.UPDATED_AT)
+                    .reverse()
+                    .all()
                 )
-                .filter(
-                    user_map__user__status=True,
-                    status=True,
-                    **data,
-                    **filters,
-                    **cretated_range,
+
+            else:
+                data = (
+                    Datasets.objects.select_related(
+                        Constants.USER_MAP,
+                        Constants.USER_MAP_USER,
+                        Constants.USER_MAP_ORGANIZATION,
+                    )
+                    .filter(
+                        user_map__user__status=True,
+                        status=True,
+                        **data,
+                        **filters,
+                        **cretated_range,
+                    )
+                    .exclude(**exclude)
+                    .order_by(Constants.UPDATED_AT)
+                    .reverse()
+                    .all()
                 )
-                .exclude(**exclude)
-                .order_by(Constants.UPDATED_AT)
-                .reverse()
-                .all()
-            )
         except Exception as error:  # type: ignore
             logging.error("Error while filtering the datasets. ERROR: %s", error)
             return Response(
@@ -514,13 +542,20 @@ class ParticipantDatasetsViewSet(GenericViewSet):
                 .all()
                 .distinct()
             )
+            with open(Constants.CATEGORIES_FILE, "r") as json_obj:
+                category_detail = json.loads(json_obj.read())
         except Exception as error:  # type: ignore
             logging.error("Error while filtering the datasets. ERROR: %s", error)
             return Response(
                 f"Invalid filter fields: {list(request.data.keys())}", status=500
             )
         return Response(
-            {"geography": geography, "crop_detail": crop_detail}, status=200
+            {
+                "geography": geography,
+                "crop_detail": crop_detail,
+                "category_detail": category_detail,
+            },
+            status=200,
         )
 
     @action(detail=False, methods=["post"])
@@ -1470,18 +1505,20 @@ class ParticipantProjectViewSet(GenericViewSet):
         self.perform_create(project)
         return Response(status=status.HTTP_204_NO_CONTENT)
 
-def update_cookies(key,value,response):
-    """Update or set cookies with an expiry time"""
+
+def update_cookies(key, value, response):
     max_age = 1 * 24 * 60 * 60
     expires = datetime.datetime.strftime(
         datetime.datetime.utcnow() + datetime.timedelta(seconds=max_age),
         "%a, %d-%b-%Y %H:%M:%S GMT",
-        )
-    response.set_cookie(key,value,
-    max_age=max_age,
-    expires=expires,
-    domain=os.environ.get("PUBLIC_DOMAIN"),
-    secure=False
+    )
+    response.set_cookie(
+        key,
+        value,
+        max_age=max_age,
+        expires=expires,
+        domain=os.environ.get("PUBLIC_DOMAIN"),
+        secure=False,
     )
     return response
 
@@ -1705,7 +1742,6 @@ class DataBaseViewSet(GenericViewSet):
                 LOGGER.error(error, exc_info=True)
 
 
-
     @action(detail=False, methods=["post"])
     def database_live_api_export(self,request):
         '''This is an API to fetch the data from an External API with an auth token
@@ -1720,17 +1756,13 @@ class DataBaseViewSet(GenericViewSet):
             source=request.data.get('source')
 
             file_name=request.data.get("file_name")
-
             file_path=file_ops.create_directory(settings.TEMP_DATASET_URL,[dataset_name,source])
             with open(file_path+"/"+file_name+".json", 'w') as outfile:
                 outfile.write(json_data)
-            
-                    
-            result=os.listdir(file_path) 
 
+            result=os.listdir(file_path) 
 
             return Response(result,status=status.HTTP_200_OK)
         except Exception as e:
             return Response(str(e),status=status.HTTP_400_BAD_REQUEST)
-
 
