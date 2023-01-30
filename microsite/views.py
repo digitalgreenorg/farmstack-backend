@@ -16,7 +16,14 @@ from django.db.models import Q
 from django.shortcuts import render
 from accounts.models import User, UserRole
 from core.constants import Constants
-from datahub.models import DatasetV2, DatasetV2File, Organization, Datasets, UserOrganizationMap, DatahubDocuments
+from datahub.models import (
+    DatasetV2,
+    DatasetV2File,
+    Organization,
+    Datasets,
+    UserOrganizationMap,
+    DatahubDocuments,
+)
 from datahub.serializers import DatahubDatasetsV2Serializer, DatasetV2Serializer
 from microsite.serializers import (
     OrganizationMicrositeSerializer,
@@ -59,13 +66,20 @@ class OrganizationMicrositeViewSet(GenericViewSet):
                 data = {
                     Constants.USER: user_serializer.data,
                     Constants.ORGANIZATION: None,
-                    "message": ["Datahub admin is not associated with any organization."],
+                    "message": [
+                        "Datahub admin is not associated with any organization."
+                    ],
                 }
                 return Response(data, status=status.HTTP_200_OK)
 
-            org_obj = Organization.objects.get(id=user_org_queryset.first().organization_id)
+            org_obj = Organization.objects.get(
+                id=user_org_queryset.first().organization_id
+            )
             org_seriliazer = OrganizationMicrositeSerializer(org_obj)
-            data = {Constants.USER: user_serializer.data, Constants.ORGANIZATION: org_seriliazer.data}
+            data = {
+                Constants.USER: user_serializer.data,
+                Constants.ORGANIZATION: org_seriliazer.data,
+            }
             return Response(data, status=status.HTTP_200_OK)
 
         except Exception as error:
@@ -84,7 +98,9 @@ class DatahubThemeMicrositeViewSet(GenericViewSet):
         data = {}
 
         try:
-            css_attribute = file_operations.get_css_attributes(css_path, "background-color")
+            css_attribute = file_operations.get_css_attributes(
+                css_path, "background-color"
+            )
 
             if not css_path and not file_paths:
                 data = {"hero_image": None, "css": None}
@@ -93,7 +109,10 @@ class DatahubThemeMicrositeViewSet(GenericViewSet):
             elif css_path and not file_paths:
                 data = {"hero_image": None, "css": {"btnBackground": css_attribute}}
             elif css_path and file_paths:
-                data = {"hero_image": file_paths, "css": {"btnBackground": css_attribute}}
+                data = {
+                    "hero_image": file_paths,
+                    "css": {"btnBackground": css_attribute},
+                }
 
             return Response(data, status=status.HTTP_200_OK)
 
@@ -144,7 +163,8 @@ class DatasetsMicrositeViewSet(GenericViewSet):
             path_ = os.path.join("/media/", str(file.file))
             file_path = {}
             file_path["content"] = read_contents_from_csv_or_xlsx_file(path_)
-            file_path["file"] = path_.split("/")[-1]
+            # Omitted the actual name of the file so the user can't manually download the file
+            # file_path["file"] = path_.split("/")[-1]
             file_path["source"] = file.source
             data.append(file_path)
 
@@ -255,7 +275,6 @@ class DatasetsMicrositeViewSet(GenericViewSet):
             {"geography": geography, "category_detail": category_detail}, status=200
         )
 
-
     @action(detail=False, methods=["post"])
     def search_datasets(self, request, *args, **kwargs):
         data = request.data
@@ -302,7 +321,7 @@ class DatasetsMicrositeViewSet(GenericViewSet):
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
 
- 
+
 class ContactFormViewSet(GenericViewSet):
     """Contact Form for guest users to mail queries or application to become participant on datahub"""
 
@@ -328,7 +347,10 @@ class ContactFormViewSet(GenericViewSet):
                 content=mail_body,
                 subject=serializer.data.get("subject", Constants.DATAHUB),
             )
-            return Response({"Message": "Your query is submitted! Thank you."}, status=status.HTTP_200_OK)
+            return Response(
+                {"Message": "Your query is submitted! Thank you."},
+                status=status.HTTP_200_OK,
+            )
 
         except Exception as error:
             LOGGER.error(error, exc_info=True)
@@ -349,19 +371,29 @@ class DocumentsMicrositeViewSet(GenericViewSet):
             file_paths = file_operations.file_path(settings.DOCUMENTS_URL)
             datahub_obj = DatahubDocuments.objects.last()
 
-            content = { Constants.GOVERNING_LAW: datahub_obj.governing_law if datahub_obj else None,
-                        Constants.PRIVACY_POLICY: datahub_obj.privacy_policy if datahub_obj else None,
-                        Constants.TOS: datahub_obj.tos if datahub_obj else None,
-                        Constants.LIMITATIONS_OF_LIABILITIES: datahub_obj.limitations_of_liabilities if datahub_obj else None,
-                        Constants.WARRANTY: datahub_obj.warranty if datahub_obj else None
-                        }
+            content = {
+                Constants.GOVERNING_LAW: datahub_obj.governing_law
+                if datahub_obj
+                else None,
+                Constants.PRIVACY_POLICY: datahub_obj.privacy_policy
+                if datahub_obj
+                else None,
+                Constants.TOS: datahub_obj.tos if datahub_obj else None,
+                Constants.LIMITATIONS_OF_LIABILITIES: datahub_obj.limitations_of_liabilities
+                if datahub_obj
+                else None,
+                Constants.WARRANTY: datahub_obj.warranty if datahub_obj else None,
+            }
 
-            documents = { Constants.GOVERNING_LAW: file_paths.get("governing_law"),
-                          Constants.PRIVACY_POLICY: file_paths.get("privacy_policy"),
-                          Constants.TOS: file_paths.get("tos"),
-                          Constants.LIMITATIONS_OF_LIABILITIES: file_paths.get("limitations_of_liabilities"),
-                          Constants.WARRANTY: file_paths.get("warranty")
-                          }
+            documents = {
+                Constants.GOVERNING_LAW: file_paths.get("governing_law"),
+                Constants.PRIVACY_POLICY: file_paths.get("privacy_policy"),
+                Constants.TOS: file_paths.get("tos"),
+                Constants.LIMITATIONS_OF_LIABILITIES: file_paths.get(
+                    "limitations_of_liabilities"
+                ),
+                Constants.WARRANTY: file_paths.get("warranty"),
+            }
 
             if not datahub_obj and not file_paths:
                 data = {"content": content, "documents": documents}
