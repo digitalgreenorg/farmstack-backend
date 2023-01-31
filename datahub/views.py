@@ -1646,7 +1646,7 @@ class DatasetV2ViewSet(GenericViewSet):
         **Endpoint**
         [ref]: /datahub/dataset/v2/<uuid>
         """
-        setattr(request.data, "_mutable", True)
+        # setattr(request.data, "_mutable", True)
         data = request.data
         to_delete = ast.literal_eval(data.get("deleted", "[]"))
         self.dataset_files(data, to_delete)
