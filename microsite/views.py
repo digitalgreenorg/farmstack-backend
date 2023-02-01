@@ -264,8 +264,11 @@ class DatasetsMicrositeViewSet(GenericViewSet):
             #     .all()
             #     .distinct()
             # )
-            with open(Constants.CATEGORIES_FILE, "r") as json_obj:
-                category_detail = json.loads(json_obj.read())
+            if os.path.exists(Constants.CATEGORIES_FILE):
+                with open(Constants.CATEGORIES_FILE, "r") as json_obj:
+                    category_detail = json.loads(json_obj.read())
+            else:
+                category_detail = []
         except Exception as error:  # type: ignore
             logging.error("Error while filtering the datasets. ERROR: %s", error)
             return Response(
