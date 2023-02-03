@@ -1500,7 +1500,7 @@ class DatasetV2ViewSet(GenericViewSet):
     pagination_class = CustomPagination
 
     @action(detail=False, methods=["post"])
-    def dataset_validation(self, request, *args, **kwargs):
+    def validate_dataset(self, request, *args, **kwargs):
         """
         ``POST`` method Endpoint: POST method to check the validation of dataset name and dataset description. [see here][ref]
 
