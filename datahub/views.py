@@ -72,6 +72,7 @@ from datahub.serializers import (
     TeamMemberUpdateSerializer,
     UserOrganizationCreateSerializer,
     UserOrganizationMapSerializer,
+    DatasetV2Validation,
 )
 
 LOGGER = logging.getLogger(__name__)
@@ -1497,6 +1498,30 @@ class DatasetV2ViewSet(GenericViewSet):
     serializer_class = DatasetV2Serializer
     queryset = DatasetV2.objects.all()
     pagination_class = CustomPagination
+
+    @action(detail=False, methods=["post"])
+    def dataset_validation(self, request, *args, **kwargs):
+        """
+        ``POST`` method Endpoint: POST method to check the validation of dataset name and dataset description. [see here][ref]
+
+        **Endpoint**
+        [ref]: /datahub/dataset/v2/dataset_validation/
+        """
+        serializer = DatasetV2Validation(
+            data=request.data,
+            context={
+                "request_method": request.method,
+                 "dataset_exists": request.query_params.get("dataset_exists"),
+                 "queryset": self.queryset,
+                },
+            )
+        if not serializer.is_valid():
+            return Response(
+                serializer.errors, status=status.HTTP_400_BAD_REQUEST
+            )
+
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
 
     @action(detail=False, methods=["post", "delete"])
     def temp_datasets(self, request, *args, **kwargs):

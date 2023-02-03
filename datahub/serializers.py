@@ -424,6 +424,32 @@ class RecentDatasetListSerializer(serializers.ModelSerializer):
         return None
 
 
+class DatasetV2Validation(serializers.Serializer):
+    """
+    Serializer to validate dataset name & dataset description.
+    """
+    def validate_dataset_name(self, name):
+        """
+        Validator function to check if the dataset name includes special characters.
+
+        **Parameters**
+        ``name`` (str): dataset name to validate
+        """
+        if check_special_chars(name):
+            raise ValidationError("dataset name cannot include special characters.")
+        name = re.sub(r"\s+", " ", name)
+
+        if not self.context.get("dataset_exists") and self.context.get("queryset"):
+            queryset = self.context.get("queryset")
+            if queryset.filter(name=name).exists():
+                raise ValidationError("dataset v2 with this name already exists.")
+
+        return name
+
+    dataset_name = serializers.CharField(max_length=100, allow_null=False)
+    description = serializers.CharField(max_length=512, allow_null=False)
+
+
 class DatasetV2TempFileSerializer(serializers.Serializer):
     """
     Serializer for DatasetV2File model to serialize dataset files.
