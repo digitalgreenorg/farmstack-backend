@@ -281,26 +281,9 @@ class DatasetsMicrositeViewSet(GenericViewSet):
     @action(detail=False, methods=["post"])
     def search_datasets(self, request, *args, **kwargs):
         data = request.data
-        org_id = data.pop(Constants.ORG_ID, "")
-        others = data.pop(Constants.OTHERS, "")
-        user_id = data.pop(Constants.USER_ID, "")
         search_pattern = data.pop(Constants.SEARCH_PATTERNS, "")
-        exclude, filters = {}, {}
-
-        if others:
-            exclude = {Constants.USER_MAP_ORGANIZATION: org_id} if org_id else {}
-            filters = (
-                {Constants.NAME_ICONTAINS: search_pattern} if search_pattern else {}
-            )
-        else:
-            filters = (
-                {
-                    Constants.USER_MAP_ORGANIZATION: org_id,
-                    Constants.NAME_ICONTAINS: search_pattern,
-                }
-                if org_id
-                else {}
-            )
+        filters = {}
+        filters = {Constants.NAME_ICONTAINS: search_pattern} if search_pattern else {}     
         try:
             data = (
                 DatasetV2.objects.select_related(
@@ -308,8 +291,7 @@ class DatasetsMicrositeViewSet(GenericViewSet):
                     Constants.USER_MAP_USER,
                     Constants.USER_MAP_ORGANIZATION,
                 )
-                .filter(user_map__user__status=True, status=True, **data, **filters)
-                .exclude(**exclude)
+                .filter(user_map__user__status=True, status=True, **filters)
                 .order_by(Constants.UPDATED_AT)
                 .reverse()
                 .all()
