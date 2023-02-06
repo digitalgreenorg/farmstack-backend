@@ -282,7 +282,6 @@ class DatasetsMicrositeViewSet(GenericViewSet):
     def search_datasets(self, request, *args, **kwargs):
         data = request.data
         search_pattern = data.pop(Constants.SEARCH_PATTERNS, "")
-        filters = {}
         filters = {Constants.NAME_ICONTAINS: search_pattern} if search_pattern else {}     
         try:
             data = (
