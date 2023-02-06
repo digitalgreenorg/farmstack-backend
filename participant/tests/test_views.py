@@ -3,7 +3,7 @@ from calendar import c
 from unicodedata import category
 from urllib import response
 from uuid import uuid4
-
+import mysql.connector
 from _pytest.monkeypatch import MonkeyPatch
 from accounts.models import User, UserRole
 from datahub.models import Datasets, Organization, UserOrganizationMap
@@ -38,6 +38,14 @@ update_data = {
     "category": "connectors",
     "solution_message": "Issue description",
 }
+correct_config={
+    "host":"127.0.0.1",
+    "port":3306,
+    "username":"root",
+    "password":"root",
+    "database":"test",
+    "database_type":"mysql"
+    }
 
 
 class TestViews(TestCase):
@@ -653,3 +661,40 @@ class TestParticipantConnectorsViews(TestCase):
         response = self.client.post(url, data, secure=True)
         assert response.json() == "Invalid filter fields: ['connector_name__innnn']"
         assert response.status_code == 500
+
+    def test_database_config(self):
+        if correct_config['database_type']=='mysql':
+            # Try to connect to the database using the provided configuration
+            mydb = mysql.connector.connect(**correct_config)
+            mycursor = mydb.cursor()
+            db_name=correct_config['database']
+            mycursor.execute("use "+db_name+";")
+            mycursor.execute("show tables;")
+            table_list = mycursor.fetchall()
+            table_list = [element for innerList in table_list for element in innerList]
+
+            assert table_list==["Persons2", "Persons3"]
+
+    def test_database_col_names(self):
+        table_name="Persons2"
+
+        result=["PersonID", "LastName", "FirstName", "Address", "City"]#Expected result based on local mysql table
+        if correct_config["database_type"] == "mysql":
+            # Try to connect to the database using the provided configuration
+            connection = mysql.connector.connect(**correct_config)
+            mydb = connection
+            mycursor = mydb.cursor()
+            db_name=correct_config['database']
+            mycursor.execute("use "+db_name+";")
+            mycursor.execute("SHOW COLUMNS FROM " +db_name +"." +table_name+";")
+
+            # Fetch columns & return as a response
+            col_list = mycursor.fetchall()
+            cols=[column_details[0] for column_details in col_list]
+            assert cols==result
+
+
+    
+        
+
+    
