@@ -36,7 +36,7 @@ class Utils:
         Args:
             to_email (list): List of emails to send the Invitation.
             content (None, optional): _description_. Defaults to None.
-            subject (None, optional): _description_. Defaults to None.
+            # subject (None, optional): _description_. Defaults to None.
         """
         content = Content("text/html", content)
         mail = Mail(FROM_EMAIL, to_email, subject, content, is_multiple=True)
