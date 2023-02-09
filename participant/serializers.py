@@ -146,7 +146,7 @@ class ParticipantDatasetsSerializer(serializers.ModelSerializer):
     class UserDatasetSerializer(serializers.ModelSerializer):
         class Meta:
             model = models.User
-            fields = ["last_name", "first_name", "email"]
+            fields = ["last_name", "first_name", "email", "on_boarded_by"]
 
     user_id = serializers.PrimaryKeyRelatedField(
         queryset=models.User.objects.all(), required=True, source="user_map.user"
@@ -310,7 +310,7 @@ class ConnectorsSerializerForEmail(serializers.ModelSerializer):
     class UserSerializer(serializers.ModelSerializer):
         class Meta:
             model = User
-            fields = ["full_name", "email", "phone_number"]
+            fields = ["full_name", "email", "phone_number",  "on_boarded_by"]
 
         full_name = serializers.SerializerMethodField(method_name="get_full_name")
 
