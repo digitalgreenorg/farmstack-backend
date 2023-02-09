@@ -1,27 +1,16 @@
+import ast
 import json
 import logging
+import operator
 import os
 import re
-import shutil, ast
+import shutil
+import sys
 from calendar import c
+from functools import reduce
+
 import django
 import pandas as pd
-import operator
-from accounts.models import User, UserRole
-from functools import reduce
-from accounts.serializers import (
-    UserCreateSerializer,
-    UserSerializer,
-    UserUpdateSerializer,
-)
-from core.constants import Constants
-from core.utils import (
-    CustomPagination,
-    Utils,
-    csv_and_xlsx_file_validatation,
-    date_formater,
-    read_contents_from_csv_or_xlsx_file,
-)
 from django.conf import settings
 from django.contrib.admin.utils import get_model_from_relation
 from django.core.files.base import ContentFile
@@ -29,11 +18,8 @@ from django.db import transaction
 from django.db.models import DEFERRED, F, Q
 from django.shortcuts import render
 from drf_braces.mixins import MultipleSerializersViewMixin
-from participant.models import Connectors, SupportTicket
-from participant.serializers import (
-    ParticipantSupportTicketSerializer,
-    TicketSupportSerializer,
-)
+from psycopg2 import connect
+from psycopg2.extensions import ISOLATION_LEVEL_AUTOCOMMIT
 from python_http_client import exceptions
 from rest_framework import pagination, status
 from rest_framework.decorators import action
@@ -42,8 +28,22 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.viewsets import GenericViewSet, ViewSet
 from uritemplate import partial
-from utils import custom_exceptions, file_operations, string_functions, validators
 
+from accounts.models import User, UserRole
+from accounts.serializers import (
+    UserCreateSerializer,
+    UserSerializer,
+    UserUpdateSerializer,
+)
+from core.constants import Constants
+from core.settings import BASE_DIR
+from core.utils import (
+    CustomPagination,
+    Utils,
+    csv_and_xlsx_file_validatation,
+    date_formater,
+    read_contents_from_csv_or_xlsx_file,
+)
 from datahub.models import (
     DatahubDocuments,
     Datasets,
@@ -74,9 +74,16 @@ from datahub.serializers import (
     UserOrganizationMapSerializer,
     DatasetV2Validation,
 )
+from participant.models import Connectors, SupportTicket
+from participant.serializers import (
+    ParticipantSupportTicketSerializer,
+    TicketSupportSerializer,
+)
+from utils import custom_exceptions, file_operations, string_functions, validators
 
 LOGGER = logging.getLogger(__name__)
 
+con = None
 
 class DefaultPagination(pagination.PageNumberPagination):
     """
@@ -1852,30 +1859,6 @@ class DatasetV2ViewSet(GenericViewSet):
             {"geography": geography, "category_detail": category_detail}, status=200
         )
 
-    def destroy(self, request, pk, *args, **kwargs):
-        """
-        ``DELETE`` method: DELETE method to delete the DatasetV2 instance and its reference DatasetV2File instances,
-        along with dataset files stored at the URL. [see here][ref]
-
-        **Endpoint**
-        [ref]: /datahub/dataset/v2/
-        """
-        dataset_obj = self.get_object()
-        if dataset_obj:
-            dataset_files = DatasetV2File.objects.filter(dataset_id=dataset_obj.id)
-            dataset_dir = os.path.join(
-                settings.DATASET_FILES_URL, str(dataset_obj.name)
-            )
-
-            if os.path.exists(dataset_dir):
-                shutil.rmtree(dataset_dir)
-                LOGGER.info(f"Deleting file: {dataset_dir}")
-
-            # delete DatasetV2File & DatasetV2 instances
-            LOGGER.info(f"Deleting dataset obj: {dataset_obj}")
-            dataset_files.delete()
-            dataset_obj.delete()
-            return Response(status=status.HTTP_204_NO_CONTENT)
 
     @action(detail=False, methods=["post"])
     def search_datasets(self, request, *args, **kwargs):
@@ -1922,3 +1905,87 @@ class DatasetV2ViewSet(GenericViewSet):
                 f"Invalid filter fields: {list(request.data.keys())}",
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
+
+ 
+    def destroy(self, request, pk, *args, **kwargs):
+        """
+        ``DELETE`` method: DELETE method to delete the DatasetV2 instance and its reference DatasetV2File instances,
+        along with dataset files stored at the URL. [see here][ref]
+
+        **Endpoint**
+        [ref]: /datahub/dataset/v2/
+        """
+        dataset_obj = self.get_object()
+        if dataset_obj:
+            dataset_files = DatasetV2File.objects.filter(dataset_id=dataset_obj.id)
+            dataset_dir = os.path.join(
+                settings.DATASET_FILES_URL, str(dataset_obj.name)
+            )
+
+            if os.path.exists(dataset_dir):
+                shutil.rmtree(dataset_dir)
+                LOGGER.info(f"Deleting file: {dataset_dir}")
+
+            # delete DatasetV2File & DatasetV2 instances
+            LOGGER.info(f"Deleting dataset obj: {dataset_obj}")
+            dataset_files.delete()
+            dataset_obj.delete()
+            return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+    @action(detail=False, methods=["post"])
+    def create_db(self, request, *args, **kwargs):
+        try:
+            data = request.data
+            # con = connect(dbname=data.get("org"), user='postgres', host='datahubtest.farmstack.co', password='$farmstack@!21')
+            db_settings = open("/datahub/core/settings.json") 
+            db_data = json.load(db_settings)
+            db_data[data.get("org")] = {
+            "ENGINE": "django.db.backends.postgresql",
+            "NAME": data.get("org"),
+            "USER": "postgres",
+            "PASSWORD": "$farmstack@!21",
+            "HOST": "datahubethdev.farmstack.co",
+            "PORT": 7000,
+            "OPTIONS": {
+                "client_encoding": "UTF8",
+            }
+        }
+            with open('../datahub/core/settings.json', 'w') as fp:
+                json.dump(db_data, fp)
+            import ruamel.yaml
+
+            file_name = '../datahub/test_db.yaml'
+            print(file_name)
+            config, ind, bsi = ruamel.yaml.util.load_yaml_guess_indent(open(file_name))
+            # print(config)
+
+            instances = config['services']["datahub-be"]
+            commands = [f" && python manage.py migrate --dataset {keys}" for keys in db_data.keys()]
+            print(commands)
+            command = instances['command'].replace("&& python manage.py migrate", " ".join(commands))
+        
+            instances['command'] = command
+
+            from python_on_whales import DockerClient
+
+            yaml = ruamel.yaml.YAML()
+            yaml.indent(mapping=ind, sequence=ind, offset=bsi) 
+            with open('../datahub/test_db.yaml', 'w') as fp:
+                yaml.dump(config, fp)
+            # docker_clients_consumer = DockerClient(compose_files=["../datahub/test_db.yaml"])
+            # # print(docker_clients)
+            # docker_clients_consumer.compose.stop()
+
+            import signal
+
+            # def sigterm_handler(_signo, _stack_frame):
+            #     # Raises SystemExit(0):
+            #     sys.exit(0)
+            # signal.signal(signal.SIGTERM, sigterm_handler)
+            os.popen("docker stop 43f56891b063")
+            # atexit.register(exit_handler)            # docker_clients_consumer.compose.restart() # type: ignore
+            return Response({}, 200)
+        except Exception as e:
+            logging.error(str(e), exc_info=True)
+            return Response({}, 500)
