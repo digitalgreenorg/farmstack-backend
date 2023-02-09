@@ -60,6 +60,7 @@ from datahub.serializers import (
     DatasetUpdateSerializer,
     DatasetV2Serializer,
     DatasetV2TempFileSerializer,
+    DatasetV2Validation,
     DropDocumentSerializer,
     OrganizationSerializer,
     ParticipantSerializer,
@@ -72,7 +73,6 @@ from datahub.serializers import (
     TeamMemberUpdateSerializer,
     UserOrganizationCreateSerializer,
     UserOrganizationMapSerializer,
-    DatasetV2Validation,
 )
 from participant.models import Connectors, SupportTicket
 from participant.serializers import (
@@ -356,7 +356,7 @@ class ParticipantViewSet(GenericViewSet):
         user_serializer = UserCreateSerializer(data=request.data)
         user_serializer.is_valid(raise_exception=True)
         user_saved = self.perform_create(user_serializer)
-
+        import pdb; pdb.set_trace()
         user_org_serializer = UserOrganizationMapSerializer(
             data={
                 Constants.USER: user_saved.id,
@@ -365,16 +365,20 @@ class ParticipantViewSet(GenericViewSet):
         )
         user_org_serializer.is_valid(raise_exception=True)
         self.perform_create(user_org_serializer)
-
         try:
-            datahub_admin = User.objects.filter(role_id=1).first()
-            admin_full_name = string_functions.get_full_name(
-                datahub_admin.first_name, datahub_admin.last_name
-            )
+            if user_saved.on_boarded_by:
+                # datahub_admin = User.objects.filter(id=user_saved.on_boarded_by).first()
+                admin_full_name = string_functions.get_full_name(
+                    user_saved.on_boarded_by.first_name, user_saved.on_boarded_by.last_name
+                )
+            else:   
+                datahub_admin = User.objects.filter(role_id=1).first()
+                admin_full_name = string_functions.get_full_name(
+                    datahub_admin.first_name, datahub_admin.last_name
+                )
             participant_full_name = string_functions.get_full_name(
                 request.data.get("first_name"), request.data.get("last_name")
             )
-
             data = {
                 Constants.datahub_name: os.environ.get(
                     Constants.DATAHUB_NAME, Constants.datahub_name
@@ -407,13 +411,32 @@ class ParticipantViewSet(GenericViewSet):
 
     def list(self, request, *args, **kwargs):
         """GET method: query all the list of objects from the Product model"""
-        roles = (
-            UserOrganizationMap.objects.select_related(
-                Constants.USER, Constants.ORGANIZATION
+        on_boarded_by = request.GET.get("on_boarded_by", None)
+        co_steward = request.GET.get("co_steward", False)
+        if on_boarded_by:
+            roles = (
+                UserOrganizationMap.objects.select_related(
+                    Constants.USER, Constants.ORGANIZATION
+                )
+                .filter(user__status=True, user__on_boarded_by=on_boarded_by, user__role=3)
+                .all()
             )
-            .filter(user__status=True, user__role=3)
-            .all()
-        )
+        elif co_steward:
+            roles = (
+                UserOrganizationMap.objects.select_related(
+                    Constants.USER, Constants.ORGANIZATION
+                )
+                .filter(user__status=True, user__role=6)
+                .all()
+            )
+        else:
+            roles = (
+                UserOrganizationMap.objects.select_related(
+                    Constants.USER, Constants.ORGANIZATION
+                )
+                .filter(user__status=True, user__role=3)
+                .all()
+            )
         page = self.paginate_queryset(roles)
         participant_serializer = ParticipantSerializer(page, many=True)
         return self.get_paginated_response(participant_serializer.data)
@@ -424,7 +447,7 @@ class ParticipantViewSet(GenericViewSet):
             UserOrganizationMap.objects.prefetch_related(
                 Constants.USER, Constants.ORGANIZATION
             )
-            .filter(user__status=True, user__role=3, user=pk)
+            .filter(user__status=True, user=pk)
             .all()
         )
         participant_serializer = ParticipantSerializer(roles, many=True)
@@ -444,12 +467,19 @@ class ParticipantViewSet(GenericViewSet):
             organization, data=request.data, partial=True
         )
         organization_serializer.is_valid(raise_exception=True)
-
+        user_data = self.perform_create(user_serializer)
+        self.perform_create(organization_serializer)
         try:
-            datahub_admin = User.objects.filter(role_id=1).first()
-            admin_full_name = string_functions.get_full_name(
-                datahub_admin.first_name, datahub_admin.last_name
-            )
+            if user_data.on_boarded_by:
+                datahub_admin = User.objects.filter(id=user_serializer.on_boarded_by).first()
+                admin_full_name = string_functions.get_full_name(
+                    datahub_admin.first_name, datahub_admin.last_name
+                )
+            else:   
+                datahub_admin = User.objects.filter(role_id=1).first()
+                admin_full_name = string_functions.get_full_name(
+                    datahub_admin.first_name, datahub_admin.last_name
+                )
             participant_full_name = string_functions.get_full_name(
                 participant.first_name, participant.last_name
             )
@@ -467,8 +497,6 @@ class ParticipantViewSet(GenericViewSet):
             }
 
             # update data & trigger_email
-            self.perform_create(user_serializer)
-            self.perform_create(organization_serializer)
             email_render = render(
                 request, Constants.DATAHUB_ADMIN_UPDATES_PARTICIPANT_ORGANIZATION, data
             )

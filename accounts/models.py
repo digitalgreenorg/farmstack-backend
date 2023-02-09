@@ -1,11 +1,11 @@
 import uuid
 
-# from utils.validators import validate_file_size
-from core.base_models import TimeStampMixin
 from django.conf import settings
 from django.contrib.auth.models import AbstractBaseUser, BaseUserManager
 from django.db import models
 
+# from utils.validators import validate_file_size
+from core.base_models import TimeStampMixin
 from utils.validators import validate_file_size
 
 
@@ -46,6 +46,7 @@ class UserRole(models.Model):
         datahub_participant_root: 3
         datahub_participant_team: 4
         datahub_guest_user: 5
+        datahub_co_steward: 6
     """
 
     ROLES = (
@@ -54,6 +55,7 @@ class UserRole(models.Model):
         ("datahub_participant_root", "datahub_participant_root"),
         ("datahub_participant_team", "datahub_participant_team"),
         ("datahub_guest_user", "datahub_guest_user"),
+        ("datahub_co_steward", "datahub_co_steward"),
     )
 
     # id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
@@ -62,6 +64,7 @@ class UserRole(models.Model):
 
     def __str__(self):
         return self.role_name
+
 
 
 @auto_str
@@ -94,6 +97,7 @@ class User(AbstractBaseUser, TimeStampMixin):
     )
     status = models.BooleanField(default=True)
     on_boarded = models.BooleanField(default=False)
+    on_boarded_by = models.ForeignKey('self', null=True, blank=True, on_delete=models.PROTECT)
     approval_status = models.BooleanField(default=False)
     subscription = models.CharField(max_length=50, null=True, blank=True)
 
