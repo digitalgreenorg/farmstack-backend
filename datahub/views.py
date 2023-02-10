@@ -356,7 +356,6 @@ class ParticipantViewSet(GenericViewSet):
         user_serializer = UserCreateSerializer(data=request.data)
         user_serializer.is_valid(raise_exception=True)
         user_saved = self.perform_create(user_serializer)
-        import pdb; pdb.set_trace()
         user_org_serializer = UserOrganizationMapSerializer(
             data={
                 Constants.USER: user_saved.id,
