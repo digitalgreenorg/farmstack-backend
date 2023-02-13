@@ -205,7 +205,7 @@ class TeamMemberCreateSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = User
-        fields = ("email", "first_name", "last_name", "role", "on_boarded")
+        fields = ("email", "first_name", "last_name", "role", "on_boarded_by", "on_boarded")
 
 
 class TeamMemberDetailsSerializer(serializers.ModelSerializer):
@@ -215,7 +215,7 @@ class TeamMemberDetailsSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = User
-        fields = ("id", "email", "first_name", "last_name", "role", "on_boarded")
+        fields = ("id", "email", "first_name", "last_name", "role", "on_boarded_by", "on_boarded")
 
 
 class TeamMemberUpdateSerializer(serializers.ModelSerializer):
@@ -225,7 +225,7 @@ class TeamMemberUpdateSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = User
-        fields = ("id", "email", "first_name", "last_name", "role", "on_boarded")
+        fields = ("id", "email", "first_name", "last_name", "role", "on_boarded_by", "on_boarded")
 
 
 class DatasetSerializer(serializers.ModelSerializer):
@@ -330,7 +330,7 @@ class DatahubDatasetsSerializer(serializers.ModelSerializer):
     class UserDatasetSerializer(serializers.ModelSerializer):
         class Meta:
             model = User
-            fields = ["last_name", "first_name", "email"]
+            fields = ["last_name", "first_name", "email", "on_boarded_by"]
 
     user_id = serializers.PrimaryKeyRelatedField(
         queryset=models.User.objects.all(), required=True, source="user_map.user"
@@ -361,7 +361,7 @@ class RecentSupportTicketSerializer(serializers.ModelSerializer):
     class UserSerializer(serializers.ModelSerializer):
         class Meta:
             model = User
-            fields = ["id", "first_name", "last_name", "email", "role"]
+            fields = ["id", "first_name", "last_name", "email", "role", "on_boarded_by"]
 
     organization = OrganizationRetriveSerializer(
         allow_null=True, required=False, read_only=True, source="user_map.organization"
@@ -568,7 +568,7 @@ class DatasetV2Serializer(serializers.ModelSerializer):
     class UserSerializer(serializers.ModelSerializer):
         class Meta:
             model = User
-            fields = ["id", "first_name", "last_name", "email"]
+            fields = ["id", "first_name", "last_name", "email", "on_boarded_by"]
 
     organization = OrganizationRetriveSerializer(
         allow_null=True, required=False, read_only=True, source="user_map.organization"

@@ -23,3 +23,8 @@
   fields:
     role_name: datahub_guest_user
       # role_name: GUEST
+- model: accounts.UserRole
+  pk: 6
+  fields:
+    role_name: datahub_co_steward
+      # role_name: GUEST
