@@ -1,25 +1,23 @@
-import json, time, re
+import ast
+import datetime
+import json
 import logging
 import os
+import re
 import subprocess
+import time
 from sre_compile import isstring
 from struct import unpack
-
+from contextlib import closing
+import mysql.connector, psycopg2
 import pandas as pd
+import operator
+from functools import reduce
+
 import requests
-from datetime import datetime
-from accounts.models import User
-from core.constants import Constants
-from core.utils import (
-    Utils,
-    CustomPagination,
-    DefaultPagination,
-    csv_and_xlsx_file_validatation,
-    date_formater,
-    one_day_date_formater,
-    read_contents_from_csv_or_xlsx_file,
-)
-from datahub.models import Datasets, Organization, UserOrganizationMap
+import xlwt
+from django.conf import settings
+from django.core.exceptions import ValidationError
 from django.db.models import Q
 from django.db.models.functions import Lower
 from django.shortcuts import render
@@ -30,9 +28,19 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.viewsets import GenericViewSet, ViewSet
 from uritemplate import partial
-from utils import string_functions
-from utils.connector_utils import run_containers, stop_containers
 
+from accounts.models import User
+from core.constants import Constants
+from core.utils import (
+    CustomPagination,
+    DefaultPagination,
+    Utils,
+    csv_and_xlsx_file_validatation,
+    date_formater,
+    one_day_date_formater,
+    read_contents_from_csv_or_xlsx_file,
+)
+from datahub.models import Datasets, Organization, UserOrganizationMap, DatasetV2
 from participant.models import (
     Connectors,
     ConnectorsMap,
@@ -50,20 +58,34 @@ from participant.serializers import (
     ConnectorsProviderRelationSerializer,
     ConnectorsRetriveSerializer,
     ConnectorsSerializer,
+    ConnectorsSerializerForEmail,
+    DatabaseConfigSerializer,
+    DatabaseColumnRetrieveSerializer,
+    DatabaseDataExportSerializer,
     DatasetSerializer,
     DepartmentSerializer,
     ParticipantDatasetsDetailSerializer,
     ParticipantDatasetsDropDownSerializer,
     ParticipantDatasetsSerializer,
-    ParticipantSupportTicketSerializer,
-    ProjectSerializer,
-    ProjectDepartmentSerializer,
-    TicketSupportSerializer,
     ParticipantDatasetsSerializerForEmail,
-    ConnectorsSerializerForEmail,
+    ParticipantSupportTicketSerializer,
+    ProjectDepartmentSerializer,
+    ProjectSerializer,
+    TicketSupportSerializer,
 )
+from utils import string_functions
+from utils.connector_utils import run_containers, stop_containers
 
 LOGGER = logging.getLogger(__name__)
+import json
+
+import mysql.connector
+from django.http import HttpResponse
+from rest_framework import status
+from rest_framework.decorators import api_view
+from rest_framework.response import Response
+
+from utils import file_operations as file_ops
 
 
 class ParticipantSupportViewSet(GenericViewSet):
@@ -337,7 +359,9 @@ class ParticipantDatasetsViewSet(GenericViewSet):
         category = data.get(Constants.CATEGORY)
         if category:
             data[Constants.CATEGORY] = (
-                json.dumps(json.loads(category)) if isinstance(category, str) else category
+                json.dumps(json.loads(category))
+                if isinstance(category, str)
+                else category
             )
         instance = self.get_object()
 
@@ -416,6 +440,7 @@ class ParticipantDatasetsViewSet(GenericViewSet):
         org_id = data.pop(Constants.ORG_ID, "")
         others = data.pop(Constants.OTHERS, "")
         user_id = data.pop(Constants.USER_ID, "")
+        categories = data.pop(Constants.CATEGORY, None)
         exclude, filters = {}, {}
         if others:
             exclude = {Constants.USER_MAP_ORGANIZATION: org_id} if org_id else {}
@@ -429,24 +454,46 @@ class ParticipantDatasetsViewSet(GenericViewSet):
                 created_at__range
             )
         try:
-            data = (
-                Datasets.objects.select_related(
-                    Constants.USER_MAP,
-                    Constants.USER_MAP_USER,
-                    Constants.USER_MAP_ORGANIZATION,
+            if categories is not None:
+
+                data = (
+                    Datasets.objects.select_related(
+                        Constants.USER_MAP,
+                        Constants.USER_MAP_USER,
+                        Constants.USER_MAP_ORGANIZATION,
+                    )
+                    .filter(status=True, **data, **filters, **cretated_range)
+                    .filter(
+                        reduce(
+                            operator.or_,
+                            (Q(category__contains=cat) for cat in categories),
+                        )
+                    )
+                    .exclude(**exclude)
+                    .order_by(Constants.UPDATED_AT)
+                    .reverse()
+                    .all()
                 )
-                .filter(
-                    user_map__user__status=True,
-                    status=True,
-                    **data,
-                    **filters,
-                    **cretated_range,
+
+            else:
+                data = (
+                    Datasets.objects.select_related(
+                        Constants.USER_MAP,
+                        Constants.USER_MAP_USER,
+                        Constants.USER_MAP_ORGANIZATION,
+                    )
+                    .filter(
+                        user_map__user__status=True,
+                        status=True,
+                        **data,
+                        **filters,
+                        **cretated_range,
+                    )
+                    .exclude(**exclude)
+                    .order_by(Constants.UPDATED_AT)
+                    .reverse()
+                    .all()
                 )
-                .exclude(**exclude)
-                .order_by(Constants.UPDATED_AT)
-                .reverse()
-                .all()
-            )
         except Exception as error:  # type: ignore
             logging.error("Error while filtering the datasets. ERROR: %s", error)
             return Response(
@@ -495,13 +542,20 @@ class ParticipantDatasetsViewSet(GenericViewSet):
                 .all()
                 .distinct()
             )
+            with open(Constants.CATEGORIES_FILE, "r") as json_obj:
+                category_detail = json.loads(json_obj.read())
         except Exception as error:  # type: ignore
             logging.error("Error while filtering the datasets. ERROR: %s", error)
             return Response(
                 f"Invalid filter fields: {list(request.data.keys())}", status=500
             )
         return Response(
-            {"geography": geography, "crop_detail": crop_detail}, status=200
+            {
+                "geography": geography,
+                "crop_detail": crop_detail,
+                "category_detail": category_detail,
+            },
+            status=200,
         )
 
     @action(detail=False, methods=["post"])
@@ -1450,3 +1504,265 @@ class ParticipantProjectViewSet(GenericViewSet):
         project.status = False
         self.perform_create(project)
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+def update_cookies(key, value, response):
+    max_age = 1 * 24 * 60 * 60
+    expires = datetime.datetime.strftime(
+        datetime.datetime.utcnow() + datetime.timedelta(seconds=max_age),
+        "%a, %d-%b-%Y %H:%M:%S GMT",
+    )
+    response.set_cookie(
+        key,
+        value,
+        max_age=max_age,
+        expires=expires,
+        domain=os.environ.get("PUBLIC_DOMAIN"),
+        secure=False,
+    )
+    return response
+
+
+class DataBaseViewSet(GenericViewSet):
+    """
+    This class handles the participant external Databases  operations.
+    """
+    parser_class = JSONParser
+    serializer_class = DatabaseConfigSerializer
+    permission_classes=[IsAuthenticated]
+
+    @action(detail=False, methods=["post"])
+    def database_config(self,request):
+        """
+        Configure the database connection based on the database type.
+        Return tables retrieved from the database and set database configuration in the cookies.
+        """
+        database_type = request.data.get("database_type")
+        serializer = self.get_serializer(data=request.data, context={"source": database_type})
+        serializer.is_valid(raise_exception=True)
+        cookie_data=serializer.data
+        config = serializer.validated_data
+        config.pop("database_type")     # remove database_type before passing it to db conn
+
+        if database_type == Constants.SOURCE_MYSQL_FILE_TYPE:
+            """Create a MySQL connection object on valid database credentials and return tables"""
+            LOGGER.info(f"Connecting to {database_type}")
+
+            try:
+                # Try to connect to the database using the provided configuration
+                mydb = mysql.connector.connect(**config)
+                mycursor = mydb.cursor()
+                db_name=request.data.get('database')
+                mycursor.execute("use "+db_name+";")
+                mycursor.execute("show tables;")
+                table_list = mycursor.fetchall()
+                table_list = [element for innerList in table_list for element in innerList]
+
+                # send the tables as a list in response body
+                response=HttpResponse(json.dumps(table_list), status=status.HTTP_200_OK)
+                # set the cookies in response
+                response=update_cookies("conn_details",cookie_data,response)
+                return  response
+            except mysql.connector.Error as err:
+                if err.errno == mysql.connector.errorcode.ER_ACCESS_DENIED_ERROR:
+                    return Response({"username": ["Incorrect username or password"], "password": ["Incorrect username or password"]}, status=status.HTTP_400_BAD_REQUEST)
+                elif err.errno == mysql.connector.errorcode.ER_NO_SUCH_TABLE:
+                    return Response({"table":["Table does not exist"]}, status=status.HTTP_400_BAD_REQUEST)
+                # Return an error message if the connection fails
+                return Response({'error': [str(err)]}, status=status.HTTP_400_BAD_REQUEST)
+            except Exception as e:
+                return Response(str(e),status=status.HTTP_400_BAD_REQUEST)
+
+        elif database_type == Constants.SOURCE_POSTGRESQL_FILE_TYPE:
+            """Create a PostgreSQL connection object on valid database credentials"""
+            LOGGER.info(f"Connecting to {database_type}")
+            try:
+                tables = []
+                with closing(psycopg2.connect(**config)) as conn:
+                    with closing(conn.cursor()) as cursor:
+                        cursor.execute("SELECT table_name FROM information_schema.tables WHERE table_schema='public';")
+                        table_list = cursor.fetchall()
+
+                # send the tables as a list in response body & set cookies
+                tables = [table for inner_list in table_list for table in inner_list]
+                response =  HttpResponse(json.dumps(tables), status=status.HTTP_200_OK)
+                response = update_cookies("conn_details",cookie_data,response)
+                return response
+            except Exception as error:
+                LOGGER.error(error, exc_info=True)
+                if str(error).__contains__("password authentication failed for user"):
+                    return Response({"user": ["Invalid username or password"], "password":["Invalid username or password."]}, status=status.HTTP_400_BAD_REQUEST)
+                elif str(error).__contains__("does not exist"):
+                    return Response({"dbname": ["Invalid database name. Connection Failed."]}, status=status.HTTP_400_BAD_REQUEST)
+                else:
+                    return Response({"host": ["Invalid host or port. Connection Failed."], "port": ["Invalid host or port. Connection Failed."]}, status=status.HTTP_400_BAD_REQUEST)
+
+
+
+    @action(detail=False, methods=["post"])
+    def database_col_names(self,request):
+        """Return the column names as a list from the requested table by reading the db config from cookies."""
+        conn_details = request.COOKIES.get('conn_details',request.data)
+        config = ast.literal_eval(conn_details)
+        database_type = config.get("database_type")
+        table_name=request.data.get('table_name')
+        config.pop("database_type")     # remove database_type before passing it to db conn
+
+        serializer = DatabaseColumnRetrieveSerializer(data=request.data)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        if database_type == Constants.SOURCE_MYSQL_FILE_TYPE:
+            """Create a PostgreSQL connection object on valid database credentials"""
+            LOGGER.info(f"Connecting to {database_type}")
+            try:
+                # Try to connect to the database using the provided configuration
+                connection = mysql.connector.connect(**config)
+                mydb = connection
+                mycursor = mydb.cursor()
+                db_name=config['database']
+                mycursor.execute("use "+db_name+";")
+                mycursor.execute("SHOW COLUMNS FROM " +db_name +"." +table_name+";")
+
+                # Fetch columns & return as a response
+                col_list = mycursor.fetchall()
+                cols=[column_details[0] for column_details in col_list]
+                response= HttpResponse(json.dumps(cols), status=status.HTTP_200_OK)
+                return response
+
+            except mysql.connector.Error as err:
+                if err.errno == mysql.connector.errorcode.ER_ACCESS_DENIED_ERROR:
+                    return Response({"username": ["Incorrect username or password"], "password": ["Incorrect username or password"]},status=status.HTTP_400_BAD_REQUEST)
+                elif err.errno == mysql.connector.errorcode.ER_NO_SUCH_TABLE:
+                    return Response({"table_name":["Table does not exist"]}, status=status.HTTP_400_BAD_REQUEST)
+                elif err.errno == mysql.connector.errorcode.ER_KEY_COLUMN_DOES_NOT_EXITS:
+                    return Response({"col":["Columns does not exist."]}, status=status.HTTP_400_BAD_REQUEST)
+                # Return an error message if the connection fails
+                return Response({'error': [str(err)]}, status=status.HTTP_400_BAD_REQUEST)
+            except Exception as e:
+                LOGGER.error(e, exc_info=True)
+                return Response(str(e),status=status.HTTP_400_BAD_REQUEST)
+
+        elif database_type == Constants.SOURCE_POSTGRESQL_FILE_TYPE:
+            """Create a PostgreSQL connection object on valid database credentials"""
+            LOGGER.info(f"Connecting to {database_type}")
+            try:
+                col_list = []
+                with closing(psycopg2.connect(**config)) as conn:
+                    with closing(conn.cursor()) as cursor:
+                        cursor = conn.cursor()
+                        # Fetch columns & return as a response
+                        cursor.execute("SELECT column_name FROM information_schema.columns WHERE table_name='{0}';".format(table_name))
+                        col_list = cursor.fetchall()
+
+                if len(col_list) <= 0:
+                    return Response({"table_name": ["Table does not exist."]}, status=status.HTTP_400_BAD_REQUEST)
+
+                cols=[column_details[0] for column_details in col_list]
+                return HttpResponse(json.dumps(cols), status=status.HTTP_200_OK)
+            except psycopg2.Error as error:
+                LOGGER.error(error, exc_info=True)
+
+
+    @action(detail=False, methods=["post"])
+    def database_xls_file(self,request):
+        """
+        Export the data extracted from the database by reading the db config from cookies to a temporary location.
+        """
+        dataset_name = request.data.get("dataset_name")
+
+        if not request.query_params.get("dataset_exists"):
+            if DatasetV2.objects.filter(name=dataset_name).exists():
+                return Response({"dataset_name": ["dataset v2 with this name already exists."]}, status=status.HTTP_400_BAD_REQUEST)
+
+        conn_details = request.COOKIES.get('conn_details',request.data)
+        config = ast.literal_eval(conn_details)
+        database_type = config.get("database_type")
+        serializer = DatabaseDataExportSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        t_name = request.data.get('table_name')
+        col_names = request.data.get('col')
+        col_names = ast.literal_eval(col_names)
+        col_names = ', '.join(col_names)
+        source = request.data.get('source')
+        file_name = request.data.get("file_name")
+        config.pop("database_type")     # remove database_type before passing it to db conn
+
+        if database_type == Constants.SOURCE_MYSQL_FILE_TYPE:
+            """Create a PostgreSQL connection object on valid database credentials"""
+            LOGGER.info(f"Connecting to {database_type}")
+
+            try:
+                mydb = mysql.connector.connect(**config)
+                mycursor = mydb.cursor()
+                db_name = config['database']
+                mycursor.execute("use "+db_name+";")
+                query="select "+ col_names+" from "+t_name+" ;"
+                mycursor.execute(query)
+                result = mycursor.fetchall()
+
+                # save the list of files to a temp directory
+                file_path = file_ops.create_directory(settings.TEMP_DATASET_URL,[dataset_name,source])
+                df = pd.read_sql(query,mydb)
+                xls_file = df.to_excel(file_path+"/"+file_name+".xls")
+                result = os.listdir(file_path)
+                return HttpResponse(json.dumps(result),status=status.HTTP_200_OK)
+
+            except mysql.connector.Error as err:
+                LOGGER.error(err, exc_info=True)
+                if err.errno == mysql.connector.errorcode.ER_ACCESS_DENIED_ERROR:
+                    return Response({"username": ["Incorrect username or password"], "password": ["Incorrect username or password"]},status=status.HTTP_400_BAD_REQUEST)
+                elif err.errno == mysql.connector.errorcode.ER_NO_SUCH_TABLE:
+                    return Response({"table_name":["Table does not exist"]}, status=status.HTTP_400_BAD_REQUEST)
+                # elif err.errno == mysql.connector.errorcode.ER_KEY_COLUMN_DOES_NOT_EXITS:
+                elif str(err).__contains__("Unknown column"):
+                    return Response({"col":["Columns does not exist."]}, status=status.HTTP_400_BAD_REQUEST)
+                # Return an error message if the connection fails
+                return Response({'': [str(err)]}, status=status.HTTP_400_BAD_REQUEST)
+
+        elif database_type == Constants.SOURCE_POSTGRESQL_FILE_TYPE:
+            """Create a PostgreSQL connection object on valid database credentials"""
+            LOGGER.info(f"Connecting to {database_type}")
+            try:
+                with closing(psycopg2.connect(**config)) as conn:
+                    try:
+                        sql_query = ("SELECT {0} FROM {1};".format(col_names, t_name))
+                        df = pd.read_sql(sql_query, conn)
+                    except pd.errors.DatabaseError as error:
+                        LOGGER.error(error, exc_info=True)
+                        return Response({"col": ["Columns does not exist."]}, status=status.HTTP_400_BAD_REQUEST)
+
+                file_path = file_ops.create_directory(settings.TEMP_DATASET_URL, [dataset_name, source])
+                df.to_excel(os.path.join(file_path, file_name+".xls"))
+                result = os.listdir(file_path)
+                return HttpResponse(json.dumps(result), status=status.HTTP_200_OK)
+
+            except psycopg2.Error as error:
+                LOGGER.error(error, exc_info=True)
+
+
+    @action(detail=False, methods=["post"])
+    def database_live_api_export(self,request):
+        '''This is an API to fetch the data from an External API with an auth token
+        and store it in JSON format.'''
+        try:
+            url=request.data.get('url')
+            headers=request.data.get('api_key')
+            response = requests.get(url, request.headers)
+            data=response.json()
+            json_data=json.dumps(data)
+            dataset_name=request.data.get("dataset_name")
+            source=request.data.get('source')
+
+            file_name=request.data.get("file_name")
+            file_path=file_ops.create_directory(settings.TEMP_DATASET_URL,[dataset_name,source])
+            with open(file_path+"/"+file_name+".json", 'w') as outfile:
+                outfile.write(json_data)
+
+            result=os.listdir(file_path) 
+
+            return Response(result,status=status.HTTP_200_OK)
+        except Exception as e:
+            return Response(str(e),status=status.HTTP_400_BAD_REQUEST)
+

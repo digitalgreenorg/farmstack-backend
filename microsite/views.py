@@ -1,4 +1,8 @@
+from functools import reduce
+import json
 import logging, datetime
+import operator
+import os
 from core.utils import (
     DefaultPagination,
     CustomPagination,
@@ -12,7 +16,15 @@ from django.db.models import Q
 from django.shortcuts import render
 from accounts.models import User, UserRole
 from core.constants import Constants
-from datahub.models import Organization, Datasets, UserOrganizationMap, DatahubDocuments
+from datahub.models import (
+    DatasetV2,
+    DatasetV2File,
+    Organization,
+    Datasets,
+    UserOrganizationMap,
+    DatahubDocuments,
+)
+from datahub.serializers import DatahubDatasetsV2Serializer, DatasetV2Serializer
 from microsite.serializers import (
     OrganizationMicrositeSerializer,
     DatasetsMicrositeSerializer,
@@ -54,13 +66,20 @@ class OrganizationMicrositeViewSet(GenericViewSet):
                 data = {
                     Constants.USER: user_serializer.data,
                     Constants.ORGANIZATION: None,
-                    "message": ["Datahub admin is not associated with any organization."],
+                    "message": [
+                        "Datahub admin is not associated with any organization."
+                    ],
                 }
                 return Response(data, status=status.HTTP_200_OK)
 
-            org_obj = Organization.objects.get(id=user_org_queryset.first().organization_id)
+            org_obj = Organization.objects.get(
+                id=user_org_queryset.first().organization_id
+            )
             org_seriliazer = OrganizationMicrositeSerializer(org_obj)
-            data = {Constants.USER: user_serializer.data, Constants.ORGANIZATION: org_seriliazer.data}
+            data = {
+                Constants.USER: user_serializer.data,
+                Constants.ORGANIZATION: org_seriliazer.data,
+            }
             return Response(data, status=status.HTTP_200_OK)
 
         except Exception as error:
@@ -79,7 +98,9 @@ class DatahubThemeMicrositeViewSet(GenericViewSet):
         data = {}
 
         try:
-            css_attribute = file_operations.get_css_attributes(css_path, "background-color")
+            css_attribute = file_operations.get_css_attributes(
+                css_path, "background-color"
+            )
 
             if not css_path and not file_paths:
                 data = {"hero_image": None, "css": None}
@@ -88,7 +109,10 @@ class DatahubThemeMicrositeViewSet(GenericViewSet):
             elif css_path and not file_paths:
                 data = {"hero_image": None, "css": {"btnBackground": css_attribute}}
             elif css_path and file_paths:
-                data = {"hero_image": file_paths, "css": {"btnBackground": css_attribute}}
+                data = {
+                    "hero_image": file_paths,
+                    "css": {"btnBackground": css_attribute},
+                }
 
             return Response(data, status=status.HTTP_200_OK)
 
@@ -101,130 +125,185 @@ class DatahubThemeMicrositeViewSet(GenericViewSet):
 class DatasetsMicrositeViewSet(GenericViewSet):
     """Datasets viewset for microsite"""
 
-    serializer_class = DatasetsMicrositeSerializer
+    serializer_class = DatasetV2Serializer
+    queryset = DatasetV2.objects.all()
     pagination_class = CustomPagination
     permission_classes = []
 
-    def list(self, request):
-        """GET method: retrieve a list of dataset objects"""
-        dataset = (
-            Datasets.objects.select_related(
-                Constants.USER_MAP, Constants.USER_MAP_USER, Constants.USER_MAP_ORGANIZATION
-            )
-            .filter(
-                Q(user_map__user__status=True, status=True, approval_status="approved")
-                | Q(user_map__user__status=True, user_map__user__role_id=1, status=True)
-            )
-            .order_by(Constants.UPDATED_AT)
-            .all()
-        )
+    def list(self, request, *args, **kwargs):
+        """
+        ``GET`` method Endpoint: list action to view the list of Datasets via GET request. [see here][ref].
 
-        page = self.paginate_queryset(dataset)
+        **Endpoint**
+        [ref]: /datahub/dataset/v2/
+        """
+        queryset = self.get_queryset()
+        # serializer = self.get_serializer(queryset, many=True)
+        # return Response(serializer.data, status=status.HTTP_200_OK)
+        page = self.paginate_queryset(queryset)
         if page is not None:
             serializer = self.get_serializer(page, many=True)
             return self.get_paginated_response(serializer.data)
-        serializer = self.get_serializer(self.queryset, many=True)
-        return Response(serializer.data, status=status.HTTP_200_OK)
+        return Response([], status=status.HTTP_404_NOT_FOUND)
+
+    def retrieve(self, request, pk=None, *args, **kwargs):
+        """
+        ``GET`` method Endpoint: retrieve action for the detail view of Dataset via GET request
+            Returns dataset object view with content of XLX/XLSX file and file URLS. [see here][ref].
+
+        **Endpoint**
+        [ref]: /datahub/dataset/v2/<id>/
+        """
+        obj = self.get_object()
+        serializer = self.get_serializer(obj).data
+
+        dataset_file_obj = DatasetV2File.objects.filter(dataset_id=obj.id)
+        data = []
+        for file in dataset_file_obj:
+            path_ = os.path.join("/media/", str(file.file))
+            file_path = {}
+            file_path["content"] = read_contents_from_csv_or_xlsx_file(path_)
+            # Omitted the actual name of the file so the user can't manually download the file
+            # file_path["file"] = path_.split("/")[-1]
+            file_path["source"] = file.source
+            data.append(file_path)
+
+        serializer["datasets"] = data
+        return Response(serializer, status=status.HTTP_200_OK)
 
     @action(detail=False, methods=["post"])
     def dataset_filters(self, request, *args, **kwargs):
         """This function get the filter args in body. based on the filter args orm filters the data."""
         data = request.data
-        range = {}
-        updated_at__range = request.data.pop(Constants.UPDATED_AT__RANGE, None)
-        if updated_at__range:
-            range[Constants.UPDATED_AT__RANGE] = date_formater(updated_at__range)
+        org_id = data.pop(Constants.ORG_ID, "")
+        others = data.pop(Constants.OTHERS, "")
+        categories = data.pop(Constants.CATEGORY, None)
+        user_id = data.pop(Constants.USER_ID, "")
+        exclude, filters, range = {}, {}, {}
+        if others:
+            exclude = {Constants.USER_MAP_ORGANIZATION: org_id} if org_id else {}
+        else:
+            filters = {Constants.USER_MAP_ORGANIZATION: org_id} if org_id else {}
+        created_at__range = request.data.pop(Constants.CREATED_AT__RANGE, None)
+        if created_at__range:
+            range[Constants.CREATED_AT__RANGE] = date_formater(created_at__range)
         try:
-            data = (
-                Datasets.objects.filter(
-                    Q(status=True, approval_status=Constants.APPROVED, **data, **range)
-                    | Q(user_map__user__role_id=1, status=True, **data, **range)
+            if categories is not None:
+                data = (
+                    DatasetV2.objects.select_related(
+                        Constants.USER_MAP,
+                        Constants.USER_MAP_USER,
+                        Constants.USER_MAP_ORGANIZATION,
+                    )
+                    .filter(status=True, **data, **filters, **range)
+                    .filter(
+                        reduce(
+                            operator.or_,
+                            (Q(category__contains=cat) for cat in categories),
+                        )
+                    )
+                    .exclude(**exclude)
+                    .order_by(Constants.UPDATED_AT)
+                    .reverse()
+                    .all()
                 )
-                .order_by(Constants.UPDATED_AT)
-                .reverse()
-                .all()
-            )
+            else:
+                data = (
+                    DatasetV2.objects.select_related(
+                        Constants.USER_MAP,
+                        Constants.USER_MAP_USER,
+                        Constants.USER_MAP_ORGANIZATION,
+                    )
+                    .filter(status=True, **data, **filters, **range)
+                    .exclude(**exclude)
+                    .order_by(Constants.UPDATED_AT)
+                    .reverse()
+                    .all()
+                )
         except Exception as error:  # type: ignore
-            LOGGER.error("Error while filtering the datasets. ERROR: %s", error, exc_info=True)
+            logging.error("Error while filtering the datasets. ERROR: %s", error)
             return Response(
-                f"Invalid filter fields: {list(request.data.keys())}", status=status.HTTP_500_INTERNAL_SERVER_ERROR
+                f"Invalid filter fields: {list(request.data.keys())}", status=500
             )
 
         page = self.paginate_queryset(data)
-        serializer = DatasetsMicrositeSerializer(page, many=True)
-        return self.get_paginated_response(serializer.data)
+        participant_serializer = DatahubDatasetsV2Serializer(page, many=True)
+        return self.get_paginated_response(participant_serializer.data)
 
-    @action(detail=False, methods=["get"])
+    @action(detail=False, methods=["post"])
     def filters_data(self, request, *args, **kwargs):
         """This function provides the filters data"""
+        data = request.data
+        org_id = data.pop(Constants.ORG_ID, "")
+        others = data.pop(Constants.OTHERS, "")
+        user_id = data.pop(Constants.USER_ID, "")
+        exclude, filters = {}, {}
+        if others:
+            exclude = {Constants.USER_MAP_ORGANIZATION: org_id} if org_id else {}
+            # filters = {Constants.APPROVAL_STATUS: Constants.APPROVED}
+        else:
+            filters = {Constants.USER_MAP_ORGANIZATION: org_id} if org_id else {}
         try:
             geography = (
-                Datasets.objects.filter(Q(approval_status="approved", status=True) | Q(user_map__user__role_id=1, status=True))
-                .values_list(Constants.GEOGRAPHY, flat=True)
+                DatasetV2.objects.values_list(Constants.GEOGRAPHY, flat=True)
+                .filter(status=True, **filters)
+                .exclude(geography="null")
+                .exclude(geography__isnull=True)
+                .exclude(geography="")
+                .exclude(**exclude)
+                .all()
                 .distinct()
-                .exclude(geography__isnull=True, geography__exact="")
             )
-            crop_detail = (
-                Datasets.objects.filter(Q(approval_status="approved", status=True) | Q(user_map__user__role_id=1, status=True))
-                .values_list(Constants.CROP_DETAIL, flat=True)
-                .distinct()
-                .exclude(crop_detail__isnull=True, crop_detail__exact="")
-            )
-
+            # crop_detail = (
+            #     Datasets.objects.values_list(Constants.CROP_DETAIL, flat=True)
+            #     .filter(status=True, **filters)
+            #     .exclude(crop_detail="null")
+            #     .exclude(crop_detail__isnull=True)
+            #     .exclude(crop_detail="")
+            #     .exclude(**exclude)
+            #     .all()
+            #     .distinct()
+            # )
+            if os.path.exists(Constants.CATEGORIES_FILE):
+                with open(Constants.CATEGORIES_FILE, "r") as json_obj:
+                    category_detail = json.loads(json_obj.read())
+            else:
+                category_detail = []
         except Exception as error:  # type: ignore
-            LOGGER.error(error, exc_info=True)
-            return Response({}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-        return Response({"geography": geography, "crop_detail": crop_detail}, status=status.HTTP_200_OK)
-
-    def retrieve(self, request, pk):
-        """GET method: retrieve an object or instance of the Product model"""
-        try:
-            data = Datasets.objects.select_related(
-                Constants.USER_MAP,
-                Constants.USER_MAP_USER,
-                Constants.USER_MAP_ORGANIZATION,
-            ).filter(
-                Q(user_map__user__status=True, status=True, id=pk)
-                & (Q(user_map__user__role=1) | Q(user_map__user__role=3))
+            logging.error("Error while filtering the datasets. ERROR: %s", error)
+            return Response(
+                f"Invalid filter fields: {list(request.data.keys())}", status=500
             )
-
-            serializer = DatasetsMicrositeSerializer(data, many=True)
-            if serializer.data:
-                data = serializer.data[0]
-                data[Constants.CONTENT] = read_contents_from_csv_or_xlsx_file(data.get(Constants.SAMPLE_DATASET))
-                return Response(data, status=status.HTTP_200_OK)
-
-        except Exception as error:
-            LOGGER.error(error, exc_info=True)
-            return Response({}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        return Response(
+            {"geography": geography, "category_detail": category_detail}, status=200
+        )
 
     @action(detail=False, methods=["post"])
     def search_datasets(self, request, *args, **kwargs):
         data = request.data
         search_pattern = data.pop(Constants.SEARCH_PATTERNS, "")
-        filters = {Constants.NAME_ICONTAINS: search_pattern} if search_pattern else {}
-
+        filters = {Constants.NAME_ICONTAINS: search_pattern} if search_pattern else {}     
         try:
             data = (
-                Datasets.objects.filter(
-                    Q(status=True, approval_status=Constants.APPROVED, **filters)
-                    | Q(user_map__user__role_id=1, status=True, **filters)
+                DatasetV2.objects.select_related(
+                    Constants.USER_MAP,
+                    Constants.USER_MAP_USER,
+                    Constants.USER_MAP_ORGANIZATION,
                 )
+                .filter(user_map__user__status=True, status=True, **filters)
                 .order_by(Constants.UPDATED_AT)
                 .reverse()
                 .all()
             )
-
+            page = self.paginate_queryset(data)
+            participant_serializer = DatahubDatasetsV2Serializer(page, many=True)
+            return self.get_paginated_response(participant_serializer.data)
         except Exception as error:  # type: ignore
-            LOGGER.error("Error while filtering the datasets. ERROR: %s", error, exc_info=True)
+            logging.error("Error while filtering the datasets. ERROR: %s", error)
             return Response(
-                f"Invalid filter fields: {list(request.data.keys())}", status=status.HTTP_500_INTERNAL_SERVER_ERROR
+                f"Invalid filter fields: {list(request.data.keys())}",
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
-
-        page = self.paginate_queryset(data)
-        serializer = DatasetsMicrositeSerializer(page, many=True)
-        return self.get_paginated_response(serializer.data)
 
 
 class ContactFormViewSet(GenericViewSet):
@@ -252,7 +331,10 @@ class ContactFormViewSet(GenericViewSet):
                 content=mail_body,
                 subject=serializer.data.get("subject", Constants.DATAHUB),
             )
-            return Response({"Message": "Your query is submitted! Thank you."}, status=status.HTTP_200_OK)
+            return Response(
+                {"Message": "Your query is submitted! Thank you."},
+                status=status.HTTP_200_OK,
+            )
 
         except Exception as error:
             LOGGER.error(error, exc_info=True)
@@ -273,19 +355,29 @@ class DocumentsMicrositeViewSet(GenericViewSet):
             file_paths = file_operations.file_path(settings.DOCUMENTS_URL)
             datahub_obj = DatahubDocuments.objects.last()
 
-            content = { Constants.GOVERNING_LAW: datahub_obj.governing_law if datahub_obj else None,
-                        Constants.PRIVACY_POLICY: datahub_obj.privacy_policy if datahub_obj else None,
-                        Constants.TOS: datahub_obj.tos if datahub_obj else None,
-                        Constants.LIMITATIONS_OF_LIABILITIES: datahub_obj.limitations_of_liabilities if datahub_obj else None,
-                        Constants.WARRANTY: datahub_obj.warranty if datahub_obj else None
-                        }
+            content = {
+                Constants.GOVERNING_LAW: datahub_obj.governing_law
+                if datahub_obj
+                else None,
+                Constants.PRIVACY_POLICY: datahub_obj.privacy_policy
+                if datahub_obj
+                else None,
+                Constants.TOS: datahub_obj.tos if datahub_obj else None,
+                Constants.LIMITATIONS_OF_LIABILITIES: datahub_obj.limitations_of_liabilities
+                if datahub_obj
+                else None,
+                Constants.WARRANTY: datahub_obj.warranty if datahub_obj else None,
+            }
 
-            documents = { Constants.GOVERNING_LAW: file_paths.get("governing_law"),
-                          Constants.PRIVACY_POLICY: file_paths.get("privacy_policy"),
-                          Constants.TOS: file_paths.get("tos"),
-                          Constants.LIMITATIONS_OF_LIABILITIES: file_paths.get("limitations_of_liabilities"),
-                          Constants.WARRANTY: file_paths.get("warranty")
-                          }
+            documents = {
+                Constants.GOVERNING_LAW: file_paths.get("governing_law"),
+                Constants.PRIVACY_POLICY: file_paths.get("privacy_policy"),
+                Constants.TOS: file_paths.get("tos"),
+                Constants.LIMITATIONS_OF_LIABILITIES: file_paths.get(
+                    "limitations_of_liabilities"
+                ),
+                Constants.WARRANTY: file_paths.get("warranty"),
+            }
 
             if not datahub_obj and not file_paths:
                 data = {"content": content, "documents": documents}

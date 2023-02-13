@@ -2,7 +2,7 @@ import uuid
 from sre_constants import CATEGORY
 from unicodedata import category
 
-import black
+# import black
 from django.db import models
 
 from accounts.models import User
@@ -121,3 +121,7 @@ class ConnectorsMap(TimeStampMixin):
     connector_pair_status = models.CharField(max_length=255, default="awaiting for approval")
     ports = models.JSONField(default={})
     status = models.BooleanField(default=True)
+
+
+
+

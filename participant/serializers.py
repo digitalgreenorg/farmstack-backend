@@ -146,7 +146,7 @@ class ParticipantDatasetsSerializer(serializers.ModelSerializer):
     class UserDatasetSerializer(serializers.ModelSerializer):
         class Meta:
             model = models.User
-            fields = ["last_name", "first_name", "email"]
+            fields = ["last_name", "first_name", "email", "on_boarded_by"]
 
     user_id = serializers.PrimaryKeyRelatedField(
         queryset=models.User.objects.all(), required=True, source="user_map.user"
@@ -310,7 +310,7 @@ class ConnectorsSerializerForEmail(serializers.ModelSerializer):
     class UserSerializer(serializers.ModelSerializer):
         class Meta:
             model = User
-            fields = ["full_name", "email", "phone_number"]
+            fields = ["full_name", "email", "phone_number",  "on_boarded_by"]
 
         full_name = serializers.SerializerMethodField(method_name="get_full_name")
 
@@ -492,3 +492,47 @@ class ConnectorListSerializer(serializers.ModelSerializer):
     class Meta:
         model = Connectors
         fields = ["id", "connector_name"]
+
+from rest_framework import serializers
+
+class DatabaseConfigSerializer(serializers.Serializer):
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        """Remove fields based on the request type"""
+        if "context" in kwargs:
+            if "source" in kwargs["context"]:
+                source = kwargs.get("context").get("source")
+                if not source == Constants.SOURCE_MYSQL_FILE_TYPE:
+                    self.fields.pop("username")
+                    self.fields.pop("database")
+                elif not source == Constants.SOURCE_POSTGRESQL_FILE_TYPE:
+                    self.fields.pop("user")
+                    self.fields.pop("dbname")
+
+
+    host = serializers.CharField(max_length=200, allow_blank=False)
+    port = serializers.IntegerField()
+    password = serializers.CharField(max_length=200, allow_blank=False)
+    database_type = serializers.CharField(max_length=200, allow_blank=False)
+
+    # for mysql
+    username = serializers.CharField(max_length=200, allow_blank=False)
+    database = serializers.CharField(max_length=200, allow_blank=False)
+
+    # postgresql
+    user = serializers.CharField(max_length=200, allow_blank=False)
+    dbname = serializers.CharField(max_length=200, allow_blank=False)
+
+
+class DatabaseColumnRetrieveSerializer(serializers.Serializer):
+    table_name = serializers.CharField(max_length=200, allow_blank=False)
+
+
+class DatabaseDataExportSerializer(serializers.Serializer):
+    table_name = serializers.CharField(max_length=200, allow_blank=False)
+    col = serializers.ListField(allow_empty=False)
+    dataset_name = serializers.CharField(max_length=200, allow_blank=False)
+    source = serializers.CharField(max_length=200, allow_blank=False)
+    file_name = serializers.CharField(max_length=200, allow_blank=False)

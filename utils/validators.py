@@ -19,7 +19,6 @@ def validate_image_type(file):
     """
     Validator function to check check for image types
     """
-    # file_type = file.content_type.split("/")[1]
     file_extension = str(file).split(".")[-1]
     # if file_type not in settings.IMAGE_TYPES_ALLOWED and file_extension not in settings.IMAGE_TYPES_ALLOWED:
     if file_extension not in settings.IMAGE_TYPES_ALLOWED:
@@ -33,7 +32,6 @@ def validate_document_type(file):
     """
     Validator function to check check for document types
     """
-    # file_type = file.content_type.split("/")[1]
     file_extension = str(file).split(".")[-1]
     # if file_type not in settings.FILE_TYPES_ALLOWED and file_extension not in settings.FILE_TYPES_ALLOWED:
     if file_extension not in settings.FILE_TYPES_ALLOWED:
@@ -41,3 +39,24 @@ def validate_document_type(file):
             "Document type not supported. Document type allowed: pdf, doc, docx"
         )
     return file
+
+
+def validate_dataset_type(file, extensions):
+    """
+    Validator function to check check for dataset types
+
+    """
+    file_extension = str(file).split(".")[-1]
+    if file_extension not in extensions:
+        return False
+    return True
+
+
+def validate_dataset_size(file, size):
+    """
+    Validator function to check check for dataset types
+
+    """
+    if file.size > size * 1024 * 1024:
+        return False
+    return True

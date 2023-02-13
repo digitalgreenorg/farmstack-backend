@@ -11,11 +11,13 @@ https://docs.djangoproject.com/en/4.0/ref/settings/
 """
 
 import collections
+import json
 import os
 from datetime import timedelta
 from pathlib import Path
 
 collections.Callable = collections.abc.Callable
+from corsheaders.defaults import default_headers
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -119,6 +121,11 @@ DATABASES = {
         "PASSWORD": os.environ.get("POSTGRES_PASSWORD"),
         "HOST": "db",
         "PORT": "5432",
+        # "NAME": os.environ.get("DATABASE_NAME"),
+        # "USER": os.environ.get("DATABASE_USER"),
+        # "PASSWORD": os.environ.get("DATABASE_PASSWORD"),
+        # "HOST": os.environ.get("DATABASE_HOST"),
+        # "PORT": os.environ.get("DATABASE_PORT"),
         "OPTIONS": {
             "client_encoding": "UTF8",
         },
@@ -199,6 +206,8 @@ ISSUE_ATTACHEMENT_URL = "users/tickets/"
 SOLUCTION_ATTACHEMENT_URL = "users/tickets/soluctions/"
 SAMPLE_DATASETS_URL = "users/datasets/sample_data/"
 CONNECTORS_CERTIFICATE_URL = "users/connectors/certificates/"
+TEMP_DATASET_URL = "temp/datasets/"
+DATASET_FILES_URL = os.path.join(MEDIA_URL, "datasets/")
 
 # Template Files.
 SINGLE_PULL_PROVIDER_TEMPLATE_XML = os.path.join(
@@ -241,13 +250,15 @@ AUTH_USER_MODEL = "accounts.User"
 
 REST_FRAMEWORK = {
     "DEFAULT_FILTER_BACKENDS": ["django_filters.rest_framework.DjangoFilterBackend"],
-    "DEFAULT_AUTHENTICATION_CLASSES": ("rest_framework_simplejwt.authentication.JWTAuthentication",),
-    "DEFAULT_PERMISSION_CLASSES": [
-        "rest_framework.permissions.AllowAny"
-    ],  #  Comment this line for test, stage and prod environments
+     "DEFAULT_AUTHENTICATION_CLASSES": ("rest_framework_simplejwt.authentication.JWTAuthentication",),
     # "DEFAULT_PERMISSION_CLASSES": [
-    #     "rest_framework.permissions.IsAuthenticated"
-    # ],  # Un comment this to enable authentication
+    #     "rest_framework.permissions.AllowAny"
+    # ],
+    # Comment this line for test, stage and prod environments
+    "DEFAULT_PERMISSION_CLASSES": [
+        "rest_framework.permissions.IsAuthenticated"
+    ],
+    #  # Un comment this to enable authentication
     "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
     "EXCEPTION_HANDLER": "rest_framework.views.exception_handler",
 }
@@ -348,7 +359,9 @@ CORS_ORIGIN_ALLOW_ALL = True
 # CORS_ORIGIN_WHITELIST = (
 #   'https://127.0.0.1:8000'
 # )
-
+CORS_ALLOW_CREDENTIALS = True
+#making sure CORS_ALLOW_HEADERS  is not "*"
+CORS_ALLOW_HEADERS = list(default_headers) + ['Set-Cookie']
 INTERNAL_IPS = [
     "127.0.0.1",
 ]

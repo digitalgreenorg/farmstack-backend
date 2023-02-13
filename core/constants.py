@@ -44,6 +44,7 @@ class Constants:
     DEPARTMENT = "department"
     DEPARTMENTS = "departments"
     CATEGORY = "category"
+    SUBCATEGORY = "subcategory"
     PROVIDER_CORE = "provider_core"
     CONSUMER_CORE = "consumer_core"
     CONSUMER_APP = "consumer_app"
@@ -141,3 +142,13 @@ class Constants:
         "participant_creates_connector_and_requests_certificate.html"
     )
     PARTICIPANT_INSTALLS_CERTIFICATE = "participant_installs_certificate.html"
+    SOURCE_FILE_TYPE = "file"
+    SOURCE_MYSQL_FILE_TYPE = "mysql"
+    SOURCE_POSTGRESQL_FILE_TYPE = "postgresql"
+    SOURCE_FILE = "source_file"
+    SOURCE_MYSQL = "source_mysql"
+    SOURCE_POSTGRESQL = "source_postgresql"
+    DATASET_FILE_TYPES = ["xls", "xlsx", "csv", "pdf", "jpeg", "jpg", "png", "tiff"]
+    DATASET_MAX_FILE_SIZE = 50
+    DATASET_V2_URL = "dataset/v2"
+    CATEGORIES_FILE = "categories.json"
