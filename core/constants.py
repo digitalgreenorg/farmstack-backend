@@ -152,4 +152,3 @@ class Constants:
     DATASET_MAX_FILE_SIZE = 50
     DATASET_V2_URL = "dataset/v2"
     CATEGORIES_FILE = "categories.json"
-    ON_BOARDED_BY="on_boarded_by"
