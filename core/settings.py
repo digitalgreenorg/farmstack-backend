@@ -121,12 +121,14 @@ DATABASES = {
         # "PASSWORD": "$farmstack@!21",
         # "HOST": "datahubethdev.farmstack.co",
         # "PORT":"7000",
+        #######
         "ENGINE": "django.db.backends.postgresql",
         "NAME": "postgres",
         "USER": os.environ.get("POSTGRES_USER"),
         "PASSWORD": os.environ.get("POSTGRES_PASSWORD"),
         "HOST": "db",
         "PORT": "5432",
+        ###########
         # "NAME": os.environ.get("DATABASE_NAME"),
         # "USER": os.environ.get("DATABASE_USER"),
         # "PASSWORD": os.environ.get("DATABASE_PASSWORD"),
