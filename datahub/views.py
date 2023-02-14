@@ -356,7 +356,6 @@ class ParticipantViewSet(GenericViewSet):
         user_serializer = UserCreateSerializer(data=request.data)
         user_serializer.is_valid(raise_exception=True)
         user_saved = self.perform_create(user_serializer)
-        
         user_org_serializer = UserOrganizationMapSerializer(
             data={
                 Constants.USER: user_saved.id,
@@ -383,6 +382,7 @@ class ParticipantViewSet(GenericViewSet):
                 Constants.datahub_name: os.environ.get(
                     Constants.DATAHUB_NAME, Constants.datahub_name
                 ),
+                "as_user": "Co-Steward" if user_saved.role == 6 else "Participant",
                 "participant_admin_name": participant_full_name,
                 "participant_organization_name": request.data.get("name"),
                 "datahub_admin": admin_full_name,
@@ -471,9 +471,8 @@ class ParticipantViewSet(GenericViewSet):
         self.perform_create(organization_serializer)
         try:
             if user_data.on_boarded_by:
-                datahub_admin = User.objects.filter(id=user_serializer.on_boarded_by).first()
                 admin_full_name = string_functions.get_full_name(
-                    datahub_admin.first_name, datahub_admin.last_name
+                    user_data.first_name, user_data.last_name
                 )
             else:   
                 datahub_admin = User.objects.filter(role_id=1).first()
@@ -532,7 +531,10 @@ class ParticipantViewSet(GenericViewSet):
             organization.status = False
 
             try:
-                datahub_admin = User.objects.filter(role_id=1).first()
+                if participant.on_boarded_by:
+                    datahub_admin = User.objects.filter(id=participant.on_boarded_by).first()
+                else:
+                    datahub_admin = User.objects.filter(role_id=1).first()
                 admin_full_name = string_functions.get_full_name(
                     datahub_admin.first_name, datahub_admin.last_name
                 )

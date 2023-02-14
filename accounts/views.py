@@ -147,7 +147,8 @@ class LoginViewset(GenericViewSet):
         email = serializer.validated_data["email"]
         user_obj = User.objects.filter(email=email)
         user = user_obj.first()
-        user_role_obj = UserRole.objects.filter(role_name=request.data.get("role"))
+        # user_role_obj = UserRole.objects.filter(role_name=request.data.get("role"))
+        user_role_obj = UserRole.objects.filter(id=user.role_id)
         user_role = user_role_obj.first().id if user_role_obj else None
 
         try:
