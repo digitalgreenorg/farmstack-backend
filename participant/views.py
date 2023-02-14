@@ -1705,6 +1705,7 @@ class DataBaseViewSet(GenericViewSet):
                 # save the list of files to a temp directory
                 file_path = file_ops.create_directory(settings.TEMP_DATASET_URL,[dataset_name,source])
                 df = pd.read_sql(query,mydb)
+                df=df.astype(str)
                 xls_file = df.to_excel(file_path+"/"+file_name+".xls")
                 result = os.listdir(file_path)
                 return HttpResponse(json.dumps(result),status=status.HTTP_200_OK)
@@ -1729,12 +1730,13 @@ class DataBaseViewSet(GenericViewSet):
                     try:
                         sql_query = ("SELECT {0} FROM {1};".format(col_names, t_name))
                         df = pd.read_sql(sql_query, conn)
+                        df=df.astype(str)
                     except pd.errors.DatabaseError as error:
                         LOGGER.error(error, exc_info=True)
                         return Response({"col": ["Columns does not exist."]}, status=status.HTTP_400_BAD_REQUEST)
 
                 file_path = file_ops.create_directory(settings.TEMP_DATASET_URL, [dataset_name, source])
-                df.to_excel(os.path.join(file_path, file_name+".xls"))
+                xls_file=df.to_excel(os.path.join(file_path, file_name+".xls"))
                 result = os.listdir(file_path)
                 return HttpResponse(json.dumps(result), status=status.HTTP_200_OK)
 
