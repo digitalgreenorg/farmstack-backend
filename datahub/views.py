@@ -356,7 +356,7 @@ class ParticipantViewSet(GenericViewSet):
         user_serializer = UserCreateSerializer(data=request.data)
         user_serializer.is_valid(raise_exception=True)
         user_saved = self.perform_create(user_serializer)
-        import pdb; pdb.set_trace()
+        
         user_org_serializer = UserOrganizationMapSerializer(
             data={
                 Constants.USER: user_saved.id,
@@ -2017,3 +2017,72 @@ class DatasetV2ViewSet(GenericViewSet):
         except Exception as e:
             logging.error(str(e), exc_info=True)
             return Response({}, 500)
+
+    @action(detail=False, methods=["post"])
+    def search_datasets_onboarded(self, request, *args, **kwargs):
+        data = request.data
+        org_id = data.pop(Constants.ORG_ID, "")
+        others = data.pop(Constants.OTHERS, "")
+        user_id = data.pop(Constants.USER_ID, "")
+        on_boarded_by=data.pop('on_boarded_by',"")
+
+        
+        search_pattern = data.pop(Constants.SEARCH_PATTERNS, "")
+        exclude, filters = {}, {}
+
+        if others:
+            exclude = {Constants.USER_MAP_ORGANIZATION: org_id} if org_id else {}
+            filters = (
+                {Constants.NAME_ICONTAINS: search_pattern} if search_pattern else {}
+            )
+        else:
+            filters = (
+                {
+                    Constants.USER_MAP_ORGANIZATION: org_id,
+                    Constants.NAME_ICONTAINS: search_pattern,
+                }
+                if org_id
+                else {}
+            )
+        try:
+            if len(on_boarded_by)>0:
+                data = (
+                    DatasetV2.objects.select_related(
+                        Constants.USER_MAP,
+                        Constants.USER_MAP_USER,
+                        Constants.USER_MAP_ORGANIZATION,
+                    )
+                    .filter(user_map__user__status=True, status=True, **data, **filters,user_map__user__on_boarded_by=on_boarded_by)
+                    .exclude(**exclude)
+                    .order_by(Constants.UPDATED_AT)
+                    .reverse()
+                    .all()
+                )
+                
+                page = self.paginate_queryset(data)
+                participant_serializer = DatahubDatasetsV2Serializer(page, many=True)
+                return self.get_paginated_response(participant_serializer.data)
+            else:
+                data = (
+                    DatasetV2.objects.select_related(
+                        Constants.USER_MAP,
+                        Constants.USER_MAP_USER,
+                        Constants.USER_MAP_ORGANIZATION,
+                    )
+                    .filter(user_map__user__status=True, status=True, **data, **filters)
+                    .exclude(**exclude)
+                    .order_by(Constants.UPDATED_AT)
+                    .reverse()
+                    .all()
+                )
+                print(data)
+                page = self.paginate_queryset(data)
+                participant_serializer = DatahubDatasetsV2Serializer(page, many=True)
+                return self.get_paginated_response(participant_serializer.data)
+        except Exception as error:  # type: ignore
+            logging.error("Error while filtering the datasets. ERROR: %s", error)
+            return Response(
+                f"Invalid filter fields: {list(request.data.keys())}",
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+    
