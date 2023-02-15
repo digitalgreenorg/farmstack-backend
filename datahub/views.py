@@ -1790,6 +1790,8 @@ class DatasetV2ViewSet(GenericViewSet):
         others = data.pop(Constants.OTHERS, "")
         categories = data.pop(Constants.CATEGORY, None)
         user_id = data.pop(Constants.USER_ID, "")
+        on_boarded_by = data.pop("on_boarded_by", "")
+
         exclude, filters, range = {}, {}, {}
         if others:
             exclude = {Constants.USER_MAP_ORGANIZATION: org_id} if org_id else {}
@@ -1798,41 +1800,28 @@ class DatasetV2ViewSet(GenericViewSet):
         created_at__range = request.data.pop(Constants.CREATED_AT__RANGE, None)
         if created_at__range:
             range[Constants.CREATED_AT__RANGE] = date_formater(created_at__range)
+
         try:
+            data = DatasetV2.objects.select_related(
+            Constants.USER_MAP,
+            Constants.USER_MAP_USER,
+            Constants.USER_MAP_ORGANIZATION,
+            ).filter(status=True, **data, **filters, **range).exclude(**exclude).order_by(Constants.UPDATED_AT).reverse().all()
+            if on_boarded_by:
+                data = data.filter(user_map__user__on_boarded_by=on_boarded_by) if not others else data.filter(
+                    Q(user_map__user__on_boarded_by=on_boarded_by) | Q(user_map__user_id=on_boarded_by)
+                )
             if categories is not None:
-                data = (
-                    DatasetV2.objects.select_related(
-                        Constants.USER_MAP,
-                        Constants.USER_MAP_USER,
-                        Constants.USER_MAP_ORGANIZATION,
+                data = data.filter(
+                    reduce(
+                        operator.or_,
+                        (Q(category__contains=cat) for cat in categories),
                     )
-                    .filter(status=True, **data, **filters, **range)
-                    .filter(
-                        reduce(
-                            operator.or_,
-                            (Q(category__contains=cat) for cat in categories),
-                        )
-                    )
-                    .exclude(**exclude)
-                    .order_by(Constants.UPDATED_AT)
-                    .reverse()
-                    .all()
                 )
-            else:
-                data = (
-                    DatasetV2.objects.select_related(
-                        Constants.USER_MAP,
-                        Constants.USER_MAP_USER,
-                        Constants.USER_MAP_ORGANIZATION,
-                    )
-                    .filter(status=True, **data, **filters, **range)
-                    .exclude(**exclude)
-                    .order_by(Constants.UPDATED_AT)
-                    .reverse()
-                    .all()
-                )
+            # else:
+            #     data = data.exclude(**exclude).order_by(Constants.UPDATED_AT).reverse().all()
         except Exception as error:  # type: ignore
-            logging.error("Error while filtering the datasets. ERROR: %s", error)
+            logging.error("Error while filtering the datasets. ERROR: %s", error, exc_info=True)
             return Response(
                 f"Invalid filter fields: {list(request.data.keys())}", status=500
             )
