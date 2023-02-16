@@ -525,14 +525,11 @@ class ParticipantViewSet(GenericViewSet):
             Constants.ORGANIZATION
         ).get(user_id=pk)
         organization = Organization.objects.get(id=user_organization.organization_id)
-
-        if participant.status is not False and organization.status is not False:
+        if participant.status:
             participant.status = False
-            organization.status = False
-
             try:
                 if participant.on_boarded_by:
-                    datahub_admin = User.objects.filter(id=participant.on_boarded_by).first()
+                    datahub_admin = participant.on_boarded_by
                 else:
                     datahub_admin = User.objects.filter(role_id=1).first()
                 admin_full_name = string_functions.get_full_name(
@@ -556,7 +553,6 @@ class ParticipantViewSet(GenericViewSet):
 
                 # delete data & trigger_email
                 self.perform_create(participant)
-                self.perform_create(organization)
                 email_render = render(
                     request,
                     Constants.DATAHUB_ADMIN_DELETES_PARTICIPANT_ORGANIZATION,
@@ -580,7 +576,7 @@ class ParticipantViewSet(GenericViewSet):
                     {"message": ["An error occured"]}, status=status.HTTP_200_OK
                 )
 
-        elif participant.status is False and organization.status is False:
+        elif not participant.status:
             return Response(
                 {"message": ["Object already deleted"]},
                 status=status.HTTP_204_NO_CONTENT,
@@ -1790,6 +1786,8 @@ class DatasetV2ViewSet(GenericViewSet):
         others = data.pop(Constants.OTHERS, "")
         categories = data.pop(Constants.CATEGORY, None)
         user_id = data.pop(Constants.USER_ID, "")
+        on_boarded_by = data.pop("on_boarded_by", "")
+
         exclude, filters, range = {}, {}, {}
         if others:
             exclude = {Constants.USER_MAP_ORGANIZATION: org_id} if org_id else {}
@@ -1798,41 +1796,28 @@ class DatasetV2ViewSet(GenericViewSet):
         created_at__range = request.data.pop(Constants.CREATED_AT__RANGE, None)
         if created_at__range:
             range[Constants.CREATED_AT__RANGE] = date_formater(created_at__range)
+
         try:
+            data = DatasetV2.objects.select_related(
+            Constants.USER_MAP,
+            Constants.USER_MAP_USER,
+            Constants.USER_MAP_ORGANIZATION,
+            ).filter(status=True, **data, **filters, **range).exclude(**exclude).order_by(Constants.UPDATED_AT).reverse().all()
+            if on_boarded_by:
+                data = data.filter(user_map__user__on_boarded_by=on_boarded_by) if not others else data.filter(
+                    Q(user_map__user__on_boarded_by=on_boarded_by) | Q(user_map__user_id=on_boarded_by)
+                )
             if categories is not None:
-                data = (
-                    DatasetV2.objects.select_related(
-                        Constants.USER_MAP,
-                        Constants.USER_MAP_USER,
-                        Constants.USER_MAP_ORGANIZATION,
+                data = data.filter(
+                    reduce(
+                        operator.or_,
+                        (Q(category__contains=cat) for cat in categories),
                     )
-                    .filter(status=True, **data, **filters, **range)
-                    .filter(
-                        reduce(
-                            operator.or_,
-                            (Q(category__contains=cat) for cat in categories),
-                        )
-                    )
-                    .exclude(**exclude)
-                    .order_by(Constants.UPDATED_AT)
-                    .reverse()
-                    .all()
                 )
-            else:
-                data = (
-                    DatasetV2.objects.select_related(
-                        Constants.USER_MAP,
-                        Constants.USER_MAP_USER,
-                        Constants.USER_MAP_ORGANIZATION,
-                    )
-                    .filter(status=True, **data, **filters, **range)
-                    .exclude(**exclude)
-                    .order_by(Constants.UPDATED_AT)
-                    .reverse()
-                    .all()
-                )
+            # else:
+            #     data = data.exclude(**exclude).order_by(Constants.UPDATED_AT).reverse().all()
         except Exception as error:  # type: ignore
-            logging.error("Error while filtering the datasets. ERROR: %s", error)
+            logging.error("Error while filtering the datasets. ERROR: %s", error, exc_info=True)
             return Response(
                 f"Invalid filter fields: {list(request.data.keys())}", status=500
             )
