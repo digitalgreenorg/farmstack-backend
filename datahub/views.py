@@ -517,7 +517,7 @@ class ParticipantViewSet(GenericViewSet):
             return Response(
                 {"message": ["An error occured"]}, status=status.HTTP_200_OK
             )
-
+     
     def destroy(self, request, pk):
         """DELETE method: delete an object"""
         participant = self.get_object()
@@ -526,7 +526,8 @@ class ParticipantViewSet(GenericViewSet):
         ).get(user_id=pk)
         organization = Organization.objects.get(id=user_organization.organization_id)
 
-        if participant.status is not False and organization.status is not False:
+        if participant.status:
+
             participant.status = False
             organization.status = False
 
@@ -577,16 +578,16 @@ class ParticipantViewSet(GenericViewSet):
             except Exception as error:
                 LOGGER.error(error, exc_info=True)
                 return Response(
-                    {"message": ["An error occured"]}, status=status.HTTP_200_OK
+                    {"message": ["Internal server error"]}, status=500
                 )
 
-        elif participant.status is False and organization.status is False:
+        elif participant.status is False:
             return Response(
-                {"message": ["Object already deleted"]},
+                {"message": ["participant/co-steward already deleted"]},
                 status=status.HTTP_204_NO_CONTENT,
             )
 
-        return Response({"message": ["An error occured"]}, status=status.HTTP_200_OK)
+        return Response({"message": ["Internal server error"]}, status=500)
 
 
 class MailInvitationViewSet(GenericViewSet):
