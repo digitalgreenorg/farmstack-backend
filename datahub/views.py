@@ -517,7 +517,7 @@ class ParticipantViewSet(GenericViewSet):
             return Response(
                 {"message": ["An error occured"]}, status=status.HTTP_200_OK
             )
-
+     
     def destroy(self, request, pk):
         """DELETE method: delete an object"""
         participant = self.get_object()
@@ -526,13 +526,11 @@ class ParticipantViewSet(GenericViewSet):
         ).get(user_id=pk)
         organization = Organization.objects.get(id=user_organization.organization_id)
 
-        if participant.status is not False and organization.status is not False:
+        if participant.status:
             participant.status = False
-            organization.status = False
-
             try:
                 if participant.on_boarded_by:
-                    datahub_admin = User.objects.filter(id=participant.on_boarded_by).first()
+                    datahub_admin = participant.on_boarded_by
                 else:
                     datahub_admin = User.objects.filter(role_id=1).first()
                 admin_full_name = string_functions.get_full_name(
@@ -556,7 +554,6 @@ class ParticipantViewSet(GenericViewSet):
 
                 # delete data & trigger_email
                 self.perform_create(participant)
-                self.perform_create(organization)
                 email_render = render(
                     request,
                     Constants.DATAHUB_ADMIN_DELETES_PARTICIPANT_ORGANIZATION,
@@ -577,16 +574,16 @@ class ParticipantViewSet(GenericViewSet):
             except Exception as error:
                 LOGGER.error(error, exc_info=True)
                 return Response(
-                    {"message": ["An error occured"]}, status=status.HTTP_200_OK
+                    {"message": ["Internal server error"]}, status=500
                 )
 
-        elif participant.status is False and organization.status is False:
+        elif participant.status is False:
             return Response(
-                {"message": ["Object already deleted"]},
+                {"message": ["participant/co-steward already deleted"]},
                 status=status.HTTP_204_NO_CONTENT,
             )
 
-        return Response({"message": ["An error occured"]}, status=status.HTTP_200_OK)
+        return Response({"message": ["Internal server error"]}, status=500)
 
 
 class MailInvitationViewSet(GenericViewSet):
