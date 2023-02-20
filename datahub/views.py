@@ -2021,12 +2021,16 @@ class DatasetV2ViewSetOps(GenericViewSet):
  
     @action(detail=False, methods=["post"])
     def datasets_names(self, request, *args, **kwargs):
+        datasets_with_excel_files = DatasetV2.objects.select_related(DatasetV2File).filter(Q(datasetv2file__file__endswith='.xls') | Q(datasetv2file__file__endswith='.xlsx'))
+
         try:
-            datasets_with_excel_files = DatasetV2File.objects.filter(Q(file__endswith='.xls') | Q(file__endswith='.xlsx')).distinct().values_list('dataset__name', 'dataset__id')
-            dataset_list = [{'dataset_name': dataset_name, 'id': dataset_id} for dataset_name, dataset_id in datasets_with_excel_files]
-            return Response(dataset_list, status=status.HTTP_200_OK)
+            datasets_with_excel_files = DatasetV2.objects.select_related(DatasetV2File).filter(Q(datasetv2file__file__endswith='.xls') | Q(datasetv2file__file__endswith='.xlsx'))
+            import pdb;pdb.set_trace()
+            # dataset_list = [{'dataset_name': dataset_name, 'id': dataset_id} for dataset_name, dataset_id in datasets_with_excel_files]
+            return Response(datasets_with_excel_files, status=status.HTTP_200_OK)
         except Exception as e:
             error_message = f"An error occurred while fetching dataset names: {e}"
+            print(e)
             return Response({"error": error_message}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
