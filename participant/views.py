@@ -447,12 +447,6 @@ class ParticipantDatasetsViewSet(GenericViewSet):
             filters = {Constants.APPROVAL_STATUS: Constants.APPROVED}
         else:
             filters = {Constants.USER_MAP_ORGANIZATION: org_id} if org_id else {}
-        cretated_range = {}
-        created_at__range = request.data.pop(Constants.CREATED_AT__RANGE, None)
-        if created_at__range:
-            cretated_range[Constants.CREATED_AT__RANGE] = date_formater(
-                created_at__range
-            )
         try:
             if categories is not None:
 
@@ -462,7 +456,7 @@ class ParticipantDatasetsViewSet(GenericViewSet):
                         Constants.USER_MAP_USER,
                         Constants.USER_MAP_ORGANIZATION,
                     )
-                    .filter(status=True, **data, **filters, **cretated_range)
+                    .filter(status=True, **data, **filters)
                     .filter(
                         reduce(
                             operator.or_,
@@ -487,7 +481,6 @@ class ParticipantDatasetsViewSet(GenericViewSet):
                         status=True,
                         **data,
                         **filters,
-                        **cretated_range,
                     )
                     .exclude(**exclude)
                     .order_by(Constants.UPDATED_AT)
@@ -898,12 +891,6 @@ class ParticipantConnectorsViewSet(GenericViewSet):
         data = request.data
         user_id = data.pop(Constants.USER_ID, "")
         filters = {Constants.USER_MAP_USER: user_id} if user_id else {}
-        cretated_range = {}
-        created_at__range = request.data.pop(Constants.CREATED_AT__RANGE, None)
-        if created_at__range:
-            cretated_range[Constants.CREATED_AT__RANGE] = date_formater(
-                created_at__range
-            )
         try:
             data = (
                 Connectors.objects.select_related(
@@ -917,7 +904,6 @@ class ParticipantConnectorsViewSet(GenericViewSet):
                     dataset__status=True,
                     **data,
                     **filters,
-                    **cretated_range,
                 )
                 .order_by(Constants.UPDATED_AT)
                 .reverse()

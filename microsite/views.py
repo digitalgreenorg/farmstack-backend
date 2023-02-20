@@ -179,14 +179,11 @@ class DatasetsMicrositeViewSet(GenericViewSet):
         others = data.pop(Constants.OTHERS, "")
         categories = data.pop(Constants.CATEGORY, None)
         user_id = data.pop(Constants.USER_ID, "")
-        exclude, filters, range = {}, {}, {}
+        exclude, filters = {}, {}
         if others:
             exclude = {Constants.USER_MAP_ORGANIZATION: org_id} if org_id else {}
         else:
-            filters = {Constants.USER_MAP_ORGANIZATION: org_id} if org_id else {}
-        created_at__range = request.data.pop(Constants.CREATED_AT__RANGE, None)
-        if created_at__range:
-            range[Constants.CREATED_AT__RANGE] = date_formater(created_at__range)
+            filters = {Constants.USER_MAP_ORGANIZATION: org_id} if org_id else {})
         try:
             if categories is not None:
                 data = (
@@ -195,7 +192,7 @@ class DatasetsMicrositeViewSet(GenericViewSet):
                         Constants.USER_MAP_USER,
                         Constants.USER_MAP_ORGANIZATION,
                     )
-                    .filter(status=True, **data, **filters, **range)
+                    .filter(status=True, **data, **filters)
                     .filter(
                         reduce(
                             operator.or_,
@@ -214,7 +211,7 @@ class DatasetsMicrositeViewSet(GenericViewSet):
                         Constants.USER_MAP_USER,
                         Constants.USER_MAP_ORGANIZATION,
                     )
-                    .filter(status=True, **data, **filters, **range)
+                    .filter(status=True, **data, **filters)
                     .exclude(**exclude)
                     .order_by(Constants.UPDATED_AT)
                     .reverse()

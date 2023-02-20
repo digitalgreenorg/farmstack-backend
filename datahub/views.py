@@ -966,10 +966,6 @@ class SupportViewSet(GenericViewSet):
     @action(detail=False, methods=["post"])
     def filters_tickets(self, request, *args, **kwargs):
         """This function get the filter args in body. based on the filter args orm filters the data."""
-        range = {}
-        updated_range_at = request.data.pop("updated_at__range", None)
-        if updated_range_at:
-            range["updated_at__range"] = date_formater(updated_range_at)
         try:
             data = (
                 SupportTicket.objects.select_related(
@@ -977,7 +973,7 @@ class SupportViewSet(GenericViewSet):
                     Constants.USER_MAP_USER,
                     Constants.USER_MAP_ORGANIZATION,
                 )
-                .filter(user_map__user__status=True, **request.data, **range)
+                .filter(user_map__user__status=True, **request.data)
                 .order_by(Constants.UPDATED_AT)
                 .reverse()
                 .all()
@@ -1263,14 +1259,12 @@ class DatahubDatasetsViewSet(GenericViewSet):
         others = data.pop(Constants.OTHERS, "")
         user_id = data.pop(Constants.USER_ID, "")
         categories = data.pop(Constants.CATEGORY, None)
-        exclude, filters, range = {}, {}, {}
+        exclude, filters = {}, {}
         if others:
             exclude = {Constants.USER_MAP_ORGANIZATION: org_id} if org_id else {}
         else:
             filters = {Constants.USER_MAP_ORGANIZATION: org_id} if org_id else {}
-        created_at__range = request.data.pop(Constants.CREATED_AT__RANGE, None)
-        if created_at__range:
-            range[Constants.CREATED_AT__RANGE] = date_formater(created_at__range)
+      
         try:
             if categories is not None:
 
@@ -1280,7 +1274,7 @@ class DatahubDatasetsViewSet(GenericViewSet):
                         Constants.USER_MAP_USER,
                         Constants.USER_MAP_ORGANIZATION,
                     )
-                    .filter(status=True, **data, **filters, **range)
+                    .filter(status=True, **data, **filters)
                     .filter(
                         reduce(
                             operator.or_,
@@ -1300,7 +1294,7 @@ class DatahubDatasetsViewSet(GenericViewSet):
                         Constants.USER_MAP_USER,
                         Constants.USER_MAP_ORGANIZATION,
                     )
-                    .filter(status=True, **data, **filters, **range)
+                    .filter(status=True, **data, **filters)
                     .exclude(**exclude)
                     .order_by(Constants.UPDATED_AT)
                     .reverse()
@@ -1793,21 +1787,17 @@ class DatasetV2ViewSet(GenericViewSet):
         user_id = data.pop(Constants.USER_ID, "")
         on_boarded_by = data.pop("on_boarded_by", "")
 
-        exclude, filters, range = {}, {}, {}
+        exclude, filters = {}, {}
         if others:
             exclude = {Constants.USER_MAP_ORGANIZATION: org_id} if org_id else {}
         else:
             filters = {Constants.USER_MAP_ORGANIZATION: org_id} if org_id else {}
-        created_at__range = request.data.pop(Constants.CREATED_AT__RANGE, None)
-        if created_at__range:
-            range[Constants.CREATED_AT__RANGE] = date_formater(created_at__range)
-
         try:
             data = DatasetV2.objects.select_related(
             Constants.USER_MAP,
             Constants.USER_MAP_USER,
             Constants.USER_MAP_ORGANIZATION,
-            ).filter(status=True, **data, **filters, **range).exclude(**exclude).order_by(Constants.UPDATED_AT).reverse().all()
+            ).filter(status=True, **data, **filters).exclude(**exclude).order_by(Constants.UPDATED_AT).reverse().all()
             if on_boarded_by:
                 data = data.filter(user_map__user__on_boarded_by=on_boarded_by) if not others else data.filter(
                     Q(user_map__user__on_boarded_by=on_boarded_by) | Q(user_map__user_id=on_boarded_by)
