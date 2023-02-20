@@ -1943,64 +1943,6 @@ class DatasetV2ViewSet(GenericViewSet):
             return Response(status=status.HTTP_204_NO_CONTENT)
 
 
-    @action(detail=False, methods=["post"])
-    def create_db(self, request, *args, **kwargs):
-        try:
-            data = request.data
-            # con = connect(dbname=data.get("org"), user='postgres', host='datahubtest.farmstack.co', password='$farmstack@!21')
-            db_settings = open("/datahub/core/settings.json") 
-            db_data = json.load(db_settings)
-            db_data[data.get("org")] = {
-            "ENGINE": "django.db.backends.postgresql",
-            "NAME": data.get("org"),
-            "USER": "postgres",
-            "PASSWORD": "$farmstack@!21",
-            "HOST": "datahubethdev.farmstack.co",
-            "PORT": 7000,
-            "OPTIONS": {
-                "client_encoding": "UTF8",
-            }
-        }
-            with open('../datahub/core/settings.json', 'w') as fp:
-                json.dump(db_data, fp)
-            import ruamel.yaml
-
-            file_name = '../datahub/test_db.yaml'
-            print(file_name)
-            config, ind, bsi = ruamel.yaml.util.load_yaml_guess_indent(open(file_name))
-            # print(config)
-
-            instances = config['services']["datahub-be"]
-            commands = [f" && python manage.py migrate --dataset {keys}" for keys in db_data.keys()]
-            print(commands)
-            command = instances['command'].replace("&& python manage.py migrate", " ".join(commands))
-        
-            instances['command'] = command
-
-            from python_on_whales import DockerClient
-
-            yaml = ruamel.yaml.YAML()
-            yaml.indent(mapping=ind, sequence=ind, offset=bsi) 
-            with open('../datahub/test_db.yaml', 'w') as fp:
-                yaml.dump(config, fp)
-            # docker_clients_consumer = DockerClient(compose_files=["../datahub/test_db.yaml"])
-            # # print(docker_clients)
-            # docker_clients_consumer.compose.stop()
-
-            import signal
-
-            # def sigterm_handler(_signo, _stack_frame):
-            #     # Raises SystemExit(0):
-            #     sys.exit(0)
-            # signal.signal(signal.SIGTERM, sigterm_handler)
-            os.popen("docker stop 43f56891b063")
-            # atexit.register(exit_handler)            # docker_clients_consumer.compose.restart() # type: ignore
-            return Response({}, 200)
-        except Exception as e:
-            logging.error(str(e), exc_info=True)
-            return Response({}, 500)
-
-
 class DatasetV2ViewSetOps(GenericViewSet):
     """
         A viewset for performing operations on datasets with Excel files.
