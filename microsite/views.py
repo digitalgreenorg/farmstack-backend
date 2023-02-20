@@ -183,7 +183,7 @@ class DatasetsMicrositeViewSet(GenericViewSet):
         if others:
             exclude = {Constants.USER_MAP_ORGANIZATION: org_id} if org_id else {}
         else:
-            filters = {Constants.USER_MAP_ORGANIZATION: org_id} if org_id else {})
+            filters = {Constants.USER_MAP_ORGANIZATION: org_id} if org_id else {}
         try:
             if categories is not None:
                 data = (
