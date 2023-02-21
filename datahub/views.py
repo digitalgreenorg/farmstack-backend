@@ -8,6 +8,7 @@ import shutil
 import sys
 from calendar import c
 from functools import reduce
+from pickle import TRUE
 
 import django
 import pandas as pd
@@ -1961,11 +1962,14 @@ class DatasetV2ViewSetOps(GenericViewSet):
 
 
  
-    @action(detail=False, methods=["post"])
+    @action(detail=False, methods=["get"])
     def datasets_names(self, request, *args, **kwargs):
         try:
-            datasets_with_excel_files = DatasetV2File.objects.filter(Q(file__endswith='.xls') | Q(file__endswith='.xlsx')).distinct().values_list('dataset__name', 'dataset__id')
-            dataset_list = [{'dataset_name': dataset_name, 'id': dataset_id} for dataset_name, dataset_id in datasets_with_excel_files]
+            datasets_with_excel_files = DatasetV2File.objects.filter(
+                Q(file__endswith='.xls') | Q(file__endswith='.xlsx') | Q(file__endswith='.csv')).distinct().values_list(
+                    'dataset__name', 'dataset__id')
+            
+            dataset_list = [{'name': dataset_name, 'id': dataset_id} for dataset_name, dataset_id in datasets_with_excel_files]
             return Response(dataset_list, status=status.HTTP_200_OK)
         except Exception as e:
             error_message = f"An error occurred while fetching dataset names: {e}"
@@ -1974,50 +1978,39 @@ class DatasetV2ViewSetOps(GenericViewSet):
 
     @action(detail=False, methods=["post"])
     def datasets_file_names(self,request,*args,**kwargs):
-        try:
-            d1_id = request.data.get("dataset_id1")
-            d2_id = request.data.get("dataset_id2")
+        dataset_ids = request.data.get("datasets")
+        if dataset_ids:
+            try:
+                # Get list of files for each dataset
+                files = DatasetV2File.objects.filter(
+                    dataset__in=dataset_ids).filter(
+                        Q(file__endswith='.xls') | Q(file__endswith='.xlsx') | Q(file__endswith='.csv')
+                        ).values("file", "dataset")
+                files = [{**row, "file_name": row.get("file", "").split("/")[-1]}for row in files]
+                return Response(files, status=status.HTTP_200_OK)
 
-            # Check if datasets exist
-            d1 = DatasetV2.objects.get(id=d1_id)
-            d2 = DatasetV2.objects.get(id=d2_id)
-
-            # Get list of files for each dataset
-            files1 = DatasetV2File.objects.filter(dataset_id=d1).filter(Q(file__endswith='.xls') | Q(file__endswith='.xlsx'))
-            files2 = DatasetV2File.objects.filter(dataset_id=d2).filter(Q(file__endswith='.xls') | Q(file__endswith='.xlsx'))
-
-            # Create response data with list of files
-            response_data = {
-                "id": d1_id,
-                "files": [{"file_name": os.path.basename(file.file.name), "file": file.file.url} for file in files1]
-            }
-            response_data2 = {
-                "id": d2_id,
-                "files": [{"file_name": os.path.basename(file.file.name), "file": file.file.url} for file in files2]
-            }
-
-            # Return response
-            return Response({"files1":response_data,"files2":response_data2}, status=status.HTTP_200_OK)
-
-        except Exception as e:
-            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+            except Exception as e:
+                return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        else:
+            return Response([], status=status.HTTP_400_BAD_REQUEST)
 
 
     @action(detail=False, methods=["post"])
     def datasets_col_names(self, request, *args, **kwargs):
-        import ast
         try:
-            file_paths = ast.literal_eval(request.data.get("file_paths"))
+            file_paths = request.data.get("files")
             result = {}
             for file_path in file_paths:
-                df = pd.read_excel(file_path)
+                if file_path.endswith(".xlsx") or file_path.endswith(".xls"):
+                    df = pd.read_excel(os.path.join(settings.MEDIA_ROOT, file_path), index_col=None)
+                else:
+                    df = pd.read_csv(os.path.join(settings.MEDIA_ROOT, file_path), index_col=None)
                 result[file_path] = df.columns.tolist()
 
             return Response(result, status=status.HTTP_200_OK)
-        
+
         except Exception as e:
             return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
-
 
 
     @action(detail=False, methods=["post"])
@@ -2025,16 +2018,21 @@ class DatasetV2ViewSetOps(GenericViewSet):
         try:
             file_path1 = request.data.get("file_path1")
             file_path2 = request.data.get("file_path2")
-            columns1 = ast.literal_eval(request.data.get("columns1"))
-            columns2 = ast.literal_eval(request.data.get("columns2"))
+            columns1 = request.data.get("columns1")
+            columns2 = request.data.get("columns2")
             condition = request.data.get("condition")
 
             # Load the files into dataframes
-            df1 = pd.read_excel(file_path1, usecols=columns1)
-            df2 = pd.read_excel(file_path2, usecols=columns2)
-
+            if file_path1.endswith(".xlsx") or file_path1.endswith(".xls"):
+                df1 = pd.read_excel(os.path.join(settings.MEDIA_ROOT, file_path1), usecols=columns1)
+            else:
+                df1 = pd.read_csv(os.path.join(settings.MEDIA_ROOT, file_path1), usecols=columns1)
+            if file_path2.endswith(".xlsx") or file_path2.endswith(".xls"):
+                df2 = pd.read_excel(os.path.join(settings.MEDIA_ROOT, file_path2), usecols=columns2)
+            else:
+                df2 = pd.read_csv(os.path.join(settings.MEDIA_ROOT, file_path2), usecols=columns2)
             # Join the dataframes
-            result = pd.merge(df1, df2, on=condition)
+            result = pd.merge(df1, df2, how=request.data.get("how", "left"), left_on=request.data.get("left_on"), right_on=request.data.get("right_on"))
 
             # Return the joined dataframe as JSON
             return Response(result.to_json(orient="records"), status=status.HTTP_200_OK)
