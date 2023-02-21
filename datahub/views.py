@@ -568,6 +568,10 @@ class ParticipantViewSet(GenericViewSet):
                     + os.environ.get(Constants.DATAHUB_NAME, Constants.datahub_name),
                 )
 
+                
+                #Set the on_boarded_by_id to null if co_steward is deleted
+                User.objects.filter(on_boarded_by=pk).update(on_boarded_by=None) 
+
                 return Response(
                     {"message": ["Participant deleted"]},
                     status=status.HTTP_204_NO_CONTENT,
