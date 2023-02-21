@@ -3,6 +3,7 @@ import json
 import logging, datetime
 import operator
 import os
+from accounts.serializers import UserCreateSerializer
 from core.utils import (
     DefaultPagination,
     CustomPagination,
@@ -24,7 +25,7 @@ from datahub.models import (
     UserOrganizationMap,
     DatahubDocuments,
 )
-from datahub.serializers import DatahubDatasetsV2Serializer, DatasetV2Serializer
+from datahub.serializers import DatahubDatasetsV2Serializer, DatasetV2Serializer, ParticipantSerializer
 from microsite.serializers import (
     OrganizationMicrositeSerializer,
     DatasetsMicrositeSerializer,
@@ -392,3 +393,48 @@ class DocumentsMicrositeViewSet(GenericViewSet):
         except Exception as error:
             LOGGER.error(error, exc_info=True)
             return Response({}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+class ParticipantMicrositeViewSet(GenericViewSet):
+    """View for uploading all the datahub documents and content"""
+
+    serializer_class = UserCreateSerializer
+    queryset = User.objects.all()
+    pagination_class = CustomPagination
+    permission_classes = []
+
+    def list(self, request, *args, **kwargs):
+        """GET method: query all the list of objects from the Product model"""
+        co_steward = request.GET.get("co_steward", False)
+        if co_steward:
+            roles = (
+                UserOrganizationMap.objects.select_related(
+                    Constants.USER, Constants.ORGANIZATION
+                )
+                .filter(user__status=True, user__role=6)
+                .all()
+            )
+        else:
+            roles = (
+                UserOrganizationMap.objects.select_related(
+                    Constants.USER, Constants.ORGANIZATION
+                )
+                .filter(user__status=True, user__role=3)
+                .all()
+            )
+        page = self.paginate_queryset(roles)
+        participant_serializer = ParticipantSerializer(page, many=True)
+        return self.get_paginated_response(participant_serializer.data)
+
+    def retrieve(self, request, pk):
+        """GET method: retrieve an object or instance of the Product model"""
+        roles = (
+            UserOrganizationMap.objects.prefetch_related(
+                Constants.USER, Constants.ORGANIZATION
+            )
+            .filter(user__status=True, user=pk)
+            .all()
+        )
+        participant_serializer = ParticipantSerializer(roles, many=True)
+        if participant_serializer.data:
+            return Response(participant_serializer.data[0], status=status.HTTP_200_OK)
+        return Response([], status=status.HTTP_200_OK)
