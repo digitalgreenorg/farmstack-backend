@@ -567,9 +567,11 @@ class ParticipantViewSet(GenericViewSet):
                     subject=Constants.PARTICIPANT_ORG_DELETION_SUBJECT
                     + os.environ.get(Constants.DATAHUB_NAME, Constants.datahub_name),
                 )
+
                 
-                #Set the on_boarded_by_id to null if co_steward is delete
+                #Set the on_boarded_by_id to null if co_steward is deleted
                 User.objects.filter(on_boarded_by=pk).update(on_boarded_by=None) 
+
                 return Response(
                     {"message": ["Participant deleted"]},
                     status=status.HTTP_204_NO_CONTENT,
@@ -1785,7 +1787,6 @@ class DatasetV2ViewSet(GenericViewSet):
         categories = data.pop(Constants.CATEGORY, None)
         user_id = data.pop(Constants.USER_ID, "")
         on_boarded_by = data.pop("on_boarded_by", "")
-
         exclude, filters = {}, {}
         if others:
             exclude = {Constants.USER_MAP_ORGANIZATION: org_id} if org_id else {}
@@ -1797,10 +1798,6 @@ class DatasetV2ViewSet(GenericViewSet):
             Constants.USER_MAP_USER,
             Constants.USER_MAP_ORGANIZATION,
             ).filter(status=True, **data, **filters).exclude(**exclude).order_by(Constants.UPDATED_AT).reverse().all()
-            if on_boarded_by:
-                data = data.filter(user_map__user__on_boarded_by=on_boarded_by) if not others else data.filter(
-                    Q(user_map__user__on_boarded_by=on_boarded_by) | Q(user_map__user_id=on_boarded_by)
-                )
             if categories is not None:
                 data = data.filter(
                     reduce(
@@ -1808,6 +1805,14 @@ class DatasetV2ViewSet(GenericViewSet):
                         (Q(category__contains=cat) for cat in categories),
                     )
                 )
+            if on_boarded_by:
+                data = data.filter(user_map__user__on_boarded_by=user_id) if not others else data.filter(
+                    Q(user_map__user__on_boarded_by=user_id) | Q(user_map__user_id=user_id)
+                )
+            else:
+                user_onboarded_by = User.objects.get(id=user_id).on_boarded_by
+                user_onboarded_by = {"user_map__user__on_boarded_by": user_onboarded_by.id} if user_onboarded_by else {"user_map__user__on_boarded_by": None}
+                data = data.filter(**user_onboarded_by) 
             # else:
             #     data = data.exclude(**exclude).order_by(Constants.UPDATED_AT).reverse().all()
         except Exception as error:  # type: ignore
@@ -1815,7 +1820,6 @@ class DatasetV2ViewSet(GenericViewSet):
             return Response(
                 f"Invalid filter fields: {list(request.data.keys())}", status=500
             )
-
         page = self.paginate_queryset(data)
         participant_serializer = DatahubDatasetsV2Serializer(page, many=True)
         return self.get_paginated_response(participant_serializer.data)
