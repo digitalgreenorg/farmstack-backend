@@ -138,7 +138,7 @@ class ParticipantSerializer(serializers.ModelSerializer):
     connector_count = serializers.SerializerMethodField(method_name="get_connector_count")
 
     def get_dataset_count(self, user_org_map):
-        return Datasets.objects.filter(status=True, user_map__user=user_org_map.user.id).count()
+        return DatasetV2.objects.filter(status=True, user_map__user=user_org_map.user.id).count()
 
     def get_connector_count(self, user_org_map):
         return Connectors.objects.filter(status=True, user_map__user=user_org_map.user.id).count()
