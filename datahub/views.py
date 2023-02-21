@@ -8,6 +8,7 @@ import shutil
 import sys
 from calendar import c
 from functools import reduce
+from pickle import TRUE
 
 import django
 import pandas as pd
@@ -517,7 +518,7 @@ class ParticipantViewSet(GenericViewSet):
             return Response(
                 {"message": ["An error occured"]}, status=status.HTTP_200_OK
             )
-
+     
     def destroy(self, request, pk):
         """DELETE method: delete an object"""
         participant = self.get_object()
@@ -526,13 +527,11 @@ class ParticipantViewSet(GenericViewSet):
         ).get(user_id=pk)
         organization = Organization.objects.get(id=user_organization.organization_id)
 
-        if participant.status is not False and organization.status is not False:
+        if participant.status:
             participant.status = False
-            organization.status = False
-
             try:
                 if participant.on_boarded_by:
-                    datahub_admin = User.objects.filter(id=participant.on_boarded_by).first()
+                    datahub_admin = participant.on_boarded_by
                 else:
                     datahub_admin = User.objects.filter(role_id=1).first()
                 admin_full_name = string_functions.get_full_name(
@@ -556,7 +555,6 @@ class ParticipantViewSet(GenericViewSet):
 
                 # delete data & trigger_email
                 self.perform_create(participant)
-                self.perform_create(organization)
                 email_render = render(
                     request,
                     Constants.DATAHUB_ADMIN_DELETES_PARTICIPANT_ORGANIZATION,
@@ -577,16 +575,16 @@ class ParticipantViewSet(GenericViewSet):
             except Exception as error:
                 LOGGER.error(error, exc_info=True)
                 return Response(
-                    {"message": ["An error occured"]}, status=status.HTTP_200_OK
+                    {"message": ["Internal server error"]}, status=500
                 )
 
-        elif participant.status is False and organization.status is False:
+        elif participant.status is False:
             return Response(
-                {"message": ["Object already deleted"]},
+                {"message": ["participant/co-steward already deleted"]},
                 status=status.HTTP_204_NO_CONTENT,
             )
 
-        return Response({"message": ["An error occured"]}, status=status.HTTP_200_OK)
+        return Response({"message": ["Internal server error"]}, status=500)
 
 
 class MailInvitationViewSet(GenericViewSet):
@@ -965,10 +963,6 @@ class SupportViewSet(GenericViewSet):
     @action(detail=False, methods=["post"])
     def filters_tickets(self, request, *args, **kwargs):
         """This function get the filter args in body. based on the filter args orm filters the data."""
-        range = {}
-        updated_range_at = request.data.pop("updated_at__range", None)
-        if updated_range_at:
-            range["updated_at__range"] = date_formater(updated_range_at)
         try:
             data = (
                 SupportTicket.objects.select_related(
@@ -976,7 +970,7 @@ class SupportViewSet(GenericViewSet):
                     Constants.USER_MAP_USER,
                     Constants.USER_MAP_ORGANIZATION,
                 )
-                .filter(user_map__user__status=True, **request.data, **range)
+                .filter(user_map__user__status=True, **request.data)
                 .order_by(Constants.UPDATED_AT)
                 .reverse()
                 .all()
@@ -1262,14 +1256,12 @@ class DatahubDatasetsViewSet(GenericViewSet):
         others = data.pop(Constants.OTHERS, "")
         user_id = data.pop(Constants.USER_ID, "")
         categories = data.pop(Constants.CATEGORY, None)
-        exclude, filters, range = {}, {}, {}
+        exclude, filters = {}, {}
         if others:
             exclude = {Constants.USER_MAP_ORGANIZATION: org_id} if org_id else {}
         else:
             filters = {Constants.USER_MAP_ORGANIZATION: org_id} if org_id else {}
-        created_at__range = request.data.pop(Constants.CREATED_AT__RANGE, None)
-        if created_at__range:
-            range[Constants.CREATED_AT__RANGE] = date_formater(created_at__range)
+      
         try:
             if categories is not None:
 
@@ -1279,7 +1271,7 @@ class DatahubDatasetsViewSet(GenericViewSet):
                         Constants.USER_MAP_USER,
                         Constants.USER_MAP_ORGANIZATION,
                     )
-                    .filter(status=True, **data, **filters, **range)
+                    .filter(status=True, **data, **filters)
                     .filter(
                         reduce(
                             operator.or_,
@@ -1299,7 +1291,7 @@ class DatahubDatasetsViewSet(GenericViewSet):
                         Constants.USER_MAP_USER,
                         Constants.USER_MAP_ORGANIZATION,
                     )
-                    .filter(status=True, **data, **filters, **range)
+                    .filter(status=True, **data, **filters)
                     .exclude(**exclude)
                     .order_by(Constants.UPDATED_AT)
                     .reverse()
@@ -1790,49 +1782,34 @@ class DatasetV2ViewSet(GenericViewSet):
         others = data.pop(Constants.OTHERS, "")
         categories = data.pop(Constants.CATEGORY, None)
         user_id = data.pop(Constants.USER_ID, "")
-        exclude, filters, range = {}, {}, {}
+        on_boarded_by = data.pop("on_boarded_by", "")
+
+        exclude, filters = {}, {}
         if others:
             exclude = {Constants.USER_MAP_ORGANIZATION: org_id} if org_id else {}
         else:
             filters = {Constants.USER_MAP_ORGANIZATION: org_id} if org_id else {}
-        created_at__range = request.data.pop(Constants.CREATED_AT__RANGE, None)
-        if created_at__range:
-            range[Constants.CREATED_AT__RANGE] = date_formater(created_at__range)
         try:
+            data = DatasetV2.objects.select_related(
+            Constants.USER_MAP,
+            Constants.USER_MAP_USER,
+            Constants.USER_MAP_ORGANIZATION,
+            ).filter(status=True, **data, **filters).exclude(**exclude).order_by(Constants.UPDATED_AT).reverse().all()
+            if on_boarded_by:
+                data = data.filter(user_map__user__on_boarded_by=on_boarded_by) if not others else data.filter(
+                    Q(user_map__user__on_boarded_by=on_boarded_by) | Q(user_map__user_id=on_boarded_by)
+                )
             if categories is not None:
-                data = (
-                    DatasetV2.objects.select_related(
-                        Constants.USER_MAP,
-                        Constants.USER_MAP_USER,
-                        Constants.USER_MAP_ORGANIZATION,
+                data = data.filter(
+                    reduce(
+                        operator.or_,
+                        (Q(category__contains=cat) for cat in categories),
                     )
-                    .filter(status=True, **data, **filters, **range)
-                    .filter(
-                        reduce(
-                            operator.or_,
-                            (Q(category__contains=cat) for cat in categories),
-                        )
-                    )
-                    .exclude(**exclude)
-                    .order_by(Constants.UPDATED_AT)
-                    .reverse()
-                    .all()
                 )
-            else:
-                data = (
-                    DatasetV2.objects.select_related(
-                        Constants.USER_MAP,
-                        Constants.USER_MAP_USER,
-                        Constants.USER_MAP_ORGANIZATION,
-                    )
-                    .filter(status=True, **data, **filters, **range)
-                    .exclude(**exclude)
-                    .order_by(Constants.UPDATED_AT)
-                    .reverse()
-                    .all()
-                )
+            # else:
+            #     data = data.exclude(**exclude).order_by(Constants.UPDATED_AT).reverse().all()
         except Exception as error:  # type: ignore
-            logging.error("Error while filtering the datasets. ERROR: %s", error)
+            logging.error("Error while filtering the datasets. ERROR: %s", error, exc_info=True)
             return Response(
                 f"Invalid filter fields: {list(request.data.keys())}", status=500
             )
@@ -1963,59 +1940,99 @@ class DatasetV2ViewSet(GenericViewSet):
             return Response(status=status.HTTP_204_NO_CONTENT)
 
 
-    @action(detail=False, methods=["post"])
-    def create_db(self, request, *args, **kwargs):
+class DatasetV2ViewSetOps(GenericViewSet):
+    """
+        A viewset for performing operations on datasets with Excel files.
+
+        This viewset supports the following actions:
+
+        - `dataset_names`: Returns the names of all datasets that have at least one Excel file.
+        - `dataset_file_names`: Given two dataset names, returns the names of all Excel files associated with each dataset.
+        - `dataset_col_names`: Given the paths to two Excel files, returns the column names of each file as a response.
+        - `dataset_join_on_columns`: Given the paths to two Excel files and the names of two columns, returns a JSON response with the result of an inner join operation on the two files based on the selected columns.
+        """
+
+    serializer_class = DatasetV2Serializer
+    queryset = DatasetV2.objects.all()
+    pagination_class = CustomPagination
+
+
+ 
+    @action(detail=False, methods=["get"])
+    def datasets_names(self, request, *args, **kwargs):
         try:
-            data = request.data
-            # con = connect(dbname=data.get("org"), user='postgres', host='datahubtest.farmstack.co', password='$farmstack@!21')
-            db_settings = open("/datahub/core/settings.json") 
-            db_data = json.load(db_settings)
-            db_data[data.get("org")] = {
-            "ENGINE": "django.db.backends.postgresql",
-            "NAME": data.get("org"),
-            "USER": "postgres",
-            "PASSWORD": "$farmstack@!21",
-            "HOST": "datahubethdev.farmstack.co",
-            "PORT": 7000,
-            "OPTIONS": {
-                "client_encoding": "UTF8",
-            }
-        }
-            with open('../datahub/core/settings.json', 'w') as fp:
-                json.dump(db_data, fp)
-            import ruamel.yaml
+            datasets_with_excel_files = DatasetV2File.objects.filter(
+                Q(file__endswith='.xls') | Q(file__endswith='.xlsx') | Q(file__endswith='.csv')).distinct().values_list(
+                    'dataset__name', 'dataset__id')
+            
+            dataset_list = [{'name': dataset_name, 'id': dataset_id} for dataset_name, dataset_id in datasets_with_excel_files]
+            return Response(dataset_list, status=status.HTTP_200_OK)
+        except Exception as e:
+            error_message = f"An error occurred while fetching dataset names: {e}"
+            return Response({"error": error_message}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-            file_name = '../datahub/test_db.yaml'
-            print(file_name)
-            config, ind, bsi = ruamel.yaml.util.load_yaml_guess_indent(open(file_name))
-            # print(config)
 
-            instances = config['services']["datahub-be"]
-            commands = [f" && python manage.py migrate --dataset {keys}" for keys in db_data.keys()]
-            print(commands)
-            command = instances['command'].replace("&& python manage.py migrate", " ".join(commands))
-        
-            instances['command'] = command
+    @action(detail=False, methods=["post"])
+    def datasets_file_names(self,request,*args,**kwargs):
+        dataset_ids = request.data.get("datasets")
+        if dataset_ids:
+            try:
+                # Get list of files for each dataset
+                files = DatasetV2File.objects.filter(
+                    dataset__in=dataset_ids).filter(
+                        Q(file__endswith='.xls') | Q(file__endswith='.xlsx') | Q(file__endswith='.csv')
+                        ).values("file", "dataset")
+                files = [{**row, "file_name": row.get("file", "").split("/")[-1]}for row in files]
+                return Response(files, status=status.HTTP_200_OK)
 
-            from python_on_whales import DockerClient
+            except Exception as e:
+                return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        else:
+            return Response([], status=status.HTTP_400_BAD_REQUEST)
 
-            yaml = ruamel.yaml.YAML()
-            yaml.indent(mapping=ind, sequence=ind, offset=bsi) 
-            with open('../datahub/test_db.yaml', 'w') as fp:
-                yaml.dump(config, fp)
-            # docker_clients_consumer = DockerClient(compose_files=["../datahub/test_db.yaml"])
-            # # print(docker_clients)
-            # docker_clients_consumer.compose.stop()
 
-            import signal
+    @action(detail=False, methods=["post"])
+    def datasets_col_names(self, request, *args, **kwargs):
+        try:
+            file_paths = request.data.get("files")
+            result = {}
+            for file_path in file_paths:
+                if file_path.endswith(".xlsx") or file_path.endswith(".xls"):
+                    df = pd.read_excel(os.path.join(settings.MEDIA_ROOT, file_path), index_col=None)
+                else:
+                    df = pd.read_csv(os.path.join(settings.MEDIA_ROOT, file_path), index_col=None)
+                result[file_path] = df.columns.tolist()
 
-            # def sigterm_handler(_signo, _stack_frame):
-            #     # Raises SystemExit(0):
-            #     sys.exit(0)
-            # signal.signal(signal.SIGTERM, sigterm_handler)
-            os.popen("docker stop 43f56891b063")
-            # atexit.register(exit_handler)            # docker_clients_consumer.compose.restart() # type: ignore
-            return Response({}, 200)
+            return Response(result, status=status.HTTP_200_OK)
+
+        except Exception as e:
+            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+
+    @action(detail=False, methods=["post"])
+    def datasets_join_condition(self, request, *args, **kwargs):
+        try:
+            file_path1 = request.data.get("file_path1")
+            file_path2 = request.data.get("file_path2")
+            columns1 = request.data.get("columns1")
+            columns2 = request.data.get("columns2")
+            condition = request.data.get("condition")
+
+            # Load the files into dataframes
+            if file_path1.endswith(".xlsx") or file_path1.endswith(".xls"):
+                df1 = pd.read_excel(os.path.join(settings.MEDIA_ROOT, file_path1), usecols=columns1)
+            else:
+                df1 = pd.read_csv(os.path.join(settings.MEDIA_ROOT, file_path1), usecols=columns1)
+            if file_path2.endswith(".xlsx") or file_path2.endswith(".xls"):
+                df2 = pd.read_excel(os.path.join(settings.MEDIA_ROOT, file_path2), usecols=columns2)
+            else:
+                df2 = pd.read_csv(os.path.join(settings.MEDIA_ROOT, file_path2), usecols=columns2)
+            # Join the dataframes
+            result = pd.merge(df1, df2, how=request.data.get("how", "left"), left_on=request.data.get("left_on"), right_on=request.data.get("right_on"))
+
+            # Return the joined dataframe as JSON
+            return Response(result.to_json(orient="records"), status=status.HTTP_200_OK)
+
         except Exception as e:
             logging.error(str(e), exc_info=True)
-            return Response({}, 500)
+            return Response({"error": str(e)}, status=500)
