@@ -1,42 +1,50 @@
-from functools import reduce
+import datetime
 import json
-import logging, datetime
+import logging
 import operator
 import os
+from functools import reduce
+
+from django.conf import settings
+from django.db.models import Q
+from django.shortcuts import render
+from rest_framework import status
+from rest_framework.decorators import action
+from rest_framework.response import Response
+from rest_framework.viewsets import GenericViewSet
+
+from accounts.models import User, UserRole
 from accounts.serializers import UserCreateSerializer
+from core.constants import Constants
 from core.utils import (
-    DefaultPagination,
     CustomPagination,
+    DefaultPagination,
     Utils,
     csv_and_xlsx_file_validatation,
     date_formater,
     read_contents_from_csv_or_xlsx_file,
 )
-from django.conf import settings
-from django.db.models import Q
-from django.shortcuts import render
-from accounts.models import User, UserRole
-from core.constants import Constants
 from datahub.models import (
+    DatahubDocuments,
+    Datasets,
     DatasetV2,
     DatasetV2File,
     Organization,
-    Datasets,
     UserOrganizationMap,
-    DatahubDocuments,
 )
-from datahub.serializers import DatahubDatasetsV2Serializer, DatasetV2Serializer, ParticipantSerializer
+from datahub.serializers import (
+    DatahubDatasetsV2Serializer,
+    DatasetV2Serializer,
+    OrganizationSerializer,
+    ParticipantSerializer,
+)
 from microsite.serializers import (
-    OrganizationMicrositeSerializer,
-    DatasetsMicrositeSerializer,
     ContactFormSerializer,
-    UserSerializer,
+    DatasetsMicrositeSerializer,
     LegalDocumentSerializer,
+    OrganizationMicrositeSerializer,
+    UserSerializer,
 )
-from rest_framework import status
-from rest_framework.decorators import action
-from rest_framework.response import Response
-from rest_framework.viewsets import GenericViewSet
 from utils import file_operations
 
 LOGGER = logging.getLogger(__name__)
@@ -438,3 +446,27 @@ class ParticipantMicrositeViewSet(GenericViewSet):
         if participant_serializer.data:
             return Response(participant_serializer.data[0], status=status.HTTP_200_OK)
         return Response([], status=status.HTTP_200_OK)
+        
+    @action(detail=False, methods=["get"])
+    def organizations(self, request, *args, **kwargs):
+
+        """GET method: query the list of Organization objects"""
+        co_steward = request.GET.get("co_steward", False)
+        if co_steward:
+            roles = (
+                UserOrganizationMap.objects.select_related(Constants.ORGANIZATION
+                )
+                .filter(user__status=True, user__role=6)
+                .all()
+            )
+        else:
+            roles = (
+                UserOrganizationMap.objects.select_related(
+                    Constants.USER, Constants.ORGANIZATION
+                )
+                .filter((Q(user__role=3)| Q(user__role=1)), user__status=True)
+                .all()
+            )
+        page = self.paginate_queryset(roles)
+        participant_serializer = OrganizationSerializer(page, many=True)
+        return self.get_paginated_response(participant_serializer.data)
