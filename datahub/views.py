@@ -1941,3 +1941,103 @@ class DatasetV2ViewSet(GenericViewSet):
             dataset_files.delete()
             dataset_obj.delete()
             return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class DatasetV2ViewSetOps(GenericViewSet):
+    """
+        A viewset for performing operations on datasets with Excel files.
+
+        This viewset supports the following actions:
+
+        - `dataset_names`: Returns the names of all datasets that have at least one Excel file.
+        - `dataset_file_names`: Given two dataset names, returns the names of all Excel files associated with each dataset.
+        - `dataset_col_names`: Given the paths to two Excel files, returns the column names of each file as a response.
+        - `dataset_join_on_columns`: Given the paths to two Excel files and the names of two columns, returns a JSON response with the result of an inner join operation on the two files based on the selected columns.
+        """
+
+    serializer_class = DatasetV2Serializer
+    queryset = DatasetV2.objects.all()
+    pagination_class = CustomPagination
+
+
+ 
+    @action(detail=False, methods=["post"])
+    def datasets_names(self, request, *args, **kwargs):
+        try:
+            datasets_with_excel_files = DatasetV2File.objects.filter(Q(file__endswith='.xls') | Q(file__endswith='.xlsx')).distinct().values_list('dataset__name', 'dataset__id')
+            dataset_list = [{'dataset_name': dataset_name, 'id': dataset_id} for dataset_name, dataset_id in datasets_with_excel_files]
+            return Response(dataset_list, status=status.HTTP_200_OK)
+        except Exception as e:
+            error_message = f"An error occurred while fetching dataset names: {e}"
+            return Response({"error": error_message}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+    @action(detail=False, methods=["post"])
+    def datasets_file_names(self,request,*args,**kwargs):
+        try:
+            d1_id = request.data.get("dataset_id1")
+            d2_id = request.data.get("dataset_id2")
+
+            # Check if datasets exist
+            d1 = DatasetV2.objects.get(id=d1_id)
+            d2 = DatasetV2.objects.get(id=d2_id)
+
+            # Get list of files for each dataset
+            files1 = DatasetV2File.objects.filter(dataset_id=d1).filter(Q(file__endswith='.xls') | Q(file__endswith='.xlsx'))
+            files2 = DatasetV2File.objects.filter(dataset_id=d2).filter(Q(file__endswith='.xls') | Q(file__endswith='.xlsx'))
+
+            # Create response data with list of files
+            response_data = {
+                "id": d1_id,
+                "files": [{"file_name": os.path.basename(file.file.name), "file": file.file.url} for file in files1]
+            }
+            response_data2 = {
+                "id": d2_id,
+                "files": [{"file_name": os.path.basename(file.file.name), "file": file.file.url} for file in files2]
+            }
+
+            # Return response
+            return Response({"files1":response_data,"files2":response_data2}, status=status.HTTP_200_OK)
+
+        except Exception as e:
+            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+
+    @action(detail=False, methods=["post"])
+    def datasets_col_names(self, request, *args, **kwargs):
+        import ast
+        try:
+            file_paths = ast.literal_eval(request.data.get("file_paths"))
+            result = {}
+            for file_path in file_paths:
+                df = pd.read_excel(file_path)
+                result[file_path] = df.columns.tolist()
+
+            return Response(result, status=status.HTTP_200_OK)
+        
+        except Exception as e:
+            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+
+
+    @action(detail=False, methods=["post"])
+    def datasets_join_condition(self, request, *args, **kwargs):
+        try:
+            file_path1 = request.data.get("file_path1")
+            file_path2 = request.data.get("file_path2")
+            columns1 = ast.literal_eval(request.data.get("columns1"))
+            columns2 = ast.literal_eval(request.data.get("columns2"))
+            condition = request.data.get("condition")
+
+            # Load the files into dataframes
+            df1 = pd.read_excel(file_path1, usecols=columns1)
+            df2 = pd.read_excel(file_path2, usecols=columns2)
+
+            # Join the dataframes
+            result = pd.merge(df1, df2, on=condition)
+
+            # Return the joined dataframe as JSON
+            return Response(result.to_json(orient="records"), status=status.HTTP_200_OK)
+
+        except Exception as e:
+            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
