@@ -148,8 +148,8 @@ class LoginViewset(GenericViewSet):
         user_obj = User.objects.filter(email=email)
         user = user_obj.first()
         # user_role_obj = UserRole.objects.filter(role_name=request.data.get("role"))
-        user_role_obj = UserRole.objects.filter(id=user.role_id)
-        user_role = user_role_obj.first().id if user_role_obj else None
+        # user_role_obj = UserRole.objects.filter(id=user.role_id)
+        # user_role = user_role_obj.first().id if user_role_obj else None
 
         try:
             if not user:
@@ -165,12 +165,12 @@ class LoginViewset(GenericViewSet):
                 )
 
             # check user role
-            if user_role != user.role_id:
-                message = "This email is not registered as "
-                switcher = {1: "admin", 3: "participant"}
+            # if user_role != user.role_id:
+            #     message = "This email is not registered as "
+            #     switcher = {1: "admin", 3: "participant"}
 
-                message += str(switcher.get(user_role, request.data.get("role")))
-                return Response({"message": message}, status=status.HTTP_401_UNAUTHORIZED)
+            #     message += str(switcher.get(user_role, request.data.get("role")))
+            #     return Response({"message": message}, status=status.HTTP_401_UNAUTHORIZED)
 
             # check if user is suspended
             if cache.get(user.id) is not None:
