@@ -1811,10 +1811,12 @@ class DatasetV2ViewSet(GenericViewSet):
                 )
             else:
                 user_onboarded_by = User.objects.get(id=user_id).on_boarded_by
-                user_onboarded_by = {"user_map__user__on_boarded_by": user_onboarded_by.id} if user_onboarded_by else {"user_map__user__on_boarded_by": None}
-                data = data.filter(**user_onboarded_by) 
-            # else:
-            #     data = data.exclude(**exclude).order_by(Constants.UPDATED_AT).reverse().all()
+                if user_onboarded_by:
+                    data = data.filter(
+                    Q(user_map__user__on_boarded_by=user_onboarded_by.id) 
+                    | Q(user_map__user__id=user_onboarded_by.id)) if others else data.filter(user_map__user__on_boarded_by=user_onboarded_by.id)
+                else:
+                    data= data.filter(user_map__user__on_boarded_by=None).exclude(user_map__user__role_id=6) 
         except Exception as error:  # type: ignore
             logging.error("Error while filtering the datasets. ERROR: %s", error, exc_info=True)
             return Response(
