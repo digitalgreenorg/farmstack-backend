@@ -1,6 +1,13 @@
 import logging
 import os
-import re, shutil, plazy
+import re
+import shutil
+
+import plazy
+from django.conf import settings
+from django.core.exceptions import ObjectDoesNotExist, ValidationError
+from django.utils.translation import gettext as _
+from rest_framework import serializers, status
 
 from accounts import models
 from accounts.models import User, UserRole
@@ -10,11 +17,15 @@ from accounts.serializers import (
     UserSerializer,
 )
 from core.constants import Constants
-from django.conf import settings
-from django.core.exceptions import ObjectDoesNotExist, ValidationError
-from django.utils.translation import gettext as _
+from datahub.models import (
+    DatahubDocuments,
+    Datasets,
+    DatasetV2,
+    DatasetV2File,
+    Organization,
+    UserOrganizationMap,
+)
 from participant.models import Connectors, SupportTicket
-from rest_framework import serializers, status
 from utils.custom_exceptions import NotFoundException
 from utils.file_operations import create_directory, move_directory
 from utils.string_functions import check_special_chars
@@ -24,15 +35,6 @@ from utils.validators import (
     validate_document_type,
     validate_file_size,
     validate_image_type,
-)
-
-from datahub.models import (
-    DatahubDocuments,
-    Datasets,
-    DatasetV2,
-    DatasetV2File,
-    Organization,
-    UserOrganizationMap,
 )
 
 LOGGER = logging.getLogger(__name__)
@@ -138,7 +140,7 @@ class ParticipantSerializer(serializers.ModelSerializer):
     connector_count = serializers.SerializerMethodField(method_name="get_connector_count")
 
     def get_dataset_count(self, user_org_map):
-        return Datasets.objects.filter(status=True, user_map__user=user_org_map.user.id).count()
+        return DatasetV2.objects.filter(status=True, user_map__user=user_org_map.user.id).count()
 
     def get_connector_count(self, user_org_map):
         return Connectors.objects.filter(status=True, user_map__user=user_org_map.user.id).count()
@@ -742,3 +744,30 @@ class DatahubDatasetsV2Serializer(serializers.ModelSerializer):
     class Meta:
         model = DatasetV2
         fields = Constants.ALL
+
+
+class micrositeOrganizationSerializer(serializers.ModelSerializer):
+    organization_id = serializers.PrimaryKeyRelatedField(
+        queryset=Organization.objects.all(),
+        allow_null=True,
+        required=False,
+        source=Constants.ORGANIZATION,
+    )
+    organization = OrganizationRetriveSerializer(
+        required=False,
+        allow_null=True,
+        read_only=True,
+    )
+
+    class Meta:
+        model = UserOrganizationMap
+        exclude = Constants.EXCLUDE_DATES
+
+    dataset_count = serializers.SerializerMethodField(method_name="get_dataset_count")
+    users_count = serializers.SerializerMethodField(method_name="get_users_count")
+
+    def get_dataset_count(self, user_org_map):
+        return DatasetV2.objects.filter(status=True, user_map__organization=user_org_map.organization.id).count()
+
+    def get_users_count(self, user_org_map):
+        return UserOrganizationMap.objects.filter(user__status=True, organization_id=user_org_map.organization.id).count()
