@@ -746,7 +746,7 @@ class DatahubDatasetsV2Serializer(serializers.ModelSerializer):
         fields = Constants.ALL
 
 
-class OrganizationSerializer(serializers.ModelSerializer):
+class micrositeOrganizationSerializer(serializers.ModelSerializer):
     organization_id = serializers.PrimaryKeyRelatedField(
         queryset=Organization.objects.all(),
         allow_null=True,

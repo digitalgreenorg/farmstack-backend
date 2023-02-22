@@ -37,6 +37,7 @@ from datahub.serializers import (
     DatasetV2Serializer,
     OrganizationSerializer,
     ParticipantSerializer,
+    micrositeOrganizationSerializer,
 )
 from microsite.serializers import (
     ContactFormSerializer,
@@ -468,5 +469,5 @@ class ParticipantMicrositeViewSet(GenericViewSet):
                 .all()
             )
         page = self.paginate_queryset(roles)
-        participant_serializer = OrganizationSerializer(page, many=True)
+        participant_serializer = micrositeOrganizationSerializer(page, many=True)
         return self.get_paginated_response(participant_serializer.data)
