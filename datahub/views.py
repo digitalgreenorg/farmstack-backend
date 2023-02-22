@@ -1806,8 +1806,8 @@ class DatasetV2ViewSet(GenericViewSet):
                     )
                 )
             if on_boarded_by:
-                data = data.filter(user_map__user__on_boarded_by=user_id) if not others else data.filter(
-                    Q(user_map__user__on_boarded_by=user_id) | Q(user_map__user_id=user_id)
+                data = data.filter(user_map__user__on_boarded_by=user_id) if others else data.filter(
+                    Q(user_map__user__on_boarded_by=user_id) | Q(user_map__user__id=user_id)
                 )
             else:
                 user_onboarded_by = User.objects.get(id=user_id).on_boarded_by
