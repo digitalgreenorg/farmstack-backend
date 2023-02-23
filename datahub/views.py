@@ -598,8 +598,9 @@ class ParticipantViewSet(GenericViewSet):
         ).values('id', 'userorganizationmap__organization__name').distinct('userorganizationmap__organization__name')
         
             data = [{'user': user['id'], 'organization_name': user['userorganizationmap__organization__name']} for user in users]
-            return Response({'users': data},200)
+            return Response(data,status=200)
         except Exception as e:
+            LOGGER.error(e, exc_info=True)
             return Response({'message': str(e)}, status=500)
 
 
