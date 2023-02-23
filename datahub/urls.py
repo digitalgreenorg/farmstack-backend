@@ -19,8 +19,7 @@ from datahub.views import (
     TeamMemberViewSet,
     DatahubDashboard,
     DatasetV2ViewSet,
-    DatasetV2ViewSetOps,
-    MultiDatasetV2ViewSetOps
+    DatasetV2ViewSetOps
 )
 
 router = DefaultRouter()
@@ -36,8 +35,6 @@ router.register(r"datasets", DatahubDatasetsViewSet, basename=Constants.DATAHUB_
 router.register(r"", DatahubDashboard, basename="")
 router.register(r"dataset/v2", DatasetV2ViewSet, basename=Constants.DATASET_V2_URL)
 router.register(r"dataset_ops",DatasetV2ViewSetOps,basename="")
-router.register(r"multi_dataset_ops",MultiDatasetV2ViewSetOps,basename="")
-
 
 
 urlpatterns = [

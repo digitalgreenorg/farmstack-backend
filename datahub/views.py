@@ -590,6 +590,18 @@ class ParticipantViewSet(GenericViewSet):
 
         return Response({"message": ["Internal server error"]}, status=500)
 
+    @action(detail=False, methods=["post"])
+    def get_list_co_steward(self,request,*args,**kwargs):
+        try:
+            user_org_maps = UserOrganizationMap.objects.filter(user__role=6, user__status=True)
+            response_data = []
+            for user_org_map in user_org_maps:
+                organization_name = user_org_map.organization.name
+                response_data.append({'user_id': str(user_org_map.user.id), 'organization_name': organization_name})
+            return Response({'users': response_data},200)
+        except Exception as e:
+            return Response({'message': str(e)}, status=500)
+
 
 class MailInvitationViewSet(GenericViewSet):
     """
