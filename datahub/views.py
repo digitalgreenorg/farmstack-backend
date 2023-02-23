@@ -593,12 +593,12 @@ class ParticipantViewSet(GenericViewSet):
     @action(detail=False, methods=["post"])
     def get_list_co_steward(self,request,*args,**kwargs):
         try:
-            user_org_maps = UserOrganizationMap.objects.filter(user__role=6, user__status=True)
-            response_data = []
-            for user_org_map in user_org_maps:
-                organization_name = user_org_map.organization.name
-                response_data.append({'user_id': str(user_org_map.user.id), 'organization_name': organization_name})
-            return Response({'users': response_data},200)
+            users = User.objects.filter(
+            role__id=6, status=True
+        ).values('id', 'userorganizationmap__organization__name').distinct('userorganizationmap__organization__name')
+        
+            data = [{'user': user['id'], 'organization_name': user['userorganizationmap__organization__name']} for user in users]
+            return Response({'users': data},200)
         except Exception as e:
             return Response({'message': str(e)}, status=500)
 
