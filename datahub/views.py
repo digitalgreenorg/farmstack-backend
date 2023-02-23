@@ -25,7 +25,7 @@ from python_http_client import exceptions
 from rest_framework import pagination, status
 from rest_framework.decorators import action
 from rest_framework.parsers import JSONParser, MultiPartParser
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import IsAuthenticated,AllowAny
 from rest_framework.response import Response
 from rest_framework.viewsets import GenericViewSet, ViewSet
 from uritemplate import partial
@@ -590,7 +590,7 @@ class ParticipantViewSet(GenericViewSet):
 
         return Response({"message": ["Internal server error"]}, status=500)
 
-    @action(detail=False, methods=["post"])
+    @action(detail=False, methods=["post"],permission_classes=[AllowAny])
     def get_list_co_steward(self,request,*args,**kwargs):
         try:
             users = User.objects.filter(
