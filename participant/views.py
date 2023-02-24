@@ -1736,21 +1736,22 @@ class DataBaseViewSet(GenericViewSet):
         and store it in JSON format.'''
         try:
             url=request.data.get('url')
-            headers=request.data.get('api_key')
-            response = requests.get(url, request.headers)
-            data=response.json()
-            json_data=json.dumps(data)
-            dataset_name=request.data.get("dataset_name")
-            source=request.data.get('source')
+            headers={"Authprization": request.data.get('api_key')}
+            response = requests.get(url, headers)
+            if response.status_code in [200, 201]:
+                data=response.json()
+                json_data=json.dumps(data)
+                dataset_name=request.data.get("dataset_name")
+                source=request.data.get('source')
+                file_name=request.data.get("file_name")
+                file_path=file_ops.create_directory(settings.TEMP_DATASET_URL,[dataset_name,source])
+                with open(file_path+"/"+file_name+".json", 'w') as outfile:
+                    outfile.write(json_data)
 
-            file_name=request.data.get("file_name")
-            file_path=file_ops.create_directory(settings.TEMP_DATASET_URL,[dataset_name,source])
-            with open(file_path+"/"+file_name+".json", 'w') as outfile:
-                outfile.write(json_data)
+                result=os.listdir(file_path) 
 
-            result=os.listdir(file_path) 
-
-            return Response(result,status=status.HTTP_200_OK)
+                return Response(result,status=status.HTTP_200_OK)
+            return response
         except Exception as e:
             return Response(str(e),status=status.HTTP_400_BAD_REQUEST)
 
