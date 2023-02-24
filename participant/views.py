@@ -2,18 +2,19 @@ import ast
 import datetime
 import json
 import logging
+import operator
 import os
 import re
 import subprocess
 import time
+from contextlib import closing
+from functools import reduce
 from sre_compile import isstring
 from struct import unpack
-from contextlib import closing
-import mysql.connector, psycopg2
-import pandas as pd
-import operator
-from functools import reduce
 
+import mysql.connector
+import pandas as pd
+import psycopg2
 import requests
 import xlwt
 from django.conf import settings
@@ -40,7 +41,7 @@ from core.utils import (
     one_day_date_formater,
     read_contents_from_csv_or_xlsx_file,
 )
-from datahub.models import Datasets, Organization, UserOrganizationMap, DatasetV2
+from datahub.models import Datasets, DatasetV2, Organization, UserOrganizationMap
 from participant.models import (
     Connectors,
     ConnectorsMap,
@@ -59,8 +60,8 @@ from participant.serializers import (
     ConnectorsRetriveSerializer,
     ConnectorsSerializer,
     ConnectorsSerializerForEmail,
-    DatabaseConfigSerializer,
     DatabaseColumnRetrieveSerializer,
+    DatabaseConfigSerializer,
     DatabaseDataExportSerializer,
     DatasetSerializer,
     DepartmentSerializer,
@@ -1515,7 +1516,7 @@ class DataBaseViewSet(GenericViewSet):
     """
     parser_class = JSONParser
     serializer_class = DatabaseConfigSerializer
-    permission_classes=[IsAuthenticated]
+    # permission_classes=[IsAuthenticated]
 
     @action(detail=False, methods=["post"])
     def database_config(self,request):
@@ -1736,21 +1737,24 @@ class DataBaseViewSet(GenericViewSet):
         and store it in JSON format.'''
         try:
             url=request.data.get('url')
-            headers=request.data.get('api_key')
-            response = requests.get(url, request.headers)
-            data=response.json()
-            json_data=json.dumps(data)
-            dataset_name=request.data.get("dataset_name")
-            source=request.data.get('source')
+            headers={"Authprization": request.data.get('api_key')}
+            response = requests.get(url, headers)
+            if response.status_code in [200, 201]:
+                data=response.json()
+                json_data=json.dumps(data)
+                dataset_name=request.data.get("dataset_name")
+                source=request.data.get('source')
+                file_name=request.data.get("file_name")
+                file_path=file_ops.create_directory(settings.TEMP_DATASET_URL,[dataset_name,source])
+                with open(file_path+"/"+file_name+".json", 'w') as outfile:
+                    outfile.write(json_data)
 
-            file_name=request.data.get("file_name")
-            file_path=file_ops.create_directory(settings.TEMP_DATASET_URL,[dataset_name,source])
-            with open(file_path+"/"+file_name+".json", 'w') as outfile:
-                outfile.write(json_data)
+                result=os.listdir(file_path) 
 
-            result=os.listdir(file_path) 
-
-            return Response(result,status=status.HTTP_200_OK)
+                return Response(result,status=status.HTTP_200_OK)
+            LOGGER.error("Failed to fetch data from api")
+            return Response({"message": f"API Response: {response.json()}"}, status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
-            return Response(str(e),status=status.HTTP_400_BAD_REQUEST)
+            LOGGER.error(f"Failed to fetch data from api ERROR: {e} and input fields: {request.data}")
+            return Response({"message": f"API Response: {e}"}, status=status.HTTP_400_BAD_REQUEST)
 
