@@ -1737,7 +1737,11 @@ class DataBaseViewSet(GenericViewSet):
         try:
             url=request.data.get('url')
             headers=request.data.get('api_key')
-            response = requests.get(url, request.headers)
+            h={}
+            h["Authorization"]=headers
+            response = requests.get(url, headers=h)
+            response.raise_for_status()
+            
             data=response.json()
             json_data=json.dumps(data)
             dataset_name=request.data.get("dataset_name")
@@ -1752,5 +1756,5 @@ class DataBaseViewSet(GenericViewSet):
 
             return Response(result,status=status.HTTP_200_OK)
         except Exception as e:
-            return Response(str(e),status=status.HTTP_400_BAD_REQUEST)
-
+            return Response({"error":[str(e)]},status=status.HTTP_400_BAD_REQUEST)
+ 
