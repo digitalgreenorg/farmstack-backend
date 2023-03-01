@@ -1738,7 +1738,7 @@ class DataBaseViewSet(GenericViewSet):
         try:
             url=request.data.get('url')
             headers={"Authorization": request.data.get('api_key')}
-            response = requests.get(url, headers)
+            response = requests.get(url, headers=headers)
             if response.status_code in [200, 201]:
                 data=response.json()
                 json_data=json.dumps(data)
