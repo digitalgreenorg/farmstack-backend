@@ -1522,6 +1522,17 @@ class DatahubDashboard(GenericViewSet):
             LOGGER.error(error, exc_info=True)
             return Response({}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
+    @action(detail=False, methods=["get"])
+    def datasets_count(self, request, *args, **kwargs):
+        try:
+            count = DatasetV2.objects.count()
+            return Response({"dataset_count":count}, status=status.HTTP_200_OK)
+        except Exception as e:
+            LOGGER.error(e, exc_info=True)
+            error_message = f"An error occurred while fetching count of datasets: {e}"
+            return Response({"error": error_message}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
 
 class DatasetV2ViewSet(GenericViewSet):
     """
@@ -2057,14 +2068,3 @@ class DatasetV2ViewSetOps(GenericViewSet):
         except Exception as e:
             logging.error(str(e), exc_info=True)
             return Response({"error": str(e)}, status=500)
-
-    @action(detail=False, methods=["get"])
-    def datasets_count(self, request, *args, **kwargs):
-        try:
-            count = DatasetV2.objects.count()
-            return Response({"dataset_count":count}, status=status.HTTP_200_OK)
-        except Exception as e:
-            error_message = f"An error occurred while fetching count of datasets: {e}"
-            return Response({"error": error_message}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-
