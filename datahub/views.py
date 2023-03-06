@@ -1443,17 +1443,13 @@ class DatahubDashboard(GenericViewSet):
                 .count()
             )
             total_datasets = (
-                Datasets.objects.select_related(
+                DatasetV2.objects.select_related(
                     "user_map", "user_map__user", "user_map__organization"
                 )
                 .filter(
                     user_map__user__status=True,
                     status=True,
-                    approval_status="approved",
-                    is_enabled=True,
-                )
-                .order_by("updated_at")
-                .count()
+                ).count()
             )
             # write a function to compute data exchange
             active_connectors = Connectors.objects.filter(status=True).count()
@@ -1521,6 +1517,8 @@ class DatahubDashboard(GenericViewSet):
         except Exception as error:
             LOGGER.error(error, exc_info=True)
             return Response({}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
 
 
 class DatasetV2ViewSet(GenericViewSet):
@@ -2057,5 +2055,3 @@ class DatasetV2ViewSetOps(GenericViewSet):
         except Exception as e:
             logging.error(str(e), exc_info=True)
             return Response({"error": str(e)}, status=500)
-
-
