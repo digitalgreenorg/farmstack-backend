@@ -2000,7 +2000,7 @@ class DatasetV2ViewSetOps(GenericViewSet):
                 files = DatasetV2File.objects.select_related().filter(
                     dataset__in=dataset_ids).filter(
                         Q(file__endswith='.xls') | Q(file__endswith='.xlsx') | Q(file__endswith='.csv')
-                        ).values("file", "dataset", "dataset__name")
+                        ).values("file", "dataset", dataset_name=F("dataset__name"))
                 files = [{**row, "file_name": row.get("file", "").split("/")[-1]}for row in files]
                 return Response(files, status=status.HTTP_200_OK)
 
