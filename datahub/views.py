@@ -25,7 +25,7 @@ from python_http_client import exceptions
 from rest_framework import pagination, status
 from rest_framework.decorators import action
 from rest_framework.parsers import JSONParser, MultiPartParser
-from rest_framework.permissions import IsAuthenticated,AllowAny
+from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.viewsets import GenericViewSet, ViewSet
 from uritemplate import partial
@@ -1997,10 +1997,10 @@ class DatasetV2ViewSetOps(GenericViewSet):
         if dataset_ids:
             try:
                 # Get list of files for each dataset
-                files = DatasetV2File.objects.filter(
+                files = DatasetV2File.objects.select_related().filter(
                     dataset__in=dataset_ids).filter(
                         Q(file__endswith='.xls') | Q(file__endswith='.xlsx') | Q(file__endswith='.csv')
-                        ).values("file", "dataset")
+                        ).values("file", "dataset", "dataset__name")
                 files = [{**row, "file_name": row.get("file", "").split("/")[-1]}for row in files]
                 return Response(files, status=status.HTTP_200_OK)
 
