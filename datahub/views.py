@@ -1982,10 +1982,11 @@ class DatasetV2ViewSetOps(GenericViewSet):
         try:
             datasets_with_excel_files = DatasetV2File.objects.filter(
                 Q(file__endswith='.xls') | Q(file__endswith='.xlsx') | Q(file__endswith='.csv')).distinct().values_list(
-                    'dataset__name', 'dataset__id')
+                    'dataset__name', 'dataset__id', 'dataset__user_map__organization__name')
             if request.GET.get("org_id"):
                 datasets_with_excel_files = datasets_with_excel_files.filter(dataset__user_map__organization=request.GET.get("org_id"))
-            dataset_list = [{'name': dataset_name, 'id': dataset_id} for dataset_name, dataset_id in datasets_with_excel_files]
+            dataset_list = [{'name': dataset_name, 'id': dataset_id, "org_name": dataset__user_map__organization__name} 
+                            for dataset_name, dataset_id, dataset__user_map__organization__name in datasets_with_excel_files]
             return Response(dataset_list, status=status.HTTP_200_OK)
         except Exception as e:
             error_message = f"An error occurred while fetching dataset names: {e}"
@@ -2069,8 +2070,6 @@ class DatasetV2ViewSetOps(GenericViewSet):
                 .filter(status=True)
                 .all()
             )
-            # page = self.paginate_queryset(user_org_queryset)
-            # user_organization_serializer = ParticipantSerializer(page, many=True)
             return Response(user_org_queryset, 200)
         except Exception as e:
             error_message = f"An error occurred while fetching Organization details: {e}"
