@@ -171,3 +171,20 @@ class DatasetV2File(TimeStampMixin):
     dataset = models.ForeignKey(DatasetV2, on_delete=models.PROTECT, related_name="datasets")
     file = models.FileField(max_length=255, upload_to=dataset_directory_path, null=True, blank=True)
     source = models.CharField(max_length=50, choices=SOURCES)
+
+
+
+
+
+class DataPoint(models.Model):
+    name = models.CharField(max_length=255)
+
+    def __str__(self):
+        return self.name
+
+class SubDataPoint(models.Model):
+    name = models.CharField(max_length=255)
+    data_point = models.ForeignKey(DataPoint, related_name='sub_data_points', on_delete=models.CASCADE)
+
+    def __str__(self):
+        return self.name

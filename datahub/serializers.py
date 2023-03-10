@@ -36,7 +36,8 @@ from utils.validators import (
     validate_file_size,
     validate_image_type,
 )
-
+from rest_framework import serializers
+from .models import DataPoint, SubDataPoint
 LOGGER = logging.getLogger(__name__)
 
 
@@ -771,3 +772,26 @@ class micrositeOrganizationSerializer(serializers.ModelSerializer):
 
     def get_users_count(self, user_org_map):
         return UserOrganizationMap.objects.filter(user__status=True, organization_id=user_org_map.organization.id).count()
+
+
+
+
+
+class SubDataPointSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = SubDataPoint
+        fields = ['id', 'name']
+
+class DataPointSerializer(serializers.ModelSerializer):
+    sub_data_points = SubDataPointSerializer(many=True)
+
+    class Meta:
+        model = DataPoint
+        fields = ['id', 'name', 'sub_data_points']
+
+    def create(self, validated_data):
+        sub_data_points = validated_data.pop('sub_data_points', [])
+        data_point = DataPoint.objects.create(**validated_data)
+        for sub_data_point in sub_data_points:
+            SubDataPoint.objects.create(data_point=data_point, **sub_data_point)
+        return data_point

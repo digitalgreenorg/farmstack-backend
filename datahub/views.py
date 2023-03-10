@@ -52,6 +52,8 @@ from datahub.models import (
     DatasetV2File,
     Organization,
     UserOrganizationMap,
+    DataPoint,
+    SubDataPoint,
 )
 from datahub.serializers import (
     DatahubDatasetsSerializer,
@@ -81,6 +83,11 @@ from participant.serializers import (
     TicketSupportSerializer,
 )
 from utils import custom_exceptions, file_operations, string_functions, validators
+
+from rest_framework import status, viewsets
+from rest_framework.response import Response
+from .models import DataPoint
+from .serializers import DataPointSerializer
 
 LOGGER = logging.getLogger(__name__)
 
@@ -2055,3 +2062,16 @@ class DatasetV2ViewSetOps(GenericViewSet):
         except Exception as e:
             logging.error(str(e), exc_info=True)
             return Response({"error": str(e)}, status=500)
+
+
+
+class DataPointViewSet(viewsets.ModelViewSet):
+    serializer_class = DataPointSerializer
+    queryset = DataPoint.objects.all()
+
+    @action(detail=False, methods=["post"])
+    def create_template(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        data_point = serializer.save()
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
