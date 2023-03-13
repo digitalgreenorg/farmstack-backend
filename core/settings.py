@@ -251,7 +251,7 @@ REST_FRAMEWORK = {
     # "DEFAULT_PERMISSION_CLASSES": [
     #     "rest_framework.permissions.AllowAny"
     # ],
-    Comment this line for test, stage and prod environments
+    # Comment this line for test, stage and prod environments
     "DEFAULT_PERMISSION_CLASSES": [
         "rest_framework.permissions.IsAuthenticated"
     ],
