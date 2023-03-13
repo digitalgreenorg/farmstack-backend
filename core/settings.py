@@ -67,6 +67,7 @@ INSTALLED_APPS = [
     "datahub",
     "participant",
     "microsite",
+    "connectors"
 ]
 # Use nose to run all tests
 TEST_RUNNER = "django_nose.NoseTestSuiteRunner"
@@ -122,11 +123,6 @@ DATABASES = {
         "PASSWORD": os.environ.get("POSTGRES_PASSWORD"),
         "HOST": "db",
         "PORT": "5432",
-        # "NAME": os.environ.get("DATABASE_NAME"),
-        # "USER": os.environ.get("DATABASE_USER"),
-        # "PASSWORD": os.environ.get("DATABASE_PASSWORD"),
-        # "HOST": os.environ.get("DATABASE_HOST"),
-        # "PORT": os.environ.get("DATABASE_PORT"),
         "OPTIONS": {
             "client_encoding": "UTF8",
         },
@@ -255,7 +251,7 @@ REST_FRAMEWORK = {
     # "DEFAULT_PERMISSION_CLASSES": [
     #     "rest_framework.permissions.AllowAny"
     # ],
-    # Comment this line for test, stage and prod environments
+    Comment this line for test, stage and prod environments
     "DEFAULT_PERMISSION_CLASSES": [
         "rest_framework.permissions.IsAuthenticated"
     ],
