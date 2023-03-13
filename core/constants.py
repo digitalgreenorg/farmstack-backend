@@ -153,3 +153,4 @@ class Constants:
     DATASET_V2_URL = "dataset/v2"
     CATEGORIES_FILE = "categories.json"
     CONNECTORS = "connectors"
+    MAPS = "maps"

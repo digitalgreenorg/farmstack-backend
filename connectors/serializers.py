@@ -1,9 +1,10 @@
 from rest_framework import serializers
-from datahub.serializers import DatasetV2FileSerializer
+
 from accounts.models import User
-from datahub.models import Organization, DatasetV2, DatasetV2File, UserOrganizationMap
-from connectors.models import ConnectorsMap, Connectors
-   
+from connectors.models import Connectors, ConnectorsMap
+from datahub.models import DatasetV2, DatasetV2File, Organization, UserOrganizationMap
+from datahub.serializers import DatasetV2FileSerializer
+
 
 class OrganizationRetriveSerializer(serializers.ModelSerializer):
     class Meta:
