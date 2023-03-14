@@ -1,3 +1,4 @@
+from django.db.models import Count
 from rest_framework import serializers
 
 from accounts.models import User
@@ -56,6 +57,34 @@ class ConnectorsCreateSerializer(serializers.ModelSerializer):
 
 
 class ConnectorsMapCreateSerializer(serializers.ModelSerializer):
-   class Meta:
+    class Meta:
         model = ConnectorsMap
         exclude = ["created_at", "updated_at"]
+
+# class ConnectorsMapListCreateSerializer(serializers.ModelSerializer):
+#     class Meta:
+#         model = ConnectorsMap
+#         exclude = ["created_at", "updated_at"]  
+#     dataset_count = serializers.SerializerMethodField(method_name="get_dataset_count")
+#     # providers_count = serializers.SerializerMethodField(method_name="get_users_count")
+
+#     def get_dataset_count(self, connectors):
+#         return ConnectorsMap.objects.filter(connectors=connectors.connectors).count()+1
+
+class ConnectorsListSerializer(serializers.ModelSerializer):
+
+    class Meta:
+        model = Connectors
+        exclude = ["created_at", "updated_at"]
+    
+    dataset_count = serializers.SerializerMethodField(method_name="get_dataset_count")
+    providers_count = serializers.SerializerMethodField(method_name="get_providers_count")
+
+    def get_dataset_count(self, connectors):
+        count = ConnectorsMap.objects.filter(connectors=connectors.id).count()
+        return  count+1 if count else 0
+    
+    def get_providers_count(self, connectors):
+        left= ConnectorsMap.objects.select_related('left_dataset_file_id__dataset').filter(connectors=connectors.id).filter(connectors=connectors.id).distinct("left_dataset_file_id__dataset__user_map").count()
+        right= ConnectorsMap.objects.select_related('right_dataset_file_id__dataset').filter(connectors=connectors.id).filter(connectors=connectors.id).distinct("right_dataset_file_id__dataset__user_map").count()
+        return left+right
