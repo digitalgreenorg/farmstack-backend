@@ -1869,13 +1869,11 @@ class DatasetV2ViewSetOps(GenericViewSet):
         if dataset_ids:
             try:
                 # Get list of files for each dataset
-                files = (
-                    DatasetV2File.objects.select_related()
-                    .filter(dataset__in=dataset_ids)
-                    .filter(Q(file__endswith=".xls") | Q(file__endswith=".xlsx") | Q(file__endswith=".csv"))
-                    .values("file", "dataset", dataset_name=F("dataset__name"))
-                )
-                files = [{**row, "file_name": row.get("file", "").split("/")[-1]} for row in files]
+                files = DatasetV2File.objects.select_related().filter(
+                    dataset__in=dataset_ids).filter(
+                        Q(file__endswith='.xls') | Q(file__endswith='.xlsx') | Q(file__endswith='.csv')
+                        ).values("id","file", "dataset", dataset_name=F("dataset__name"))
+                files = [{**row, "file_name": row.get("file", "").split("/")[-1]}for row in files]
                 return Response(files, status=status.HTTP_200_OK)
 
             except Exception as e:
@@ -1894,6 +1892,7 @@ class DatasetV2ViewSetOps(GenericViewSet):
                 else:
                     df = pd.read_csv(os.path.join(settings.MEDIA_ROOT, file_path), index_col=None)
                 result[file_path] = df.columns.tolist()
+                result[Constants.ID] = DatasetV2File.objects.get(file=file_path).id
 
             return Response(result, status=status.HTTP_200_OK)
 

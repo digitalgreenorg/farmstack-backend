@@ -138,3 +138,4 @@ class Constants:
     CATEGORIES_FILE = "categories.json"
     CONNECTORS = "connectors"
     STANDARDISE = "standardise"
+    MAPS = "maps"
