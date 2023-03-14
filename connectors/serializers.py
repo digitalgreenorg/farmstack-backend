@@ -86,6 +86,9 @@ class ConnectorsListSerializer(serializers.ModelSerializer):
         return  count+1 if count else 0
     
     def get_providers_count(self, connectors):
-        left= ConnectorsMap.objects.select_related('left_dataset_file_id__dataset').filter(connectors=connectors.id).filter(connectors=connectors.id).distinct("left_dataset_file_id__dataset__user_map").count()
-        right= ConnectorsMap.objects.select_related('right_dataset_file_id__dataset').filter(connectors=connectors.id).filter(connectors=connectors.id).distinct("right_dataset_file_id__dataset__user_map").count()
+        query = ConnectorsMap.objects.select_related('left_dataset_file_id__dataset', 'right_dataset_file_id__dataset').filter(connectors=connectors.id).filter(connectors=connectors.id)
+        left = query.distinct("left_dataset_file_id__dataset__user_map").count()
+        right = query.distinct("right_dataset_file_id__dataset__user_map").count()
+
+        # right= ConnectorsMap.objects.select_related('').filter(connectors=connectors.id).filter(connectors=connectors.id)
         return left+right
