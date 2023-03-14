@@ -1,16 +1,23 @@
+import logging
+import os
+
+import pandas as pd
 from django.db import transaction
 from django.shortcuts import render
-from rest_framework import pagination, status
+from rest_framework import status
+from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.viewsets import GenericViewSet, ViewSet
 
 from connectors.models import Connectors, ConnectorsMap
 from connectors.serializers import (
     ConnectorsCreateSerializer,
+    ConnectorsListSerializer,
     ConnectorsMapCreateSerializer,
     ConnectorsMapSerializer,
     ConnectorsSerializer,
 )
+from core import settings
 from core.constants import Constants
 from core.utils import CustomPagination
 
@@ -41,7 +48,7 @@ class ConnectorsViewSet(GenericViewSet):
         """GET method: query all the list of objects from the Product model"""
         data = Connectors.objects.all()
         page = self.paginate_queryset(data)
-        connectors_data = ConnectorsSerializer(page, many=True)
+        connectors_data = ConnectorsListSerializer(page, many=True)
         return self.get_paginated_response(connectors_data.data)
 
     def retrieve(self, request, pk):
@@ -81,3 +88,30 @@ class ConnectorsViewSet(GenericViewSet):
             connector.delete()
             return Response(status=status.HTTP_204_NO_CONTENT)
 
+    @action(detail=False, methods=["post"])
+    def datasets_join_condition(self, request, *args, **kwargs):
+        try:
+            file_path1 = request.data.get("file_path1")
+            file_path2 = request.data.get("file_path2")
+            columns1 = request.data.get("columns1")
+            columns2 = request.data.get("columns2")
+            condition = request.data.get("condition")
+
+            # Load the files into dataframes
+            if file_path1.endswith(".xlsx") or file_path1.endswith(".xls"):
+                df1 = pd.read_excel(os.path.join(settings.MEDIA_ROOT, file_path1), usecols=columns1)
+            else:
+                df1 = pd.read_csv(os.path.join(settings.MEDIA_ROOT, file_path1), usecols=columns1)
+            if file_path2.endswith(".xlsx") or file_path2.endswith(".xls"):
+                df2 = pd.read_excel(os.path.join(settings.MEDIA_ROOT, file_path2), usecols=columns2)
+            else:
+                df2 = pd.read_csv(os.path.join(settings.MEDIA_ROOT, file_path2), usecols=columns2)
+            # Join the dataframes
+            result = pd.merge(df1, df2, how=request.data.get("how", "left"), left_on=request.data.get("left_on"), right_on=request.data.get("right_on"))
+
+            # Return the joined dataframe as JSON
+            return Response(result.to_json(orient="records"), status=status.HTTP_200_OK)
+
+        except Exception as e:
+            logging.error(str(e), exc_info=True)
+            return Response({"error": str(e)}, status=500)
