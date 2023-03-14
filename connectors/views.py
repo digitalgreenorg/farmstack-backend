@@ -91,6 +91,8 @@ class ConnectorsViewSet(GenericViewSet):
     @action(detail=False, methods=["post"])
     def integration(self, request, *args, **kwargs):
         data = request.data
+        if not data:
+            return Response({f"Minimum 2 datasets should select for integration"}, status=500)
         integrate1 = data[0]
         try:
             left_dataset_file_path = integrate1.get("left_dataset_file_path")
