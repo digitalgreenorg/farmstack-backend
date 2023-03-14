@@ -3,6 +3,7 @@ from rest_framework import serializers
 
 from accounts.models import User
 from connectors.models import Connectors, ConnectorsMap
+from core.constants import Constants
 from datahub.models import DatasetV2, DatasetV2File, Organization, UserOrganizationMap
 from datahub.serializers import DatasetV2FileSerializer
 
@@ -75,7 +76,7 @@ class ConnectorsListSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Connectors
-        exclude = ["created_at", "updated_at"]
+        fields = Constants.ALL
     
     dataset_count = serializers.SerializerMethodField(method_name="get_dataset_count")
     providers_count = serializers.SerializerMethodField(method_name="get_providers_count")
