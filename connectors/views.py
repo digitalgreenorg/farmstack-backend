@@ -89,29 +89,37 @@ class ConnectorsViewSet(GenericViewSet):
             return Response(status=status.HTTP_204_NO_CONTENT)
 
     @action(detail=False, methods=["post"])
-    def datasets_join_condition(self, request, *args, **kwargs):
+    def integration(self, request, *args, **kwargs):
+        data = request.data
+        integrate1 = data[0]
         try:
-            file_path1 = request.data.get("file_path1")
-            file_path2 = request.data.get("file_path2")
-            columns1 = request.data.get("columns1")
-            columns2 = request.data.get("columns2")
-            condition = request.data.get("condition")
-
-            # Load the files into dataframes
-            if file_path1.endswith(".xlsx") or file_path1.endswith(".xls"):
-                df1 = pd.read_excel(os.path.join(settings.MEDIA_ROOT, file_path1), usecols=columns1)
+            left_dataset_file_path = integrate1.get("left_dataset_file_path")
+            right_dataset_file_path = integrate1.get("right_dataset_file_path")
+            left_columns = integrate1.get("left_selected")
+            right_columns = integrate1.get("right_selected") 
+ 
+            if left_dataset_file_path.endswith(".xlsx") or left_dataset_file_path.endswith(".xls"):
+                df1 = pd.read_excel(os.path.join(settings.MEDIA_ROOT, left_dataset_file_path), usecols=left_columns)
             else:
-                df1 = pd.read_csv(os.path.join(settings.MEDIA_ROOT, file_path1), usecols=columns1)
-            if file_path2.endswith(".xlsx") or file_path2.endswith(".xls"):
-                df2 = pd.read_excel(os.path.join(settings.MEDIA_ROOT, file_path2), usecols=columns2)
+                df1 = pd.read_csv(os.path.join(settings.MEDIA_ROOT, left_dataset_file_path), usecols=left_columns)
+            if right_dataset_file_path.endswith(".xlsx") or right_dataset_file_path.endswith(".xls"):
+                df2 = pd.read_excel(os.path.join(settings.MEDIA_ROOT, right_dataset_file_path), usecols=right_columns)
             else:
-                df2 = pd.read_csv(os.path.join(settings.MEDIA_ROOT, file_path2), usecols=columns2)
+                df2 = pd.read_csv(os.path.join(settings.MEDIA_ROOT, right_dataset_file_path), usecols=right_columns)
             # Join the dataframes
-            result = pd.merge(df1, df2, how=request.data.get("how", "left"), left_on=request.data.get("left_on"), right_on=request.data.get("right_on"))
+            result = pd.merge(df1, df2, how=integrate1.get("how", "left"), left_on=integrate1.get("left_on"), right_on=integrate1.get("right_on"))
+            for i in range(1, len(data)):
+                integrate1 = data[i]
+                right_dataset_file_path = integrate1.get("right_dataset_file_path")
+                right_columns = integrate1.get("right_selected") 
+                if right_dataset_file_path.endswith(".xlsx") or right_dataset_file_path.endswith(".xls"):
+                    df2 = pd.read_excel(os.path.join(settings.MEDIA_ROOT, right_dataset_file_path), usecols=right_columns)
+                else:
+                    df2 = pd.read_csv(os.path.join(settings.MEDIA_ROOT, right_dataset_file_path), usecols=right_columns)
+                # Join the dataframes
+                result = pd.merge(result, df2, how=integrate1.get("how", "left"), left_on=integrate1.get("left_on"), right_on=integrate1.get("right_on"))
 
-            # Return the joined dataframe as JSON
             return Response(result.to_json(orient="records"), status=status.HTTP_200_OK)
-
         except Exception as e:
             logging.error(str(e), exc_info=True)
-            return Response({"error": str(e)}, status=500)
+            return Response({f"error while integration {integrate1} ": str(e)}, status=500)
