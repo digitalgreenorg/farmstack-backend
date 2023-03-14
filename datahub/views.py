@@ -89,6 +89,12 @@ from rest_framework.response import Response
 from .models import DataPoint
 from .serializers import DataPointSerializer
 
+import pandas as pd
+from django.http import HttpResponse
+from rest_framework.decorators import action
+from rest_framework.response import Response
+from rest_framework.viewsets import ViewSet
+
 LOGGER = logging.getLogger(__name__)
 
 con = None
@@ -2075,3 +2081,35 @@ class DataPointViewSet(viewsets.ModelViewSet):
         serializer.is_valid(raise_exception=True)
         data_point = serializer.save()
         return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+
+
+
+
+class DataMappingViewSet(ViewSet):
+    queryset = DataPoint.objects.all()
+
+    @action(detail=False, methods=['post'])
+    def standardize_dataset(self, request):
+        try:
+            # Get the mapping pairs from the request
+            mapping_pairs = request.data.get('mapping_pairs')
+
+            # Get the file from the request and read it into a Pandas DataFrame
+            file = request.FILES['file']
+            data = pd.read_csv(file)
+
+            # Rename columns based on the mapping pairs
+            data = data.rename(columns=mapping_pairs)
+
+            # Create a response with the standardized data as a CSV file
+            response = HttpResponse(content_type='text/csv')
+            response['Content-Disposition'] = 'attachment; filename="standardized_data.csv"'
+
+            # Write the data to the response object
+            data.to_csv(path_or_buf=response, index=False)
+
+            return response
+
+        except Exception as e:
+            return Response({"error": str(e)}, status=400)

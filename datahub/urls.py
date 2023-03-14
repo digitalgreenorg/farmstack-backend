@@ -21,6 +21,7 @@ from datahub.views import (
     DatasetV2ViewSet,
     DatasetV2ViewSetOps,
     DataPointViewSet,
+    DataMappingViewSet,
 )
 
 router = DefaultRouter()
@@ -37,6 +38,8 @@ router.register(r"", DatahubDashboard, basename="")
 router.register(r"dataset/v2", DatasetV2ViewSet, basename=Constants.DATASET_V2_URL)
 router.register(r"dataset_ops",DatasetV2ViewSetOps,basename="")
 router.register(r"standardization",DataPointViewSet,basename="")
+router.register(r"mapping",DataMappingViewSet,basename="")
+
 
 
 
