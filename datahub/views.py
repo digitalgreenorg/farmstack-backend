@@ -1954,7 +1954,7 @@ class StandardisationTemplateView(GenericViewSet):
     queryset = StandardisationTemplate.objects.all()
 
     def create(self, request, *args, **kwargs):
-        serializer = self.get_serializer(data=request.data)
+        serializer = self.get_serializer(data=request.data, many=True)
         serializer.is_valid(raise_exception=True)
         serializer.save()
         LOGGER.info("Standardisation Template Created Successfully.")
@@ -1984,9 +1984,11 @@ class StandardisationTemplateView(GenericViewSet):
 
             create_serializer.save()
             return Response(status=status.HTTP_201_CREATED)
-        except:
+        except Exception as error:
             LOGGER.error("Issue while Updating Standardisation Template", exc_info=True)
-            return Response(status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            return Response(
+                f"Issue while Updating Standardisation Template {error}", status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
 
     def destroy(self, request, *args, **kwargs):
         instance = self.get_object()
