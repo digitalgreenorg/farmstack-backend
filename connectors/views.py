@@ -1,5 +1,6 @@
 import logging
 import os
+import shutil
 
 import pandas as pd
 from django.db import transaction
@@ -33,7 +34,14 @@ class ConnectorsViewSet(GenericViewSet):
     @transaction.atomic
     def create(self, request, *args, **kwargs):
         """POST method: create action to save an object by sending a POST request"""
-        serializer = ConnectorsCreateSerializer(data=request.data)
+        setattr(request.data, "_mutable", True)
+        data = request.data
+        temp_path = data.get("integrated_file")
+        dest_path = f"{settings.CONNECTOR_FILES_URL}/{data.get('name')}.xlxs"
+        if os.path.exists(temp_path):
+            shutil.move(temp_path, dest_path)
+            data["integrated_file"] = dest_path
+        serializer = ConnectorsCreateSerializer(data=data)
         serializer.is_valid(raise_exception=True)
         serializer.save()
         connectors_data = serializer.data
@@ -133,7 +141,10 @@ class ConnectorsViewSet(GenericViewSet):
                     left_on=condition.get("left_on"),
                     right_on=condition.get("right_on"),
                 )
-            return Response(result.to_json(orient="records"), status=status.HTTP_200_OK)
+            name = data.get("name", "connectors")
+            file_path = f"{settings.TEMP_CONNECTOR_URL}/{name}.xlxs"
+            result.to_excel(file_path)
+            return Response({"integrated_file": file_path, "data":result.to_json(orient="records")}, status=status.HTTP_200_OK)
         except Exception as e:
             logging.error(str(e), exc_info=True)
             return Response({f"error while integration {integrate} ": str(e)}, status=500)
