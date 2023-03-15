@@ -2086,6 +2086,8 @@ class DataPointViewSet(viewsets.ModelViewSet):
 
 
 
+
+
 class DataMappingViewSet(ViewSet):
     queryset = DataPoint.objects.all()
 
@@ -2095,21 +2097,25 @@ class DataMappingViewSet(ViewSet):
             # Get the mapping pairs from the request
             mapping_pairs = request.data.get('mapping_pairs')
 
-            # Get the file from the request and read it into a Pandas DataFrame
-            file = request.FILES['file']
-            data = pd.read_csv(file)
+            # Get the file location from the request
+            file_location = request.data.get('file_location')
+
+            # Read the file into a Pandas DataFrame
+            data = pd.read_excel(file_location)
 
             # Rename columns based on the mapping pairs
             data = data.rename(columns=mapping_pairs)
 
-            # Create a response with the standardized data as a CSV file
-            response = HttpResponse(content_type='text/csv')
-            response['Content-Disposition'] = 'attachment; filename="standardized_data.csv"'
+            file_name = os.path.basename(file_location)
+            standardized_file_name = f"standardized_{file_name}"
 
-            # Write the data to the response object
-            data.to_csv(path_or_buf=response, index=False)
+            # Get the directory path of the input file and create the standardized file path
+            input_directory = os.path.dirname(file_location)
+            standardized_file_location = os.path.join(input_directory, standardized_file_name)
+            data.to_excel(standardized_file_location, index=False)
 
-            return response
+            # Return the location of the standardized file
+            return Response({'standardized_file_location': standardized_file_location})
 
         except Exception as e:
             return Response({"error": str(e)}, status=400)
