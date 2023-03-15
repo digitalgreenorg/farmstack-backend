@@ -97,6 +97,7 @@ class ConnectorsViewSet(GenericViewSet):
 
     @action(detail=False, methods=["post"])
     def integration(self, request, *args, **kwargs):
+        data = request.data
         maps = request.data.get("maps")
         if not maps:
             return Response({f"Minimum 2 datasets should select for integration"}, status=500)
@@ -123,7 +124,7 @@ class ConnectorsViewSet(GenericViewSet):
                 right_on=condition.get("right_on"),
             )
             for i in range(1, len(maps)):
-                integrate = data[i]
+                integrate = maps[i]
                 right_dataset_file_path = integrate.get("right_dataset_file_path")
                 condition = integrate.get("condition")
                 if right_dataset_file_path.endswith(".xlsx") or right_dataset_file_path.endswith(".xls"):
