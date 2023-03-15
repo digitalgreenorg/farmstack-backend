@@ -626,7 +626,6 @@ class DatasetV2Serializer(serializers.ModelSerializer):
         file_paths = {}
 
         try:
-
             directory_created = move_directory(
                 os.path.join(settings.TEMP_DATASET_URL, validated_data.get("name")), settings.DATASET_FILES_URL
             )
@@ -789,6 +788,12 @@ class micrositeOrganizationSerializer(serializers.ModelSerializer):
 
 
 class StandardisationTemplateViewSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = StandardisationTemplate
+        exclude = Constants.EXCLUDE_DATES
+
+
+class StandardisationTemplateUpdateSerializer(serializers.ModelSerializer):
     class Meta:
         model = StandardisationTemplate
         exclude = Constants.EXCLUDE_DATES

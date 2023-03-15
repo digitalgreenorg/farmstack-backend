@@ -75,6 +75,7 @@ from datahub.serializers import (
     PolicyDocumentSerializer,
     RecentDatasetListSerializer,
     RecentSupportTicketSerializer,
+    StandardisationTemplateUpdateSerializer,
     StandardisationTemplateViewSerializer,
     TeamMemberCreateSerializer,
     TeamMemberDetailsSerializer,
@@ -1869,11 +1870,13 @@ class DatasetV2ViewSetOps(GenericViewSet):
         if dataset_ids:
             try:
                 # Get list of files for each dataset
-                files = DatasetV2File.objects.select_related().filter(
-                    dataset__in=dataset_ids).filter(
-                        Q(file__endswith='.xls') | Q(file__endswith='.xlsx') | Q(file__endswith='.csv')
-                        ).values("id","file", "dataset", dataset_name=F("dataset__name"))
-                files = [{**row, "file_name": row.get("file", "").split("/")[-1]}for row in files]
+                files = (
+                    DatasetV2File.objects.select_related()
+                    .filter(dataset__in=dataset_ids)
+                    .filter(Q(file__endswith=".xls") | Q(file__endswith=".xlsx") | Q(file__endswith=".csv"))
+                    .values("id", "file", "dataset", dataset_name=F("dataset__name"))
+                )
+                files = [{**row, "file_name": row.get("file", "").split("/")[-1]} for row in files]
                 return Response(files, status=status.HTTP_200_OK)
 
             except Exception as e:
@@ -1959,11 +1962,31 @@ class StandardisationTemplateView(GenericViewSet):
 
     @action(detail=False, methods=["put"])
     def update_standardisation_template(self, request, *args, **kwargs):
-        pass
-        # Batch update.
-        # If ID is present, then, update.
+        update_list = list()
+        create_list = list()
+        try:
+            for data in request.data:
+                if data.get(Constants.ID, None):
+                    # Update
+                    serializer = StandardisationTemplateUpdateSerializer(data=data, partial=True)
+                    serializer.is_valid(raise_exception=True)
+                    update_list.append(StandardisationTemplate(id=data.get(Constants.ID, None), **serializer.data))
+                else:
+                    # Create
+                    create_list.append(data)
 
-        # Else Create a new datapoint.
+            create_serializer = self.get_serializer(data=create_list, many=True)
+            create_serializer.is_valid(raise_exception=True)
+
+            StandardisationTemplate.objects.bulk_update(
+                update_list, fields=["datapoint_category", "datapoint_attributes"]
+            )
+
+            create_serializer.save()
+            return Response(status=status.HTTP_201_CREATED)
+        except:
+            LOGGER.error("Issue while Updating Standardisation Template", exc_info=True)
+            return Response(status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     def destroy(self, request, *args, **kwargs):
         instance = self.get_object()
