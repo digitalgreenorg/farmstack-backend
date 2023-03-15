@@ -2119,3 +2119,33 @@ class DataMappingViewSet(ViewSet):
 
         except Exception as e:
             return Response({"error": str(e)}, status=400)
+        
+    @action(detail=False, methods=['post'])
+    def mask_columns(self, request):
+        try:
+            # Get the file location from the request
+            file_location = request.data.get('file_location')
+
+            # Get the columns to be masked from the request
+            columns_to_mask = request.data.get('columns_to_mask')
+
+            # Read the file into a Pandas DataFrame
+            data = pd.read_excel(file_location)
+
+            # Mask the columns
+            for col in columns_to_mask:
+                data[col] = data[col].apply(lambda x: '*' * (len(str(x)) - 2) + str(x)[-2:])
+
+            file_name = os.path.basename(file_location)
+            masked_file_name = f"masked_{file_name}"
+
+            # Get the directory path of the input file and create the masked file path
+            input_directory = os.path.dirname(file_location)
+            masked_file_location = os.path.join(input_directory, masked_file_name)
+            data.to_excel(masked_file_location, index=False)
+
+            # Return the location of the masked file
+            return Response({'masked_file_location': masked_file_location})
+
+        except Exception as e:
+            return Response({"error": str(e)}, status=400)
