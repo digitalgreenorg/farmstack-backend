@@ -37,7 +37,7 @@ class ConnectorsViewSet(GenericViewSet):
         setattr(request.data, "_mutable", True)
         data = request.data
         temp_path = data.get("integrated_file")
-        dest_path = f"{settings.CONNECTOR_FILES_URL}/{data.get('name')}.xlxs"
+        dest_path = f"{settings.CONNECTOR_FILES_URL}/{data.get('name')}.xlsx"
         if os.path.exists(temp_path):
             shutil.move(temp_path, dest_path)
             data["integrated_file"] = dest_path
@@ -144,10 +144,9 @@ class ConnectorsViewSet(GenericViewSet):
                 )
 
             name = data.get("name", "connectors")
-            file_path = f"{settings.TEMP_CONNECTOR_URL}/{name}.xlxs"
+            file_path = f"{settings.TEMP_CONNECTOR_URL}/{name}.xlsx"
             result.to_excel(file_path)
             return Response({"integrated_file": file_path, "data":result.to_json(orient="records")}, status=status.HTTP_200_OK)
-            
         except Exception as e:
             logging.error(str(e), exc_info=True)
             return Response({f"error while integration {integrate} ": str(e)}, status=500)
