@@ -34,16 +34,16 @@ class ConnectorsViewSet(GenericViewSet):
     @transaction.atomic
     def create(self, request, *args, **kwargs):
         """POST method: create action to save an object by sending a POST request"""
-        setattr(request.data, "_mutable", True)
+        # setattr(request.data, "_mutable", True)
         data = request.data
-        temp_path = data.get("integrated_file")
-        dest_path = f"{settings.CONNECTOR_FILES_URL}/{data.get('name')}.xlsx"
+        temp_path = f"{os.path.join(settings.MEDIA_URL,settings.TEMP_CONNECTOR_URL)}{data.get('name')}.xlsx"
+        dest_path = f"{settings.CONNECTOR_FILES_URL}{data.get('name')}.xlsx"
         if os.path.exists(temp_path):
             shutil.move(temp_path, dest_path)
-            data["integrated_file"] = dest_path
         serializer = ConnectorsCreateSerializer(data=data)
         serializer.is_valid(raise_exception=True)
         serializer.save()
+        Connectors.objects.filter(id=serializer.data.get("id")).update(integrated_file=dest_path)
         connectors_data = serializer.data
         for maps in request.data.get("maps", []):
             maps["connectors"] = connectors_data.get("id")
@@ -144,7 +144,7 @@ class ConnectorsViewSet(GenericViewSet):
                 )
 
             name = data.get("name", "connectors")
-            file_path = f"{settings.TEMP_CONNECTOR_URL}/{name}.xlsx"
+            file_path = f"{settings.TEMP_CONNECTOR_URL}{name}.xlsx"
             result.to_excel(file_path)
             return Response({"integrated_file": file_path, "data":result.to_json(orient="records")}, status=status.HTTP_200_OK)
         except Exception as e:
