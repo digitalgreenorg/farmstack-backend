@@ -98,13 +98,13 @@ class ConnectorsViewSet(GenericViewSet):
             condition = integrate.get("condition")
 
             if left_dataset_file_path.endswith(".xlsx") or left_dataset_file_path.endswith(".xls"):
-                df1 = pd.read_excel(os.path.join(settings.MEDIA_ROOT, left_dataset_file_path), usecols=condition.get("left_columns"))
+                df1 = pd.read_excel(os.path.join(settings.MEDIA_ROOT, left_dataset_file_path), usecols=condition.get("left_selected"))
             else:
-                df1 = pd.read_csv(os.path.join(settings.MEDIA_ROOT, left_dataset_file_path), usecols=condition.get("left_columns"))
+                df1 = pd.read_csv(os.path.join(settings.MEDIA_ROOT, left_dataset_file_path), usecols=condition.get("left_selected"))
             if right_dataset_file_path.endswith(".xlsx") or right_dataset_file_path.endswith(".xls"):
-                df2 = pd.read_excel(os.path.join(settings.MEDIA_ROOT, right_dataset_file_path), usecols=condition.get("right_columns"))
+                df2 = pd.read_excel(os.path.join(settings.MEDIA_ROOT, right_dataset_file_path), usecols=condition.get("right_selected"))
             else:
-                df2 = pd.read_csv(os.path.join(settings.MEDIA_ROOT, right_dataset_file_path), usecols=condition.get("right_columns"))
+                df2 = pd.read_csv(os.path.join(settings.MEDIA_ROOT, right_dataset_file_path), usecols=condition.get("right_selected"))
             # Join the dataframes
             result = pd.merge(
                 df1,
@@ -119,11 +119,11 @@ class ConnectorsViewSet(GenericViewSet):
                 condition = integrate.get("condition")
                 if right_dataset_file_path.endswith(".xlsx") or right_dataset_file_path.endswith(".xls"):
                     df2 = pd.read_excel(
-                        os.path.join(settings.MEDIA_ROOT, right_dataset_file_path), usecols=condition.get("right_columns")
+                        os.path.join(settings.MEDIA_ROOT, right_dataset_file_path), usecols=condition.get("right_selected")
                     )
                 else:
                     df2 = pd.read_csv(
-                        os.path.join(settings.MEDIA_ROOT, right_dataset_file_path), usecols=condition.get("right_columns")
+                        os.path.join(settings.MEDIA_ROOT, right_dataset_file_path), usecols=condition.get("right_selected")
                     )
                 # Join the dataframes
                 result = pd.merge(
