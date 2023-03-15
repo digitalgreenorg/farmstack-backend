@@ -55,7 +55,7 @@ class ConnectorsViewSet(GenericViewSet):
 
     def list(self, request, *args, **kwargs):
         """GET method: query all the list of objects from the Product model"""
-        data = Connectors.objects.all()
+        data = Connectors.objects.all().order_by(Constants.UPDATED_AT).reverse()
         page = self.paginate_queryset(data)
         connectors_data = ConnectorsListSerializer(page, many=True)
         return self.get_paginated_response(connectors_data.data)
