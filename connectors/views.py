@@ -38,6 +38,7 @@ class ConnectorsViewSet(GenericViewSet):
         data = request.data
         temp_path = f"{os.path.join(settings.MEDIA_URL,settings.TEMP_CONNECTOR_URL)}{data.get('name')}.xlsx"
         dest_path = f"{settings.CONNECTOR_FILES_URL}{data.get('name')}.xlsx"
+        data.pop("integrated_file")
         if os.path.exists(temp_path):
             shutil.move(temp_path, dest_path)
         serializer = ConnectorsCreateSerializer(data=data)
@@ -96,7 +97,6 @@ class ConnectorsViewSet(GenericViewSet):
 
     @action(detail=False, methods=["post"])
     def integration(self, request, *args, **kwargs):
-        data = request.data
         maps = request.data.get("maps")
         if not maps:
             return Response({f"Minimum 2 datasets should select for integration"}, status=500)
