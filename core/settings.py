@@ -204,10 +204,15 @@ SOLUCTION_ATTACHEMENT_URL = "users/tickets/soluctions/"
 SAMPLE_DATASETS_URL = "users/datasets/sample_data/"
 CONNECTORS_CERTIFICATE_URL = "users/connectors/certificates/"
 TEMP_DATASET_URL = "temp/datasets/"
-TEMP_CONNECTOR_URL = os.path.join(MEDIA_URL, "temp/connectors/")
+TEMP_CONNECTOR_URL = "temp/connectors/"
 
 DATASET_FILES_URL = os.path.join(MEDIA_URL, "datasets/")
-CONNECTOR_FILES_URL = os.path.join(MEDIA_URL, "connectors/")
+CONNECTOR_FILES_URL =  os.path.join(MEDIA_URL, "connectors/")
+# os.makedirs(CONNECTOR_FILES_URL)
+if not os.path.exists(TEMP_CONNECTOR_URL):
+    os.makedirs(TEMP_CONNECTOR_URL)
+if not os.path.exists(CONNECTOR_FILES_URL):
+    os.makedirs(CONNECTOR_FILES_URL)
 
 
 # Template Files.
