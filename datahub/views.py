@@ -1950,7 +1950,6 @@ class DatasetV2ViewSetOps(GenericViewSet):
 
 class StandardisationTemplateView(GenericViewSet):
     serializer_class = StandardisationTemplateViewSerializer
-    permission_classes = []
     queryset = StandardisationTemplate.objects.all()
 
     def create(self, request, *args, **kwargs):

@@ -141,10 +141,12 @@ class ConnectorsViewSet(GenericViewSet):
                     left_on=condition.get("left_on"),
                     right_on=condition.get("right_on"),
                 )
+
             name = data.get("name", "connectors")
             file_path = f"{settings.TEMP_CONNECTOR_URL}/{name}.xlxs"
             result.to_excel(file_path)
             return Response({"integrated_file": file_path, "data":result.to_json(orient="records")}, status=status.HTTP_200_OK)
+            
         except Exception as e:
             logging.error(str(e), exc_info=True)
             return Response({f"error while integration {integrate} ": str(e)}, status=500)
