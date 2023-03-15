@@ -204,7 +204,7 @@ SOLUCTION_ATTACHEMENT_URL = "users/tickets/soluctions/"
 SAMPLE_DATASETS_URL = "users/datasets/sample_data/"
 CONNECTORS_CERTIFICATE_URL = "users/connectors/certificates/"
 TEMP_DATASET_URL = "temp/datasets/"
-TEMP_CONNECTOR_URL = "temp/datasets/"
+TEMP_CONNECTOR_URL = os.path.join(MEDIA_URL, "temp/connectors/")
 
 DATASET_FILES_URL = os.path.join(MEDIA_URL, "datasets/")
 CONNECTOR_FILES_URL = os.path.join(MEDIA_URL, "connectors/")
