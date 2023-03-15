@@ -2,9 +2,6 @@ import logging
 import os
 
 import pandas as pd
-from core import settings
-from core.constants import Constants
-from core.utils import CustomPagination
 from django.db import transaction
 from django.shortcuts import render
 from rest_framework import status
@@ -20,6 +17,9 @@ from connectors.serializers import (
     ConnectorsMapSerializer,
     ConnectorsSerializer,
 )
+from core import settings
+from core.constants import Constants
+from core.utils import CustomPagination
 
 # Create your views here.
 
@@ -91,51 +91,49 @@ class ConnectorsViewSet(GenericViewSet):
         data = request.data
         if not data:
             return Response({f"Minimum 2 datasets should select for integration"}, status=500)
-        integrate1 = data[0]
+        integrate = data[0]
         try:
-            left_dataset_file_path = integrate1.get("left_dataset_file_path")
-            right_dataset_file_path = integrate1.get("right_dataset_file_path")
-            left_columns = integrate1.get("condition").get("left_selected")
-            right_columns = integrate1.get("condition").get("right_selected")
+            left_dataset_file_path = integrate.get("left_dataset_file_path")
+            right_dataset_file_path = integrate.get("right_dataset_file_path")
+            condition = integrate.get("condition")
 
             if left_dataset_file_path.endswith(".xlsx") or left_dataset_file_path.endswith(".xls"):
-                df1 = pd.read_excel(os.path.join(settings.MEDIA_ROOT, left_dataset_file_path), usecols=left_columns)
+                df1 = pd.read_excel(os.path.join(settings.MEDIA_ROOT, left_dataset_file_path), usecols=condition.get("left_selected"))
             else:
-                df1 = pd.read_csv(os.path.join(settings.MEDIA_ROOT, left_dataset_file_path), usecols=left_columns)
+                df1 = pd.read_csv(os.path.join(settings.MEDIA_ROOT, left_dataset_file_path), usecols=condition.get("left_selected"))
             if right_dataset_file_path.endswith(".xlsx") or right_dataset_file_path.endswith(".xls"):
-                df2 = pd.read_excel(os.path.join(settings.MEDIA_ROOT, right_dataset_file_path), usecols=right_columns)
+                df2 = pd.read_excel(os.path.join(settings.MEDIA_ROOT, right_dataset_file_path), usecols=condition.get("right_selected"))
             else:
-                df2 = pd.read_csv(os.path.join(settings.MEDIA_ROOT, right_dataset_file_path), usecols=right_columns)
+                df2 = pd.read_csv(os.path.join(settings.MEDIA_ROOT, right_dataset_file_path), usecols=condition.get("right_selected"))
             # Join the dataframes
             result = pd.merge(
                 df1,
                 df2,
-                how=integrate1.get("condition").get("how", "left"),
-                left_on=integrate1.get("condition").get("left_on"),
-                right_on=integrate1.get("condition").get("right_on"),
+                how=condition.get("how", "left"),
+                left_on=condition.get("left_on"),
+                right_on=condition.get("right_on"),
             )
             for i in range(1, len(data)):
-                integrate1 = data[i]
-                right_dataset_file_path = integrate1.get("right_dataset_file_path")
-                right_columns = integrate1.get("condition").get("right_selected")
+                integrate = data[i]
+                right_dataset_file_path = integrate.get("right_dataset_file_path")
+                condition = integrate.get("condition")
                 if right_dataset_file_path.endswith(".xlsx") or right_dataset_file_path.endswith(".xls"):
                     df2 = pd.read_excel(
-                        os.path.join(settings.MEDIA_ROOT, right_dataset_file_path), usecols=right_columns
+                        os.path.join(settings.MEDIA_ROOT, right_dataset_file_path), usecols=condition.get("right_selected")
                     )
                 else:
                     df2 = pd.read_csv(
-                        os.path.join(settings.MEDIA_ROOT, right_dataset_file_path), usecols=right_columns
+                        os.path.join(settings.MEDIA_ROOT, right_dataset_file_path), usecols=condition.get("right_selected")
                     )
                 # Join the dataframes
                 result = pd.merge(
                     result,
                     df2,
-                    how=integrate1.get("how", "left"),
-                    left_on=integrate1.get("left_on"),
-                    right_on=integrate1.get("right_on"),
+                    how=condition.get("how", "left"),
+                    left_on=condition.get("left_on"),
+                    right_on=condition.get("right_on"),
                 )
-
             return Response(result.to_json(orient="records"), status=status.HTTP_200_OK)
         except Exception as e:
             logging.error(str(e), exc_info=True)
-            return Response({f"error while integration {integrate1} ": str(e)}, status=500)
+            return Response({f"error while integration {integrate} ": str(e)}, status=500)
