@@ -1,7 +1,10 @@
 import uuid
+
 from django.db import models
-from datahub.models import DatasetV2File 
+
+from core import settings
 from core.base_models import TimeStampMixin
+from datahub.models import DatasetV2File
 
 # Create your models here.
 
@@ -21,7 +24,7 @@ class Connectors(TimeStampMixin):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     name = models.CharField(max_length=100, unique=True)
     description = models.TextField(max_length=512)
-    # integrated_file = models.FileField(max_length=255, upload_to=dataset_integrated_path, null=True, blank=True)
+    integrated_file = models.FileField(max_length=255, upload_to=settings.CONNECTOR_FILES_URL, null=True, blank=True)
     status = models.BooleanField(default=True)
 
 
