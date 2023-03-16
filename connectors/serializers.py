@@ -101,5 +101,5 @@ class ConnectorsRetriveSerializer(serializers.ModelSerializer):
     data = serializers.SerializerMethodField(method_name="extract_data")
 
     def extract_data(self, connector):
-          integrated_file = connector.integrated_file.replace("media/", "")
+          integrated_file = str(connector.integrated_file).replace("media/", "")
           return pd.read_excel(integrated_file).to_json(orient='records') if integrated_file else []
