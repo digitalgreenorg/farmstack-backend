@@ -109,4 +109,4 @@ class ConnectorsRetriveSerializer(serializers.ModelSerializer):
         print(integrated_file)
         df = pd.read_csv(os.path.join(settings.MEDIA_ROOT, integrated_file), 
             ) if integrated_file else pd.DataFrame([])
-        return df.to_json(orient="records")
+        return df.to_json(orient="records", index=False)
