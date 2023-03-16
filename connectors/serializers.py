@@ -1,9 +1,12 @@
+import os
+
 import pandas as pd
 from django.db.models import Count
 from rest_framework import serializers
 
 from accounts.models import User
 from connectors.models import Connectors, ConnectorsMap
+from core import settings
 from core.constants import Constants
 from datahub.models import DatasetV2, DatasetV2File, Organization, UserOrganizationMap
 from datahub.serializers import DatasetV2FileSerializer
@@ -101,5 +104,7 @@ class ConnectorsRetriveSerializer(serializers.ModelSerializer):
     data = serializers.SerializerMethodField(method_name="extract_data")
 
     def extract_data(self, connector):
-          integrated_file = str(connector.integrated_file).replace("media/", "")
-          return pd.read_excel(integrated_file).to_json(orient='records') if integrated_file else []
+        integrated_file = str(connector.integrated_file).replace("media/", "")
+        df = pd.read_csv(os.path.join(settings.MEDIA_ROOT, integrated_file), 
+            ) if integrated_file else pd.DataFrame([])
+        return df.to_json(orient="records")
