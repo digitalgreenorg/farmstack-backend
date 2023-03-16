@@ -38,7 +38,7 @@ class ConnectorsViewSet(GenericViewSet):
         # setattr(request.data, "_mutable", True)
         data = request.data
         temp_path = f"{os.path.join(settings.MEDIA_URL,settings.TEMP_CONNECTOR_URL)}{data.get('name')}.xlsx"
-        dest_path = f"{settings.CONNECTOR_FILES_URL}{data.get('name')}.xlsx"
+        dest_path = f"{settings.CONNECTOR_FILES_URL}{data.get('name')}.csv"
         data.pop("integrated_file")
         if os.path.exists(temp_path):
             shutil.move(temp_path, dest_path)
