@@ -37,8 +37,10 @@ class ConnectorsViewSet(GenericViewSet):
         """POST method: create action to save an object by sending a POST request"""
         # setattr(request.data, "_mutable", True)
         data = request.data
-        temp_path = f"{os.path.join(settings.MEDIA_URL,settings.TEMP_CONNECTOR_URL)}{data.get('name')}.csv"
+        temp_path = f"{settings.TEMP_CONNECTOR_URL}{data.get('name')}.csv"
         dest_path = f"{settings.CONNECTOR_FILES_URL}{data.get('name')}.csv"
+        print(temp_path)
+        print(dest_path)
         data.pop("integrated_file")
         if os.path.exists(temp_path):
             shutil.move(temp_path, dest_path)
