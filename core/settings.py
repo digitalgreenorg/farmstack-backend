@@ -67,6 +67,7 @@ INSTALLED_APPS = [
     "datahub",
     "participant",
     "microsite",
+    "connectors"
 ]
 # Use nose to run all tests
 TEST_RUNNER = "django_nose.NoseTestSuiteRunner"
@@ -115,18 +116,13 @@ WSGI_APPLICATION = "core.wsgi.application"
 
 DATABASES = {
     "default": {
-
+ 
         "ENGINE": "django.db.backends.postgresql",
         "NAME": "postgres",
         "USER": os.environ.get("POSTGRES_USER"),
         "PASSWORD": os.environ.get("POSTGRES_PASSWORD"),
         "HOST": "db",
         "PORT": "5432",
-        # "NAME": os.environ.get("DATABASE_NAME"),
-        # "USER": os.environ.get("DATABASE_USER"),
-        # "PASSWORD": os.environ.get("DATABASE_PASSWORD"),
-        # "HOST": os.environ.get("DATABASE_HOST"),
-        # "PORT": os.environ.get("DATABASE_PORT"),
         "OPTIONS": {
             "client_encoding": "UTF8",
         },
@@ -208,7 +204,16 @@ SOLUCTION_ATTACHEMENT_URL = "users/tickets/soluctions/"
 SAMPLE_DATASETS_URL = "users/datasets/sample_data/"
 CONNECTORS_CERTIFICATE_URL = "users/connectors/certificates/"
 TEMP_DATASET_URL = "temp/datasets/"
+TEMP_CONNECTOR_URL = "temp/connectors/"
+
 DATASET_FILES_URL = os.path.join(MEDIA_URL, "datasets/")
+CONNECTOR_FILES_URL =  os.path.join(MEDIA_URL, "connectors/")
+# os.makedirs(CONNECTOR_FILES_URL)
+if not os.path.exists(TEMP_CONNECTOR_URL):
+    os.makedirs(TEMP_CONNECTOR_URL)
+if not os.path.exists(CONNECTOR_FILES_URL):
+    os.makedirs(CONNECTOR_FILES_URL)
+
 
 # Template Files.
 SINGLE_PULL_PROVIDER_TEMPLATE_XML = os.path.join(
