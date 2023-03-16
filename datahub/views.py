@@ -9,6 +9,7 @@ import sys
 from calendar import c
 from functools import reduce
 from pickle import TRUE
+from urllib.parse import unquote
 
 import django
 import pandas as pd
@@ -1890,11 +1891,13 @@ class DatasetV2ViewSetOps(GenericViewSet):
             file_paths = request.data.get("files")
             result = {}
             for file_path in file_paths:
+                path = file_path
+                file_path = unquote(file_path)
                 if file_path.endswith(".xlsx") or file_path.endswith(".xls"):
                     df = pd.read_excel(os.path.join(settings.MEDIA_ROOT, file_path), index_col=None)
                 else:
                     df = pd.read_csv(os.path.join(settings.MEDIA_ROOT, file_path), index_col=None)
-                result[file_path] = df.columns.tolist()
+                result[path] = df.columns.tolist()
                 result[Constants.ID] = DatasetV2File.objects.get(file=file_path).id
 
             return Response(result, status=status.HTTP_200_OK)
