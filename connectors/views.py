@@ -107,8 +107,8 @@ class ConnectorsViewSet(GenericViewSet):
             return Response({f"Minimum 2 datasets should select for integration"}, status=500)
         integrate = maps[0]
         try:
-            left_dataset_file_path = unquote(integrate.get("left_dataset_file_path"))
-            right_dataset_file_path = unquote(integrate.get("right_dataset_file_path"))
+            left_dataset_file_path = unquote(integrate.get("left_dataset_file_path")).replace("/media/", "")
+            right_dataset_file_path = unquote(integrate.get("right_dataset_file_path")).replace("/media/", "")
             condition = integrate.get("condition")
 
             if left_dataset_file_path.endswith(".xlsx") or left_dataset_file_path.endswith(".xls"):
@@ -129,7 +129,7 @@ class ConnectorsViewSet(GenericViewSet):
             )
             for i in range(1, len(maps)):
                 integrate = maps[i]
-                right_dataset_file_path = unquote(integrate.get("right_dataset_file_path"))
+                right_dataset_file_path = unquote(integrate.get("right_dataset_file_path")).replace("/media/", "")
                 condition = integrate.get("condition")
                 if right_dataset_file_path.endswith(".xlsx") or right_dataset_file_path.endswith(".xls"):
                     df2 = pd.read_excel(

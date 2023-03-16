@@ -1892,7 +1892,7 @@ class DatasetV2ViewSetOps(GenericViewSet):
             result = {}
             for file_path in file_paths:
                 path = file_path
-                file_path = unquote(file_path)
+                file_path = unquote(file_path).replace("/media/", "")
                 if file_path.endswith(".xlsx") or file_path.endswith(".xls"):
                     df = pd.read_excel(os.path.join(settings.MEDIA_ROOT, file_path), index_col=None)
                 else:
