@@ -1,3 +1,4 @@
+import pandas as pd
 from django.db.models import Count
 from rest_framework import serializers
 
@@ -90,3 +91,15 @@ class ConnectorsListSerializer(serializers.ModelSerializer):
         left = query.distinct("left_dataset_file_id__dataset__user_map").count()
         right = query.distinct("right_dataset_file_id__dataset__user_map").count()
         return left+right
+
+class ConnectorsRetriveSerializer(serializers.ModelSerializer):
+    maps = ConnectorsMapSerializer(many=True, source='connectorsmap_set')
+    class Meta:
+        model = Connectors
+        fields = Constants.ALL
+
+    data = serializers.SerializerMethodField(method_name="extract_data")
+
+    def extract_data(self, connector):
+          integrated_file = connector.integrated_file.replace("media/", "")
+          return pd.read_excel(integrated_file).to_json(orient='records') if integrated_file else []

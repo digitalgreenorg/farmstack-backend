@@ -16,6 +16,7 @@ from connectors.serializers import (
     ConnectorsListSerializer,
     ConnectorsMapCreateSerializer,
     ConnectorsMapSerializer,
+    ConnectorsRetriveSerializer,
     ConnectorsSerializer,
 )
 from core import settings
@@ -63,7 +64,7 @@ class ConnectorsViewSet(GenericViewSet):
     def retrieve(self, request, pk):
         """GET method: retrieve an object or instance of the Product model"""
         instance = self.get_object()
-        serializer = ConnectorsSerializer(instance=instance)
+        serializer = ConnectorsRetriveSerializer(instance=instance)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
     @transaction.atomic
