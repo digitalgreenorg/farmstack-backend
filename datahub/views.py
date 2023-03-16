@@ -12,6 +12,24 @@ from pickle import TRUE
 
 import django
 import pandas as pd
+from django.conf import settings
+from django.contrib.admin.utils import get_model_from_relation
+from django.core.files.base import ContentFile
+from django.db import transaction
+from django.db.models import DEFERRED, F, Q
+from django.shortcuts import render
+from drf_braces.mixins import MultipleSerializersViewMixin
+from psycopg2 import connect
+from psycopg2.extensions import ISOLATION_LEVEL_AUTOCOMMIT
+from python_http_client import exceptions
+from rest_framework import pagination, status
+from rest_framework.decorators import action
+from rest_framework.parsers import JSONParser, MultiPartParser
+from rest_framework.permissions import AllowAny, IsAuthenticated
+from rest_framework.response import Response
+from rest_framework.viewsets import GenericViewSet, ViewSet
+from uritemplate import partial
+
 from accounts.models import User, UserRole
 from accounts.serializers import (
     UserCreateSerializer,
@@ -27,30 +45,6 @@ from core.utils import (
     date_formater,
     read_contents_from_csv_or_xlsx_file,
 )
-from django.conf import settings
-from django.contrib.admin.utils import get_model_from_relation
-from django.core.files.base import ContentFile
-from django.db import transaction
-from django.db.models import DEFERRED, F, Q
-from django.shortcuts import render
-from drf_braces.mixins import MultipleSerializersViewMixin
-from participant.models import Connectors, SupportTicket
-from participant.serializers import (
-    ParticipantSupportTicketSerializer,
-    TicketSupportSerializer,
-)
-from psycopg2 import connect
-from psycopg2.extensions import ISOLATION_LEVEL_AUTOCOMMIT
-from python_http_client import exceptions
-from rest_framework import pagination, status
-from rest_framework.decorators import action
-from rest_framework.parsers import JSONParser, MultiPartParser
-from rest_framework.permissions import AllowAny, IsAuthenticated
-from rest_framework.response import Response
-from rest_framework.viewsets import GenericViewSet, ViewSet
-from uritemplate import partial
-from utils import custom_exceptions, file_operations, string_functions, validators
-
 from datahub.models import (
     DatahubDocuments,
     Datasets,
@@ -84,6 +78,12 @@ from datahub.serializers import (
     UserOrganizationCreateSerializer,
     UserOrganizationMapSerializer,
 )
+from participant.models import Connectors, SupportTicket
+from participant.serializers import (
+    ParticipantSupportTicketSerializer,
+    TicketSupportSerializer,
+)
+from utils import custom_exceptions, file_operations, string_functions, validators
 
 LOGGER = logging.getLogger(__name__)
 
@@ -1967,20 +1967,20 @@ class StandardisationTemplateView(GenericViewSet):
             for data in request.data:
                 if data.get(Constants.ID, None):
                     # Update
-                    serializer = StandardisationTemplateUpdateSerializer(data=data, partial=True)
+                    id = data.pop(Constants.ID)
+                    instance = StandardisationTemplate.objects.get(id=id)
+                    serializer = StandardisationTemplateUpdateSerializer(instance, data=data, partial=True)
                     serializer.is_valid(raise_exception=True)
-                    update_list.append(StandardisationTemplate(id=data.get(Constants.ID, None), **serializer.data))
+                    update_list.append(StandardisationTemplate(id=id, **data))
                 else:
                     # Create
                     create_list.append(data)
 
             create_serializer = self.get_serializer(data=create_list, many=True)
             create_serializer.is_valid(raise_exception=True)
-
             StandardisationTemplate.objects.bulk_update(
                 update_list, fields=["datapoint_category", "datapoint_attributes"]
             )
-
             create_serializer.save()
             return Response(status=status.HTTP_201_CREATED)
         except Exception as error:
