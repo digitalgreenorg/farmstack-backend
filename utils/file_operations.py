@@ -1,8 +1,13 @@
+import logging
+import os
+import re
+import shutil
+
+import cssutils
+from core.constants import Constants
 from django.core.files.storage import FileSystemStorage
 from django.utils import timezone
-import logging, os, shutil, cssutils, re
 
-from core.constants import Constants
 from .validators import validate_image_type
 
 LOGGER = logging.getLogger(__name__)
@@ -31,6 +36,25 @@ def remove_files(file_key: str, destination: str):
                     fs.delete(destination + file.name)
     except Exception as error:
         LOGGER.error(error, exc_info=True)
+
+def get_csv_or_xls_files_from_directory(directory: str):
+    """
+    Return list of dataset files from temporary location for data standardisation.
+    Args:
+        directory (str): directory path from which list of dataset files will be returned.
+    """
+
+    types = (".csv", ".xls", ".xlsx")
+    extracted_files = []
+    try:
+        for root, _, files in os.walk(top=directory):
+            for file in files:
+                if os.path.splitext(file)[1] in types:
+                    extracted_files.append(root+"/"+file)
+        
+        return extracted_files
+    except Exception as err:
+        LOGGER.error(f"Error while extracting files from given temporary location {directory}", err)
 
 
 def move_directory(source: str, destination: str):

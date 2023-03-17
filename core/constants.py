@@ -139,6 +139,7 @@ class Constants:
     CONNECTORS = "connectors"
     STANDARDISE = "standardise"
     MAPS = "maps"
+    DATASET_NAME = "dataset_name"
     NAME = "name"
     INTEGRATED_FILE = "integrated_file"
     LEFT_DATASET_FILE_PATH = "left_dataset_file_path"
