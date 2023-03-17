@@ -38,18 +38,19 @@ class ConnectorsViewSet(GenericViewSet):
         """POST method: create action to save an object by sending a POST request"""
         # setattr(request.data, "_mutable", True)
         data = request.data
-        temp_path = f"{settings.TEMP_CONNECTOR_URL}{data.get('name')}.csv"
-        dest_path = f"{settings.CONNECTOR_FILES_URL}{data.get('name')}.csv"
-        data.pop("integrated_file")
+        temp_path = f"{settings.TEMP_CONNECTOR_URL}{data.get(Constants.NAME)}.csv"
+        dest_path = f"{settings.CONNECTOR_FILES_URL}{data.get(Constants.NAME)}.csv"
+        data.pop(Constants.INTEGRATED_FILE)
         if os.path.exists(temp_path):
             shutil.move(temp_path, dest_path)
         serializer = ConnectorsCreateSerializer(data=data)
         serializer.is_valid(raise_exception=True)
         serializer.save()
-        Connectors.objects.filter(id=serializer.data.get("id")).update(integrated_file=dest_path)
+        Connectors.objects.filter(id=serializer.data.get(Constants.ID)
+                                  ).update(integrated_file=dest_path)
         connectors_data = serializer.data
-        for maps in request.data.get("maps", []):
-            maps["connectors"] = connectors_data.get("id")
+        for maps in request.data.get(Constants.MAPS, []):
+            maps[Constants.CONNECTORS] = connectors_data.get(Constants.ID)
             serializer = ConnectorsMapCreateSerializer(data=maps)
             serializer.is_valid(raise_exception=True)
             serializer.save()
@@ -73,15 +74,16 @@ class ConnectorsViewSet(GenericViewSet):
         """PUT method: update or send a PUT request on an object of the Product model"""
         instance = self.get_object()
         data = request.data
-        temp_path = f"{settings.TEMP_CONNECTOR_URL}{data.get('name')}.csv"
-        dest_path = f"{settings.CONNECTOR_FILES_URL}{data.get('name')}.csv"
-        data.pop("integrated_file")
+        temp_path = f"{settings.TEMP_CONNECTOR_URL}{data.get(Constants.NAME)}.csv"
+        dest_path = f"{settings.CONNECTOR_FILES_URL}{data.get(Constants.NAME)}.csv"
+        data.pop(Constants.INTEGRATED_FILE)
         if os.path.exists(temp_path):
             shutil.move(temp_path, dest_path)
         connector_serializer = ConnectorsCreateSerializer(instance, data=request.data, partial=True)
         connector_serializer.is_valid(raise_exception=True)
         connector_serializer.save()
-        Connectors.objects.filter(id=connector_serializer.data.get("id")).update(integrated_file=dest_path)
+        Connectors.objects.filter(id=connector_serializer.data.get(Constants.ID)
+                                  ).update(integrated_file=dest_path)
         for maps in request.data.get(Constants.MAPS, []):
             maps[Constants.CONNECTORS] = pk
             if maps.get(Constants.ID):
@@ -107,55 +109,68 @@ class ConnectorsViewSet(GenericViewSet):
     @action(detail=False, methods=["post"])
     def integration(self, request, *args, **kwargs):
         data = request.data
-        maps = request.data.get("maps")
+        maps = request.data.get(Constants.MAPS)
+        serializer = ConnectorsCreateSerializer(data=data)
+        serializer.is_valid(raise_exception=True)
         if not maps:
             return Response({f"Minimum 2 datasets should select for integration"}, status=500)
         integrate = maps[0]
         try:
-            left_dataset_file_path = unquote(integrate.get("left_dataset_file_path")).replace("/media/", "")
-            right_dataset_file_path = unquote(integrate.get("right_dataset_file_path")).replace("/media/", "")
-            condition = integrate.get("condition")
+            left_dataset_file_path = unquote(integrate.get(Constants.LEFT_DATASET_FILE_PATH)
+                                             ).replace(Constants.SLASH_MEDIA_SLASH, "")
+            right_dataset_file_path = unquote(integrate.get(Constants.RIGHT_DATASET_FILE_PATH)
+                                              ).replace(Constants.SLASH_MEDIA_SLASH, "")
+            condition = integrate.get(Constants.CONDITION)
 
             if left_dataset_file_path.endswith(".xlsx") or left_dataset_file_path.endswith(".xls"):
-                df1 = pd.read_excel(os.path.join(settings.MEDIA_ROOT, left_dataset_file_path), usecols=condition.get("left_selected"))
+                left_dataset = pd.read_excel(os.path.join(settings.MEDIA_ROOT, left_dataset_file_path),
+                                     usecols=condition.get(Constants.LEFT_SELECTED))
             else:
-                df1 = pd.read_csv(os.path.join(settings.MEDIA_ROOT, left_dataset_file_path), usecols=condition.get("left_selected"))
+                left_dataset = pd.read_csv(os.path.join(settings.MEDIA_ROOT, left_dataset_file_path),
+                                   usecols=condition.get(Constants.LEFT_SELECTED))
             if right_dataset_file_path.endswith(".xlsx") or right_dataset_file_path.endswith(".xls"):
-                df2 = pd.read_excel(os.path.join(settings.MEDIA_ROOT, right_dataset_file_path), usecols=condition.get("right_selected"))
+                right_dataset = pd.read_excel(os.path.join(settings.MEDIA_ROOT, right_dataset_file_path),
+                                     usecols=condition.get(Constants.RIGHT_SELECTED))
             else:
-                df2 = pd.read_csv(os.path.join(settings.MEDIA_ROOT, right_dataset_file_path), usecols=condition.get("right_selected"))
+                right_dataset = pd.read_csv(os.path.join(settings.MEDIA_ROOT, right_dataset_file_path),
+                                   usecols=condition.get(Constants.RIGHT_SELECTED))
             # Join the dataframes
             result = pd.merge(
-                df1,
-                df2,
-                how=condition.get("how", "left"),
-                left_on=condition.get("left_on"),
-                right_on=condition.get("right_on"),
+                left_dataset,
+                right_dataset,
+                how=condition.get(Constants.HOW, Constants.LEFT),
+                left_on=condition.get(Constants.LEFT_ON),
+                right_on=condition.get(Constants.RIGHT_ON),
             )
             for i in range(1, len(maps)):
                 integrate = maps[i]
-                right_dataset_file_path = unquote(integrate.get("right_dataset_file_path")).replace("/media/", "")
-                condition = integrate.get("condition")
+                right_dataset_file_path = unquote(integrate.get(Constants.RIGHT_DATASET_FILE_PATH)
+                                                  ).replace(Constants.SLASH_MEDIA_SLASH, "")
+                condition = integrate.get(Constants.CONDITION)
                 if right_dataset_file_path.endswith(".xlsx") or right_dataset_file_path.endswith(".xls"):
-                    df2 = pd.read_excel(
-                        os.path.join(settings.MEDIA_ROOT, right_dataset_file_path), usecols=condition.get("right_selected")
+                    right_dataset = pd.read_excel(
+                        os.path.join(settings.MEDIA_ROOT, right_dataset_file_path),
+                          usecols=condition.get(Constants.RIGHT_SELECTED)
                     )
                 else:
-                    df2 = pd.read_csv(
-                        os.path.join(settings.MEDIA_ROOT, right_dataset_file_path), usecols=condition.get("right_selected")
+                    right_dataset = pd.read_csv(
+                        os.path.join(settings.MEDIA_ROOT, right_dataset_file_path),
+                          usecols=condition.get(Constants.RIGHT_SELECTED)
                     )
                 # Join the dataframes
                 result = pd.merge(
                     result,
-                    df2,
-                    how=condition.get("how", "left"),
-                    left_on=condition.get("left_on"),
-                    right_on=condition.get("right_on"),
+                    right_dataset,
+                    how=condition.get(Constants.HOW, Constants.LEFT),
+                    left_on=condition.get(Constants.LEFT_ON),
+                    right_on=condition.get(Constants.RIGHT_ON),
                 )
-            name = data.get("name", "connectors")
+            name = data.get(Constants.NAME, Constants.CONNECTORS)
             file_path = f"{settings.TEMP_CONNECTOR_URL}{name}.csv"
             result.to_csv(file_path)
-            return Response({"integrated_file": file_path, "data":result.to_json(orient="records")}, status=status.HTTP_200_OK)
+            return Response({Constants.INTEGRATED_FILE: file_path,
+                              Constants.DATA:result.to_json(orient=Constants.RECORDS)},
+                                status=status.HTTP_200_OK)
         except Exception as e:
             logging.error(str(e), exc_info=True)
             return Response({f"error while integration {integrate} ": str(e)}, status=500)
