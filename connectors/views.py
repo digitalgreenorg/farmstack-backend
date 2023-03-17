@@ -40,8 +40,6 @@ class ConnectorsViewSet(GenericViewSet):
         data = request.data
         temp_path = f"{settings.TEMP_CONNECTOR_URL}{data.get('name')}.csv"
         dest_path = f"{settings.CONNECTOR_FILES_URL}{data.get('name')}.csv"
-        print(temp_path)
-        print(dest_path)
         data.pop("integrated_file")
         if os.path.exists(temp_path):
             shutil.move(temp_path, dest_path)
@@ -74,9 +72,16 @@ class ConnectorsViewSet(GenericViewSet):
     def update(self, request, pk):
         """PUT method: update or send a PUT request on an object of the Product model"""
         instance = self.get_object()
+        data = request.data
+        temp_path = f"{settings.TEMP_CONNECTOR_URL}{data.get('name')}.csv"
+        dest_path = f"{settings.CONNECTOR_FILES_URL}{data.get('name')}.csv"
+        data.pop("integrated_file")
+        if os.path.exists(temp_path):
+            shutil.move(temp_path, dest_path)
         connector_serializer = ConnectorsCreateSerializer(instance, data=request.data, partial=True)
         connector_serializer.is_valid(raise_exception=True)
         connector_serializer.save()
+        Connectors.objects.filter(id=connector_serializer.data.get("id")).update(integrated_file=dest_path)
         for maps in request.data.get(Constants.MAPS, []):
             maps[Constants.CONNECTORS] = pk
             if maps.get(Constants.ID):
