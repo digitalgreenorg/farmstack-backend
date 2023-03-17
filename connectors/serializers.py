@@ -1,8 +1,12 @@
+import os
+
+import pandas as pd
 from django.db.models import Count
 from rest_framework import serializers
 
 from accounts.models import User
 from connectors.models import Connectors, ConnectorsMap
+from core import settings
 from core.constants import Constants
 from datahub.models import DatasetV2, DatasetV2File, Organization, UserOrganizationMap
 from datahub.serializers import DatasetV2FileSerializer
@@ -90,3 +94,19 @@ class ConnectorsListSerializer(serializers.ModelSerializer):
         left = query.distinct("left_dataset_file_id__dataset__user_map").count()
         right = query.distinct("right_dataset_file_id__dataset__user_map").count()
         return left+right
+
+class ConnectorsRetriveSerializer(serializers.ModelSerializer):
+    maps = ConnectorsMapSerializer(many=True, source='connectorsmap_set')
+    class Meta:
+        model = Connectors
+        fields = Constants.ALL
+
+    data = serializers.SerializerMethodField(method_name="extract_data")
+
+    def extract_data(self, connector):
+        print(connector.integrated_file)
+        integrated_file = str(connector.integrated_file).replace("media/", "").replace("%20", " ")
+        print(integrated_file)
+        df = pd.read_csv(os.path.join(settings.MEDIA_ROOT, integrated_file), 
+            ) if integrated_file else pd.DataFrame([])
+        return df.to_json(orient="records")
