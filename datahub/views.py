@@ -13,24 +13,6 @@ from urllib.parse import unquote
 
 import django
 import pandas as pd
-from django.conf import settings
-from django.contrib.admin.utils import get_model_from_relation
-from django.core.files.base import ContentFile
-from django.db import transaction
-from django.db.models import DEFERRED, F, Q
-from django.shortcuts import render
-from drf_braces.mixins import MultipleSerializersViewMixin
-from psycopg2 import connect
-from psycopg2.extensions import ISOLATION_LEVEL_AUTOCOMMIT
-from python_http_client import exceptions
-from rest_framework import pagination, status
-from rest_framework.decorators import action
-from rest_framework.parsers import JSONParser, MultiPartParser
-from rest_framework.permissions import AllowAny, IsAuthenticated
-from rest_framework.response import Response
-from rest_framework.viewsets import GenericViewSet, ViewSet
-from uritemplate import partial
-
 from accounts.models import User, UserRole
 from accounts.serializers import (
     UserCreateSerializer,
@@ -46,6 +28,30 @@ from core.utils import (
     date_formater,
     read_contents_from_csv_or_xlsx_file,
 )
+from django.conf import settings
+from django.contrib.admin.utils import get_model_from_relation
+from django.core.files.base import ContentFile
+from django.db import transaction
+from django.db.models import DEFERRED, F, Q
+from django.shortcuts import render
+from drf_braces.mixins import MultipleSerializersViewMixin
+from participant.models import Connectors, SupportTicket
+from participant.serializers import (
+    ParticipantSupportTicketSerializer,
+    TicketSupportSerializer,
+)
+from psycopg2 import connect
+from psycopg2.extensions import ISOLATION_LEVEL_AUTOCOMMIT
+from python_http_client import exceptions
+from rest_framework import pagination, status
+from rest_framework.decorators import action
+from rest_framework.parsers import JSONParser, MultiPartParser
+from rest_framework.permissions import AllowAny, IsAuthenticated
+from rest_framework.response import Response
+from rest_framework.viewsets import GenericViewSet, ViewSet
+from uritemplate import partial
+from utils import custom_exceptions, file_operations, string_functions, validators
+
 from datahub.models import (
     DatahubDocuments,
     Datasets,
@@ -79,12 +85,6 @@ from datahub.serializers import (
     UserOrganizationCreateSerializer,
     UserOrganizationMapSerializer,
 )
-from participant.models import Connectors, SupportTicket
-from participant.serializers import (
-    ParticipantSupportTicketSerializer,
-    TicketSupportSerializer,
-)
-from utils import custom_exceptions, file_operations, string_functions, validators
 
 LOGGER = logging.getLogger(__name__)
 
@@ -1415,6 +1415,7 @@ class DatasetV2ViewSet(GenericViewSet):
 
     serializer_class = DatasetV2Serializer
     queryset = DatasetV2.objects.all()
+    permission_classes = []
     pagination_class = CustomPagination
 
     @action(detail=False, methods=["post"])
@@ -1532,6 +1533,63 @@ class DatasetV2ViewSet(GenericViewSet):
         except Exception as error:
             LOGGER.error(error, exc_info=True)
         return Response(status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    @action(detail=False, methods= ["get"])
+    def temp_dataset_files(self, request, *args, **kwargs):
+        """
+        Get list of dataset files from temporary location.
+        """
+        try:
+            files_list = file_operations.get_csv_or_xls_files_from_directory(settings.TEMP_DATASET_URL + request.query_params.get(Constants.DATASET_NAME))
+            return Response(files_list, status=status.HTTP_200_OK)
+        except Exception as error:
+            return Response(f"No such dataset created {error}", status=status.HTTP_400_BAD_REQUEST)
+
+    @action(detail=False, methods=["post"])
+    def temp_dataset_file_columns(self, request, *args, **kwargs):
+        """
+        To retrieve the list of columns of a dataset file from temporary location
+        """
+        try:
+            # 1. Read the file.
+            file_path = request.data.get('file_path')
+            if file_path.endswith(".xlsx") or file_path.endswith(".xls"):
+                df = pd.read_excel(os.path.join(settings.BASE_DIR, file_path), index_col=None)
+            else:
+                df = pd.read_csv(os.path.join(settings.BASE_DIR, file_path), index_col=None)
+            result=df.columns.tolist()
+            return Response(result, status=status.HTTP_200_OK)
+        except Exception as error:
+            LOGGER.error(f"Cannot get the columns of the selected file: {error}")
+            return Response(f"Cannot get the columns of the selected file: {error}", status=status.HTTP_400_BAD_REQUEST)
+
+    @action(detail=False, methods=["post"])
+    def standardise(self,request, *args, **kwargs):
+        """
+        Method to standardise a dataset and generate a file along with it.
+        """
+        
+        # 1. Take the standardisation configuration variables.
+        try:
+            standardisation_configuration = request.data.get('standardisation_configuration', '')
+            dataset_name = request.data.get('dataset_name')
+            # dataset_file = request.data.get('file')
+            file_path = request.data.get('file_path')
+            if file_path.endswith(".xlsx") or file_path.endswith(".xls"):
+                df = pd.read_excel(os.path.join(settings.BASE_DIR, file_path), index_col=None)
+            else:
+                df = pd.read_csv(os.path.join(settings.BASE_DIR, file_path), index_col=None)
+
+            df.rename(columns=standardisation_configuration, inplace=True)
+            df.to_csv(os.path.join(settings.BASE_DIR, file_path)+"_standardised.csv")
+            return Response(df.to_json(orient='records'), status=status.HTTP_200_OK)
+
+
+        except Exception as error:
+            LOGGER.error(f"Could not standardise {error}")
+            return Response(error, status=status.HTTP_400_BAD_REQUEST)
+
+
 
     @action(detail=False, methods=["get", "post"])
     def category(self, request, *args, **kwargs):

@@ -139,3 +139,4 @@ class Constants:
     CONNECTORS = "connectors"
     STANDARDISE = "standardise"
     MAPS = "maps"
+    DATASET_NAME = "dataset_name"
