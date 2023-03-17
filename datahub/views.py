@@ -1572,7 +1572,7 @@ class DatasetV2ViewSet(GenericViewSet):
         # 1. Take the standardisation configuration variables.
         try:
             standardisation_configuration = request.data.get('standardisation_configuration', '')
-            dataset_name = request.data.get('dataset_name')
+            # dataset_name = request.data.get('dataset_name')
             # dataset_file = request.data.get('file')
             file_path = request.data.get('file_path')
             if file_path.endswith(".xlsx") or file_path.endswith(".xls"):
@@ -1582,7 +1582,7 @@ class DatasetV2ViewSet(GenericViewSet):
 
             df.rename(columns=standardisation_configuration, inplace=True)
             df.to_csv(os.path.join(settings.BASE_DIR, file_path)+"_standardised.csv")
-            return Response(df.to_json(orient='records'), status=status.HTTP_200_OK)
+            return Response(status=status.HTTP_200_OK)
 
 
         except Exception as error:
