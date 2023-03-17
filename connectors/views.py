@@ -110,8 +110,9 @@ class ConnectorsViewSet(GenericViewSet):
     def integration(self, request, *args, **kwargs):
         data = request.data
         maps = request.data.get(Constants.MAPS)
-        serializer = ConnectorsCreateSerializer(data=data)
-        serializer.is_valid(raise_exception=True)
+        if not request.GET.get(Constants.EDIT, False):
+            serializer = ConnectorsCreateSerializer(data=data)
+            serializer.is_valid(raise_exception=True)
         if not maps:
             return Response({f"Minimum 2 datasets should select for integration"}, status=500)
         integrate = maps[0]
