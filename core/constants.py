@@ -153,3 +153,4 @@ class Constants:
     HOW = "how"
     DATA = "data"
     LEFT = "left"
+    EDIT = "edit"
