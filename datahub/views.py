@@ -1582,8 +1582,10 @@ class DatasetV2ViewSet(GenericViewSet):
 
             df.rename(columns=standardisation_configuration, inplace=True)
             df.to_csv(os.path.join(settings.BASE_DIR, file_path)+"_standardised.csv")
-            return Response(status=status.HTTP_200_OK)
 
+            # 1. Save the standardised file to some other location.
+            # 2.       
+            return Response(status=status.HTTP_200_OK)
 
         except Exception as error:
             LOGGER.error(f"Could not standardise {error}")
