@@ -104,9 +104,7 @@ class ConnectorsRetriveSerializer(serializers.ModelSerializer):
     data = serializers.SerializerMethodField(method_name="extract_data")
 
     def extract_data(self, connector):
-        print(connector.integrated_file)
         integrated_file = str(connector.integrated_file).replace("media/", "").replace("%20", " ")
-        print(integrated_file)
         df = pd.read_csv(os.path.join(settings.MEDIA_ROOT, integrated_file), 
             ) if integrated_file else pd.DataFrame([])
         return df.to_json(orient="records")
