@@ -13,6 +13,25 @@ from urllib.parse import unquote
 
 import django
 import pandas as pd
+from django.conf import settings
+from django.contrib.admin.utils import get_model_from_relation
+from django.core.files.base import ContentFile
+from django.db import transaction
+from django.db.models import DEFERRED, F, Q
+from django.http import JsonResponse
+from django.shortcuts import render
+from drf_braces.mixins import MultipleSerializersViewMixin
+from psycopg2 import connect
+from psycopg2.extensions import ISOLATION_LEVEL_AUTOCOMMIT
+from python_http_client import exceptions
+from rest_framework import pagination, status
+from rest_framework.decorators import action
+from rest_framework.parsers import JSONParser, MultiPartParser
+from rest_framework.permissions import AllowAny, IsAuthenticated
+from rest_framework.response import Response
+from rest_framework.viewsets import GenericViewSet, ViewSet
+from uritemplate import partial
+
 from accounts.models import User, UserRole
 from accounts.serializers import (
     UserCreateSerializer,
@@ -28,31 +47,6 @@ from core.utils import (
     date_formater,
     read_contents_from_csv_or_xlsx_file,
 )
-from django.conf import settings
-from django.contrib.admin.utils import get_model_from_relation
-from django.core.files.base import ContentFile
-from django.db import transaction
-from django.db.models import DEFERRED, F, Q
-from django.http import JsonResponse
-from django.shortcuts import render
-from drf_braces.mixins import MultipleSerializersViewMixin
-from participant.models import Connectors, SupportTicket
-from participant.serializers import (
-    ParticipantSupportTicketSerializer,
-    TicketSupportSerializer,
-)
-from psycopg2 import connect
-from psycopg2.extensions import ISOLATION_LEVEL_AUTOCOMMIT
-from python_http_client import exceptions
-from rest_framework import pagination, status
-from rest_framework.decorators import action
-from rest_framework.parsers import JSONParser, MultiPartParser
-from rest_framework.permissions import AllowAny, IsAuthenticated
-from rest_framework.response import Response
-from rest_framework.viewsets import GenericViewSet, ViewSet
-from uritemplate import partial
-from utils import custom_exceptions, file_operations, string_functions, validators
-
 from datahub.models import (
     DatahubDocuments,
     Datasets,
@@ -86,6 +80,12 @@ from datahub.serializers import (
     UserOrganizationCreateSerializer,
     UserOrganizationMapSerializer,
 )
+from participant.models import Connectors, SupportTicket
+from participant.serializers import (
+    ParticipantSupportTicketSerializer,
+    TicketSupportSerializer,
+)
+from utils import custom_exceptions, file_operations, string_functions, validators
 
 LOGGER = logging.getLogger(__name__)
 
@@ -756,7 +756,8 @@ class DatahubThemeView(GenericViewSet):
 
             elif banner and not button_color:
                 file_name = file_operations.file_rename(str(banner), "banner")
-                file_operations.remove_files(file_name, settings.THEME_ROOT)
+                shutil.rmtree(settings.THEME_ROOT)
+                os.mkdir(settings.THEME_ROOT)
                 file_operations.file_save(banner, file_name, settings.THEME_ROOT)
                 data = {"banner": file_name, "button_color": "null"}
 
