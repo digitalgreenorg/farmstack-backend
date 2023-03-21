@@ -2,6 +2,7 @@ import uuid
 
 from django.db import models
 
+from accounts.models import User
 from core import settings
 from core.base_models import TimeStampMixin
 from datahub.models import DatasetV2File
@@ -22,6 +23,7 @@ class Connectors(TimeStampMixin):
     Stores a single connectors entry.
     """
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    user = models.ForeignKey(User, on_delete=models.PROTECT)
     name = models.CharField(max_length=100, unique=True)
     description = models.TextField(max_length=512)
     integrated_file = models.FileField(max_length=255, upload_to=settings.CONNECTOR_FILES_URL, null=True, blank=True)
