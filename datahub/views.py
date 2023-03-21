@@ -404,7 +404,7 @@ class ParticipantViewSet(GenericViewSet):
         else:
             roles = (
                 UserOrganizationMap.objects.select_related(Constants.USER, Constants.ORGANIZATION)
-                .filter(user__status=True, user__role=3)
+                .filter(user__status=True, user__role=3, user__on_boarded_by=None)
                 .all()
             )
         page = self.paginate_queryset(roles)
