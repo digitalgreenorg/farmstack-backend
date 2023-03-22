@@ -33,6 +33,7 @@ from django.contrib.admin.utils import get_model_from_relation
 from django.core.files.base import ContentFile
 from django.db import transaction
 from django.db.models import DEFERRED, F, Q
+from django.http import JsonResponse
 from django.shortcuts import render
 from drf_braces.mixins import MultipleSerializersViewMixin
 from participant.models import Connectors, SupportTicket
@@ -157,6 +158,7 @@ class OrganizationViewSet(GenericViewSet):
 
     serializer_class = OrganizationSerializer
     queryset = Organization.objects.all()
+    permission_classes = []
     pagination_class = CustomPagination
     parser_class = MultiPartParser
 
@@ -1568,30 +1570,37 @@ class DatasetV2ViewSet(GenericViewSet):
         """
         Method to standardise a dataset and generate a file along with it.
         """
-        
+   
         # 1. Take the standardisation configuration variables.
         try:
-            standardisation_configuration = request.data.get('standardisation_configuration', '')
-            # dataset_name = request.data.get('dataset_name')
-            # dataset_file = request.data.get('file')
+            standardisation_configuration = request.data.get('standardisation_configuration')
+            mask_columns = request.data.get('mask_columns')
             file_path = request.data.get('file_path')
             if file_path.endswith(".xlsx") or file_path.endswith(".xls"):
                 df = pd.read_excel(os.path.join(settings.BASE_DIR, file_path), index_col=None)
             else:
                 df = pd.read_csv(os.path.join(settings.BASE_DIR, file_path), index_col=None)
-
+            # print(df[mask_columns])
+            # import pdb; pdb.set_trace()
+            df["status"] = True
+            df.loc[df["status"] == True, mask_columns] = "######"
+            # df[mask_columns] = df[mask_columns].mask(True)
+            del df["status"]
+            # print()
             df.rename(columns=standardisation_configuration, inplace=True)
-            df.to_csv(os.path.join(settings.BASE_DIR, file_path)+"_standardised.csv")
 
-            # 1. Save the standardised file to some other location.
-            # 2.       
-            return Response(status=status.HTTP_200_OK)
+            file_dir = file_path.split('/')
+            standardised_dir_path = '/'.join(file_dir[-3:-1])
+            file_name = file_dir[-1]
+            if not os.path.exists(os.path.join(settings.TEMP_STANDARDISED_DIR, standardised_dir_path)):
+                os.makedirs(os.path.join(settings.TEMP_STANDARDISED_DIR, standardised_dir_path))
+            print(df)
+            df.to_csv(os.path.join(settings.TEMP_STANDARDISED_DIR, standardised_dir_path, file_name))
+            return Response({"standardised_file_path": f"{standardised_dir_path}/{file_name}"}, status=status.HTTP_200_OK)
 
         except Exception as error:
             LOGGER.error(f"Could not standardise {error}")
             return Response(error, status=status.HTTP_400_BAD_REQUEST)
-
-
 
     @action(detail=False, methods=["get", "post"])
     def category(self, request, *args, **kwargs):
@@ -1631,7 +1640,10 @@ class DatasetV2ViewSet(GenericViewSet):
         **Endpoint**
         [ref]: /datahub/dataset/v2/
         """
-        serializer = self.get_serializer(data=request.data)
+        serializer = self.get_serializer(data=request.data, context={
+            "standardisation_template": request.data.get("standardisation_template"),
+            "standardisation_config":  request.data.get("standardisation_config")
+        })
         serializer.is_valid(raise_exception=True)
         serializer.save()
         return Response(serializer.data, status=status.HTTP_201_CREATED)
@@ -1703,12 +1715,13 @@ class DatasetV2ViewSet(GenericViewSet):
         dataset_file_obj = DatasetV2File.objects.filter(dataset_id=obj.id)
         data = []
         for file in dataset_file_obj:
-            path_ = os.path.join("/media/", str(file.file))
+            path_ = os.path.join("/media/", str(file.standardised_file))
             file_path = {}
             file_path["id"] = file.id
             file_path["content"] = read_contents_from_csv_or_xlsx_file(path_)
             file_path["file"] = path_
             file_path["source"] = file.source
+            file_path["standardisation_config"] = file.standardised_configuration
             data.append(file_path)
 
         serializer["datasets"] = data
