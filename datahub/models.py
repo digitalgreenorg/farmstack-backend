@@ -167,7 +167,8 @@ class DatasetV2File(TimeStampMixin):
     dataset = models.ForeignKey(DatasetV2, on_delete=models.PROTECT, related_name="datasets")
     file = models.FileField(max_length=255, upload_to=dataset_directory_path, null=True, blank=True)
     source = models.CharField(max_length=50, choices=SOURCES)
-
+    standardised_file = models.FileField(max_length=255, upload_to=dataset_directory_path, null=True, blank=True )
+    standardised_configuration = models.JSONField(default = dict)
 
 @auto_str
 class StandardisationTemplate(TimeStampMixin):
