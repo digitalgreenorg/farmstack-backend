@@ -841,7 +841,7 @@ class DatahubThemeView(GenericViewSet):
                 os.mkdir(settings.THEME_ROOT)
                 os.makedirs(settings.CSS_ROOT)
                 file_name = file_operations.file_rename(str(banner), "banner")
-                file_operations.remove_files(file_name, settings.THEME_ROOT)
+                # file_operations.remove_files(file_name, settings.THEME_ROOT)
                 file_operations.file_save(banner, file_name, settings.THEME_ROOT)
                 data = {"banner": file_name, "button_color": "null"}
 
@@ -860,7 +860,7 @@ class DatahubThemeView(GenericViewSet):
                 os.mkdir(settings.THEME_ROOT)
                 os.makedirs(settings.CSS_ROOT)
                 file_name = file_operations.file_rename(str(banner), "banner")
-                file_operations.remove_files(file_name, settings.THEME_ROOT)
+                # file_operations.remove_files(file_name, settings.THEME_ROOT)
                 file_operations.file_save(banner, file_name, settings.THEME_ROOT)
 
                 css = ".btn { background-color: " + button_color + "; }"
