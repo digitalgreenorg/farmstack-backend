@@ -1585,12 +1585,14 @@ class DatasetV2ViewSet(GenericViewSet):
             standardisation_configuration = request.data.get('standardisation_configuration')
             mask_columns = request.data.get('mask_columns')
             file_path = request.data.get('file_path')
+            # is_standardised = request.data.get('id', None)
+
             if file_path.endswith(".xlsx") or file_path.endswith(".xls"):
                 df = pd.read_excel(os.path.join(settings.BASE_DIR, file_path), index_col=None)
             else:
                 df = pd.read_csv(os.path.join(settings.BASE_DIR, file_path), index_col=None)
-            # print(df[mask_columns])
-            # import pdb; pdb.set_trace()
+        # print(df[mask_columns])
+            
             df["status"] = True
             df.loc[df["status"] == True, mask_columns] = "######"
             # df[mask_columns] = df[mask_columns].mask(True)
