@@ -169,8 +169,12 @@ class ConnectorsViewSet(GenericViewSet):
             name = data.get(Constants.NAME, Constants.CONNECTORS)
             file_path = f"{settings.TEMP_CONNECTOR_URL}{name}.csv"
             result.to_csv(file_path)
+            result_length = len(result)
+            if result_length > 20:
+                result = result.iloc[:20]
             return Response({Constants.INTEGRATED_FILE: file_path,
-                              Constants.DATA:result.to_json(orient=Constants.RECORDS)},
+                              Constants.DATA:result.to_json(orient=Constants.RECORDS),
+                              "no_of_records": result_length},
                                 status=status.HTTP_200_OK)
         except Exception as e:
             logging.error(str(e), exc_info=True)
