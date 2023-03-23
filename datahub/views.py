@@ -750,14 +750,13 @@ class DatahubThemeView(GenericViewSet):
             banner = None if banner == "null" else banner
             button_color = request.data.get("button_color", "null")
             button_color = None if button_color == "null" else button_color
-
             if not banner and not button_color:
                 data = {"banner": "null", "button_color": "null"}
-
             elif banner and not button_color:
                 file_name = file_operations.file_rename(str(banner), "banner")
                 shutil.rmtree(settings.THEME_ROOT)
                 os.mkdir(settings.THEME_ROOT)
+                os.makedirs(settings.CSS_ROOT)
                 file_operations.file_save(banner, file_name, settings.THEME_ROOT)
                 data = {"banner": file_name, "button_color": "null"}
 
@@ -772,6 +771,9 @@ class DatahubThemeView(GenericViewSet):
                 data = {"banner": "null", "button_color": settings.CSS_FILE_NAME}
 
             elif banner and button_color:
+                shutil.rmtree(settings.THEME_ROOT)
+                os.mkdir(settings.THEME_ROOT)
+                os.makedirs(settings.CSS_ROOT)
                 file_name = file_operations.file_rename(str(banner), "banner")
                 file_operations.remove_files(file_name, settings.THEME_ROOT)
                 file_operations.file_save(banner, file_name, settings.THEME_ROOT)
@@ -835,6 +837,9 @@ class DatahubThemeView(GenericViewSet):
                 data = {"banner": "null", "button_color": "null"}
 
             elif banner and button_color is None:
+                shutil.rmtree(settings.THEME_ROOT)
+                os.mkdir(settings.THEME_ROOT)
+                os.makedirs(settings.CSS_ROOT)
                 file_name = file_operations.file_rename(str(banner), "banner")
                 file_operations.remove_files(file_name, settings.THEME_ROOT)
                 file_operations.file_save(banner, file_name, settings.THEME_ROOT)
@@ -851,6 +856,9 @@ class DatahubThemeView(GenericViewSet):
                 data = {"banner": "null", "button_color": settings.CSS_FILE_NAME}
 
             elif banner and button_color:
+                shutil.rmtree(settings.THEME_ROOT)
+                os.mkdir(settings.THEME_ROOT)
+                os.makedirs(settings.CSS_ROOT)
                 file_name = file_operations.file_rename(str(banner), "banner")
                 file_operations.remove_files(file_name, settings.THEME_ROOT)
                 file_operations.file_save(banner, file_name, settings.THEME_ROOT)
