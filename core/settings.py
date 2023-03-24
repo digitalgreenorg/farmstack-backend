@@ -204,11 +204,10 @@ SOLUCTION_ATTACHEMENT_URL = "users/tickets/soluctions/"
 SAMPLE_DATASETS_URL = "users/datasets/sample_data/"
 CONNECTORS_CERTIFICATE_URL = "users/connectors/certificates/"
 TEMP_DATASET_URL = "temp/datasets/"
-TEMP_CONNECTOR = "temp/"
 TEMP_STANDARDISED_DIR = "temp/standardised/"
 
 DATASET_FILES_URL = os.path.join(MEDIA_URL, "datasets/")
-TEMP_CONNECTOR_URL = os.path.join(TEMP_CONNECTOR, "connectors/")
+TEMP_CONNECTOR_URL = os.path.join(MEDIA_URL, "temp/connectors/")
 CONNECTOR_FILES_URL =  os.path.join(MEDIA_URL, "connectors/")
 STANDARDISED_FILES_URL = os.path.join(MEDIA_URL,"standardised/")
 # os.makedirs(CONNECTOR_FILES_URL)
