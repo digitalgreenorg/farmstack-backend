@@ -629,7 +629,7 @@ class DatasetV2Serializer(serializers.ModelSerializer):
         try:
             # create_directory()
             directory_created = move_directory(
-                os.path.join(settings.TEMP_DATASET_URL, validated_data.get("name")), settings.DATASET_FILES_URL
+                os.path.join(settings.BASE_DIR, settings.TEMP_DATASET_URL, validated_data.get("name")), settings.DATASET_FILES_URL
             )
             to_find = [
                 Constants.SOURCE_FILE_TYPE,
@@ -637,8 +637,11 @@ class DatasetV2Serializer(serializers.ModelSerializer):
                 Constants.SOURCE_POSTGRESQL_FILE_TYPE,
             ]
 
+            # import pdb
+            # pdb.set_trace()
+
             standardised_directory_created = move_directory(
-                os.path.join(settings.TEMP_STANDARDISED_DIR, validated_data.get("name")), settings.STANDARDISED_FILES_URL
+                os.path.join(settings.BASE_DIR,settings.TEMP_STANDARDISED_DIR, validated_data.get("name")), settings.STANDARDISED_FILES_URL
             )
 
             # TEMP_DATAFILE_URL --> STANDARDISED_DATAFILE_URL
@@ -719,8 +722,8 @@ class DatasetV2Serializer(serializers.ModelSerializer):
         standardisation_template = json.loads(self.context.get("standardisation_template"))
         standardisation_config = json.loads(self.context.get('standardisation_config', {}))
 
-        import pdb
-        pdb.set_trace()
+        # import pdb
+        # pdb.set_trace()
 
         if standardised_file_paths:
             for file_path in standardised_file_paths:
