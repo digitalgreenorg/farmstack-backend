@@ -1582,15 +1582,15 @@ class DatasetV2ViewSet(GenericViewSet):
                 file_path = file_path.replace("/standardised", "/datasets")
                 if file_path.endswith(".xlsx") or file_path.endswith(".xls"):
                     
-                    df = pd.read_excel(str(settings.BASE_DIR)+file_path, index_col=None)
+                    df = pd.read_excel(str(settings.BASE_DIR)+"/"+file_path, index_col=None)
                 else:
-                    df = pd.read_csv(str(settings.BASE_DIR)+file_path, index_col=None)
+                    df = pd.read_csv(str(settings.BASE_DIR)+"/"+file_path, index_col=None)
             
             else:
                 if file_path.endswith(".xlsx") or file_path.endswith(".xls"):
-                    df = pd.read_excel(str(settings.BASE_DIR)+file_path, index_col=None)
+                    df = pd.read_excel(str(settings.BASE_DIR)+"/"+file_path, index_col=None)
                 else:
-                    df = pd.read_csv(str(settings.BASE_DIR)+file_path, index_col=None)
+                    df = pd.read_csv(str(settings.BASE_DIR)+"/"+file_path, index_col=None)
         
             df["status"] = True
             df.loc[df["status"] == True, mask_columns] = "######"
