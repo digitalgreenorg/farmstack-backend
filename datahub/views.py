@@ -1555,8 +1555,6 @@ class DatasetV2ViewSet(GenericViewSet):
         try:
             # 1. Read the file.
             file_path = request.data.get('file_path')
-            if file_path.startswith("/"):
-                file_path = file_path[1:]
             if file_path.endswith(".xlsx") or file_path.endswith(".xls"):
                 df = pd.read_excel(os.path.join(settings.BASE_DIR, file_path), index_col=None)
             else:
@@ -1728,7 +1726,7 @@ class DatasetV2ViewSet(GenericViewSet):
         dataset_file_obj = DatasetV2File.objects.filter(dataset_id=obj.id)
         data = []
         for file in dataset_file_obj:
-            path_ = os.path.join("/media/", str(file.standardised_file))
+            path_ = os.path.join("media/", str(file.standardised_file))
             file_path = {}
             file_path["id"] = file.id
             file_path["content"] = read_contents_from_csv_or_xlsx_file(path_)
