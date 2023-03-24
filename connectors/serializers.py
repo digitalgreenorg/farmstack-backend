@@ -102,13 +102,17 @@ class ConnectorsRetriveSerializer(serializers.ModelSerializer):
         fields = Constants.ALL
 
     data = serializers.SerializerMethodField(method_name="extract_data")
-    no_of_records = 0
+    
+
 
     def extract_data(self, connector):
         integrated_file = str(connector.integrated_file).replace("media/", "").replace("%20", " ")
         df = pd.read_csv(os.path.join(settings.MEDIA_ROOT, integrated_file), 
             ) if integrated_file else pd.DataFrame([])
-        self.no_of_records = len(df)
-        if self.no_of_records > 20:
+        no_of_records = len(df)
+        if no_of_records > 20:
             df = df.iloc[:20]
-        return df.to_json(orient="records")
+        return {"records": df.to_json(orient="records"), "no_of_records": no_of_records}
+    
+    def get_no_of_records(self, records=0):
+        return 
