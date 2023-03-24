@@ -1555,6 +1555,10 @@ class DatasetV2ViewSet(GenericViewSet):
         try:
             # 1. Read the file.
             file_path = request.data.get('file_path')
+            is_standardised = request.data.get('is_standardised', None)
+            if is_standardised:
+                file_path = file_path.replace("/standardised", "/datasets")
+
             if file_path.endswith(".xlsx") or file_path.endswith(".xls"):
                 df = pd.read_excel(os.path.join(settings.BASE_DIR, file_path), index_col=0)
             else:
@@ -1580,15 +1584,12 @@ class DatasetV2ViewSet(GenericViewSet):
             
             if is_standardised:
                 file_path = file_path.replace("/standardised", "/datasets")
-                if file_path.endswith(".xlsx") or file_path.endswith(".xls"):
-                    df = pd.read_excel(os.path.join(settings.BASE_DIR, file_path), index_col=None)
-                else:
-                    df = pd.read_csv(os.path.join(settings.BASE_DIR, file_path), index_col=None)
+
+            if file_path.endswith(".xlsx") or file_path.endswith(".xls"):
+                df = pd.read_excel(os.path.join(settings.BASE_DIR, file_path), index_col=None)
             else:
-                if file_path.endswith(".xlsx") or file_path.endswith(".xls"):
-                    df = pd.read_excel(os.path.join(settings.BASE_DIR, file_path), index_col=None)
-                else:
-                    df = pd.read_csv(os.path.join(settings.BASE_DIR, file_path), index_col=None)
+                df = pd.read_csv(os.path.join(settings.BASE_DIR, file_path), index_col=None)
+           
         
             df["status"] = True
             df.loc[df["status"] == True, mask_columns] = "######"
