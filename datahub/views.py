@@ -1556,9 +1556,9 @@ class DatasetV2ViewSet(GenericViewSet):
             # 1. Read the file.
             file_path = request.data.get('file_path')
             if file_path.endswith(".xlsx") or file_path.endswith(".xls"):
-                df = pd.read_excel(os.path.join(settings.BASE_DIR, file_path), index_col=None)
+                df = pd.read_excel(os.path.join(settings.BASE_DIR, file_path), index_col=0)
             else:
-                df = pd.read_csv(os.path.join(settings.BASE_DIR, file_path), index_col=None)
+                df = pd.read_csv(os.path.join(settings.BASE_DIR, file_path), index_col=0)
             result=df.columns.tolist()
             return Response(result, status=status.HTTP_200_OK)
         except Exception as error:
