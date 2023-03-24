@@ -1735,7 +1735,7 @@ class DatasetV2ViewSet(GenericViewSet):
         dataset_file_obj = DatasetV2File.objects.filter(dataset_id=obj.id)
         data = []
         for file in dataset_file_obj:
-            path_ = os.path.join("/media/", str(file.standardised_file))
+            path_ = os.path.join("media/", str(file.standardised_file))
             file_path = {}
             file_path["id"] = file.id
             file_path["content"] = read_contents_from_csv_or_xlsx_file(path_)
