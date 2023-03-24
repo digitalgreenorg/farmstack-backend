@@ -2027,7 +2027,7 @@ class DatasetV2ViewSetOps(GenericViewSet):
             )
 
             # Return the joined dataframe as JSON
-            return Response(result.to_json(orient="records"), status=status.HTTP_200_OK)
+            return Response(result.to_json(orient="records", index=False), status=status.HTTP_200_OK)
 
         except Exception as e:
             logging.error(str(e), exc_info=True)
