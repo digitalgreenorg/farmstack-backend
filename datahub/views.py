@@ -1576,14 +1576,22 @@ class DatasetV2ViewSet(GenericViewSet):
             standardisation_configuration = request.data.get('standardisation_configuration')
             mask_columns = request.data.get('mask_columns')
             file_path = request.data.get('file_path')
-            # is_standardised = request.data.get('id', None)
-
-            if file_path.endswith(".xlsx") or file_path.endswith(".xls"):
-                df = pd.read_excel(os.path.join(settings.BASE_DIR, file_path), index_col=None)
-            else:
-                df = pd.read_csv(os.path.join(settings.BASE_DIR, file_path), index_col=None)
-        # print(df[mask_columns])
+            is_standardised = request.data.get('is_standardised', None)
             
+            if is_standardised:
+                file_path = file_path.replace("/standardised", "/datasets")
+                if file_path.endswith(".xlsx") or file_path.endswith(".xls"):
+                    
+                    df = pd.read_excel(str(settings.BASE_DIR)+file_path, index_col=None)
+                else:
+                    df = pd.read_csv(str(settings.BASE_DIR)+file_path, index_col=None)
+            
+            else:
+                if file_path.endswith(".xlsx") or file_path.endswith(".xls"):
+                    df = pd.read_excel(str(settings.BASE_DIR)+file_path, index_col=None)
+                else:
+                    df = pd.read_csv(str(settings.BASE_DIR)+file_path, index_col=None)
+        
             df["status"] = True
             df.loc[df["status"] == True, mask_columns] = "######"
             # df[mask_columns] = df[mask_columns].mask(True)
@@ -1662,7 +1670,10 @@ class DatasetV2ViewSet(GenericViewSet):
         to_delete = ast.literal_eval(data.get("deleted", "[]"))
         self.dataset_files(data, to_delete)
         datasetv2 = self.get_object()
-        serializer = self.get_serializer(datasetv2, data=data, partial=True)
+        serializer = self.get_serializer(datasetv2, data=data, partial=True, context={
+            "standardisation_template": request.data.get("standardisation_template"),
+            "standardisation_config":  request.data.get("standardisation_config")
+        })
         serializer.is_valid(raise_exception=True)
         serializer.save()
         return Response(serializer.data, status=status.HTTP_201_CREATED)
