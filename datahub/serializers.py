@@ -646,7 +646,7 @@ class DatasetV2Serializer(serializers.ModelSerializer):
 
             # TEMP_DATAFILE_URL --> STANDARDISED_DATAFILE_URL
 
-
+            
             file_paths = plazy.list_files(root=directory_created, is_include_root=True)
             standardisation_template = json.loads(self.context.get("standardisation_template"))
             standardisation_config = json.loads(self.context.get('standardisation_config', {})) 
@@ -730,15 +730,15 @@ class DatasetV2Serializer(serializers.ModelSerializer):
                     directory_created = create_directory(
                         os.path.join(settings.STANDARDISED_FILES_URL), [instance.name, file_path.split("/")[-2]]
                     )
-                    shutil.copy(file_path, directory_created)
-                    dataset_file_path = file_path.replace("media/", "")
-                    dataset_name_file_path = '/'.join(dataset_file_path.split("/")[-3:])
+                    # file_path = file_path.replace("temp/standardised/","")
+                    shutil.copy2(file_path, directory_created)
 
-                    path_to_save = os.path.join(directory_created, file_path.split("/")[-1])
-                    if DatasetV2File.objects.filter(standardised_file=path_to_save.replace("media/", "")):
-                        DatasetV2File.objects.update(
-                            dataset=instance, standardised_file=path_to_save.replace("media/", ""), source=file_path.split("/")[-2],
-                            standardised_configuration = standardisation_config.get(dataset_name_file_path) if standardisation_config.get(dataset_name_file_path, '') else {}    
+                    dataset_name_file_path = str(directory_created).replace("media/", "")+file_path.split("/")[-1]
+                    print("*****",dataset_name_file_path)
+                    # path_to_save = os.path.join(directory_created, file_path.split("/")[-1])
+                    DatasetV2File.objects.filter(standardised_file=dataset_name_file_path).update(
+                            dataset=instance, source=file_path.split("/")[-2],
+                            standardised_configuration = standardisation_config.get(str(directory_created)+file_path.split("/")[-1]) if standardisation_config.get(str(directory_created)+file_path.split("/")[-1], '') else {}    
                         )
             # delete the temp directory
             shutil.rmtree(standardised_temp_directory)
@@ -754,12 +754,12 @@ class DatasetV2Serializer(serializers.ModelSerializer):
                     directory_created = create_directory(
                         os.path.join(settings.DATASET_FILES_URL), [instance.name, file_path.split("/")[-2]]
                     )
-                    shutil.copy(file_path, directory_created)
+                    shutil.copy2(file_path, directory_created)
                     dataset_file_path = file_path.replace("media/", "")
                     dataset_name_file_path = '/'.join(dataset_file_path.split("/")[-3:])
 
                     path_to_save = os.path.join(directory_created, file_path.split("/")[-1])
-                    if not DatasetV2File.objects.filter(file=path_to_save.replace("media/", "")):
+                    if not DatasetV2File.objects.filter(standardised_file=path_to_save.replace("media/", "")):
                         DatasetV2File.objects.create(
                             dataset=instance, file=path_to_save.replace("media/", ""), source=file_path.split("/")[-2],
                             standardised_file =  (settings.STANDARDISED_FILES_URL+dataset_name_file_path).replace("media/", "") if os.path.isfile(settings.STANDARDISED_FILES_URL+standardisation_template.get("temp/datasets/"+dataset_name_file_path, '')) else dataset_file_path,
