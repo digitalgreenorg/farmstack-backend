@@ -13,6 +13,25 @@ from urllib.parse import unquote
 
 import django
 import pandas as pd
+from django.conf import settings
+from django.contrib.admin.utils import get_model_from_relation
+from django.core.files.base import ContentFile
+from django.db import transaction
+from django.db.models import DEFERRED, F, Q
+from django.http import JsonResponse
+from django.shortcuts import render
+from drf_braces.mixins import MultipleSerializersViewMixin
+from psycopg2 import connect
+from psycopg2.extensions import ISOLATION_LEVEL_AUTOCOMMIT
+from python_http_client import exceptions
+from rest_framework import pagination, status
+from rest_framework.decorators import action
+from rest_framework.parsers import JSONParser, MultiPartParser
+from rest_framework.permissions import AllowAny, IsAuthenticated
+from rest_framework.response import Response
+from rest_framework.viewsets import GenericViewSet, ViewSet
+from uritemplate import partial
+
 from accounts.models import User, UserRole
 from accounts.serializers import (
     UserCreateSerializer,
@@ -28,30 +47,6 @@ from core.utils import (
     date_formater,
     read_contents_from_csv_or_xlsx_file,
 )
-from django.conf import settings
-from django.contrib.admin.utils import get_model_from_relation
-from django.core.files.base import ContentFile
-from django.db import transaction
-from django.db.models import DEFERRED, F, Q
-from django.shortcuts import render
-from drf_braces.mixins import MultipleSerializersViewMixin
-from participant.models import Connectors, SupportTicket
-from participant.serializers import (
-    ParticipantSupportTicketSerializer,
-    TicketSupportSerializer,
-)
-from psycopg2 import connect
-from psycopg2.extensions import ISOLATION_LEVEL_AUTOCOMMIT
-from python_http_client import exceptions
-from rest_framework import pagination, status
-from rest_framework.decorators import action
-from rest_framework.parsers import JSONParser, MultiPartParser
-from rest_framework.permissions import AllowAny, IsAuthenticated
-from rest_framework.response import Response
-from rest_framework.viewsets import GenericViewSet, ViewSet
-from uritemplate import partial
-from utils import custom_exceptions, file_operations, string_functions, validators
-
 from datahub.models import (
     DatahubDocuments,
     Datasets,
@@ -85,6 +80,12 @@ from datahub.serializers import (
     UserOrganizationCreateSerializer,
     UserOrganizationMapSerializer,
 )
+from participant.models import Connectors, SupportTicket
+from participant.serializers import (
+    ParticipantSupportTicketSerializer,
+    TicketSupportSerializer,
+)
+from utils import custom_exceptions, file_operations, string_functions, validators
 
 LOGGER = logging.getLogger(__name__)
 
@@ -157,6 +158,7 @@ class OrganizationViewSet(GenericViewSet):
 
     serializer_class = OrganizationSerializer
     queryset = Organization.objects.all()
+    permission_classes = []
     pagination_class = CustomPagination
     parser_class = MultiPartParser
 
@@ -748,13 +750,13 @@ class DatahubThemeView(GenericViewSet):
             banner = None if banner == "null" else banner
             button_color = request.data.get("button_color", "null")
             button_color = None if button_color == "null" else button_color
-
             if not banner and not button_color:
                 data = {"banner": "null", "button_color": "null"}
-
             elif banner and not button_color:
                 file_name = file_operations.file_rename(str(banner), "banner")
-                file_operations.remove_files(file_name, settings.THEME_ROOT)
+                shutil.rmtree(settings.THEME_ROOT)
+                os.mkdir(settings.THEME_ROOT)
+                os.makedirs(settings.CSS_ROOT)
                 file_operations.file_save(banner, file_name, settings.THEME_ROOT)
                 data = {"banner": file_name, "button_color": "null"}
 
@@ -769,6 +771,9 @@ class DatahubThemeView(GenericViewSet):
                 data = {"banner": "null", "button_color": settings.CSS_FILE_NAME}
 
             elif banner and button_color:
+                shutil.rmtree(settings.THEME_ROOT)
+                os.mkdir(settings.THEME_ROOT)
+                os.makedirs(settings.CSS_ROOT)
                 file_name = file_operations.file_rename(str(banner), "banner")
                 file_operations.remove_files(file_name, settings.THEME_ROOT)
                 file_operations.file_save(banner, file_name, settings.THEME_ROOT)
@@ -832,8 +837,11 @@ class DatahubThemeView(GenericViewSet):
                 data = {"banner": "null", "button_color": "null"}
 
             elif banner and button_color is None:
+                shutil.rmtree(settings.THEME_ROOT)
+                os.mkdir(settings.THEME_ROOT)
+                os.makedirs(settings.CSS_ROOT)
                 file_name = file_operations.file_rename(str(banner), "banner")
-                file_operations.remove_files(file_name, settings.THEME_ROOT)
+                # file_operations.remove_files(file_name, settings.THEME_ROOT)
                 file_operations.file_save(banner, file_name, settings.THEME_ROOT)
                 data = {"banner": file_name, "button_color": "null"}
 
@@ -848,8 +856,11 @@ class DatahubThemeView(GenericViewSet):
                 data = {"banner": "null", "button_color": settings.CSS_FILE_NAME}
 
             elif banner and button_color:
+                shutil.rmtree(settings.THEME_ROOT)
+                os.mkdir(settings.THEME_ROOT)
+                os.makedirs(settings.CSS_ROOT)
                 file_name = file_operations.file_rename(str(banner), "banner")
-                file_operations.remove_files(file_name, settings.THEME_ROOT)
+                # file_operations.remove_files(file_name, settings.THEME_ROOT)
                 file_operations.file_save(banner, file_name, settings.THEME_ROOT)
 
                 css = ".btn { background-color: " + button_color + "; }"
@@ -1553,10 +1564,14 @@ class DatasetV2ViewSet(GenericViewSet):
         try:
             # 1. Read the file.
             file_path = request.data.get('file_path')
+            is_standardised = request.data.get('is_standardised', None)
+            if is_standardised:
+                file_path = file_path.replace("/standardised", "/datasets")
+
             if file_path.endswith(".xlsx") or file_path.endswith(".xls"):
-                df = pd.read_excel(os.path.join(settings.BASE_DIR, file_path), index_col=None)
+                df = pd.read_excel(os.path.join(settings.BASE_DIR, file_path), index_col=0)
             else:
-                df = pd.read_csv(os.path.join(settings.BASE_DIR, file_path), index_col=None)
+                df = pd.read_csv(os.path.join(settings.BASE_DIR, file_path), index_col=0)
             result=df.columns.tolist()
             return Response(result, status=status.HTTP_200_OK)
         except Exception as error:
@@ -1568,28 +1583,42 @@ class DatasetV2ViewSet(GenericViewSet):
         """
         Method to standardise a dataset and generate a file along with it.
         """
-        
+   
         # 1. Take the standardisation configuration variables.
         try:
-            standardisation_configuration = request.data.get('standardisation_configuration', '')
-            dataset_name = request.data.get('dataset_name')
-            # dataset_file = request.data.get('file')
+            standardisation_configuration = request.data.get('standardisation_configuration')
+            mask_columns = request.data.get('mask_columns')
             file_path = request.data.get('file_path')
+            is_standardised = request.data.get('is_standardised', None)
+            
+            if is_standardised:
+                file_path = file_path.replace("/standardised", "/datasets")
+
             if file_path.endswith(".xlsx") or file_path.endswith(".xls"):
                 df = pd.read_excel(os.path.join(settings.BASE_DIR, file_path), index_col=None)
             else:
                 df = pd.read_csv(os.path.join(settings.BASE_DIR, file_path), index_col=None)
-
+           
+        
+            df["status"] = True
+            df.loc[df["status"] == True, mask_columns] = "######"
+            # df[mask_columns] = df[mask_columns].mask(True)
+            del df["status"]
+            # print()
             df.rename(columns=standardisation_configuration, inplace=True)
-            df.to_csv(os.path.join(settings.BASE_DIR, file_path)+"_standardised.csv")
-            return Response(df.to_json(orient='records'), status=status.HTTP_200_OK)
 
+            file_dir = file_path.split('/')
+            standardised_dir_path = '/'.join(file_dir[-3:-1])
+            file_name = file_dir[-1]
+            if not os.path.exists(os.path.join(settings.TEMP_STANDARDISED_DIR, standardised_dir_path)):
+                os.makedirs(os.path.join(settings.TEMP_STANDARDISED_DIR, standardised_dir_path))
+            # print(df)
+            df.to_csv(os.path.join(settings.TEMP_STANDARDISED_DIR, standardised_dir_path, file_name))
+            return Response({"standardised_file_path": f"{standardised_dir_path}/{file_name}"}, status=status.HTTP_200_OK)
 
         except Exception as error:
             LOGGER.error(f"Could not standardise {error}")
             return Response(error, status=status.HTTP_400_BAD_REQUEST)
-
-
 
     @action(detail=False, methods=["get", "post"])
     def category(self, request, *args, **kwargs):
@@ -1629,7 +1658,10 @@ class DatasetV2ViewSet(GenericViewSet):
         **Endpoint**
         [ref]: /datahub/dataset/v2/
         """
-        serializer = self.get_serializer(data=request.data)
+        serializer = self.get_serializer(data=request.data, context={
+            "standardisation_template": request.data.get("standardisation_template"),
+            "standardisation_config":  request.data.get("standardisation_config")
+        })
         serializer.is_valid(raise_exception=True)
         serializer.save()
         return Response(serializer.data, status=status.HTTP_201_CREATED)
@@ -1646,7 +1678,10 @@ class DatasetV2ViewSet(GenericViewSet):
         to_delete = ast.literal_eval(data.get("deleted", "[]"))
         self.dataset_files(data, to_delete)
         datasetv2 = self.get_object()
-        serializer = self.get_serializer(datasetv2, data=data, partial=True)
+        serializer = self.get_serializer(datasetv2, data=data, partial=True, context={
+            "standardisation_template": request.data.get("standardisation_template"),
+            "standardisation_config":  request.data.get("standardisation_config")
+        })
         serializer.is_valid(raise_exception=True)
         serializer.save()
         return Response(serializer.data, status=status.HTTP_201_CREATED)
@@ -1701,12 +1736,14 @@ class DatasetV2ViewSet(GenericViewSet):
         dataset_file_obj = DatasetV2File.objects.filter(dataset_id=obj.id)
         data = []
         for file in dataset_file_obj:
-            path_ = os.path.join("/media/", str(file.file))
+            path_ = os.path.join("media/", str(file.standardised_file))
             file_path = {}
             file_path["id"] = file.id
-            file_path["content"] = read_contents_from_csv_or_xlsx_file(path_)
+            file_path["content"] = read_contents_from_csv_or_xlsx_file(os.path.join("/media/",str(file.standardised_file)))
             file_path["file"] = path_
             file_path["source"] = file.source
+            file_path["standardised_file"] = os.path.join("/media/",str(file.standardised_file))
+            file_path["standardisation_config"] = file.standardised_configuration
             data.append(file_path)
 
         serializer["datasets"] = data
@@ -1952,9 +1989,9 @@ class DatasetV2ViewSetOps(GenericViewSet):
                 path = file_path
                 file_path = unquote(file_path).replace("/media/", "")
                 if file_path.endswith(".xlsx") or file_path.endswith(".xls"):
-                    df = pd.read_excel(os.path.join(settings.MEDIA_ROOT, file_path), index_col=None)
+                    df = pd.read_excel(os.path.join(settings.MEDIA_ROOT, file_path), index_col=0)
                 else:
-                    df = pd.read_csv(os.path.join(settings.MEDIA_ROOT, file_path), index_col=None)
+                    df = pd.read_csv(os.path.join(settings.MEDIA_ROOT, file_path), index_col=0)
                 result[path] = df.columns.tolist()
                 result[Constants.ID] = DatasetV2File.objects.get(file=file_path).id
 
@@ -1991,7 +2028,7 @@ class DatasetV2ViewSetOps(GenericViewSet):
             )
 
             # Return the joined dataframe as JSON
-            return Response(result.to_json(orient="records"), status=status.HTTP_200_OK)
+            return Response(result.to_json(orient="records", index=False), status=status.HTTP_200_OK)
 
         except Exception as e:
             logging.error(str(e), exc_info=True)

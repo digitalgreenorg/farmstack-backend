@@ -1,3 +1,4 @@
+import json
 import os
 
 import pandas as pd
@@ -107,4 +108,11 @@ class ConnectorsRetriveSerializer(serializers.ModelSerializer):
         integrated_file = str(connector.integrated_file).replace("media/", "").replace("%20", " ")
         df = pd.read_csv(os.path.join(settings.MEDIA_ROOT, integrated_file), 
             ) if integrated_file else pd.DataFrame([])
-        return df.to_json(orient="records")
+        no_of_records = len(df)
+
+        if no_of_records > 20:
+            df = df.iloc[:20]
+        data = json.loads(df.to_json(orient='table',index=False))
+        data["no_of_records"] = no_of_records
+        return data
+    

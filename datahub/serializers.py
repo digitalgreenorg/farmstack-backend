@@ -1,3 +1,4 @@
+import json
 import logging
 import os
 import re
@@ -538,7 +539,7 @@ class DatasetV2FileSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = DatasetV2File
-        fields = ["id", "dataset", "file", "source"]
+        fields = ["id", "dataset", "file", "source" , "standardised_file", "standardised_configuration"]
 
 
 class DatasetV2Serializer(serializers.ModelSerializer):
@@ -626,40 +627,44 @@ class DatasetV2Serializer(serializers.ModelSerializer):
         file_paths = {}
 
         try:
+            # create_directory()
             directory_created = move_directory(
-                os.path.join(settings.TEMP_DATASET_URL, validated_data.get("name")), settings.DATASET_FILES_URL
+                os.path.join(settings.BASE_DIR, settings.TEMP_DATASET_URL, validated_data.get("name")), settings.DATASET_FILES_URL
             )
             to_find = [
                 Constants.SOURCE_FILE_TYPE,
                 Constants.SOURCE_MYSQL_FILE_TYPE,
                 Constants.SOURCE_POSTGRESQL_FILE_TYPE,
             ]
-            # for file in to_find:
-            #     direct = os.path.join(directory_created, file)
-            #     if os.path.exists(direct):
-            #         file_paths.update({
-            #             os.path.join(direct, f): file
-            #             for f in os.listdir(direct)
-            #             if os.path.isfile(os.path.join(direct, f))
-            #         })
 
-            # if file_paths:
-            #     dataset_obj = DatasetV2.objects.create(**validated_data)
-            #     for key, value in file_paths.items():
-            #         DatasetV2File.objects.create(dataset=dataset_obj, file=key.replace("media/", ""), source=value)
-            #     return dataset_obj
+            # import pdb
+            # pdb.set_trace()
 
+            standardised_directory_created = move_directory(
+                os.path.join(settings.BASE_DIR,settings.TEMP_STANDARDISED_DIR, validated_data.get("name")), settings.STANDARDISED_FILES_URL
+            )
+
+            # TEMP_DATAFILE_URL --> STANDARDISED_DATAFILE_URL
+
+            
             file_paths = plazy.list_files(root=directory_created, is_include_root=True)
-
+            standardisation_template = json.loads(self.context.get("standardisation_template"))
+            standardisation_config = json.loads(self.context.get('standardisation_config', {})) 
             if file_paths:
                 dataset_obj = DatasetV2.objects.create(**validated_data)
                 for file_path in file_paths:
+                    
+                    dataset_file_path = file_path.replace("media/", "")
+                    dataset_name_file_path = '/'.join(dataset_file_path.split("/")[-3:])
                     DatasetV2File.objects.create(
-                        dataset=dataset_obj, file=file_path.replace("media/", ""), source=file_path.split("/")[-2]
-                    )
+                        dataset=dataset_obj,
+                        file=dataset_file_path,
+                        source=file_path.split("/")[-2],
+                        standardised_file =  (settings.STANDARDISED_FILES_URL+dataset_name_file_path).replace("media/", "") if os.path.isfile(settings.STANDARDISED_FILES_URL+standardisation_template.get("temp/datasets/"+dataset_name_file_path, '')) else dataset_file_path,
+                        standardised_configuration = standardisation_config.get("temp/datasets/"+dataset_name_file_path) if standardisation_config.get("temp/datasets/"+dataset_name_file_path, '') else {}
+                        )
                 return dataset_obj
 
-                # return super().create(validated_data)
         except Exception as error:
             LOGGER.error(error, exc_info=True)
             raise NotFoundException(
@@ -686,6 +691,8 @@ class DatasetV2Serializer(serializers.ModelSerializer):
             Constants.SOURCE_POSTGRESQL_FILE_TYPE,
         ]
 
+
+
         # iterate through temp_directory to fetch file paths & file names
         # for sub_dir in to_find:
         #     direct = os.path.join(temp_directory, sub_dir)
@@ -707,21 +714,56 @@ class DatasetV2Serializer(serializers.ModelSerializer):
         #             DatasetV2File.objects.create(dataset=instance, file=path_to_save.replace("media/", ""), source=sub_file[0])
 
         # save the files at actual dataset location & update in DatasetV2File table
+        # standardised_directory_created = move_directory(
+        #         os.path.join(settings.TEMP_STANDARDISED_DIR,instance.name), settings.STANDARDISED_FILES_URL
+        # )
+        standardised_temp_directory = os.path.join(settings.TEMP_STANDARDISED_DIR, instance.name)
+        standardised_file_paths = (plazy.list_files(root=standardised_temp_directory, is_include_root=True) if os.path.exists(standardised_temp_directory) else None)
+        standardisation_template = json.loads(self.context.get("standardisation_template"))
+        standardisation_config = json.loads(self.context.get('standardisation_config', {}))
+
+        # import pdb
+        # pdb.set_trace()
+
+        if standardised_file_paths:
+            for file_path in standardised_file_paths:
+                    directory_created = create_directory(
+                        os.path.join(settings.STANDARDISED_FILES_URL), [instance.name, file_path.split("/")[-2]]
+                    )
+                    # file_path = file_path.replace("temp/standardised/","")
+                    shutil.copy2(file_path, directory_created)
+
+                    dataset_name_file_path = str(directory_created).replace("media/", "")+file_path.split("/")[-1]
+                    print("*****",dataset_name_file_path)
+                    # path_to_save = os.path.join(directory_created, file_path.split("/")[-1])
+                    DatasetV2File.objects.filter(standardised_file=dataset_name_file_path).update(
+                            dataset=instance, source=file_path.split("/")[-2],
+                            standardised_configuration = standardisation_config.get(str(directory_created)+file_path.split("/")[-1]) if standardisation_config.get(str(directory_created)+file_path.split("/")[-1], '') else {}    
+                        )
+            # delete the temp directory
+            shutil.rmtree(standardised_temp_directory)
+
         if os.path.exists(temp_directory):
             file_paths = (
                 plazy.list_files(root=temp_directory, is_include_root=True) if os.path.exists(temp_directory) else None
             )
+
+            
             if file_paths:
                 for file_path in file_paths:
                     directory_created = create_directory(
                         os.path.join(settings.DATASET_FILES_URL), [instance.name, file_path.split("/")[-2]]
                     )
-                    shutil.copy(file_path, directory_created)
+                    shutil.copy2(file_path, directory_created)
+                    dataset_file_path = file_path.replace("media/", "")
+                    dataset_name_file_path = '/'.join(dataset_file_path.split("/")[-3:])
 
                     path_to_save = os.path.join(directory_created, file_path.split("/")[-1])
-                    if not DatasetV2File.objects.filter(file=path_to_save.replace("media/", "")):
+                    if not DatasetV2File.objects.filter(standardised_file=path_to_save.replace("media/", "")):
                         DatasetV2File.objects.create(
-                            dataset=instance, file=path_to_save.replace("media/", ""), source=file_path.split("/")[-2]
+                            dataset=instance, file=path_to_save.replace("media/", ""), source=file_path.split("/")[-2],
+                            standardised_file =  (settings.STANDARDISED_FILES_URL+dataset_name_file_path).replace("media/", "") if os.path.isfile(settings.STANDARDISED_FILES_URL+standardisation_template.get("temp/datasets/"+dataset_name_file_path, '')) else dataset_file_path,
+                            standardised_configuration = standardisation_config.get("temp/datasets/"+dataset_name_file_path) if standardisation_config.get("temp/datasets/"+dataset_name_file_path, '') else {}    
                         )
 
             # delete the temp directory
