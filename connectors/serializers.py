@@ -2,7 +2,7 @@ import json
 import os
 
 import pandas as pd
-from django.db.models import Count
+from django.db.models import DEFERRED, Count, F, Q
 from rest_framework import serializers
 
 from accounts.models import User
@@ -92,9 +92,8 @@ class ConnectorsListSerializer(serializers.ModelSerializer):
     
     def get_providers_count(self, connectors):
         query = ConnectorsMap.objects.select_related('left_dataset_file_id__dataset', 'right_dataset_file_id__dataset').filter(connectors=connectors.id).filter(connectors=connectors.id)
-        left = query.distinct("left_dataset_file_id__dataset__user_map").count()
-        right = query.distinct("right_dataset_file_id__dataset__user_map").count()
-        return left+right
+        count = query.distinct("left_dataset_file_id__dataset__user_map", "right_dataset_file_id__dataset__user_map").count()
+        return count
 
 class ConnectorsRetriveSerializer(serializers.ModelSerializer):
     maps = ConnectorsMapSerializer(many=True, source='connectorsmap_set')
