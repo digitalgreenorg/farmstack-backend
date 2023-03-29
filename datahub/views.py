@@ -1613,11 +1613,10 @@ class DatasetV2ViewSet(GenericViewSet):
             if not os.path.exists(os.path.join(settings.TEMP_STANDARDISED_DIR, standardised_dir_path)):
                 os.makedirs(os.path.join(settings.TEMP_STANDARDISED_DIR, standardised_dir_path))
             # print(df)
-            if file_name.endswith(".csv")
+            if file_name.endswith(".csv"):
                 df.to_csv(os.path.join(settings.TEMP_STANDARDISED_DIR, standardised_dir_path, file_name)) # type: ignore
             else:
                 df.to_excel(os.path.join(settings.TEMP_STANDARDISED_DIR, standardised_dir_path, file_name)) # type: ignore
-
             return Response({"standardised_file_path": f"{standardised_dir_path}/{file_name}"}, status=status.HTTP_200_OK)
 
         except Exception as error:
