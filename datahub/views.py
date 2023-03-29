@@ -1,4 +1,5 @@
 import ast
+import csv
 import json
 import logging
 import operator
@@ -90,7 +91,6 @@ from utils import custom_exceptions, file_operations, string_functions, validato
 LOGGER = logging.getLogger(__name__)
 
 con = None
-
 
 class DefaultPagination(pagination.PageNumberPagination):
     """
@@ -1613,7 +1613,7 @@ class DatasetV2ViewSet(GenericViewSet):
             if not os.path.exists(os.path.join(settings.TEMP_STANDARDISED_DIR, standardised_dir_path)):
                 os.makedirs(os.path.join(settings.TEMP_STANDARDISED_DIR, standardised_dir_path))
             # print(df)
-            df.to_csv(os.path.join(settings.TEMP_STANDARDISED_DIR, standardised_dir_path, file_name))
+            df.to_csv(os.path.join(settings.TEMP_STANDARDISED_DIR, standardised_dir_path, file_name), sep=None) # type: ignore
             return Response({"standardised_file_path": f"{standardised_dir_path}/{file_name}"}, status=status.HTTP_200_OK)
 
         except Exception as error:
