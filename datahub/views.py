@@ -1429,7 +1429,6 @@ class DatasetV2ViewSet(GenericViewSet):
 
     serializer_class = DatasetV2Serializer
     queryset = DatasetV2.objects.all()
-    permission_classes = []
     pagination_class = CustomPagination
 
     @action(detail=False, methods=["post"])
@@ -1723,9 +1722,9 @@ class DatasetV2ViewSet(GenericViewSet):
         queryset = self.get_queryset()
         # serializer = self.get_serializer(queryset, many=True)
         # return Response(serializer.data, status=status.HTTP_200_OK)
-        # page = self.paginate_queryset(queryset)
-        if queryset is not None:
-            serializer = self.get_serializer(queryset, many=True)
+        page = self.paginate_queryset(queryset)
+        if page is not None:
+            serializer = self.get_serializer(page, many=True)
             return self.get_paginated_response(serializer.data)
         return Response([], status=status.HTTP_404_NOT_FOUND)
 
