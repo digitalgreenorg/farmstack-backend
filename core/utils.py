@@ -188,4 +188,5 @@ def read_contents_from_csv_or_xlsx_file(file_path):
     except Exception as error:
         logging.error("Invalid file ERROR: %s", error)
         return []
+    content.columns = content.columns.astype(str)
     return content.to_dict(orient=Constants.RECORDS)
