@@ -1,4 +1,5 @@
 import ast
+import csv
 import json
 import logging
 import operator
@@ -90,7 +91,6 @@ from utils import custom_exceptions, file_operations, string_functions, validato
 LOGGER = logging.getLogger(__name__)
 
 con = None
-
 
 class DefaultPagination(pagination.PageNumberPagination):
     """
@@ -395,18 +395,21 @@ class ParticipantViewSet(GenericViewSet):
             roles = (
                 UserOrganizationMap.objects.select_related(Constants.USER, Constants.ORGANIZATION)
                 .filter(user__status=True, user__on_boarded_by=on_boarded_by, user__role=3)
+                .order_by("user__updated_at")
                 .all()
             )
         elif co_steward:
             roles = (
                 UserOrganizationMap.objects.select_related(Constants.USER, Constants.ORGANIZATION)
                 .filter(user__status=True, user__role=6)
+                .order_by("user__updated_at")
                 .all()
             )
         else:
             roles = (
                 UserOrganizationMap.objects.select_related(Constants.USER, Constants.ORGANIZATION)
                 .filter(user__status=True, user__role=3, user__on_boarded_by=None)
+                .order_by("user__updated_at")
                 .all()
             )
         page = self.paginate_queryset(roles)
@@ -1426,7 +1429,6 @@ class DatasetV2ViewSet(GenericViewSet):
 
     serializer_class = DatasetV2Serializer
     queryset = DatasetV2.objects.all()
-    permission_classes = []
     pagination_class = CustomPagination
 
     @action(detail=False, methods=["post"])
@@ -1572,6 +1574,7 @@ class DatasetV2ViewSet(GenericViewSet):
                 df = pd.read_excel(os.path.join(settings.BASE_DIR, file_path), index_col=0)
             else:
                 df = pd.read_csv(os.path.join(settings.BASE_DIR, file_path), index_col=0)
+            df.columns = df.columns.astype(str)
             result=df.columns.tolist()
             return Response(result, status=status.HTTP_200_OK)
         except Exception as error:
@@ -1606,14 +1609,17 @@ class DatasetV2ViewSet(GenericViewSet):
             del df["status"]
             # print()
             df.rename(columns=standardisation_configuration, inplace=True)
-
+            df.columns = df.columns.astype(str)
             file_dir = file_path.split('/')
             standardised_dir_path = '/'.join(file_dir[-3:-1])
             file_name = file_dir[-1]
             if not os.path.exists(os.path.join(settings.TEMP_STANDARDISED_DIR, standardised_dir_path)):
                 os.makedirs(os.path.join(settings.TEMP_STANDARDISED_DIR, standardised_dir_path))
             # print(df)
-            df.to_csv(os.path.join(settings.TEMP_STANDARDISED_DIR, standardised_dir_path, file_name))
+            if file_name.endswith(".csv"):
+                df.to_csv(os.path.join(settings.TEMP_STANDARDISED_DIR, standardised_dir_path, file_name)) # type: ignore
+            else:
+                df.to_excel(os.path.join(settings.TEMP_STANDARDISED_DIR, standardised_dir_path, file_name)) # type: ignore
             return Response({"standardised_file_path": f"{standardised_dir_path}/{file_name}"}, status=status.HTTP_200_OK)
 
         except Exception as error:
