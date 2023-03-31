@@ -5,6 +5,11 @@ import re
 import shutil
 
 import plazy
+from django.conf import settings
+from django.core.exceptions import ObjectDoesNotExist, ValidationError
+from django.utils.translation import gettext as _
+from rest_framework import serializers, status
+
 from accounts import models
 from accounts.models import User, UserRole
 from accounts.serializers import (
@@ -13,11 +18,16 @@ from accounts.serializers import (
     UserSerializer,
 )
 from core.constants import Constants
-from django.conf import settings
-from django.core.exceptions import ObjectDoesNotExist, ValidationError
-from django.utils.translation import gettext as _
+from datahub.models import (
+    DatahubDocuments,
+    Datasets,
+    DatasetV2,
+    DatasetV2File,
+    Organization,
+    StandardisationTemplate,
+    UserOrganizationMap,
+)
 from participant.models import Connectors, SupportTicket
-from rest_framework import serializers, status
 from utils.custom_exceptions import NotFoundException
 from utils.file_operations import create_directory, move_directory
 from utils.string_functions import check_special_chars
@@ -27,16 +37,6 @@ from utils.validators import (
     validate_document_type,
     validate_file_size,
     validate_image_type,
-)
-
-from datahub.models import (
-    DatahubDocuments,
-    Datasets,
-    DatasetV2,
-    DatasetV2File,
-    Organization,
-    StandardisationTemplate,
-    UserOrganizationMap,
 )
 
 LOGGER = logging.getLogger(__name__)
@@ -569,6 +569,7 @@ class DatasetV2Serializer(serializers.ModelSerializer):
                 "phone_number",
                 "address",
             ]
+
 
     class UserSerializer(serializers.ModelSerializer):
         class Meta:

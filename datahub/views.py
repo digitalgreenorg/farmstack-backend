@@ -1575,6 +1575,7 @@ class DatasetV2ViewSet(GenericViewSet):
                 df = pd.read_excel(os.path.join(settings.BASE_DIR, file_path), index_col=0)
             else:
                 df = pd.read_csv(os.path.join(settings.BASE_DIR, file_path), index_col=0)
+            df.columns = df.columns.astype(str)
             result=df.columns.tolist()
             return Response(result, status=status.HTTP_200_OK)
         except Exception as error:
@@ -1609,7 +1610,7 @@ class DatasetV2ViewSet(GenericViewSet):
             del df["status"]
             # print()
             df.rename(columns=standardisation_configuration, inplace=True)
-
+            df.columns = df.columns.astype(str)
             file_dir = file_path.split('/')
             standardised_dir_path = '/'.join(file_dir[-3:-1])
             file_name = file_dir[-1]
@@ -1722,9 +1723,9 @@ class DatasetV2ViewSet(GenericViewSet):
         queryset = self.get_queryset()
         # serializer = self.get_serializer(queryset, many=True)
         # return Response(serializer.data, status=status.HTTP_200_OK)
-        page = self.paginate_queryset(queryset)
-        if page is not None:
-            serializer = self.get_serializer(page, many=True)
+        # page = self.paginate_queryset(queryset)
+        if queryset is not None:
+            serializer = self.get_serializer(queryset, many=True)
             return self.get_paginated_response(serializer.data)
         return Response([], status=status.HTTP_404_NOT_FOUND)
 
