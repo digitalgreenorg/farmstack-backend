@@ -395,18 +395,21 @@ class ParticipantViewSet(GenericViewSet):
             roles = (
                 UserOrganizationMap.objects.select_related(Constants.USER, Constants.ORGANIZATION)
                 .filter(user__status=True, user__on_boarded_by=on_boarded_by, user__role=3)
+                .order_by("user__updated_at")
                 .all()
             )
         elif co_steward:
             roles = (
                 UserOrganizationMap.objects.select_related(Constants.USER, Constants.ORGANIZATION)
                 .filter(user__status=True, user__role=6)
+                .order_by("user__updated_at")
                 .all()
             )
         else:
             roles = (
                 UserOrganizationMap.objects.select_related(Constants.USER, Constants.ORGANIZATION)
                 .filter(user__status=True, user__role=3, user__on_boarded_by=None)
+                .order_by("user__updated_at")
                 .all()
             )
         page = self.paginate_queryset(roles)
