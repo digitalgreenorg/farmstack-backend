@@ -735,7 +735,7 @@ class DatasetV2Serializer(serializers.ModelSerializer):
                     dataset_file_path_alone = "datasets/"+'/'.join(file_path.split("/")[-3:])
                     standardised_dataset_file_path_alone = "standardised/"+'/'.join(file_path.split("/")[-3:])
                     print("*****",dataset_name_file_path)
-                    import pdb; pdb.set_trace()
+                    # import pdb; pdb.set_trace()
                     # path_to_save = os.path.join(directory_created, file_path.split("/")[-1])
                     DatasetV2File.objects.filter(file=dataset_file_path_alone).update(
                             dataset=instance, source=file_path.split("/")[-2],
