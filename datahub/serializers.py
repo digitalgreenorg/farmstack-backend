@@ -732,9 +732,10 @@ class DatasetV2Serializer(serializers.ModelSerializer):
                     shutil.copy2(file_path, directory_created)
 
                     dataset_name_file_path = str(directory_created).replace("media/", "")+file_path.split("/")[-1]
-                    dataset_file_path_alone = "datasets/"+''.join(file_path.split("/")[-3:])
-                    standardised_dataset_file_path_alone = "standardised/"+''.join(file_path.split("/")[-3:])
+                    dataset_file_path_alone = "datasets/"+'/'.join(file_path.split("/")[-3:])
+                    standardised_dataset_file_path_alone = "standardised/"+'/'.join(file_path.split("/")[-3:])
                     print("*****",dataset_name_file_path)
+                    import pdb; pdb.set_trace()
                     # path_to_save = os.path.join(directory_created, file_path.split("/")[-1])
                     DatasetV2File.objects.filter(file=dataset_file_path_alone).update(
                             dataset=instance, source=file_path.split("/")[-2],
