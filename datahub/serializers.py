@@ -142,13 +142,16 @@ class ParticipantSerializer(serializers.ModelSerializer):
 
     dataset_count = serializers.SerializerMethodField(method_name="get_dataset_count")
     connector_count = serializers.SerializerMethodField(method_name="get_connector_count")
-
+    number_participant = serializers.SerializerMethodField()
     def get_dataset_count(self, user_org_map):
         return DatasetV2.objects.filter(status=True, user_map__user=user_org_map.user.id).count()
 
     def get_connector_count(self, user_org_map):
         return Connectors.objects.filter(status=True, user_map__user=user_org_map.user.id).count()
-
+    def get_number_participant(self, user_org_map):
+        return UserOrganizationMap.objects.select_related(
+            Constants.USER, Constants.ORGANIZATION).filter(
+            user__status=True, user__on_boarded_by=user_org_map.user.id, user__role=3).all().count()
 
 class DropDocumentSerializer(serializers.Serializer):
     """DropDocumentSerializer class"""
