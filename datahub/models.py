@@ -178,6 +178,7 @@ class DatasetV2File(TimeStampMixin):
         (Constants.SOURCE_MYSQL_FILE_TYPE, Constants.SOURCE_MYSQL_FILE_TYPE),
         (Constants.SOURCE_POSTGRESQL_FILE_TYPE, Constants.SOURCE_POSTGRESQL_FILE_TYPE),
     ]
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     dataset = models.ForeignKey(DatasetV2, on_delete=models.PROTECT, related_name="datasets")
     file = models.FileField(max_length=255, upload_to=dataset_directory_path, null=True, blank=True)
     source = models.CharField(max_length=50, choices=SOURCES)
@@ -213,15 +214,15 @@ class Policy(TimeStampMixin):
         validators=[validate_25MB_file_size],
     )
 
-class UsagePolicy(TimeStampMixin):
-    """
-    Policy documentation Model.
-    datapoint category - Name of the category for a group of attributes
-    datapoint attribute - datapoints for each attribute (JSON)
-    """
+# class UsagePolicy(TimeStampMixin):
+#     """
+#     Policy documentation Model.
+#     datapoint category - Name of the category for a group of attributes
+#     datapoint attribute - datapoints for each attribute (JSON)
+#     """
 
-    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    org_id = models.ForeignKey(Organization, on_delete=models.PROTECT, related_name="org")
-    dataset_file = models.ForeignKey(DatasetV2File, on_delete=models.PROTECT, related_name="dataset_file")
-    approval_status = models.CharField(max_length=255, null=True, choices=USAGE_POLICY_REQUEST_STATUS, default="public")
-    accessibility_time =  models.DateField(null=True)
+#     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+#     org_id = models.ForeignKey(Organization, on_delete=models.PROTECT, related_name="org")
+#     dataset_file = models.ForeignKey(DatasetV2File, on_delete=models.PROTECT, related_name="dataset_file")
+#     approval_status = models.CharField(max_length=255, null=True, choices=USAGE_POLICY_REQUEST_STATUS, default="public")
+#     accessibility_time =  models.DateField(null=True)
