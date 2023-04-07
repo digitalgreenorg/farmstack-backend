@@ -42,6 +42,6 @@ router.register(r"standardise", StandardisationTemplateView, basename=Constants.
  
 urlpatterns = [
     path("", include(router.urls)),
-    path('v2/', PolicyListAPIView.as_view(), name='policy-list'),
-    path('v2/<uuid:pk>/', PolicyDetailAPIView.as_view(), name='policy-detail')
+    path('policy/', PolicyListAPIView.as_view(), name='policy-list'),
+    path('policy/<uuid:pk>/', PolicyDetailAPIView.as_view(), name='policy-detail')
 ]
