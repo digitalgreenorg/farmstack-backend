@@ -119,8 +119,8 @@ DATABASES = {
  
         "ENGINE": "django.db.backends.postgresql",
         "NAME": "postgres",
-        "USER": os.environ.get("POSTGRES_USER"),
-        "PASSWORD": os.environ.get("POSTGRES_PASSWORD"),
+        "USER": os.environ.get("POSTGRES_USER",""),
+        "PASSWORD": os.environ.get("POSTGRES_PASSWORD", ""),
         "HOST": "db",
         "PORT": "5432",
         "OPTIONS": {
@@ -207,6 +207,7 @@ TEMP_DATASET_URL = "temp/datasets/"
 TEMP_STANDARDISED_DIR = "temp/standardised/"
 
 DATASET_FILES_URL = os.path.join(MEDIA_URL, "datasets/")
+POLICY_FILES_URL = os.path.join(MEDIA_URL, "policy/")
 TEMP_CONNECTOR_URL = os.path.join(MEDIA_URL, "temp/connectors/")
 CONNECTOR_FILES_URL =  os.path.join(MEDIA_URL, "connectors/")
 STANDARDISED_FILES_URL = os.path.join(MEDIA_URL,"standardised/")
@@ -265,16 +266,17 @@ AUTH_USER_MODEL = "accounts.User"
 REST_FRAMEWORK = {
     "DEFAULT_FILTER_BACKENDS": ["django_filters.rest_framework.DjangoFilterBackend"],
      "DEFAULT_AUTHENTICATION_CLASSES": ("rest_framework_simplejwt.authentication.JWTAuthentication",),
-    # "DEFAULT_PERMISSION_CLASSES": [
-    #     "rest_framework.permissions.AllowAny"
-    # ],
-    # Comment this line for test, stage and prod environments
     "DEFAULT_PERMISSION_CLASSES": [
-        "rest_framework.permissions.IsAuthenticated"
+        "rest_framework.permissions.AllowAny"
     ],
+    # Comment this line for test, stage and prod environments
+    # "DEFAULT_PERMISSION_CLASSES": [
+    #     "rest_framework.permissions.IsAuthenticated"
+    # ],
     #  # Un comment this to enable authentication
     "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
     "EXCEPTION_HANDLER": "rest_framework.views.exception_handler",
+    
 }
 
 SIMPLE_JWT = {

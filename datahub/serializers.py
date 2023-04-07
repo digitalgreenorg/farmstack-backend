@@ -39,6 +39,8 @@ from utils.validators import (
     validate_image_type,
 )
 
+from .models import Policy
+
 LOGGER = logging.getLogger(__name__)
 
 
@@ -140,13 +142,16 @@ class ParticipantSerializer(serializers.ModelSerializer):
 
     dataset_count = serializers.SerializerMethodField(method_name="get_dataset_count")
     connector_count = serializers.SerializerMethodField(method_name="get_connector_count")
-
+    number_of_participants = serializers.SerializerMethodField()
     def get_dataset_count(self, user_org_map):
         return DatasetV2.objects.filter(status=True, user_map__user=user_org_map.user.id).count()
 
     def get_connector_count(self, user_org_map):
         return Connectors.objects.filter(status=True, user_map__user=user_org_map.user.id).count()
-
+    def get_number_of_participants(self, user_org_map):
+        return UserOrganizationMap.objects.select_related(
+            Constants.USER, Constants.ORGANIZATION).filter(
+            user__status=True, user__on_boarded_by=user_org_map.user.id, user__role=3).all().count()
 
 class DropDocumentSerializer(serializers.Serializer):
     """DropDocumentSerializer class"""
@@ -644,9 +649,6 @@ class DatasetV2Serializer(serializers.ModelSerializer):
             standardised_directory_created = move_directory(
                 os.path.join(settings.BASE_DIR,settings.TEMP_STANDARDISED_DIR, validated_data.get("name")), settings.STANDARDISED_FILES_URL
             )
-
-            # TEMP_DATAFILE_URL --> STANDARDISED_DATAFILE_URL
-
             
             file_paths = plazy.list_files(root=directory_created, is_include_root=True)
             standardisation_template = json.loads(self.context.get("standardisation_template"))
@@ -735,10 +737,14 @@ class DatasetV2Serializer(serializers.ModelSerializer):
                     shutil.copy2(file_path, directory_created)
 
                     dataset_name_file_path = str(directory_created).replace("media/", "")+file_path.split("/")[-1]
+                    dataset_file_path_alone = "datasets/"+'/'.join(file_path.split("/")[-3:])
+                    standardised_dataset_file_path_alone = "standardised/"+'/'.join(file_path.split("/")[-3:])
                     print("*****",dataset_name_file_path)
+                    # import pdb; pdb.set_trace()
                     # path_to_save = os.path.join(directory_created, file_path.split("/")[-1])
-                    DatasetV2File.objects.filter(standardised_file=dataset_name_file_path).update(
+                    DatasetV2File.objects.filter(file=dataset_file_path_alone).update(
                             dataset=instance, source=file_path.split("/")[-2],
+                            standardised_file = standardised_dataset_file_path_alone,
                             standardised_configuration = standardisation_config.get(str(directory_created)+file_path.split("/")[-1]) if standardisation_config.get(str(directory_created)+file_path.split("/")[-1], '') else {}    
                         )
             # delete the temp directory
@@ -840,3 +846,9 @@ class StandardisationTemplateUpdateSerializer(serializers.ModelSerializer):
     class Meta:
         model = StandardisationTemplate
         exclude = Constants.EXCLUDE_DATES
+
+
+class PolicySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Policy
+        fields = Constants.ALL
