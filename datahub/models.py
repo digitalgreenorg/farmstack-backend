@@ -93,7 +93,16 @@ APPROVAL_STATUS = (
     ("rejected", "rejected"),
     ("for_review", "for_review"),
 )
+USAGE_POLICY_REQUEST_STATUS = (
+    ("approved", "approved"),
+    ("rejected", "rejected")
+)
 
+USAGE_POLICY_APPROVAL_STATUS = (
+    ("public", "public"),
+    ("registered", "registered"),
+    ("private", "private"),
+)
 
 @auto_str
 class Datasets(TimeStampMixin):
@@ -174,6 +183,7 @@ class DatasetV2File(TimeStampMixin):
     source = models.CharField(max_length=50, choices=SOURCES)
     standardised_file = models.FileField(max_length=255, upload_to=dataset_directory_path, null=True, blank=True )
     standardised_configuration = models.JSONField(default = dict)
+    accessibility = models.CharField(max_length=255, null=True, choices=USAGE_POLICY_APPROVAL_STATUS, default="public")
 
 @auto_str
 class StandardisationTemplate(TimeStampMixin):
@@ -198,7 +208,7 @@ class Policy(TimeStampMixin):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     name = models.CharField(max_length=100, unique=True)
     description = models.CharField(max_length=512, unique=False)
-    file = models.ImageField(
+    file = models.FileField(
         upload_to=settings.POLICY_FILES_URL,
         validators=[validate_25MB_file_size],
     )
@@ -211,9 +221,7 @@ class UsagePolicy(TimeStampMixin):
     """
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    name = models.CharField(max_length=100, unique=True)
-    description = models.CharField(max_length=512, unique=False)
-    file = models.ImageField(
-        upload_to=settings.POLICY_FILES_URL,
-        validators=[validate_25MB_file_size],
-    )
+    org_id = models.ForeignKey(Organization, on_delete=models.PROTECT, related_name="org")
+    dataset_file = models.ForeignKey(DatasetV2File, on_delete=models.PROTECT, related_name="dataset_file")
+    approval_status = models.CharField(max_length=255, null=True, choices=USAGE_POLICY_REQUEST_STATUS, default="public")
+    accessibility_time =  models.DateField(null=True)
