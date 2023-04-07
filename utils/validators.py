@@ -14,6 +14,16 @@ def validate_file_size(value):
     else:
         return value
 
+def validate_25MB_file_size(value):
+    """
+    Validator function to check the file size limit.
+    """
+    filesize = value.size
+    print("file_size", filesize)
+    if filesize > Constants.FILE_25MB_SIZE:
+        raise ValidationError("You cannot upload file more than 2Mb")
+    else:
+        return value
 
 def validate_image_type(file):
     """
