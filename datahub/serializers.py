@@ -39,6 +39,8 @@ from utils.validators import (
     validate_image_type,
 )
 
+from .models import Policy
+
 LOGGER = logging.getLogger(__name__)
 
 
@@ -841,3 +843,9 @@ class StandardisationTemplateUpdateSerializer(serializers.ModelSerializer):
     class Meta:
         model = StandardisationTemplate
         exclude = Constants.EXCLUDE_DATES
+
+
+class PolicySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Policy
+        fields = Constants.ALL

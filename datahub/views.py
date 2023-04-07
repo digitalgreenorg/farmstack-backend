@@ -87,6 +87,9 @@ from participant.serializers import (
     TicketSupportSerializer,
 )
 from utils import custom_exceptions, file_operations, string_functions, validators
+from rest_framework import generics
+from .models import Policy
+from .serializers import PolicySerializer
 
 LOGGER = logging.getLogger(__name__)
 
@@ -2102,3 +2105,13 @@ class StandardisationTemplateView(GenericViewSet):
     def list(self, request, *args, **kwargs):
         serializer = self.get_serializer(self.get_queryset(), many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
+
+
+
+class PolicyListAPIView(generics.ListCreateAPIView):
+    queryset = Policy.objects.all()
+    serializer_class = PolicySerializer
+
+class PolicyDetailAPIView(generics.RetrieveUpdateDestroyAPIView):
+    queryset = Policy.objects.all()
+    serializer_class = PolicySerializer

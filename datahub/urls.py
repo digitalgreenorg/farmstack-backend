@@ -1,11 +1,11 @@
 from posixpath import basename
 from sys import settrace
 
-from core import settings
-from core.constants import Constants
 from django.urls import include, path
 from rest_framework.routers import DefaultRouter
 
+from core import settings
+from core.constants import Constants
 from datahub import views
 from datahub.views import (
     DatahubDashboard,
@@ -18,6 +18,8 @@ from datahub.views import (
     MailInvitationViewSet,
     OrganizationViewSet,
     ParticipantViewSet,
+    PolicyDetailAPIView,
+    PolicyListAPIView,
     StandardisationTemplateView,
     SupportViewSet,
     TeamMemberViewSet,
@@ -37,8 +39,9 @@ router.register(r"", DatahubDashboard, basename="")
 router.register(r"dataset/v2", DatasetV2ViewSet, basename=Constants.DATASET_V2_URL)
 router.register(r"dataset_ops",DatasetV2ViewSetOps,basename="")
 router.register(r"standardise", StandardisationTemplateView, basename=Constants.STANDARDISE)
-
-
+ 
 urlpatterns = [
     path("", include(router.urls)),
+    path('v2/', PolicyListAPIView.as_view(), name='policy-list'),
+    path('v2/<uuid:pk>/', PolicyDetailAPIView.as_view(), name='policy-detail')
 ]

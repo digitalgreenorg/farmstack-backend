@@ -1,12 +1,13 @@
 import uuid
 from email.mime import application
 
+from django.conf import settings
+from django.db import models
+
 from accounts.models import User
 from core.base_models import TimeStampMixin
 from core.constants import Constants
-from django.conf import settings
-from django.db import models
-from utils.validators import validate_file_size, validate_image_type
+from utils.validators import validate_25MB_file_size, validate_file_size, validate_image_type
 
 
 def auto_str(cls):
@@ -182,3 +183,18 @@ class StandardisationTemplate(TimeStampMixin):
     datapoint_category = models.CharField(max_length=50, unique=True)
     datapoint_description = models.TextField(max_length=255)
     datapoint_attributes = models.JSONField(default = dict)
+
+class Policy(TimeStampMixin):
+    """
+    Policy documentation Model.
+    datapoint category - Name of the category for a group of attributes
+    datapoint attribute - datapoints for each attribute (JSON)
+    """
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    name = models.CharField(max_length=100, unique=True)
+    description = models.CharField(max_length=512, unique=False)
+    file = models.ImageField(
+        upload_to=settings.POLICY_FILES_URL,
+        validators=[validate_25MB_file_size],
+    )

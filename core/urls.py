@@ -59,6 +59,8 @@ urlpatterns = [
     path("participant/", include("participant.urls")),
     path("microsite/", include("microsite.urls")),
     path("connectors/", include("connectors.urls")),
+    path("policy/", include("datahub.urls")),
+
     path('token/refresh/', TokenRefreshView.as_view(), name='token_refresh')
 
 
