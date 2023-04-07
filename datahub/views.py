@@ -18,14 +18,14 @@ from django.conf import settings
 from django.contrib.admin.utils import get_model_from_relation
 from django.core.files.base import ContentFile
 from django.db import transaction
-from django.db.models import DEFERRED, F, Q
+from django.db.models import DEFERRED, Count, F, OuterRef, Q, Subquery
 from django.http import JsonResponse
 from django.shortcuts import render
 from drf_braces.mixins import MultipleSerializersViewMixin
 from psycopg2 import connect
 from psycopg2.extensions import ISOLATION_LEVEL_AUTOCOMMIT
 from python_http_client import exceptions
-from rest_framework import pagination, status
+from rest_framework import generics, pagination, status
 from rest_framework.decorators import action
 from rest_framework.parsers import JSONParser, MultiPartParser
 from rest_framework.permissions import AllowAny, IsAuthenticated
@@ -87,6 +87,9 @@ from participant.serializers import (
     TicketSupportSerializer,
 )
 from utils import custom_exceptions, file_operations, string_functions, validators
+
+from .models import Policy
+from .serializers import PolicySerializer
 
 LOGGER = logging.getLogger(__name__)
 
@@ -2102,3 +2105,13 @@ class StandardisationTemplateView(GenericViewSet):
     def list(self, request, *args, **kwargs):
         serializer = self.get_serializer(self.get_queryset(), many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
+
+
+class PolicyListAPIView(generics.ListCreateAPIView):
+    queryset = Policy.objects.all()
+    serializer_class = PolicySerializer
+
+
+class PolicyDetailAPIView(generics.RetrieveUpdateDestroyAPIView):
+    queryset = Policy.objects.all()
+    serializer_class = PolicySerializer
