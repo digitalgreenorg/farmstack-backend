@@ -105,7 +105,7 @@ class ConnectorsRetriveSerializer(serializers.ModelSerializer):
     def extract_data(self, connector):
         integrated_file = str(connector.integrated_file).replace("media/", "").replace("%20", " ")
         df = pd.read_csv(os.path.join(settings.MEDIA_ROOT, integrated_file), 
-            ) if os.path.exists(integrated_file) else pd.DataFrame([])
+            ) if integrated_file else pd.DataFrame([])
         no_of_records = len(df)
         if no_of_records > 20:
             df = df.iloc[:20]

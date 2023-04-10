@@ -2118,9 +2118,11 @@ class PolicyDetailAPIView(generics.RetrieveUpdateDestroyAPIView):
     queryset = Policy.objects.all()
     serializer_class = PolicySerializer
 
+
 class UsagePolicyListCreateView(generics.ListCreateAPIView):
     queryset = UsagePolicy.objects.all()
     serializer_class = UsagePolicySerializer
+
 
 class UsagePolicyRetrieveUpdateDestroyView(generics.RetrieveUpdateDestroyAPIView):
     queryset = UsagePolicy.objects.all()
