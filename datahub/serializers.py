@@ -39,7 +39,7 @@ from utils.validators import (
     validate_image_type,
 )
 
-from .models import Policy
+from .models import Policy, UsagePolicy
 
 LOGGER = logging.getLogger(__name__)
 
@@ -852,3 +852,8 @@ class PolicySerializer(serializers.ModelSerializer):
     class Meta:
         model = Policy
         fields = Constants.ALL
+
+class UsagePolicySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = UsagePolicy
+        fields = '__all__'

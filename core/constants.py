@@ -155,3 +155,5 @@ class Constants:
     DATA = "data"
     LEFT = "left"
     EDIT = "edit"
+    REQUESTED = "requested"
+    USAGEPOLICY = "usagepolicy"

@@ -41,7 +41,6 @@ class DatasetV2FileSerializer(serializers.ModelSerializer):
         model = DatasetV2File
         exclude = ["created_at", "updated_at"]
 
-
 class ConnectorsMapSerializer(serializers.ModelSerializer):
     left_dataset_file = DatasetV2FileSerializer(read_only=True, allow_null=True)
     right_dataset_file = DatasetV2FileSerializer(read_only=True, allow_null=True)
@@ -106,9 +105,8 @@ class ConnectorsRetriveSerializer(serializers.ModelSerializer):
     def extract_data(self, connector):
         integrated_file = str(connector.integrated_file).replace("media/", "").replace("%20", " ")
         df = pd.read_csv(os.path.join(settings.MEDIA_ROOT, integrated_file), 
-            ) if integrated_file else pd.DataFrame([])
+            ) if os.path.exists(integrated_file) else pd.DataFrame([])
         no_of_records = len(df)
-
         if no_of_records > 20:
             df = df.iloc[:20]
         data = json.loads(df.to_json(orient='table',index=False))

@@ -88,8 +88,8 @@ from participant.serializers import (
 )
 from utils import custom_exceptions, file_operations, string_functions, validators
 
-from .models import Policy
-from .serializers import PolicySerializer
+from .models import Policy, UsagePolicy
+from .serializers import PolicySerializer, UsagePolicySerializer
 
 LOGGER = logging.getLogger(__name__)
 
@@ -1766,6 +1766,7 @@ class DatasetV2ViewSet(GenericViewSet):
         others = data.pop(Constants.OTHERS, "")
         categories = data.pop(Constants.CATEGORY, None)
         user_id = data.pop(Constants.USER_ID, "")
+        # requested = data.pop(Constants.REQUESTED, "")
         on_boarded_by = data.pop("on_boarded_by", "")
         exclude, filters = {}, {}
         if others:
@@ -1778,6 +1779,7 @@ class DatasetV2ViewSet(GenericViewSet):
                     Constants.USER_MAP,
                     Constants.USER_MAP_USER,
                     Constants.USER_MAP_ORGANIZATION,
+                    # Constants.USAGE_POLICY
                 )
                 .filter(status=True, **data, **filters)
                 .exclude(**exclude)
@@ -2115,3 +2117,11 @@ class PolicyListAPIView(generics.ListCreateAPIView):
 class PolicyDetailAPIView(generics.RetrieveUpdateDestroyAPIView):
     queryset = Policy.objects.all()
     serializer_class = PolicySerializer
+
+class UsagePolicyListCreateView(generics.ListCreateAPIView):
+    queryset = UsagePolicy.objects.all()
+    serializer_class = UsagePolicySerializer
+
+class UsagePolicyRetrieveUpdateDestroyView(generics.RetrieveUpdateDestroyAPIView):
+    queryset = UsagePolicy.objects.all()
+    serializer_class = UsagePolicySerializer
