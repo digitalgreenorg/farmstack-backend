@@ -1,5 +1,11 @@
 import uuid
+from datetime import timedelta
 from email.mime import application
+
+
+from django.conf import settings
+from django.db import models
+from django.utils import timezone
 
 from accounts.models import User
 from core.base_models import TimeStampMixin
@@ -94,7 +100,9 @@ APPROVAL_STATUS = (
 )
 USAGE_POLICY_REQUEST_STATUS = (
     ("approved", "approved"),
-    ("rejected", "rejected")
+    ("rejected", "rejected"),
+    ("requested", "requested")
+
 )
 
 USAGE_POLICY_APPROVAL_STATUS = (
@@ -154,6 +162,33 @@ class DatasetV2(TimeStampMixin):
 
     class Meta:
         indexes = [models.Index(fields=["name", "category"])]
+@auto_str
+class StandardisationTemplate(TimeStampMixin):
+    """
+    Data Standardisation Model.
+    datapoint category - Name of the category for a group of attributes
+    datapoint attribute - datapoints for each attribute (JSON)
+    """
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    datapoint_category = models.CharField(max_length=50, unique=True)
+    datapoint_description = models.TextField(max_length=255)
+    datapoint_attributes = models.JSONField(default = dict)
+
+class Policy(TimeStampMixin):
+    """
+    Policy documentation Model.
+    name - Name of the Policy.
+    description - datapoints of each Policy.
+    file - file of each policy.
+    """
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    name = models.CharField(max_length=100, unique=True)
+    description = models.CharField(max_length=512, unique=False)
+    file = models.FileField(
+        upload_to=settings.POLICY_FILES_URL,
+        validators=[validate_25MB_file_size],
+    )
 
 
 @auto_str
@@ -185,31 +220,15 @@ class DatasetV2File(TimeStampMixin):
     standardised_configuration = models.JSONField(default = dict)
     accessibility = models.CharField(max_length=255, null=True, choices=USAGE_POLICY_APPROVAL_STATUS, default="public")
 
-@auto_str
-class StandardisationTemplate(TimeStampMixin):
+class UsagePolicy(TimeStampMixin):
     """
-    Data Standardisation Model.
+    Policy documentation Model.
     datapoint category - Name of the category for a group of attributes
     datapoint attribute - datapoints for each attribute (JSON)
     """
-
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    datapoint_category = models.CharField(max_length=50, unique=True)
-    datapoint_description = models.TextField(max_length=255)
-    datapoint_attributes = models.JSONField(default = dict)
-
-class Policy(TimeStampMixin):
-    """
-    Policy documentation Model.
-    name - Name of the Policy.
-    description - datapoints of each Policy.
-    file - file of each policy.
-    """
-    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    name = models.CharField(max_length=100, unique=True)
-    description = models.CharField(max_length=512, unique=False)
-    file = models.FileField(
-        upload_to=settings.POLICY_FILES_URL,
-        validators=[validate_25MB_file_size],
-    )
+    org_id = models.ForeignKey(Organization, on_delete=models.PROTECT, related_name="org")
+    dataset_file = models.ForeignKey(DatasetV2File, on_delete=models.CASCADE, related_name="dataset_v2_file")
+    approval_status = models.CharField(max_length=255, null=True, choices=USAGE_POLICY_REQUEST_STATUS, default="requested")
+    accessibility_time = models.DateField(default=timezone.localdate() + timedelta(weeks=4))
 
