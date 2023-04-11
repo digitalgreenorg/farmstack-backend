@@ -145,10 +145,10 @@ class ParticipantSerializer(serializers.ModelSerializer):
     number_of_participants = serializers.SerializerMethodField()
 
     def get_dataset_count(self, user_org_map):
-        return DatasetV2.objects.filter(status=True, user_map__user=user_org_map.user.id).count()
+        return DatasetV2.objects.filter(user_map__user=user_org_map.user.id).count()
 
     def get_connector_count(self, user_org_map):
-        return Connectors.objects.filter(status=True, user_map__user=user_org_map.user.id).count()
+        return Connectors.objects.filter(user_map__user=user_org_map.user.id).count()
 
     def get_number_of_participants(self, user_org_map):
         return (
@@ -864,7 +864,7 @@ class micrositeOrganizationSerializer(serializers.ModelSerializer):
     users_count = serializers.SerializerMethodField(method_name="get_users_count")
 
     def get_dataset_count(self, user_org_map):
-        return DatasetV2.objects.filter(status=True, user_map__organization=user_org_map.organization.id).count()
+        return DatasetV2.objects.filter(user_map__organization=user_org_map.organization.id).count()
 
     def get_users_count(self, user_org_map):
         return UserOrganizationMap.objects.filter(

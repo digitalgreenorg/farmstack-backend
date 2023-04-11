@@ -1668,9 +1668,6 @@ class DataBaseViewSet(GenericViewSet):
             if DatasetV2.objects.filter(name=dataset_name).exists():
                 return Response({"dataset_name": ["dataset v2 with this name already exists."]}, status=status.HTTP_400_BAD_REQUEST)
         
-        import pdb
-        pdb.set_trace()
-        
         conn_details = request.COOKIES.get('conn_details',request.data)
         config = ast.literal_eval(conn_details)
         database_type = config.get("database_type")
