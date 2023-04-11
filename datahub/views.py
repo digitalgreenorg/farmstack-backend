@@ -394,10 +394,11 @@ class ParticipantViewSet(GenericViewSet):
         """GET method: query all the list of objects from the Product model"""
         on_boarded_by = request.GET.get("on_boarded_by", None)
         co_steward = request.GET.get("co_steward", False)
+        approval_status = request.GET.get(Constants.APPROVAL_STATUS, True)
         if on_boarded_by:
             roles = (
                 UserOrganizationMap.objects.select_related(Constants.USER, Constants.ORGANIZATION)
-                .filter(user__status=True, user__on_boarded_by=on_boarded_by, user__role=3)
+                .filter(user__status=True, user__on_boarded_by=on_boarded_by, user__role=3, approval_status=approval_status)
                 .order_by("user__updated_at")
                 .all()
             )
@@ -411,7 +412,7 @@ class ParticipantViewSet(GenericViewSet):
         else:
             roles = (
                 UserOrganizationMap.objects.select_related(Constants.USER, Constants.ORGANIZATION)
-                .filter(user__status=True, user__role=3, user__on_boarded_by=None)
+                .filter(user__status=True, user__role=3, user__on_boarded_by=None, approval_status=approval_status)
                 .order_by("user__updated_at")
                 .all()
             )
@@ -1741,8 +1742,8 @@ class DatasetV2ViewSet(GenericViewSet):
         """
         obj = self.get_object()
         serializer = self.get_serializer(obj).data
-
-        dataset_file_obj = DatasetV2File.objects.filter(dataset_id=obj.id)
+        dataset_file_obj = DatasetV2File.objects.prefetch_related("dataset_v2_file").filter(dataset_id=obj.id)
+        # import pdb; pdb.set_trace()
         data = []
         for file in dataset_file_obj:
             path_ = os.path.join("media/", str(file.standardised_file))
@@ -1753,6 +1754,8 @@ class DatasetV2ViewSet(GenericViewSet):
             file_path["source"] = file.source
             file_path["standardised_file"] = os.path.join("/media/",str(file.standardised_file))
             file_path["standardisation_config"] = file.standardised_configuration
+            file_path["usage_policy"]=UsagePolicySerializer(file.dataset_v2_file.all(), many=True).data
+
             data.append(file_path)
 
         serializer["datasets"] = data
@@ -1864,49 +1867,50 @@ class DatasetV2ViewSet(GenericViewSet):
             return Response(f"Invalid filter fields: {list(request.data.keys())}", status=500)
         return Response({"geography": geography, "category_detail": category_detail}, status=200)
 
-    @action(detail=False, methods=["post"])
-    def search_datasets(self, request, *args, **kwargs):
-        data = request.data
-        org_id = data.pop(Constants.ORG_ID, "")
-        others = data.pop(Constants.OTHERS, "")
-        user_id = data.pop(Constants.USER_ID, "")
-        search_pattern = data.pop(Constants.SEARCH_PATTERNS, "")
-        exclude, filters = {}, {}
+    # @action(detail=False, methods=["post"])
+    # def search_datasets(self, request, *args, **kwargs):
+    #     data = request.data
+    #     org_id = data.pop(Constants.ORG_ID, "")
+    #     others = data.pop(Constants.OTHERS, "")
+    #     user_id = data.pop(Constants.USER_ID, "")
+    #     search_pattern = data.pop(Constants.SEARCH_PATTERNS, "")
+    #     exclude, filters = {}, {}
 
-        if others:
-            exclude = {Constants.USER_MAP_ORGANIZATION: org_id} if org_id else {}
-            filters = {Constants.NAME_ICONTAINS: search_pattern} if search_pattern else {}
-        else:
-            filters = (
-                {
-                    Constants.USER_MAP_ORGANIZATION: org_id,
-                    Constants.NAME_ICONTAINS: search_pattern,
-                }
-                if org_id
-                else {}
-            )
-        try:
-            data = (
-                DatasetV2.objects.select_related(
-                    Constants.USER_MAP,
-                    Constants.USER_MAP_USER,
-                    Constants.USER_MAP_ORGANIZATION,
-                )
-                .filter(user_map__user__status=True, status=True, **data, **filters)
-                .exclude(**exclude)
-                .order_by(Constants.UPDATED_AT)
-                .reverse()
-                .all()
-            )
-            page = self.paginate_queryset(data)
-            participant_serializer = DatahubDatasetsV2Serializer(page, many=True)
-            return self.get_paginated_response(participant_serializer.data)
-        except Exception as error:  # type: ignore
-            logging.error("Error while filtering the datasets. ERROR: %s", error)
-            return Response(
-                f"Invalid filter fields: {list(request.data.keys())}",
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            )
+    #     if others:
+    #         exclude = {Constants.USER_MAP_ORGANIZATION: org_id} if org_id else {}
+    #         filters = {Constants.NAME_ICONTAINS: search_pattern} if search_pattern else {}
+    #     else:
+    #         filters = (
+    #             {
+    #                 Constants.USER_MAP_ORGANIZATION: org_id,
+    #                 Constants.NAME_ICONTAINS: search_pattern,
+    #             }
+    #             if org_id
+    #             else {}
+    #         )
+    #     try:
+    #         data = (
+    #             DatasetV2.objects.select_related(
+    #                 Constants.USER_MAP,
+    #                 Constants.USER_MAP_USER,
+    #                 Constants.USER_MAP_ORGANIZATION,
+    #             )
+    #             .filter(user_map__user__status=True, status=True, **data, **filters)
+    #             .exclude(**exclude)
+    #             .order_by(Constants.UPDATED_AT)
+    #             .reverse()
+    #             .all()
+    #         )
+    #         page = self.paginate_queryset(data)
+    #         participant_serializer = DatahubDatasetsV2Serializer(page, many=True)
+    #         return self.get_paginated_response(participant_serializer.data)
+    #     except Exception as error:  # type: ignore
+    #         logging.error("Error while filtering the datasets. ERROR: %s", error)
+    #         return Response(
+    #             f"Invalid filter fields: {list(request.data.keys())}",
+    #             status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+    #         )
+
 
     def destroy(self, request, pk, *args, **kwargs):
         """

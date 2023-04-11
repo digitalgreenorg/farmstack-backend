@@ -1,8 +1,10 @@
 import uuid
+from datetime import timedelta
 from email.mime import application
 
 from django.conf import settings
 from django.db import models
+from django.utils import timezone
 
 from accounts.models import User
 from core.base_models import TimeStampMixin
@@ -95,7 +97,9 @@ APPROVAL_STATUS = (
 )
 USAGE_POLICY_REQUEST_STATUS = (
     ("approved", "approved"),
-    ("rejected", "rejected")
+    ("rejected", "rejected"),
+    ("requested", "requested")
+
 )
 
 USAGE_POLICY_APPROVAL_STATUS = (
@@ -221,7 +225,7 @@ class UsagePolicy(TimeStampMixin):
     """
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     org_id = models.ForeignKey(Organization, on_delete=models.PROTECT, related_name="org")
-    dataset_file = models.ForeignKey(DatasetV2File, on_delete=models.CASCADE, related_name="dataset_file")
-    approval_status = models.CharField(max_length=255, null=True, choices=USAGE_POLICY_REQUEST_STATUS, default="public")
-    accessibility_time =  models.DateField(null=True)
+    dataset_file = models.ForeignKey(DatasetV2File, on_delete=models.CASCADE, related_name="dataset_v2_file")
+    approval_status = models.CharField(max_length=255, null=True, choices=USAGE_POLICY_REQUEST_STATUS, default="requested")
+    accessibility_time = models.DateField(default=timezone.localdate() + timedelta(weeks=4))
 

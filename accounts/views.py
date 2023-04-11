@@ -1,6 +1,7 @@
 import datetime
 import logging
 import os
+
 # from asyncio import exceptions
 from asyncio.log import logger
 
@@ -37,7 +38,15 @@ from core.utils import (
     date_formater,
     read_contents_from_csv_or_xlsx_file,
 )
-from datahub.serializers import(
+from datahub.models import (
+    DatahubDocuments,
+    Datasets,
+    DatasetV2,
+    DatasetV2File,
+    Organization,
+    UserOrganizationMap,
+)
+from datahub.serializers import (
     DatahubDatasetsSerializer,
     DatahubDatasetsV2Serializer,
     DatahubThemeSerializer,
@@ -57,14 +66,6 @@ from datahub.serializers import(
     TeamMemberUpdateSerializer,
     UserOrganizationCreateSerializer,
     UserOrganizationMapSerializer,
-)
-from datahub.models import (
-    DatahubDocuments,
-    Datasets,
-    DatasetV2,
-    DatasetV2File,
-    Organization,
-    UserOrganizationMap,
 )
 
 
@@ -452,6 +453,7 @@ class SelfRegisterParticipantViewSet(GenericViewSet):
         request.data._mutable=True
 
         request.data.update({'role':3})
+        request.data.update({'approval_status':False})
         user_serializer = UserCreateSerializer(data=request.data)
         user_serializer.is_valid(raise_exception=True)
         user_saved = self.perform_create(user_serializer)
@@ -493,4 +495,4 @@ class SelfRegisterParticipantViewSet(GenericViewSet):
 
         return Response(user_org_serializer.data, status=status.HTTP_201_CREATED)
 
-    
+        
