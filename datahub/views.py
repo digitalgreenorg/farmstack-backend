@@ -398,7 +398,7 @@ class ParticipantViewSet(GenericViewSet):
         if on_boarded_by:
             roles = (
                 UserOrganizationMap.objects.select_related(Constants.USER, Constants.ORGANIZATION)
-                .filter(user__status=True, user__on_boarded_by=on_boarded_by, user__role=3, approval_status=approval_status)
+                .filter(user__status=True, user__on_boarded_by=on_boarded_by, user__role=3, user__approval_status=approval_status)
                 .order_by("user__updated_at")
                 .all()
             )
@@ -412,7 +412,7 @@ class ParticipantViewSet(GenericViewSet):
         else:
             roles = (
                 UserOrganizationMap.objects.select_related(Constants.USER, Constants.ORGANIZATION)
-                .filter(user__status=True, user__role=3, user__on_boarded_by=None, approval_status=approval_status)
+                .filter(user__status=True, user__role=3, user__on_boarded_by=None, user__approval_status=approval_status)
                 .order_by("user__updated_at")
                 .all()
             )
