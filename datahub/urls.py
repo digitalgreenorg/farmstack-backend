@@ -1,16 +1,18 @@
 from posixpath import basename
 from sys import settrace
 
+from core import settings
+from core.constants import Constants
 from django.urls import include, path
 from rest_framework.routers import DefaultRouter
 
-from core import settings
-from core.constants import Constants
 from datahub import views
 from datahub.views import (
     DatahubDashboard,
     DatahubDatasetsViewSet,
     DatahubThemeView,
+    DatasetFileV2View,
+    DatasetV2View,
     DatasetV2ViewSet,
     DatasetV2ViewSetOps,
     DocumentSaveView,
@@ -37,6 +39,8 @@ router.register(r"support", SupportViewSet, basename=Constants.SUPPORT_TICKETS)
 router.register(r"datasets", DatahubDatasetsViewSet, basename=Constants.DATAHUB_DATASETS)
 router.register(r"", DatahubDashboard, basename="")
 router.register(r"dataset/v2", DatasetV2ViewSet, basename=Constants.DATASET_V2_URL)
+router.register(r"new_dataset_v2", DatasetV2View, basename=Constants.DATASETS_V2_URL)
+router.register(r"dataset_files", DatasetFileV2View, basename=Constants.DATASET_FILES)
 router.register(r"dataset_ops",DatasetV2ViewSetOps,basename="")
 router.register(r"standardise", StandardisationTemplateView, basename=Constants.STANDARDISE)
  

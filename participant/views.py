@@ -17,6 +17,25 @@ import pandas as pd
 import psycopg2
 import requests
 import xlwt
+from accounts.models import User
+from core.constants import Constants
+from core.utils import (
+    CustomPagination,
+    DefaultPagination,
+    Utils,
+    csv_and_xlsx_file_validatation,
+    date_formater,
+    one_day_date_formater,
+    read_contents_from_csv_or_xlsx_file,
+)
+from datahub.models import (
+    Datasets,
+    DatasetV2,
+    DatasetV2File,
+    Organization,
+    UserOrganizationMap,
+)
+from datahub.serializers import DatasetFileV2NewSerializer
 from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.db.models import Q
@@ -29,19 +48,9 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.viewsets import GenericViewSet, ViewSet
 from uritemplate import partial
+from utils import string_functions
+from utils.connector_utils import run_containers, stop_containers
 
-from accounts.models import User
-from core.constants import Constants
-from core.utils import (
-    CustomPagination,
-    DefaultPagination,
-    Utils,
-    csv_and_xlsx_file_validatation,
-    date_formater,
-    one_day_date_formater,
-    read_contents_from_csv_or_xlsx_file,
-)
-from datahub.models import Datasets, DatasetV2, Organization, UserOrganizationMap
 from participant.models import (
     Connectors,
     ConnectorsMap,
@@ -74,8 +83,6 @@ from participant.serializers import (
     ProjectSerializer,
     TicketSupportSerializer,
 )
-from utils import string_functions
-from utils.connector_utils import run_containers, stop_containers
 
 LOGGER = logging.getLogger(__name__)
 import json
@@ -85,7 +92,6 @@ from django.http import HttpResponse
 from rest_framework import status
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
-
 from utils import file_operations as file_ops
 
 
@@ -1661,13 +1667,17 @@ class DataBaseViewSet(GenericViewSet):
         if not request.query_params.get("dataset_exists"):
             if DatasetV2.objects.filter(name=dataset_name).exists():
                 return Response({"dataset_name": ["dataset v2 with this name already exists."]}, status=status.HTTP_400_BAD_REQUEST)
-
+        
+        import pdb
+        pdb.set_trace()
+        
         conn_details = request.COOKIES.get('conn_details',request.data)
         config = ast.literal_eval(conn_details)
         database_type = config.get("database_type")
         serializer = DatabaseDataExportSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-
+        
+        dataset = request.data.get('dataset')
         t_name = request.data.get('table_name')
         col_names = request.data.get('col')
         col_names = ast.literal_eval(col_names)
@@ -1690,10 +1700,15 @@ class DataBaseViewSet(GenericViewSet):
                 result = mycursor.fetchall()
 
                 # save the list of files to a temp directory
-                file_path = file_ops.create_directory(settings.TEMP_DATASET_URL,[dataset_name,source])
+                file_path = file_ops.create_directory(settings.DATASET_FILES_URL,[dataset_name,source])
                 df = pd.read_sql(query,mydb)
                 df=df.astype(str)
                 xls_file = df.to_excel(file_path+"/"+file_name+".xls")
+                DatasetV2File.objects.create(
+                    dataset = dataset,
+                    source = source,
+                    file = file_path
+                )
                 result = os.listdir(file_path)
                 return HttpResponse(json.dumps(result),status=status.HTTP_200_OK)
 
@@ -1722,8 +1737,13 @@ class DataBaseViewSet(GenericViewSet):
                         LOGGER.error(error, exc_info=True)
                         return Response({"col": ["Columns does not exist."]}, status=status.HTTP_400_BAD_REQUEST)
 
-                file_path = file_ops.create_directory(settings.TEMP_DATASET_URL, [dataset_name, source])
+                file_path = file_ops.create_directory(settings.DATASET_FILES_URL, [dataset_name, source])
                 xls_file=df.to_excel(os.path.join(file_path, file_name+".xls"))
+                DatasetV2File.objects.create(
+                    dataset = dataset,
+                    source = source,
+                    file = file_path
+                )
                 result = os.listdir(file_path)
                 return HttpResponse(json.dumps(result), status=status.HTTP_200_OK)
 
@@ -1736,6 +1756,7 @@ class DataBaseViewSet(GenericViewSet):
         '''This is an API to fetch the data from an External API with an auth token
         and store it in JSON format.'''
         try:
+            dataset = request.data.get('dataset')
             url=request.data.get('url')
             headers={"Authorization": request.data.get('api_key')}
             response = requests.get(url, headers=headers)
@@ -1745,12 +1766,16 @@ class DataBaseViewSet(GenericViewSet):
                 dataset_name=request.data.get("dataset_name")
                 source=request.data.get('source')
                 file_name=request.data.get("file_name")
-                file_path=file_ops.create_directory(settings.TEMP_DATASET_URL,[dataset_name,source])
+                file_path=file_ops.create_directory(settings.DATASET_FILES_URL,[dataset_name,source])
                 with open(file_path+"/"+file_name+".json", 'w') as outfile:
                     outfile.write(json_data)
 
-                result=os.listdir(file_path) 
-
+                result=os.listdir(file_path)
+                DatasetV2File.objects.create(
+                    dataset = dataset,
+                    source = source,
+                    file = file_path+"/"+file_name+".json"
+                ) 
                 return Response(result,status=status.HTTP_200_OK)
             LOGGER.error("Failed to fetch data from api")
             return Response({"message": f"API Response: {response.json()}"}, status=status.HTTP_400_BAD_REQUEST)

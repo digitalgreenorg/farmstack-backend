@@ -136,6 +136,8 @@ class Constants:
     DATASET_FILE_TYPES = ["xls", "xlsx", "csv", "pdf", "jpeg", "jpg", "png", "tiff"]
     DATASET_MAX_FILE_SIZE = 50
     DATASET_V2_URL = "dataset/v2"
+    DATASETS_V2_URL = "datasets/v2"
+    DATASET_FILES = "dataset_files"
     CATEGORIES_FILE = "categories.json"
     CONNECTORS = "connectors"
     STANDARDISE = "standardise"

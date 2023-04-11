@@ -1,12 +1,11 @@
 import uuid
 from email.mime import application
 
-from django.conf import settings
-from django.db import models
-
 from accounts.models import User
 from core.base_models import TimeStampMixin
 from core.constants import Constants
+from django.conf import settings
+from django.db import models
 from utils.validators import (
     validate_25MB_file_size,
     validate_file_size,
@@ -146,12 +145,12 @@ class DatasetV2(TimeStampMixin):
     name = models.CharField(max_length=100, unique=True)
     user_map = models.ForeignKey(UserOrganizationMap, on_delete=models.PROTECT)
     description = models.TextField(max_length=512, null=True, blank=True)
-    category = models.JSONField()
+    category = models.JSONField(default=dict)
     geography = models.CharField(max_length=255, null=True, blank=True)
     data_capture_start = models.DateTimeField(null=True, blank=True)
     data_capture_end = models.DateTimeField(null=True, blank=True)
     constantly_update = models.BooleanField(default=False)
-    status = models.BooleanField(default=True)
+    is_temp = models.BooleanField(default=True)
 
     class Meta:
         indexes = [models.Index(fields=["name", "category"])]
@@ -171,7 +170,7 @@ class DatasetV2File(TimeStampMixin):
 
     def dataset_directory_path(instance, filename):
         # file will be uploaded to MEDIA_ROOT/user_<id>/<filename>
-        return "datasets/{0}/{1}".format(instance.dataset.name, filename)
+        return "datasets/{0}/{1}/{2}".format(instance.dataset.name, instance.source, filename)
 
     SOURCES = [
         (Constants.SOURCE_FILE_TYPE, Constants.SOURCE_FILE_TYPE),
@@ -179,7 +178,7 @@ class DatasetV2File(TimeStampMixin):
         (Constants.SOURCE_POSTGRESQL_FILE_TYPE, Constants.SOURCE_POSTGRESQL_FILE_TYPE),
     ]
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    dataset = models.ForeignKey(DatasetV2, on_delete=models.PROTECT, related_name="datasets")
+    dataset = models.ForeignKey(DatasetV2, on_delete=models.CASCADE, related_name="datasets")
     file = models.FileField(max_length=255, upload_to=dataset_directory_path, null=True, blank=True)
     source = models.CharField(max_length=50, choices=SOURCES)
     standardised_file = models.FileField(max_length=255, upload_to=dataset_directory_path, null=True, blank=True )
@@ -214,15 +213,3 @@ class Policy(TimeStampMixin):
         validators=[validate_25MB_file_size],
     )
 
-# class UsagePolicy(TimeStampMixin):
-#     """
-#     Policy documentation Model.
-#     datapoint category - Name of the category for a group of attributes
-#     datapoint attribute - datapoints for each attribute (JSON)
-#     """
-
-#     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-#     org_id = models.ForeignKey(Organization, on_delete=models.PROTECT, related_name="org")
-#     dataset_file = models.ForeignKey(DatasetV2File, on_delete=models.PROTECT, related_name="dataset_file")
-#     approval_status = models.CharField(max_length=255, null=True, choices=USAGE_POLICY_REQUEST_STATUS, default="public")
-#     accessibility_time =  models.DateField(null=True)
