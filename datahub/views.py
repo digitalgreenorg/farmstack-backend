@@ -14,25 +14,6 @@ from urllib.parse import unquote
 
 import django
 import pandas as pd
-from django.conf import settings
-from django.contrib.admin.utils import get_model_from_relation
-from django.core.files.base import ContentFile
-from django.db import transaction
-from django.db.models import DEFERRED, Count, F, OuterRef, Q, Subquery
-from django.http import JsonResponse
-from django.shortcuts import render
-from drf_braces.mixins import MultipleSerializersViewMixin
-from psycopg2 import connect
-from psycopg2.extensions import ISOLATION_LEVEL_AUTOCOMMIT
-from python_http_client import exceptions
-from rest_framework import generics, pagination, status
-from rest_framework.decorators import action
-from rest_framework.parsers import JSONParser, MultiPartParser
-from rest_framework.permissions import AllowAny, IsAuthenticated
-from rest_framework.response import Response
-from rest_framework.viewsets import GenericViewSet, ViewSet
-from uritemplate import partial
-
 from accounts.models import User, UserRole
 from accounts.serializers import (
     UserCreateSerializer,
@@ -48,6 +29,31 @@ from core.utils import (
     date_formater,
     read_contents_from_csv_or_xlsx_file,
 )
+from django.conf import settings
+from django.contrib.admin.utils import get_model_from_relation
+from django.core.files.base import ContentFile
+from django.db import transaction
+from django.db.models import DEFERRED, Count, F, OuterRef, Q, Subquery
+from django.http import JsonResponse
+from django.shortcuts import render
+from drf_braces.mixins import MultipleSerializersViewMixin
+from participant.models import Connectors, SupportTicket
+from participant.serializers import (
+    ParticipantSupportTicketSerializer,
+    TicketSupportSerializer,
+)
+from psycopg2 import connect
+from psycopg2.extensions import ISOLATION_LEVEL_AUTOCOMMIT
+from python_http_client import exceptions
+from rest_framework import generics, pagination, status
+from rest_framework.decorators import action
+from rest_framework.parsers import JSONParser, MultiPartParser
+from rest_framework.permissions import AllowAny, IsAuthenticated
+from rest_framework.response import Response
+from rest_framework.viewsets import GenericViewSet, ViewSet
+from uritemplate import partial
+from utils import custom_exceptions, file_operations, string_functions, validators
+
 from datahub.models import (
     DatahubDocuments,
     Datasets,
@@ -84,12 +90,6 @@ from datahub.serializers import (
     UserOrganizationCreateSerializer,
     UserOrganizationMapSerializer,
 )
-from participant.models import Connectors, SupportTicket
-from participant.serializers import (
-    ParticipantSupportTicketSerializer,
-    TicketSupportSerializer,
-)
-from utils import custom_exceptions, file_operations, string_functions, validators
 
 from .models import Policy, UsagePolicy
 from .serializers import PolicySerializer, UsagePolicySerializer
@@ -2191,11 +2191,12 @@ class DatasetFileV2View(GenericViewSet):
 
     def update(self, request, *args, **kwargs):
         setattr(request.data, "_mutable", True)
+        data = request.data
         instance = self.get_object()
         # Generate the file and write the path to standardised file.
         standardised_configuration = request.data.get("standardised_configuration")
         mask_columns = request.data.get("mask_columns")
-        file_path = instance.file
+        file_path = str(instance.file)
 
         if file_path.endswith(".xlsx") or file_path.endswith(".xls"):
             df = pd.read_excel(os.path.join(settings.DATASET_FILES_URL, file_path), index_col=None)
@@ -2218,11 +2219,11 @@ class DatasetFileV2View(GenericViewSet):
         else:
             df.to_excel(os.path.join(settings.STANDARDISED_FILES_URL, instance.dataset.name, instance.source, file_name))  # type: ignore
 
-        data = request.data
+        # data = request.data
         data["standardised_file"] = os.path.join(
             settings.STANDARDISED_FILES_URL, instance.dataset.name, instance.source, file_name
         )
-        data["standardised_configuration"] = request.data
+        data["standardised_configuration"] = data["config"]
         serializer = self.get_serializer(instance, data=data, partial=True)
         serializer.is_valid(raise_exception=True)
         serializer.save()
