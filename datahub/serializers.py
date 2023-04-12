@@ -39,7 +39,7 @@ from datahub.models import (
     UserOrganizationMap,
 )
 
-from .models import Policy
+from .models import Policy, UsagePolicy
 
 LOGGER = logging.getLogger(__name__)
 
@@ -908,3 +908,8 @@ class DatasetV2DetailNewSerializer(serializers.ModelSerializer):
         model = DatasetV2
         fields = Constants.ALL
         # fields = ['id', 'name', 'geography', 'category', 'dataset_files']
+        
+class UsagePolicySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = UsagePolicy
+        fields = '__all__'

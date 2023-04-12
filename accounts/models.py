@@ -98,7 +98,7 @@ class User(AbstractBaseUser, TimeStampMixin):
     status = models.BooleanField(default=True)
     on_boarded = models.BooleanField(default=False)
     on_boarded_by = models.ForeignKey('self', null=True, blank=True, on_delete=models.PROTECT)
-    approval_status = models.BooleanField(default=False)
+    approval_status = models.BooleanField(default=True)
     subscription = models.CharField(max_length=50, null=True, blank=True)
 
     objects = UserManager()

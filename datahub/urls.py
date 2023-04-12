@@ -25,6 +25,8 @@ from datahub.views import (
     StandardisationTemplateView,
     SupportViewSet,
     TeamMemberViewSet,
+    UsagePolicyListCreateView,
+    UsagePolicyRetrieveUpdateDestroyView,
 )
 
 router = DefaultRouter()
@@ -47,5 +49,7 @@ router.register(r"standardise", StandardisationTemplateView, basename=Constants.
 urlpatterns = [
     path("", include(router.urls)),
     path('policy/', PolicyListAPIView.as_view(), name='policy-list'),
-    path('policy/<uuid:pk>/', PolicyDetailAPIView.as_view(), name='policy-detail')
+    path('policy/<uuid:pk>/', PolicyDetailAPIView.as_view(), name='policy-detail'),
+    path('usage_policies/', UsagePolicyListCreateView.as_view(), name='usage-policy-list-create'),
+    path('usage_policies/<uuid:pk>/', UsagePolicyRetrieveUpdateDestroyView.as_view(), name='usage-policy-retrieve-update-destroy'),
 ]

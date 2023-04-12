@@ -39,5 +39,5 @@ class ConnectorsMap(TimeStampMixin):
     connectors = models.ForeignKey(Connectors, on_delete=models.CASCADE)
     left_dataset_file = models.ForeignKey(DatasetV2File, on_delete=models.CASCADE, related_name="left_dataset_file")
     right_dataset_file = models.ForeignKey(DatasetV2File, on_delete=models.CASCADE, related_name="right_dataset_file")
-    condition = models.JSONField()
+    condition = models.JSONField(default=dict)
     status = models.BooleanField(default=True)
