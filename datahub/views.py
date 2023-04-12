@@ -98,6 +98,7 @@ LOGGER = logging.getLogger(__name__)
 
 con = None
 
+
 class DefaultPagination(pagination.PageNumberPagination):
     """
     Configure Pagination
@@ -395,7 +396,12 @@ class ParticipantViewSet(GenericViewSet):
         if on_boarded_by:
             roles = (
                 UserOrganizationMap.objects.select_related(Constants.USER, Constants.ORGANIZATION)
-                .filter(user__status=True, user__on_boarded_by=on_boarded_by, user__role=3, user__approval_status=approval_status)
+                .filter(
+                    user__status=True,
+                    user__on_boarded_by=on_boarded_by,
+                    user__role=3,
+                    user__approval_status=approval_status,
+                )
                 .order_by("user__updated_at")
                 .all()
             )
@@ -409,7 +415,9 @@ class ParticipantViewSet(GenericViewSet):
         else:
             roles = (
                 UserOrganizationMap.objects.select_related(Constants.USER, Constants.ORGANIZATION)
-                .filter(user__status=True, user__role=3, user__on_boarded_by=None, user__approval_status=approval_status)
+                .filter(
+                    user__status=True, user__role=3, user__on_boarded_by=None, user__approval_status=approval_status
+                )
                 .order_by("user__updated_at")
                 .all()
             )
@@ -1547,7 +1555,7 @@ class DatasetV2ViewSet(GenericViewSet):
             LOGGER.error(error, exc_info=True)
         return Response(status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-    @action(detail=False, methods= ["get"])
+    @action(detail=False, methods=["get"])
     def get_dataset_files(self, request, *args, **kwargs):
         """
         Get list of dataset files from temporary location.
@@ -1567,41 +1575,42 @@ class DatasetV2ViewSet(GenericViewSet):
         To retrieve the list of columns of a dataset file from temporary location
         """
         try:
-            dataset_file = DatasetV2File.objects.get(id = request.data.get('id'))
-            file_path = dataset_file.file
+            dataset_file = DatasetV2File.objects.get(id=request.data.get("id"))
+            file_path = str(dataset_file.file)
             if file_path.endswith(".xlsx") or file_path.endswith(".xls"):
-                df = pd.read_excel(os.path.join(settings.BASE_DIR, file_path), index_col=0)
+                df = pd.read_excel(os.path.join(settings.MEDIA_ROOT, file_path), index_col=0)
             else:
-                df = pd.read_csv(os.path.join(settings.BASE_DIR, file_path), index_col=0)
+                df = pd.read_csv(os.path.join(settings.MEDIA_ROOT, file_path), index_col=0)
             df.columns = df.columns.astype(str)
-            result=df.columns.tolist()
+            result = df.columns.tolist()
             return Response(result, status=status.HTTP_200_OK)
         except Exception as error:
             LOGGER.error(f"Cannot get the columns of the selected file: {error}")
-            return Response(f"Cannot get the columns of the selected file: {error}", status=status.HTTP_400_BAD_REQUEST)
+            return Response(
+                f"Cannot get the columns of the selected file: {error}", status=status.HTTP_400_BAD_REQUEST
+            )
 
     @action(detail=False, methods=["post"])
-    def standardise(self,request, *args, **kwargs):
+    def standardise(self, request, *args, **kwargs):
         """
         Method to standardise a dataset and generate a file along with it.
         """
-   
+
         # 1. Take the standardisation configuration variables.
         try:
-            standardisation_configuration = request.data.get('standardisation_configuration')
-            mask_columns = request.data.get('mask_columns')
-            file_path = request.data.get('file_path')
-            is_standardised = request.data.get('is_standardised', None)
-            
+            standardisation_configuration = request.data.get("standardisation_configuration")
+            mask_columns = request.data.get("mask_columns")
+            file_path = request.data.get("file_path")
+            is_standardised = request.data.get("is_standardised", None)
+
             if is_standardised:
                 file_path = file_path.replace("/standardised", "/datasets")
 
             if file_path.endswith(".xlsx") or file_path.endswith(".xls"):
-                df = pd.read_excel(os.path.join(settings.BASE_DIR, file_path), index_col=None)
+                df = pd.read_excel(os.path.join(settings.MEDIA_ROOT, file_path), index_col=None)
             else:
-                df = pd.read_csv(os.path.join(settings.BASE_DIR, file_path), index_col=None)
-           
-        
+                df = pd.read_csv(os.path.join(settings.MEDIA_ROOT, file_path), index_col=None)
+
             df["status"] = True
             df.loc[df["status"] == True, mask_columns] = "######"
             # df[mask_columns] = df[mask_columns].mask(True)
@@ -1609,17 +1618,19 @@ class DatasetV2ViewSet(GenericViewSet):
             # print()
             df.rename(columns=standardisation_configuration, inplace=True)
             df.columns = df.columns.astype(str)
-            file_dir = file_path.split('/')
-            standardised_dir_path = '/'.join(file_dir[-3:-1])
+            file_dir = file_path.split("/")
+            standardised_dir_path = "/".join(file_dir[-3:-1])
             file_name = file_dir[-1]
             if not os.path.exists(os.path.join(settings.TEMP_STANDARDISED_DIR, standardised_dir_path)):
                 os.makedirs(os.path.join(settings.TEMP_STANDARDISED_DIR, standardised_dir_path))
             # print(df)
             if file_name.endswith(".csv"):
-                df.to_csv(os.path.join(settings.TEMP_STANDARDISED_DIR, standardised_dir_path, file_name)) # type: ignore
+                df.to_csv(os.path.join(settings.TEMP_STANDARDISED_DIR, standardised_dir_path, file_name))  # type: ignore
             else:
-                df.to_excel(os.path.join(settings.TEMP_STANDARDISED_DIR, standardised_dir_path, file_name)) # type: ignore
-            return Response({"standardised_file_path": f"{standardised_dir_path}/{file_name}"}, status=status.HTTP_200_OK)
+                df.to_excel(os.path.join(settings.TEMP_STANDARDISED_DIR, standardised_dir_path, file_name))  # type: ignore
+            return Response(
+                {"standardised_file_path": f"{standardised_dir_path}/{file_name}"}, status=status.HTTP_200_OK
+            )
 
         except Exception as error:
             LOGGER.error(f"Could not standardise {error}")
@@ -1663,10 +1674,13 @@ class DatasetV2ViewSet(GenericViewSet):
         **Endpoint**
         [ref]: /datahub/dataset/v2/
         """
-        serializer = self.get_serializer(data=request.data, context={
-            "standardisation_template": request.data.get("standardisation_template"),
-            "standardisation_config":  request.data.get("standardisation_config")
-        })
+        serializer = self.get_serializer(
+            data=request.data,
+            context={
+                "standardisation_template": request.data.get("standardisation_template"),
+                "standardisation_config": request.data.get("standardisation_config"),
+            },
+        )
         serializer.is_valid(raise_exception=True)
         serializer.save()
         return Response(serializer.data, status=status.HTTP_201_CREATED)
@@ -1683,10 +1697,15 @@ class DatasetV2ViewSet(GenericViewSet):
         to_delete = ast.literal_eval(data.get("deleted", "[]"))
         self.dataset_files(data, to_delete)
         datasetv2 = self.get_object()
-        serializer = self.get_serializer(datasetv2, data=data, partial=True, context={
-            "standardisation_template": request.data.get("standardisation_template"),
-            "standardisation_config":  request.data.get("standardisation_config")
-        })
+        serializer = self.get_serializer(
+            datasetv2,
+            data=data,
+            partial=True,
+            context={
+                "standardisation_template": request.data.get("standardisation_template"),
+                "standardisation_config": request.data.get("standardisation_config"),
+            },
+        )
         serializer.is_valid(raise_exception=True)
         serializer.save()
         return Response(serializer.data, status=status.HTTP_201_CREATED)
@@ -1744,12 +1763,14 @@ class DatasetV2ViewSet(GenericViewSet):
             path_ = os.path.join("media/", str(file.standardised_file))
             file_path = {}
             file_path["id"] = file.id
-            file_path["content"] = read_contents_from_csv_or_xlsx_file(os.path.join("/media/",str(file.standardised_file)))
+            file_path["content"] = read_contents_from_csv_or_xlsx_file(
+                os.path.join("/media/", str(file.standardised_file))
+            )
             file_path["file"] = path_
             file_path["source"] = file.source
-            file_path["standardised_file"] = os.path.join("/media/",str(file.standardised_file))
+            file_path["standardised_file"] = os.path.join("/media/", str(file.standardised_file))
             file_path["standardisation_config"] = file.standardised_configuration
-            file_path["usage_policy"]=UsagePolicySerializer(file.dataset_v2_file.all(), many=True).data
+            file_path["usage_policy"] = UsagePolicySerializer(file.dataset_v2_file.all(), many=True).data
 
             data.append(file_path)
 
@@ -1781,6 +1802,7 @@ class DatasetV2ViewSet(GenericViewSet):
                 )
                 .filter(**data, **filters)
                 .exclude(is_temp = True, **exclude)
+
                 .order_by(Constants.UPDATED_AT)
                 .reverse()
                 .all()
@@ -1905,7 +1927,6 @@ class DatasetV2ViewSet(GenericViewSet):
     #             f"Invalid filter fields: {list(request.data.keys())}",
     #             status=status.HTTP_500_INTERNAL_SERVER_ERROR,
     #         )
-
 
     def destroy(self, request, pk, *args, **kwargs):
         """
@@ -2115,7 +2136,8 @@ class PolicyListAPIView(generics.ListCreateAPIView):
 
 class PolicyDetailAPIView(generics.RetrieveUpdateDestroyAPIView):
     queryset = Policy.objects.all()
-    serializer_class = PolicySerializer    
+    serializer_class = PolicySerializer
+
 
 class DatasetV2View(GenericViewSet):
     queryset = DatasetV2.objects.all()
@@ -2133,7 +2155,6 @@ class DatasetV2View(GenericViewSet):
     def retrieve(self, request, *args, **kwargs):
         serializer = DatasetV2DetailNewSerializer(instance=self.get_object())
         return Response(serializer.data, status=status.HTTP_200_OK)
-        
 
     def update(self, request, *args, **kwargs):
         setattr(request.data, "_mutable", True)
@@ -2154,13 +2175,12 @@ class DatasetV2View(GenericViewSet):
     #     page = self.paginate_queryset(self.queryset)
     #     serializer = self.get_serializer(page, many=True).exclude(is_temp = True)
     #     return self.get_paginated_response(serializer.data)
-        
+
 
 class DatasetFileV2View(GenericViewSet):
     queryset = DatasetV2File.objects.all()
     serializer_class = DatasetFileV2NewSerializer
     permission_classes = []
-
 
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data, partial=True)
@@ -2169,49 +2189,49 @@ class DatasetFileV2View(GenericViewSet):
         LOGGER.info("Dataset created Successfully.")
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
-    def update(self,request, *args, **kwargs):
+    def update(self, request, *args, **kwargs):
         setattr(request.data, "_mutable", True)
         instance = self.get_object()
         # Generate the file and write the path to standardised file.
-        standardised_configuration = request.data.get('standardised_configuration')
-        mask_columns = standardised_configuration.get('mask_columns')
+        standardised_configuration = request.data.get("standardised_configuration")
+        mask_columns = request.data.get("mask_columns")
         file_path = instance.file
-            
+
         if file_path.endswith(".xlsx") or file_path.endswith(".xls"):
-            df = pd.read_excel(os.path.join(settings.BASE_DIR, file_path), index_col=None)
+            df = pd.read_excel(os.path.join(settings.DATASET_FILES_URL, file_path), index_col=None)
         else:
-            df = pd.read_csv(os.path.join(settings.BASE_DIR, file_path), index_col=None)
-           
-        
+            df = pd.read_csv(os.path.join(settings.DATASET_FILES_URL, file_path), index_col=None)
+
         df["status"] = True
         df.loc[df["status"] == True, mask_columns] = "######"
         # df[mask_columns] = df[mask_columns].mask(True)
         del df["status"]
         # print()
-        df.rename(columns=standardised_configuration.config, inplace=True)
+        df.rename(columns=standardised_configuration, inplace=True)
         df.columns = df.columns.astype(str)
 
         if not os.path.exists(os.path.join(settings.STANDARDISED_FILES_URL, instance.dataset.name, instance.source)):
-                os.makedirs(os.path.join(settings.STANDARDISED_FILES_URL, instance.dataset.name, instance.source))
+            os.makedirs(os.path.join(settings.STANDARDISED_FILES_URL, instance.dataset.name, instance.source))
 
         if file_path.endswith(".csv"):
-                df.to_csv(os.path.join(settings.STANDARDISED_FILES_URL, instance.dataset.name, instance.source, file_name)) # type: ignore
+            df.to_csv(os.path.join(settings.STANDARDISED_FILES_URL, instance.dataset.name, instance.source, file_name))  # type: ignore
         else:
-            df.to_excel(os.path.join(settings.STANDARDISED_FILES_URL, instance.dataset.name, instance.source, file_name)) # type: ignore
+            df.to_excel(os.path.join(settings.STANDARDISED_FILES_URL, instance.dataset.name, instance.source, file_name))  # type: ignore
 
         data = request.data
-        data["standardised_file"] = os.path.join(settings.STANDARDISED_FILES_URL, instance.dataset.name, instance.source, file_name)
-        data["standardised_configuration"] = standardised_configuration
+        data["standardised_file"] = os.path.join(
+            settings.STANDARDISED_FILES_URL, instance.dataset.name, instance.source, file_name
+        )
+        data["standardised_configuration"] = request.data
         serializer = self.get_serializer(instance, data=data, partial=True)
         serializer.is_valid(raise_exception=True)
         serializer.save()
         return Response(serializer.data, status=status.HTTP_200_OK)
 
+    def list(self, request, *args, **kwargs):
+        data = DatasetV2File.objects.filter(dataset=request.GET.get("dataset")).values("id", "file")
+        return Response(data, status=status.HTTP_200_OK)
 
-    def list(self,request, *args, **kwargs):
-        data = DatasetV2File.objects.filter(dataset=request.GET.get('dataset')).values('id', 'file')
-        return Response(data, status = status.HTTP_200_OK)  
-              
     def destroy(self, request, *args, **kwargs):
         dataset_file = self.get_object()
         dataset_file.delete()
