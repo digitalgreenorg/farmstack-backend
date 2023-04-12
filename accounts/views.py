@@ -439,19 +439,12 @@ class SelfRegisterParticipantViewSet(GenericViewSet):
 
     def create(self, request, *args, **kwargs):
         """POST method: create action to save an object by sending a POST request"""
-        org_queryset = list(
-            Organization.objects.filter(org_email=self.request.data.get(Constants.ORG_EMAIL, "")).values()
-        )
-        if not org_queryset:
-            org_serializer = OrganizationSerializer(data=request.data, partial=True)
-            org_serializer.is_valid(raise_exception=True)
-            org_queryset = self.perform_create(org_serializer)
-            org_id = org_queryset.id
-        else:
-            org_id = org_queryset[0].get(Constants.ID)
-        
+        org_serializer = OrganizationSerializer(data=request.data, partial=True)
+        org_serializer.is_valid(raise_exception=True)
+        org_queryset = self.perform_create(org_serializer)
+        org_id = org_queryset.id
+        org_id = org_queryset[0].get(Constants.ID)
         request.data._mutable=True
-
         request.data.update({'role':3})
         request.data.update({'approval_status':False})
         user_serializer = UserCreateSerializer(data=request.data)
@@ -462,7 +455,7 @@ class SelfRegisterParticipantViewSet(GenericViewSet):
             data={
                 Constants.USER: user_saved.id,
                 Constants.ORGANIZATION: org_id,
-            }
+            } # type: ignore
         )
         user_org_serializer.is_valid(raise_exception=True)
         self.perform_create(user_org_serializer)
