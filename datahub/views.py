@@ -337,16 +337,10 @@ class ParticipantViewSet(GenericViewSet):
 
     def create(self, request, *args, **kwargs):
         """POST method: create action to save an object by sending a POST request"""
-        org_queryset = list(
-            Organization.objects.filter(org_email=self.request.data.get(Constants.ORG_EMAIL, "")).values()
-        )
-        if not org_queryset:
-            org_serializer = OrganizationSerializer(data=request.data, partial=True)
-            org_serializer.is_valid(raise_exception=True)
-            org_queryset = self.perform_create(org_serializer)
-            org_id = org_queryset.id
-        else:
-            org_id = org_queryset[0].get(Constants.ID)
+        org_serializer = OrganizationSerializer(data=request.data, partial=True)
+        org_serializer.is_valid(raise_exception=True)
+        org_queryset = self.perform_create(org_serializer)
+        org_id = org_queryset.id
         user_serializer = UserCreateSerializer(data=request.data)
         user_serializer.is_valid(raise_exception=True)
         user_saved = self.perform_create(user_serializer)
@@ -354,7 +348,7 @@ class ParticipantViewSet(GenericViewSet):
             data={
                 Constants.USER: user_saved.id,
                 Constants.ORGANIZATION: org_id,
-            }
+            } # type: ignore
         )
         user_org_serializer.is_valid(raise_exception=True)
         self.perform_create(user_org_serializer)
@@ -428,11 +422,11 @@ class ParticipantViewSet(GenericViewSet):
         roles = (
             UserOrganizationMap.objects.prefetch_related(Constants.USER, Constants.ORGANIZATION)
             .filter(user__status=True, user=pk)
-            .all()
+            .first()
         )
-        participant_serializer = ParticipantSerializer(roles, many=True)
+        participant_serializer = ParticipantSerializer(roles, many=False)
         if participant_serializer.data:
-            return Response(participant_serializer.data[0], status=status.HTTP_200_OK)
+            return Response(participant_serializer.data, status=status.HTTP_200_OK)
         return Response([], status=status.HTTP_200_OK)
 
     def update(self, request, *args, **kwargs):
