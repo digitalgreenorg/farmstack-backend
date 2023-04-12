@@ -1543,6 +1543,7 @@ class DataBaseViewSet(GenericViewSet):
                 )
 
         conn_details = request.COOKIES.get("conn_details", request.data)
+
         config = ast.literal_eval(conn_details)
         database_type = config.get("database_type")
         serializer = DatabaseDataExportSerializer(data=request.data)
