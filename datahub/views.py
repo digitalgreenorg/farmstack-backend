@@ -2209,11 +2209,11 @@ class DatasetFileV2View(GenericViewSet):
         serializer.save()
         return Response(serializer.data, status=status.HTTP_200_OK)
 
+
     def list(self,request, *args, **kwargs):
-        data = DatasetV2File.objects.filter(dataset=request.GET.get('dataset')).values('id',)
-        return Response(data, status = status.HTTP_200_OK)
-
-
+        data = DatasetV2File.objects.filter(dataset=request.GET.get('dataset')).values('id', 'file')
+        return Response(data, status = status.HTTP_200_OK)  
+              
     def destroy(self, request, *args, **kwargs):
         dataset_file = self.get_object()
         dataset_file.delete()
