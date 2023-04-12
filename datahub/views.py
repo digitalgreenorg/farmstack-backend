@@ -349,7 +349,7 @@ class ParticipantViewSet(GenericViewSet):
             data={
                 Constants.USER: user_saved.id,
                 Constants.ORGANIZATION: org_id,
-            } # type: ignore
+            }  # type: ignore
         )
         user_org_serializer.is_valid(raise_exception=True)
         self.perform_create(user_org_serializer)
@@ -1356,9 +1356,7 @@ class DatahubDashboard(GenericViewSet):
             )
             total_datasets = (
                 DatasetV2.objects.select_related("user_map", "user_map__user", "user_map__organization")
-                .filter(
-                    user_map__user__status=True, is_temp=False
-                )
+                .filter(user_map__user__status=True, is_temp=False)
                 .count()
             )
             # write a function to compute data exchange
@@ -1801,8 +1799,7 @@ class DatasetV2ViewSet(GenericViewSet):
                     # Constants.USAGE_POLICY
                 )
                 .filter(**data, **filters)
-                .exclude(is_temp = True, **exclude)
-
+                .exclude(is_temp=True, **exclude)
                 .order_by(Constants.UPDATED_AT)
                 .reverse()
                 .all()
@@ -2190,18 +2187,22 @@ class DatasetFileV2View(GenericViewSet):
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
     def update(self, request, *args, **kwargs):
-        setattr(request.data, "_mutable", True)
+        # setattr(request.data, "_mutable", True)
+
         data = request.data
         instance = self.get_object()
         # Generate the file and write the path to standardised file.
         standardised_configuration = request.data.get("standardised_configuration")
-        mask_columns = request.data.get("mask_columns")
+        mask_columns = request.data.get(
+            "mask_columns",
+        )
+        config = request.data.get("config")
         file_path = str(instance.file)
 
         if file_path.endswith(".xlsx") or file_path.endswith(".xls"):
-            df = pd.read_excel(os.path.join(settings.DATASET_FILES_URL, file_path), index_col=None)
+            df = pd.read_excel(os.path.join(settings.MEDIA_ROOT, file_path), index_col=None)
         else:
-            df = pd.read_csv(os.path.join(settings.DATASET_FILES_URL, file_path), index_col=None)
+            df = pd.read_csv(os.path.join(settings.MEDIA_ROOT, file_path), index_col=None)
 
         df["status"] = True
         df.loc[df["status"] == True, mask_columns] = "######"
@@ -2214,6 +2215,7 @@ class DatasetFileV2View(GenericViewSet):
         if not os.path.exists(os.path.join(settings.STANDARDISED_FILES_URL, instance.dataset.name, instance.source)):
             os.makedirs(os.path.join(settings.STANDARDISED_FILES_URL, instance.dataset.name, instance.source))
 
+        file_name = os.path.basename(file_path)
         if file_path.endswith(".csv"):
             df.to_csv(os.path.join(settings.STANDARDISED_FILES_URL, instance.dataset.name, instance.source, file_name))  # type: ignore
         else:
@@ -2223,7 +2225,7 @@ class DatasetFileV2View(GenericViewSet):
         data["standardised_file"] = os.path.join(
             settings.STANDARDISED_FILES_URL, instance.dataset.name, instance.source, file_name
         )
-        data["standardised_configuration"] = data["config"]
+        data["standardised_configuration"] = config
         serializer = self.get_serializer(instance, data=data, partial=True)
         serializer.is_valid(raise_exception=True)
         serializer.save()
