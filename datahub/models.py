@@ -194,12 +194,16 @@ class CustomStorage(Storage):
     def __init__(self, dataset_name, source):
         self.dataset_name = dataset_name
         self.source = source
+        
     def exists(self, name):
         """
         Check if a file with the given name already exists in the storage.
         """
         return os.path.exists(name)
     
+    def url(self, url):
+        return url
+
     def _save(self, name, content): 
         # Save file to a directory outside MEDIA_ROOT
         full_path = os.path.join(settings.DATASET_FILES_URL, name)
@@ -232,7 +236,7 @@ class DatasetV2File(TimeStampMixin):
     def save(self, *args, **kwargs):
         # set the user_id before saving
         storage = CustomStorage(self.dataset.name, self.source)
-        self.file.storage = storage
+        self.file.storage = storage # type: ignore
         super().save(*args, **kwargs)
 
     SOURCES = [

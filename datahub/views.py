@@ -2183,6 +2183,9 @@ class DatasetFileV2View(GenericViewSet):
         serializer = self.get_serializer(data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
         serializer.save()
+        data = serializer.data
+        instance = DatasetV2File.objects.get(id=data.get("id"))
+        instance.standardised_file=instance.file # type: ignore
         LOGGER.info("Dataset created Successfully.")
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
@@ -2215,20 +2218,19 @@ class DatasetFileV2View(GenericViewSet):
         if not os.path.exists(os.path.join(settings.DATASET_FILES_URL, instance.dataset.name, instance.source)):
             os.makedirs(os.path.join(settings.DATASET_FILES_URL, instance.dataset.name, instance.source))
 
-        file_name = os.path.basename(file_path)
+        file_name = os.path.basename(file_path).replace(".", "_standerdise.")
         if file_path.endswith(".csv"):
-            df.to_csv(os.path.join(settings.DATASET_FILES_URL, instance.dataset.name, instance.source, file_name.replace(".", "_standerdise.")))  # type: ignore
+            df.to_csv(os.path.join(settings.DATASET_FILES_URL, instance.dataset.name, instance.source, file_name))  # type: ignore
         else:
-            df.to_excel(os.path.join(settings.DATASET_FILES_URL, instance.dataset.name, instance.source, file_name.replace(".", "_standerdise.")))  # type: ignore
+            df.to_excel(os.path.join(settings.DATASET_FILES_URL, instance.dataset.name, instance.source, file_name))  # type: ignore
 
         # data = request.data
-        data["standardised_file"] = os.path.join(
-            settings.DATASET_FILES_URL, instance.dataset.name, instance.source, file_name
-        )
+        standardised_file_path = os.path.join(instance.dataset.name, instance.source, file_name)
         data["standardised_configuration"] = config
         serializer = self.get_serializer(instance, data=data, partial=True)
         serializer.is_valid(raise_exception=True)
         serializer.save()
+        DatasetV2File.objects.filter(id=serializer.data.get("id")).update(standardised_file=standardised_file_path)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
     def list(self, request, *args, **kwargs):
