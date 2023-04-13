@@ -900,7 +900,7 @@ class DatasetV2NewListSerializer(serializers.ModelSerializer):
 class DatasetFileV2NewSerializer(serializers.ModelSerializer):
     class Meta:
         model = DatasetV2File
-        exlude = ["standardised_file"]
+        exclude = ["standardised_file"]
 
 class DatasetFileV2StandardisedSerializer(serializers.ModelSerializer):
     class Meta:
