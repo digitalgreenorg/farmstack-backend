@@ -900,10 +900,16 @@ class DatasetV2NewListSerializer(serializers.ModelSerializer):
 class DatasetFileV2NewSerializer(serializers.ModelSerializer):
     class Meta:
         model = DatasetV2File
+        exlude = ["standardised_file"]
+
+class DatasetFileV2StandardisedSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = DatasetV2File
         fields = Constants.ALL
 
+
 class DatasetV2DetailNewSerializer(serializers.ModelSerializer):
-    dataset_files = DatasetFileV2NewSerializer(many=True, source='datasets')
+    dataset_files = DatasetFileV2StandardisedSerializer(many=True, source='datasets')
     class Meta:
         model = DatasetV2
         fields = Constants.ALL
