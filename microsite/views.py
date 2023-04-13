@@ -170,7 +170,7 @@ class DatasetsMicrositeViewSet(GenericViewSet):
         dataset_file_obj = DatasetV2File.objects.filter(dataset_id=obj.id)
         data = []
         for file in dataset_file_obj:
-            path_ = os.path.join("/media/", str(file.file))
+            path_ = os.path.join(settings.DATASET_FILES_URL, str(file.file))
             file_path = {}
             file_path["content"] = read_contents_from_csv_or_xlsx_file(path_)
             # Omitted the actual name of the file so the user can't manually download the file
