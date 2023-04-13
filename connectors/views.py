@@ -125,16 +125,16 @@ class ConnectorsViewSet(GenericViewSet):
             condition = integrate.get(Constants.CONDITION)
 
             if left_dataset_file_path.endswith(".xlsx") or left_dataset_file_path.endswith(".xls"):
-                left_dataset = pd.read_excel(os.path.join(settings.MEDIA_ROOT, left_dataset_file_path),
+                left_dataset = pd.read_excel(os.path.join(settings.DATASET_FILES_URL, left_dataset_file_path),
                                      usecols=condition.get(Constants.LEFT_SELECTED))
             else:
-                left_dataset = pd.read_csv(os.path.join(settings.MEDIA_ROOT, left_dataset_file_path),
+                left_dataset = pd.read_csv(os.path.join(settings.DATASET_FILES_URL, left_dataset_file_path),
                                    usecols=condition.get(Constants.LEFT_SELECTED))
             if right_dataset_file_path.endswith(".xlsx") or right_dataset_file_path.endswith(".xls"):
-                right_dataset = pd.read_excel(os.path.join(settings.MEDIA_ROOT, right_dataset_file_path),
+                right_dataset = pd.read_excel(os.path.join(settings.DATASET_FILES_URL, right_dataset_file_path),
                                      usecols=condition.get(Constants.RIGHT_SELECTED))
             else:
-                right_dataset = pd.read_csv(os.path.join(settings.MEDIA_ROOT, right_dataset_file_path),
+                right_dataset = pd.read_csv(os.path.join(settings.DATASET_FILES_URL, right_dataset_file_path),
                                    usecols=condition.get(Constants.RIGHT_SELECTED))
             # Join the dataframes
             result = pd.merge(
@@ -151,12 +151,12 @@ class ConnectorsViewSet(GenericViewSet):
                 condition = integrate.get(Constants.CONDITION)
                 if right_dataset_file_path.endswith(".xlsx") or right_dataset_file_path.endswith(".xls"):
                     right_dataset = pd.read_excel(
-                        os.path.join(settings.MEDIA_ROOT, right_dataset_file_path),
+                        os.path.join(settings.DATASET_FILES_URL, right_dataset_file_path),
                           usecols=condition.get(Constants.RIGHT_SELECTED)
                     )
                 else:
                     right_dataset = pd.read_csv(
-                        os.path.join(settings.MEDIA_ROOT, right_dataset_file_path),
+                        os.path.join(settings.DATASET_FILES_URL, right_dataset_file_path),
                           usecols=condition.get(Constants.RIGHT_SELECTED)
                     )
                 # Join the dataframes

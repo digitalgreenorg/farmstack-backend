@@ -1766,7 +1766,7 @@ class DatasetV2ViewSet(GenericViewSet):
             )
             file_path["file"] = path_
             file_path["source"] = file.source
-            file_path["standardised_file"] = os.path.join("/media/", str(file.standardised_file))
+            file_path["standardised_file"] =  os.path.join(settings.STANDARDISED_FILES_URL, str(file.standardised_file))
             file_path["standardisation_config"] = file.standardised_configuration
             file_path["usage_policy"] = UsagePolicySerializer(file.dataset_v2_file.all(), many=True).data
 
@@ -2017,9 +2017,9 @@ class DatasetV2ViewSetOps(GenericViewSet):
                 path = file_path
                 file_path = unquote(file_path).replace("/media/", "")
                 if file_path.endswith(".xlsx") or file_path.endswith(".xls"):
-                    df = pd.read_excel(os.path.join(settings.MEDIA_ROOT, file_path), index_col=0)
+                    df = pd.read_excel(os.path.join(settings.DATASET_FILES_URL, file_path), index_col=0)
                 else:
-                    df = pd.read_csv(os.path.join(settings.MEDIA_ROOT, file_path), index_col=0)
+                    df = pd.read_csv(os.path.join(settings.DATASET_FILES_URL, file_path), index_col=0)
                 result[path] = df.columns.tolist()
                 result[Constants.ID] = DatasetV2File.objects.get(file=file_path).id
 
@@ -2200,9 +2200,9 @@ class DatasetFileV2View(GenericViewSet):
         file_path = str(instance.file)
 
         if file_path.endswith(".xlsx") or file_path.endswith(".xls"):
-            df = pd.read_excel(os.path.join(settings.MEDIA_ROOT, file_path), index_col=None)
+            df = pd.read_excel(os.path.join(settings.PROTECTED_MEDIA_ROOT, 'datasets', file_path), index_col=None)
         else:
-            df = pd.read_csv(os.path.join(settings.MEDIA_ROOT, file_path), index_col=None)
+            df = pd.read_csv(os.path.join(settings.PROTECTED_MEDIA_ROOT, 'datasets', file_path), index_col=None)
 
         df["status"] = True
         df.loc[df["status"] == True, mask_columns] = "######"
