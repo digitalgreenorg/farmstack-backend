@@ -2,7 +2,6 @@ import uuid
 from datetime import timedelta
 from email.mime import application
 
-
 from django.conf import settings
 from django.db import models
 from django.utils import timezone
@@ -10,8 +9,6 @@ from django.utils import timezone
 from accounts.models import User
 from core.base_models import TimeStampMixin
 from core.constants import Constants
-from django.conf import settings
-from django.db import models
 from utils.validators import (
     validate_25MB_file_size,
     validate_file_size,
@@ -205,7 +202,7 @@ class DatasetV2File(TimeStampMixin):
 
     def dataset_directory_path(instance, filename):
         # file will be uploaded to MEDIA_ROOT/user_<id>/<filename>
-        return "datasets/{0}/{1}/{2}".format(instance.dataset.name, instance.source, filename)
+        return f"{settings.DATASET_FILES_URL}/{instance.dataset.name}/{instance.source}/{filename}"
 
     SOURCES = [
         (Constants.SOURCE_FILE_TYPE, Constants.SOURCE_FILE_TYPE),
@@ -227,7 +224,7 @@ class UsagePolicy(TimeStampMixin):
     datapoint attribute - datapoints for each attribute (JSON)
     """
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    org_id = models.ForeignKey(Organization, on_delete=models.PROTECT, related_name="org")
+    user_organization_map = models.ForeignKey(UserOrganizationMap, on_delete=models.PROTECT, related_name="org")
     dataset_file = models.ForeignKey(DatasetV2File, on_delete=models.CASCADE, related_name="dataset_v2_file")
     approval_status = models.CharField(max_length=255, null=True, choices=USAGE_POLICY_REQUEST_STATUS, default="requested")
     accessibility_time = models.DateField(default=timezone.localdate() + timedelta(weeks=4))

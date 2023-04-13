@@ -488,4 +488,3 @@ class SelfRegisterParticipantViewSet(GenericViewSet):
 
         return Response(user_org_serializer.data, status=status.HTTP_201_CREATED)
 
-        
