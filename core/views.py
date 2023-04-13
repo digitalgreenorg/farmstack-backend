@@ -1,12 +1,16 @@
 
-from django.http import HttpResponseBadRequest, HttpResponseNotFound, FileResponse
-from django.conf import settings
 import os
+
+from django.conf import settings
+from django.http import FileResponse, HttpResponseBadRequest, HttpResponseNotFound
+
 
 def protected_media_view(request, path):
     if '..' in path:
         return HttpResponseBadRequest('Invalid path')
-    file_path = os.path.join(settings.MEDIA_ROOT, 'protected_media', path)
+    print(path)
+    file_path = os.path.join(settings.PROTECTED_MEDIA_ROOT, 'datasets', path.replace("media/", ''))
+    print(file_path)
     if not os.path.exists(file_path):
         return HttpResponseNotFound('File not found')
     # Add logic here to check if the user is authorized to access the file

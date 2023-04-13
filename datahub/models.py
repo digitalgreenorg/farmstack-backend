@@ -1,3 +1,4 @@
+import os
 import uuid
 from datetime import timedelta
 from email.mime import application
@@ -186,7 +187,28 @@ class Policy(TimeStampMixin):
         upload_to=settings.POLICY_FILES_URL,
         validators=[validate_25MB_file_size],
     )
+from django.core.files.storage import Storage
 
+
+class CustomStorage(Storage):
+    def __init__(self, dataset_name, source):
+        self.dataset_name = dataset_name
+        self.source = source
+    def exists(self, name):
+        """
+        Check if a file with the given name already exists in the storage.
+        """
+        return os.path.exists(name)
+    
+    def _save(self, name, content): 
+        # Save file to a directory outside MEDIA_ROOT
+        full_path = os.path.join(settings.DATASET_FILES_URL, name)
+        directory = os.path.dirname(full_path)
+        if not self.exists(directory):
+            os.makedirs(directory)
+        with open(full_path, 'wb') as f:
+            f.write(content.read())
+        return name
 
 @auto_str
 class DatasetV2File(TimeStampMixin):
@@ -203,6 +225,15 @@ class DatasetV2File(TimeStampMixin):
     def dataset_directory_path(instance, filename):
         # file will be uploaded to MEDIA_ROOT/user_<id>/<filename>
         return f"{settings.DATASET_FILES_URL}/{instance.dataset.name}/{instance.source}/{filename}"
+    
+    def get_upload_path(instance, filename):
+        return f"{instance.dataset.name}/{instance.source}/{filename}"
+
+    def save(self, *args, **kwargs):
+        # set the user_id before saving
+        storage = CustomStorage(self.dataset.name, self.source)
+        self.file.storage = storage
+        super().save(*args, **kwargs)
 
     SOURCES = [
         (Constants.SOURCE_FILE_TYPE, Constants.SOURCE_FILE_TYPE),
@@ -211,9 +242,9 @@ class DatasetV2File(TimeStampMixin):
     ]
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     dataset = models.ForeignKey(DatasetV2, on_delete=models.CASCADE, related_name="datasets")
-    file = models.FileField(max_length=255, upload_to=dataset_directory_path, null=True, blank=True)
+    file = models.FileField(upload_to=get_upload_path, null=True, blank=True)
     source = models.CharField(max_length=50, choices=SOURCES)
-    standardised_file = models.FileField(max_length=255, upload_to=dataset_directory_path, null=True, blank=True )
+    standardised_file = models.FileField(upload_to=get_upload_path, null=True, blank=True)
     standardised_configuration = models.JSONField(default = dict)
     accessibility = models.CharField(max_length=255, null=True, choices=USAGE_POLICY_APPROVAL_STATUS, default="public")
 
