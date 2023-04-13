@@ -14,6 +14,25 @@ from urllib.parse import unquote
 
 import django
 import pandas as pd
+from django.conf import settings
+from django.contrib.admin.utils import get_model_from_relation
+from django.core.files.base import ContentFile
+from django.db import transaction
+from django.db.models import DEFERRED, Count, F, OuterRef, Q, Subquery
+from django.http import JsonResponse
+from django.shortcuts import render
+from drf_braces.mixins import MultipleSerializersViewMixin
+from psycopg2 import connect
+from psycopg2.extensions import ISOLATION_LEVEL_AUTOCOMMIT
+from python_http_client import exceptions
+from rest_framework import generics, pagination, status
+from rest_framework.decorators import action
+from rest_framework.parsers import JSONParser, MultiPartParser
+from rest_framework.permissions import AllowAny, IsAuthenticated
+from rest_framework.response import Response
+from rest_framework.viewsets import GenericViewSet, ViewSet
+from uritemplate import partial
+
 from accounts.models import User, UserRole
 from accounts.serializers import (
     UserCreateSerializer,
@@ -29,31 +48,6 @@ from core.utils import (
     date_formater,
     read_contents_from_csv_or_xlsx_file,
 )
-from django.conf import settings
-from django.contrib.admin.utils import get_model_from_relation
-from django.core.files.base import ContentFile
-from django.db import transaction
-from django.db.models import DEFERRED, Count, F, OuterRef, Q, Subquery
-from django.http import JsonResponse
-from django.shortcuts import render
-from drf_braces.mixins import MultipleSerializersViewMixin
-from participant.models import Connectors, SupportTicket
-from participant.serializers import (
-    ParticipantSupportTicketSerializer,
-    TicketSupportSerializer,
-)
-from psycopg2 import connect
-from psycopg2.extensions import ISOLATION_LEVEL_AUTOCOMMIT
-from python_http_client import exceptions
-from rest_framework import generics, pagination, status
-from rest_framework.decorators import action
-from rest_framework.parsers import JSONParser, MultiPartParser
-from rest_framework.permissions import AllowAny, IsAuthenticated
-from rest_framework.response import Response
-from rest_framework.viewsets import GenericViewSet, ViewSet
-from uritemplate import partial
-from utils import custom_exceptions, file_operations, string_functions, validators
-
 from datahub.models import (
     DatahubDocuments,
     Datasets,
@@ -90,6 +84,12 @@ from datahub.serializers import (
     UserOrganizationCreateSerializer,
     UserOrganizationMapSerializer,
 )
+from participant.models import Connectors, SupportTicket
+from participant.serializers import (
+    ParticipantSupportTicketSerializer,
+    TicketSupportSerializer,
+)
+from utils import custom_exceptions, file_operations, string_functions, validators
 
 from .models import Policy, UsagePolicy
 from .serializers import PolicySerializer, UsagePolicySerializer
@@ -2154,7 +2154,7 @@ class DatasetV2View(GenericViewSet):
         return Response(serializer.data, status=status.HTTP_200_OK)
 
     def update(self, request, *args, **kwargs):
-        setattr(request.data, "_mutable", True)
+        # setattr(request.data, "_mutable", True)
         instance = self.get_object()
         data = request.data
         data["is_temp"] = False
