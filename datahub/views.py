@@ -1576,9 +1576,9 @@ class DatasetV2ViewSet(GenericViewSet):
             dataset_file = DatasetV2File.objects.get(id=request.data.get("id"))
             file_path = str(dataset_file.file)
             if file_path.endswith(".xlsx") or file_path.endswith(".xls"):
-                df = pd.read_excel(os.path.join(settings.MEDIA_ROOT, file_path), index_col=0)
+                df = pd.read_excel(os.path.join(settings.DATASET_FILES_URL, file_path), index_col=0)
             else:
-                df = pd.read_csv(os.path.join(settings.MEDIA_ROOT, file_path), index_col=0)
+                df = pd.read_csv(os.path.join(settings.DATASET_FILES_URL, file_path), index_col=0)
             df.columns = df.columns.astype(str)
             result = df.columns.tolist()
             return Response(result, status=status.HTTP_200_OK)
@@ -1605,9 +1605,9 @@ class DatasetV2ViewSet(GenericViewSet):
                 file_path = file_path.replace("/standardised", "/datasets")
 
             if file_path.endswith(".xlsx") or file_path.endswith(".xls"):
-                df = pd.read_excel(os.path.join(settings.MEDIA_ROOT, file_path), index_col=None)
+                df = pd.read_excel(os.path.join(settings.DATASET_FILES_URL, file_path), index_col=None)
             else:
-                df = pd.read_csv(os.path.join(settings.MEDIA_ROOT, file_path), index_col=None)
+                df = pd.read_csv(os.path.join(settings.DATASET_FILES_URL, file_path), index_col=None)
 
             df["status"] = True
             df.loc[df["status"] == True, mask_columns] = "######"
@@ -1758,15 +1758,15 @@ class DatasetV2ViewSet(GenericViewSet):
         # import pdb; pdb.set_trace()
         data = []
         for file in dataset_file_obj:
-            path_ = os.path.join("media/", str(file.standardised_file))
+            path_ = os.path.join(settings.DATASET_FILES_URL, str(file.standardised_file))
             file_path = {}
             file_path["id"] = file.id
             file_path["content"] = read_contents_from_csv_or_xlsx_file(
-                os.path.join("/media/", str(file.standardised_file))
+                os.path.join(settings.DATASET_FILES_URL, str(file.standardised_file))
             )
             file_path["file"] = path_
             file_path["source"] = file.source
-            file_path["standardised_file"] =  os.path.join(settings.STANDARDISED_FILES_URL, str(file.standardised_file))
+            file_path["standardised_file"] =  os.path.join(settings.DATASET_FILES_URL, str(file.standardised_file))
             file_path["standardisation_config"] = file.standardised_configuration
             file_path["usage_policy"] = UsagePolicySerializer(file.dataset_v2_file.all(), many=True).data
 
@@ -2200,9 +2200,9 @@ class DatasetFileV2View(GenericViewSet):
         file_path = str(instance.file)
 
         if file_path.endswith(".xlsx") or file_path.endswith(".xls"):
-            df = pd.read_excel(os.path.join(settings.PROTECTED_MEDIA_ROOT, 'datasets', file_path), index_col=None)
+            df = pd.read_excel(os.path.join(settings.DATASET_FILES_URL, file_path), index_col=None)
         else:
-            df = pd.read_csv(os.path.join(settings.PROTECTED_MEDIA_ROOT, 'datasets', file_path), index_col=None)
+            df = pd.read_csv(os.path.join(settings.DATASET_FILES_URL, file_path), index_col=None)
 
         df["status"] = True
         df.loc[df["status"] == True, mask_columns] = "######"
@@ -2212,18 +2212,18 @@ class DatasetFileV2View(GenericViewSet):
         df.rename(columns=standardised_configuration, inplace=True)
         df.columns = df.columns.astype(str)
 
-        if not os.path.exists(os.path.join(settings.STANDARDISED_FILES_URL, instance.dataset.name, instance.source)):
-            os.makedirs(os.path.join(settings.STANDARDISED_FILES_URL, instance.dataset.name, instance.source))
+        if not os.path.exists(os.path.join(settings.DATASET_FILES_URL, instance.dataset.name, instance.source)):
+            os.makedirs(os.path.join(settings.DATASET_FILES_URL, instance.dataset.name, instance.source))
 
         file_name = os.path.basename(file_path)
         if file_path.endswith(".csv"):
-            df.to_csv(os.path.join(settings.STANDARDISED_FILES_URL, instance.dataset.name, instance.source, file_name))  # type: ignore
+            df.to_csv(os.path.join(settings.DATASET_FILES_URL, instance.dataset.name, instance.source, file_name.replace(".", "_standerdise.")))  # type: ignore
         else:
-            df.to_excel(os.path.join(settings.STANDARDISED_FILES_URL, instance.dataset.name, instance.source, file_name))  # type: ignore
+            df.to_excel(os.path.join(settings.DATASET_FILES_URL, instance.dataset.name, instance.source, file_name.replace(".", "_standerdise.")))  # type: ignore
 
         # data = request.data
         data["standardised_file"] = os.path.join(
-            settings.STANDARDISED_FILES_URL, instance.dataset.name, instance.source, file_name
+            settings.DATASET_FILES_URL, instance.dataset.name, instance.source, file_name
         )
         data["standardised_configuration"] = config
         serializer = self.get_serializer(instance, data=data, partial=True)
