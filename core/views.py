@@ -23,14 +23,16 @@ def protected_media_view(request, path):
     if file.accessibility == 'public':
         print("its a public file")
         file_path = file.file
-    user_map = extract_jwt(request)
-    if user_map and file.accessibility == 'registered':
+
+    if file.accessibility == 'registered':
+        user_map = extract_jwt(request)
         print("its a registered file")
 
         file_path = file.file
     else:
         return {"message": "Login to download this file"}
-    if user_map and file.accessibility == 'private':
+    if file.accessibility == 'private':
+        user_map = extract_jwt(request)
         if UsagePolicy.objects.get(user_map=user_map, dataset_file=file.id):
             print("its a Private file")
             file_path = file.file
