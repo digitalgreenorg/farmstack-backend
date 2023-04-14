@@ -119,8 +119,8 @@ DATABASES = {
  
         "ENGINE": "django.db.backends.postgresql",
         "NAME": "postgres",
-        "USER": os.environ.get("POSTGRES_USER",""),
-        "PASSWORD": os.environ.get("POSTGRES_PASSWORD", ""),
+        "USER": os.environ.get("POSTGRES_USER"),
+        "PASSWORD": os.environ.get("POSTGRES_PASSWORD"),
         "HOST": "db",
         "PORT": "5432",
         "OPTIONS": {
@@ -179,6 +179,9 @@ STATIC_URL = "static/"
 MEDIA_ROOT = os.path.join(BASE_DIR, "media")
 MEDIA_URL = "media/"
 
+PROTECTED_MEDIA_ROOT = os.path.join(BASE_DIR, 'protected')
+PROTECTED_MEDIA_URL = "protected/"
+
 STATICFILES_DIRS = [
     os.path.join(BASE_DIR, "media/"),
 ]
@@ -206,11 +209,11 @@ CONNECTORS_CERTIFICATE_URL = "users/connectors/certificates/"
 TEMP_DATASET_URL = "temp/datasets/"
 TEMP_STANDARDISED_DIR = "temp/standardised/"
 
-DATASET_FILES_URL = os.path.join(MEDIA_URL, "datasets/")
+DATASET_FILES_URL = os.path.join(PROTECTED_MEDIA_URL, "datasets/")
 POLICY_FILES_URL = os.path.join(MEDIA_URL, "policy/")
 TEMP_CONNECTOR_URL = os.path.join(MEDIA_URL, "temp/connectors/")
 CONNECTOR_FILES_URL =  os.path.join(MEDIA_URL, "connectors/")
-STANDARDISED_FILES_URL = os.path.join(MEDIA_URL,"standardised/")
+STANDARDISED_FILES_URL = os.path.join(PROTECTED_MEDIA_URL, "standardised/")
 # os.makedirs(CONNECTOR_FILES_URL)
 
 if not os.path.exists(TEMP_STANDARDISED_DIR):

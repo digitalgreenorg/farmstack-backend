@@ -17,6 +17,25 @@ import pandas as pd
 import psycopg2
 import requests
 import xlwt
+from accounts.models import User
+from core.constants import Constants
+from core.utils import (
+    CustomPagination,
+    DefaultPagination,
+    Utils,
+    csv_and_xlsx_file_validatation,
+    date_formater,
+    one_day_date_formater,
+    read_contents_from_csv_or_xlsx_file,
+)
+from datahub.models import (
+    Datasets,
+    DatasetV2,
+    DatasetV2File,
+    Organization,
+    UserOrganizationMap,
+)
+from datahub.serializers import DatasetFileV2NewSerializer
 from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.db.models import Q
@@ -29,19 +48,9 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.viewsets import GenericViewSet, ViewSet
 from uritemplate import partial
+from utils import string_functions
+from utils.connector_utils import run_containers, stop_containers
 
-from accounts.models import User
-from core.constants import Constants
-from core.utils import (
-    CustomPagination,
-    DefaultPagination,
-    Utils,
-    csv_and_xlsx_file_validatation,
-    date_formater,
-    one_day_date_formater,
-    read_contents_from_csv_or_xlsx_file,
-)
-from datahub.models import Datasets, DatasetV2, Organization, UserOrganizationMap
 from participant.models import (
     Connectors,
     ConnectorsMap,
@@ -74,8 +83,6 @@ from participant.serializers import (
     ProjectSerializer,
     TicketSupportSerializer,
 )
-from utils import string_functions
-from utils.connector_utils import run_containers, stop_containers
 
 LOGGER = logging.getLogger(__name__)
 import json
@@ -85,7 +92,6 @@ from django.http import HttpResponse
 from rest_framework import status
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
-
 from utils import file_operations as file_ops
 
 
@@ -190,9 +196,7 @@ class ParticipantDatasetsViewSet(GenericViewSet):
         user = User.objects.get(id=user_org_map.user_id)
 
         if not data.get("is_public"):
-            if not csv_and_xlsx_file_validatation(
-                request.data.get(Constants.SAMPLE_DATASET)
-            ):
+            if not csv_and_xlsx_file_validatation(request.data.get(Constants.SAMPLE_DATASET)):
                 return Response(
                     {
                         Constants.SAMPLE_DATASET: [
@@ -203,9 +207,7 @@ class ParticipantDatasetsViewSet(GenericViewSet):
                 )
 
         if data.get("constantly_update") == "false":
-            formatted_date = one_day_date_formater(
-                [data.get("data_capture_start", ""), data.get("data_capture_end")]
-            )
+            formatted_date = one_day_date_formater([data.get("data_capture_start", ""), data.get("data_capture_end")])
             data["data_capture_start"] = formatted_date[0]
             data["data_capture_end"] = formatted_date[1]
         if user.approval_status == True:
@@ -221,26 +223,16 @@ class ParticipantDatasetsViewSet(GenericViewSet):
             subject = Constants.ADDED_NEW_DATASET_SUBJECT + os.environ.get(
                 Constants.DATAHUB_NAME, Constants.datahub_name
             )
-            datahub_admin_name = string_functions.get_full_name(
-                recepient.first_name, recepient.last_name
-            )
-            formatted_date = one_day_date_formater(
-                [data.get("data_capture_start", ""), data.get("data_capture_end")]
-            )
+            datahub_admin_name = string_functions.get_full_name(recepient.first_name, recepient.last_name)
+            formatted_date = one_day_date_formater([data.get("data_capture_start", ""), data.get("data_capture_end")])
             email_data = {
-                Constants.datahub_name: os.environ.get(
-                    Constants.DATAHUB_NAME, Constants.datahub_name
-                ),
+                Constants.datahub_name: os.environ.get(Constants.DATAHUB_NAME, Constants.datahub_name),
                 "datahub_admin_name": datahub_admin_name,
-                Constants.datahub_site: os.environ.get(
-                    Constants.DATAHUB_SITE, Constants.datahub_site
-                ),
+                Constants.datahub_site: os.environ.get(Constants.DATAHUB_SITE, Constants.datahub_site),
                 "dataset": serializer_email.data,
             }
 
-            email_render = render(
-                request, Constants.NEW_DATASET_UPLOAD_REQUEST_IN_DATAHUB, email_data
-            )
+            email_render = render(request, Constants.NEW_DATASET_UPLOAD_REQUEST_IN_DATAHUB, email_data)
             mail_body = email_render.content.decode("utf-8")
             Utils().send_email(
                 to_email=recepient.email,
@@ -253,9 +245,7 @@ class ParticipantDatasetsViewSet(GenericViewSet):
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         except Exception as error:
             LOGGER.error(error, exc_info=True)
-            return Response(
-                {"Error": ["Bad Request"]}, status=status.HTTP_400_BAD_REQUEST
-            )
+            return Response({"Error": ["Bad Request"]}, status=status.HTTP_400_BAD_REQUEST)
 
     def list(self, request, *args, **kwargs):
         """GET method: query all the list of objects from the Product model"""
@@ -263,11 +253,7 @@ class ParticipantDatasetsViewSet(GenericViewSet):
         user_id = request.query_params.get(Constants.USER_ID, "")
         org_id = request.query_params.get(Constants.ORG_ID)
         exclude = {Constants.USER_MAP_USER: user_id} if org_id else {}
-        filters = (
-            {Constants.USER_MAP_ORGANIZATION: org_id}
-            if org_id
-            else {Constants.USER_MAP_USER: user_id}
-        )
+        filters = {Constants.USER_MAP_ORGANIZATION: org_id} if org_id else {Constants.USER_MAP_USER: user_id}
         if filters:
             data = (
                 Datasets.objects.select_related(
@@ -325,9 +311,7 @@ class ParticipantDatasetsViewSet(GenericViewSet):
         if participant_serializer.data:
             data = participant_serializer.data[0]
             if not data.get("is_public"):
-                data[Constants.CONTENT] = read_contents_from_csv_or_xlsx_file(
-                    data.get(Constants.SAMPLE_DATASET)
-                )
+                data[Constants.CONTENT] = read_contents_from_csv_or_xlsx_file(data.get(Constants.SAMPLE_DATASET))
 
             return Response(data, status=status.HTTP_200_OK)
         return Response({}, status=status.HTTP_200_OK)
@@ -339,9 +323,7 @@ class ParticipantDatasetsViewSet(GenericViewSet):
         data = {key: value for key, value in data.items() if value != "null"}
         if not data.get("is_public"):
             if data.get(Constants.SAMPLE_DATASET):
-                if not csv_and_xlsx_file_validatation(
-                    data.get(Constants.SAMPLE_DATASET)
-                ):
+                if not csv_and_xlsx_file_validatation(data.get(Constants.SAMPLE_DATASET)):
                     return Response(
                         {
                             Constants.SAMPLE_DATASET: [
@@ -359,17 +341,11 @@ class ParticipantDatasetsViewSet(GenericViewSet):
                 data["data_capture_end"] = formatted_date[1]
         category = data.get(Constants.CATEGORY)
         if category:
-            data[Constants.CATEGORY] = (
-                json.dumps(json.loads(category))
-                if isinstance(category, str)
-                else category
-            )
+            data[Constants.CATEGORY] = json.dumps(json.loads(category)) if isinstance(category, str) else category
         instance = self.get_object()
 
         # trigger email to the participant
-        user_map_queryset = UserOrganizationMap.objects.select_related(
-            Constants.USER
-        ).get(id=instance.user_map_id)
+        user_map_queryset = UserOrganizationMap.objects.select_related(Constants.USER).get(id=instance.user_map_id)
         user_obj = user_map_queryset.user
 
         # reset the approval status b/c the user modified the dataset after an approval
@@ -389,26 +365,16 @@ class ParticipantDatasetsViewSet(GenericViewSet):
             subject = Constants.UPDATED_DATASET_SUBJECT + os.environ.get(
                 Constants.DATAHUB_NAME, Constants.datahub_name
             )
-            datahub_admin_name = string_functions.get_full_name(
-                recepient.first_name, recepient.last_name
-            )
-            formatted_date = one_day_date_formater(
-                [data.get("data_capture_start", ""), data.get("data_capture_end")]
-            )
+            datahub_admin_name = string_functions.get_full_name(recepient.first_name, recepient.last_name)
+            formatted_date = one_day_date_formater([data.get("data_capture_start", ""), data.get("data_capture_end")])
             email_data = {
-                Constants.datahub_name: os.environ.get(
-                    Constants.DATAHUB_NAME, Constants.datahub_name
-                ),
+                Constants.datahub_name: os.environ.get(Constants.DATAHUB_NAME, Constants.datahub_name),
                 "datahub_admin_name": datahub_admin_name,
-                Constants.datahub_site: os.environ.get(
-                    Constants.DATAHUB_SITE, Constants.datahub_site
-                ),
+                Constants.datahub_site: os.environ.get(Constants.DATAHUB_SITE, Constants.datahub_site),
                 "dataset": serializer_email.data,
             }
 
-            email_render = render(
-                request, Constants.DATASET_UPDATE_REQUEST_IN_DATAHUB, email_data
-            )
+            email_render = render(request, Constants.DATASET_UPDATE_REQUEST_IN_DATAHUB, email_data)
             mail_body = email_render.content.decode("utf-8")
             Utils().send_email(
                 to_email=recepient.email,
@@ -421,9 +387,7 @@ class ParticipantDatasetsViewSet(GenericViewSet):
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         except Exception as error:
             LOGGER.error(error, exc_info=True)
-            return Response(
-                {"Error": ["Bad Request"]}, status=status.HTTP_400_BAD_REQUEST
-            )
+            return Response({"Error": ["Bad Request"]}, status=status.HTTP_400_BAD_REQUEST)
 
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
@@ -450,7 +414,6 @@ class ParticipantDatasetsViewSet(GenericViewSet):
             filters = {Constants.USER_MAP_ORGANIZATION: org_id} if org_id else {}
         try:
             if categories is not None:
-
                 data = (
                     Datasets.objects.select_related(
                         Constants.USER_MAP,
@@ -490,9 +453,7 @@ class ParticipantDatasetsViewSet(GenericViewSet):
                 )
         except Exception as error:  # type: ignore
             logging.error("Error while filtering the datasets. ERROR: %s", error)
-            return Response(
-                f"Invalid filter fields: {list(request.data.keys())}", status=500
-            )
+            return Response(f"Invalid filter fields: {list(request.data.keys())}", status=500)
 
         page = self.paginate_queryset(data)
         participant_serializer = ParticipantDatasetsSerializer(page, many=True)
@@ -514,9 +475,7 @@ class ParticipantDatasetsViewSet(GenericViewSet):
         try:
             geography = (
                 Datasets.objects.all()
-                .select_related(
-                    Constants.USER_MAP_ORGANIZATION, Constants.USER_MAP_USER
-                )
+                .select_related(Constants.USER_MAP_ORGANIZATION, Constants.USER_MAP_USER)
                 .values_list(Constants.GEOGRAPHY, flat=True)
                 .filter(user_map__user__status=True, status=True, **filters)
                 .exclude(geography="")
@@ -526,9 +485,7 @@ class ParticipantDatasetsViewSet(GenericViewSet):
             )
             crop_detail = (
                 Datasets.objects.all()
-                .select_related(
-                    Constants.USER_MAP_ORGANIZATION, Constants.USER_MAP_USER
-                )
+                .select_related(Constants.USER_MAP_ORGANIZATION, Constants.USER_MAP_USER)
                 .values_list(Constants.CROP_DETAIL, flat=True)
                 .filter(user_map__user__status=True, status=True, **filters)
                 .exclude(crop_detail="")
@@ -540,9 +497,7 @@ class ParticipantDatasetsViewSet(GenericViewSet):
                 category_detail = json.loads(json_obj.read())
         except Exception as error:  # type: ignore
             logging.error("Error while filtering the datasets. ERROR: %s", error)
-            return Response(
-                f"Invalid filter fields: {list(request.data.keys())}", status=500
-            )
+            return Response(f"Invalid filter fields: {list(request.data.keys())}", status=500)
         return Response(
             {
                 "geography": geography,
@@ -626,27 +581,15 @@ class ParticipantConnectorsViewSet(GenericViewSet):
         """
         return serializer.save()
 
-    def trigger_email(
-        self, request, template, subject, user_org_map, connector_data, dataset
-    ):
+    def trigger_email(self, request, template, subject, user_org_map, connector_data, dataset):
         """trigger email to the respective users"""
         try:
             datahub_admin = User.objects.filter(role_id=1).first()
-            admin_full_name = string_functions.get_full_name(
-                datahub_admin.first_name, datahub_admin.last_name
-            )
-            participant_org = (
-                Organization.objects.get(id=user_org_map.organization_id)
-                if user_org_map
-                else None
-            )
-            participant_org_address = string_functions.get_full_address(
-                participant_org.address
-            )
+            admin_full_name = string_functions.get_full_name(datahub_admin.first_name, datahub_admin.last_name)
+            participant_org = Organization.objects.get(id=user_org_map.organization_id) if user_org_map else None
+            participant_org_address = string_functions.get_full_address(participant_org.address)
             participant = User.objects.get(id=user_org_map.user_id)
-            participant_full_name = string_functions.get_full_name(
-                participant.first_name, participant.last_name
-            )
+            participant_full_name = string_functions.get_full_name(participant.first_name, participant.last_name)
 
             data = {
                 "datahub_name": os.environ.get("DATAHUB_NAME", "datahub_name"),
@@ -678,15 +621,9 @@ class ParticipantConnectorsViewSet(GenericViewSet):
         docker_image = data.get(Constants.DOCKER_IMAGE_URL)
         try:
             docker = docker_image.split(":")
-            response = requests.get(
-                f"https://hub.docker.com/v2/repositories/{docker[0]}/tags/{docker[1]}"
-            )
+            response = requests.get(f"https://hub.docker.com/v2/repositories/{docker[0]}/tags/{docker[1]}")
             images = response.json().get(Constants.IMAGES, [{}])
-            hash = [
-                image.get(Constants.DIGEST, "")
-                for image in images
-                if image.get("architecture") == "amd64"
-            ]
+            hash = [image.get(Constants.DIGEST, "") for image in images if image.get("architecture") == "amd64"]
             data[Constants.USAGE_POLICY] = hash[0].split(":")[1].strip()
         except Exception as error:
             logging.error("Error while fetching the hash value. ERROR: %s", error)
@@ -698,9 +635,9 @@ class ParticipantConnectorsViewSet(GenericViewSet):
         serializer.is_valid(raise_exception=True)
         self.perform_create(serializer)
 
-        user_org_map = UserOrganizationMap.objects.select_related(
-            Constants.ORGANIZATION
-        ).get(id=serializer.data.get(Constants.USER_MAP))
+        user_org_map = UserOrganizationMap.objects.select_related(Constants.ORGANIZATION).get(
+            id=serializer.data.get(Constants.USER_MAP)
+        )
         dataset = Datasets.objects.get(id=serializer.data.get(Constants.DATASET))
         self.trigger_email(
             request,
@@ -748,9 +685,7 @@ class ParticipantConnectorsViewSet(GenericViewSet):
                 Constants.USER_MAP_USER,
                 Constants.USER_MAP_ORGANIZATION,
             )
-            .filter(
-                user_map__user__status=True, dataset__status=True, status=True, id=pk
-            )
+            .filter(user_map__user__status=True, dataset__status=True, status=True, id=pk)
             .all()
         )
         participant_serializer = ConnectorsRetriveSerializer(data, many=True)
@@ -776,9 +711,7 @@ class ParticipantConnectorsViewSet(GenericViewSet):
                     )
                     .all()
                 )
-                relation_serializer = ConnectorsMapConsumerRetriveSerializer(
-                    relation, many=True
-                )
+                relation_serializer = ConnectorsMapConsumerRetriveSerializer(relation, many=True)
             else:
                 relation = (
                     ConnectorsMap.objects.select_related(
@@ -799,9 +732,7 @@ class ParticipantConnectorsViewSet(GenericViewSet):
                     )
                     .all()
                 )
-                relation_serializer = ConnectorsMapProviderRetriveSerializer(
-                    relation, many=True
-                )
+                relation_serializer = ConnectorsMapProviderRetriveSerializer(relation, many=True)
             data[Constants.RELATION] = relation_serializer.data
             return Response(data, status=status.HTTP_200_OK)
         return Response({}, status=status.HTTP_200_OK)
@@ -815,24 +746,14 @@ class ParticipantConnectorsViewSet(GenericViewSet):
         if docker_image:
             try:
                 docker = docker_image.split(":")
-                response = requests.get(
-                    f"https://hub.docker.com/v2/repositories/{docker[0]}/tags/{docker[1]}"
-                )
+                response = requests.get(f"https://hub.docker.com/v2/repositories/{docker[0]}/tags/{docker[1]}")
                 images = response.json().get(Constants.IMAGES, [{}])
-                hash = [
-                    image.get(Constants.DIGEST, "")
-                    for image in images
-                    if image.get("architecture") == "amd64"
-                ]
+                hash = [image.get(Constants.DIGEST, "") for image in images if image.get("architecture") == "amd64"]
                 data[Constants.USAGE_POLICY] = hash[0].split(":")[1].strip()
             except Exception as error:
                 logging.error("Error while fetching the hash value. ERROR: %s", error)
                 return Response(
-                    {
-                        Constants.DOCKER_IMAGE_URL: [
-                            f"Invalid docker Image: {docker_image}"
-                        ]
-                    },
+                    {Constants.DOCKER_IMAGE_URL: [f"Invalid docker Image: {docker_image}"]},
                     status=400,
                 )
         serializer = self.get_serializer(instance, data=data, partial=True)
@@ -840,14 +761,12 @@ class ParticipantConnectorsViewSet(GenericViewSet):
         self.perform_create(serializer)
 
         if request.data.get(Constants.CERTIFICATE):
-            user_org_map = UserOrganizationMap.objects.select_related(
-                Constants.ORGANIZATION
-            ).get(id=serializer.data.get(Constants.USER_MAP))
+            user_org_map = UserOrganizationMap.objects.select_related(Constants.ORGANIZATION).get(
+                id=serializer.data.get(Constants.USER_MAP)
+            )
             dataset = Datasets.objects.get(id=serializer.data.get(Constants.DATASET))
             subject = (
-                "A certificate on "
-                + os.environ.get("DATAHUB_NAME", "datahub_name")
-                + " was successfully installed"
+                "A certificate on " + os.environ.get("DATAHUB_NAME", "datahub_name") + " was successfully installed"
             )
             self.trigger_email(
                 request,
@@ -866,15 +785,14 @@ class ParticipantConnectorsViewSet(GenericViewSet):
             connector.status = False
             self.perform_create(connector)
 
-            user_org_map = UserOrganizationMap.objects.select_related(
-                Constants.ORGANIZATION
-            ).get(id=connector.user_map_id)
+            user_org_map = UserOrganizationMap.objects.select_related(Constants.ORGANIZATION).get(
+                id=connector.user_map_id
+            )
             dataset = Datasets.objects.get(id=connector.dataset_id)
             self.trigger_email(
                 request,
                 "deleting_connector.html",
-                Constants.CONNECTOR_DELETION
-                + os.environ.get("DATAHUB_NAME", "datahub_name"),
+                Constants.CONNECTOR_DELETION + os.environ.get("DATAHUB_NAME", "datahub_name"),
                 user_org_map,
                 connector,
                 dataset,
@@ -912,9 +830,7 @@ class ParticipantConnectorsViewSet(GenericViewSet):
             )
         except Exception as error:  # type: ignore
             logging.error("Error while filtering the datasets. ERROR: %s", error)
-            return Response(
-                f"Invalid filter fields: {list(request.data.keys())}", status=500
-            )
+            return Response(f"Invalid filter fields: {list(request.data.keys())}", status=500)
 
         page = self.paginate_queryset(data)
         participant_serializer = ConnectorsListSerializer(page, many=True)
@@ -928,20 +844,14 @@ class ParticipantConnectorsViewSet(GenericViewSet):
         filters = {Constants.USER_MAP_USER: user_id} if user_id else {}
         try:
             projects = (
-                Connectors.objects.select_related(
-                    Constants.DATASET, Constants.PROJECT, Constants.USER_MAP
-                )
+                Connectors.objects.select_related(Constants.DATASET, Constants.PROJECT, Constants.USER_MAP)
                 .values_list(Constants.PROJECT_PROJECT_NAME, flat=True)
                 .distinct()
                 .filter(dataset__status=True, status=True, **filters)
-                .exclude(
-                    project__project_name__isnull=True, project__project_name__exact=""
-                )
+                .exclude(project__project_name__isnull=True, project__project_name__exact="")
             )
             departments = (
-                Connectors.objects.select_related(
-                    Constants.DATASET, Constants.DEPARTMENT, Constants.DATASET_USER_MAP
-                )
+                Connectors.objects.select_related(Constants.DATASET, Constants.DEPARTMENT, Constants.DATASET_USER_MAP)
                 .values_list(Constants.DEPARTMENT_DEPARTMENT_NAME, flat=True)
                 .distinct()
                 .filter(dataset__status=True, status=True, **filters)
@@ -953,16 +863,12 @@ class ParticipantConnectorsViewSet(GenericViewSet):
             datasests = (
                 Datasets.objects.all()
                 .select_related(Constants.USER_MAP, Constants.USER_MAP_USER)
-                .filter(
-                    user_map__user=user_id, user_map__user__status=True, status=True
-                )
+                .filter(user_map__user=user_id, user_map__user__status=True, status=True)
             )
             is_datset_present = True if datasests else False
         except Exception as error:  # type: ignore
             logging.error("Error while filtering the datasets. ERROR: %s", error)
-            return Response(
-                f"Invalid filter fields: {list(request.data.keys())}", status=500
-            )
+            return Response(f"Invalid filter fields: {list(request.data.keys())}", status=500)
         return Response(
             {
                 Constants.PROJECTS: list(projects),
@@ -991,9 +897,7 @@ class ParticipantConnectorsViewSet(GenericViewSet):
     def show_data(self, request, *args, **kwargs):
         port = request.query_params.get("port", "")
         return Response(
-            requests.get(
-                f'{os.environ.get("REACT_APP_BASEURL_without_slash_view_data")}{port}/show_data'
-            ).json(),
+            requests.get(f'{os.environ.get("REACT_APP_BASEURL_without_slash_view_data")}{port}/show_data').json(),
             200,
         )
 
@@ -1019,9 +923,7 @@ class ParticipantConnectorsMapViewSet(GenericViewSet):
         """
         return serializer.save()
 
-    def trigger_email_for_pairing(
-        self, request, template, subject, consumer_connector, provider_connector
-    ):
+    def trigger_email_for_pairing(self, request, template, subject, consumer_connector, provider_connector):
         # trigger email to the participant as they are being added
         try:
             consumer_org_map = (
@@ -1031,19 +933,9 @@ class ParticipantConnectorsMapViewSet(GenericViewSet):
                 if consumer_connector.user_map_id
                 else None
             )
-            consumer_org = (
-                Organization.objects.get(id=consumer_org_map.organization_id)
-                if consumer_org_map
-                else None
-            )
-            consumer = (
-                User.objects.get(id=consumer_org_map.user_id)
-                if consumer_org_map
-                else None
-            )
-            consumer_full_name = string_functions.get_full_name(
-                consumer.first_name, consumer.last_name
-            )
+            consumer_org = Organization.objects.get(id=consumer_org_map.organization_id) if consumer_org_map else None
+            consumer = User.objects.get(id=consumer_org_map.user_id) if consumer_org_map else None
+            consumer_full_name = string_functions.get_full_name(consumer.first_name, consumer.last_name)
             provider_org_map = (
                 UserOrganizationMap.objects.select_related(Constants.ORGANIZATION).get(
                     id=provider_connector.user_map_id
@@ -1051,19 +943,9 @@ class ParticipantConnectorsMapViewSet(GenericViewSet):
                 if provider_connector.user_map_id
                 else None
             )
-            provider_org = (
-                Organization.objects.get(id=provider_org_map.organization_id)
-                if provider_org_map
-                else None
-            )
-            provider = (
-                User.objects.get(id=provider_org_map.user_id)
-                if provider_org_map
-                else None
-            )
-            provider_full_name = string_functions.get_full_name(
-                provider.first_name, provider.last_name
-            )
+            provider_org = Organization.objects.get(id=provider_org_map.organization_id) if provider_org_map else None
+            provider = User.objects.get(id=provider_org_map.user_id) if provider_org_map else None
+            provider_full_name = string_functions.get_full_name(provider.first_name, provider.last_name)
             dataset = Datasets.objects.get(id=provider_connector.dataset_id)
 
             if str(provider_connector.user_map_id) == request.data.get("user_map"):
@@ -1074,9 +956,7 @@ class ParticipantConnectorsMapViewSet(GenericViewSet):
                     "provider_org": provider_org,
                     "dataset": dataset,
                     "provider_connector": provider_connector,
-                    "datahub_site": os.environ.get(
-                        Constants.DATAHUB_SITE, Constants.datahub_site
-                    ),
+                    "datahub_site": os.environ.get(Constants.DATAHUB_SITE, Constants.datahub_site),
                 }
 
                 email_render = render(request, template, data)
@@ -1095,9 +975,7 @@ class ParticipantConnectorsMapViewSet(GenericViewSet):
                     "consumer_org": consumer_org,
                     "dataset": dataset,
                     "provider_connector": provider_connector,
-                    "datahub_site": os.environ.get(
-                        Constants.DATAHUB_SITE, Constants.datahub_site
-                    ),
+                    "datahub_site": os.environ.get(Constants.DATAHUB_SITE, Constants.datahub_site),
                 }
 
                 email_render = render(request, template, data)
@@ -1128,16 +1006,12 @@ class ParticipantConnectorsMapViewSet(GenericViewSet):
         consumer_obj = Connectors.objects.get(id=consumer)
         if provider_obj.connector_status == Constants.PAIRED:
             return Response(
-                [
-                    f"Provider connector ({({provider_obj.connector_name}) }) is already paired with another connector"
-                ],
+                [f"Provider connector ({({provider_obj.connector_name}) }) is already paired with another connector"],
                 400,
             )
         elif consumer_obj.connector_status == Constants.PAIRED:
             return Response(
-                [
-                    f"Consumer connector ({consumer_obj.connector_name}) is already paired with another connector"
-                ],
+                [f"Consumer connector ({consumer_obj.connector_name}) is already paired with another connector"],
                 400,
             )
         consumer_obj.connector_status = Constants.AWAITING_FOR_APPROVAL
@@ -1153,12 +1027,8 @@ class ParticipantConnectorsMapViewSet(GenericViewSet):
             data = {
                 "consumer": consumer_serializer.data,
                 "provider": provider_serializer.data,
-                "datahub_site": os.environ.get(
-                    Constants.DATAHUB_SITE, Constants.datahub_site
-                ),
-                "datahub_name": os.environ.get(
-                    Constants.DATAHUB_NAME, Constants.datahub_name
-                ),
+                "datahub_site": os.environ.get(Constants.DATAHUB_SITE, Constants.datahub_site),
+                "datahub_name": os.environ.get(Constants.DATAHUB_NAME, Constants.datahub_name),
             }
             to_email = provider_serializer.data.get("user").get("email")
 
@@ -1252,9 +1122,7 @@ class ParticipantConnectorsMapViewSet(GenericViewSet):
             if rejection_needed_connectors:
                 for map_connectors in rejection_needed_connectors:
                     map_connectors.connector_pair_status = Constants.REJECTED
-                    map_connectors_consumer = Connectors.objects.get(
-                        id=map_connectors.consumer.id
-                    )
+                    map_connectors_consumer = Connectors.objects.get(id=map_connectors.consumer.id)
                     map_connectors_consumer.connector_status = Constants.REJECTED
                     self.perform_create(map_connectors)
                     self.perform_create(map_connectors_consumer)
@@ -1272,8 +1140,7 @@ class ParticipantConnectorsMapViewSet(GenericViewSet):
             self.trigger_email_for_pairing(
                 request,
                 Constants.WHEN_CONNECTOR_UNPAIRED,
-                Constants.CONNECTOR_UNPAIRED_SUBJECT
-                + os.environ.get(Constants.DATAHUB_NAME, Constants.datahub_name),
+                Constants.CONNECTOR_UNPAIRED_SUBJECT + os.environ.get(Constants.DATAHUB_NAME, Constants.datahub_name),
                 consumer_connectors,
                 provider_connectors,
             )
@@ -1337,9 +1204,7 @@ class ParticipantDepatrmentViewSet(GenericViewSet):
 
     def retrieve(self, request, pk):
         """GET method: retrieve an object or instance of the Product model"""
-        queryset = Department.objects.filter(
-            Q(status=True, id=pk) | Q(department_name=Constants.DEFAULT, id=pk)
-        )
+        queryset = Department.objects.filter(Q(status=True, id=pk) | Q(department_name=Constants.DEFAULT, id=pk))
         serializer = self.serializer_class(queryset, many=True)
         if serializer.data:
             return Response(serializer.data, status=status.HTTP_200_OK)
@@ -1369,9 +1234,7 @@ class ParticipantDepatrmentViewSet(GenericViewSet):
         org_id = request.query_params.get(Constants.ORG_ID)
         filters = {Constants.ORGANIZATION: org_id} if org_id else {}
         data = (
-            Department.objects.filter(
-                Q(status=True, **filters) | Q(department_name=Constants.DEFAULT)
-            )
+            Department.objects.filter(Q(status=True, **filters) | Q(department_name=Constants.DEFAULT))
             .order_by(Constants.UPDATED_AT)
             .reverse()
             .all()
@@ -1381,9 +1244,7 @@ class ParticipantDepatrmentViewSet(GenericViewSet):
 
     def destroy(self, request, pk):
         """DELETE method: delete an object"""
-        Connectors.objects.filter(department=pk).update(
-            department="e459f452-2b4b-4129-ba8b-1e1180c87888"
-        )
+        Connectors.objects.filter(department=pk).update(department="e459f452-2b4b-4129-ba8b-1e1180c87888")
         product = self.get_object()
         product.status = False
         self.perform_create(product)
@@ -1429,9 +1290,7 @@ class ParticipantProjectViewSet(GenericViewSet):
     def retrieve(self, request, pk):
         """GET method: retrieve an object or instance of the Product model"""
         try:
-            queryset = Project.objects.filter(
-                Q(status=True, id=pk) | Q(project_name=Constants.DEFAULT, id=pk)
-            )
+            queryset = Project.objects.filter(Q(status=True, id=pk) | Q(project_name=Constants.DEFAULT, id=pk))
             serializer = ProjectDepartmentSerializer(queryset, many=True)
             if serializer.data:
                 return Response(serializer.data[0], status=status.HTTP_200_OK)
@@ -1465,11 +1324,7 @@ class ParticipantProjectViewSet(GenericViewSet):
         department = request.query_params.get(Constants.DEPARTMENT)
         org_id = request.query_params.get(Constants.ORG_ID)
         # filters = {Constants.DEPARTMENT: department} if department else {}
-        filters = (
-            {Constants.DEPARTMENT: department, Constants.ORGANIZATION: org_id}
-            if department or org_id
-            else {}
-        )
+        filters = {Constants.DEPARTMENT: department, Constants.ORGANIZATION: org_id} if department or org_id else {}
         data = (
             Project.objects.select_related(Constants.DEPARTMENT_ORGANIZATION)
             .filter(Q(status=True, **filters) | Q(project_name=Constants.DEFAULT))
@@ -1484,9 +1339,7 @@ class ParticipantProjectViewSet(GenericViewSet):
 
     def destroy(self, request, pk):
         """DELETE method: delete an object"""
-        Connectors.objects.filter(project=pk).update(
-            project="3526bd39-4514-43fe-bbc4-ee0980bde252"
-        )
+        Connectors.objects.filter(project=pk).update(project="3526bd39-4514-43fe-bbc4-ee0980bde252")
         project = self.get_object()
         project.status = False
         self.perform_create(project)
@@ -1514,12 +1367,13 @@ class DataBaseViewSet(GenericViewSet):
     """
     This class handles the participant external Databases  operations.
     """
+
     parser_class = JSONParser
     serializer_class = DatabaseConfigSerializer
     # permission_classes=[IsAuthenticated]
 
     @action(detail=False, methods=["post"])
-    def database_config(self,request):
+    def database_config(self, request):
         """
         Configure the database connection based on the database type.
         Return tables retrieved from the database and set database configuration in the cookies.
@@ -1527,9 +1381,9 @@ class DataBaseViewSet(GenericViewSet):
         database_type = request.data.get("database_type")
         serializer = self.get_serializer(data=request.data, context={"source": database_type})
         serializer.is_valid(raise_exception=True)
-        cookie_data=serializer.data
+        cookie_data = serializer.data
         config = serializer.validated_data
-        config.pop("database_type")     # remove database_type before passing it to db conn
+        config.pop("database_type")  # remove database_type before passing it to db conn
 
         if database_type == Constants.SOURCE_MYSQL_FILE_TYPE:
             """Create a MySQL connection object on valid database credentials and return tables"""
@@ -1539,26 +1393,32 @@ class DataBaseViewSet(GenericViewSet):
                 # Try to connect to the database using the provided configuration
                 mydb = mysql.connector.connect(**config)
                 mycursor = mydb.cursor()
-                db_name=request.data.get('database')
-                mycursor.execute("use "+db_name+";")
+                db_name = request.data.get("database")
+                mycursor.execute("use " + db_name + ";")
                 mycursor.execute("show tables;")
                 table_list = mycursor.fetchall()
                 table_list = [element for innerList in table_list for element in innerList]
 
                 # send the tables as a list in response body
-                response=HttpResponse(json.dumps(table_list), status=status.HTTP_200_OK)
+                response = HttpResponse(json.dumps(table_list), status=status.HTTP_200_OK)
                 # set the cookies in response
-                response=update_cookies("conn_details",cookie_data,response)
-                return  response
+                response = update_cookies("conn_details", cookie_data, response)
+                return response
             except mysql.connector.Error as err:
                 if err.errno == mysql.connector.errorcode.ER_ACCESS_DENIED_ERROR:
-                    return Response({"username": ["Incorrect username or password"], "password": ["Incorrect username or password"]}, status=status.HTTP_400_BAD_REQUEST)
+                    return Response(
+                        {
+                            "username": ["Incorrect username or password"],
+                            "password": ["Incorrect username or password"],
+                        },
+                        status=status.HTTP_400_BAD_REQUEST,
+                    )
                 elif err.errno == mysql.connector.errorcode.ER_NO_SUCH_TABLE:
-                    return Response({"table":["Table does not exist"]}, status=status.HTTP_400_BAD_REQUEST)
+                    return Response({"table": ["Table does not exist"]}, status=status.HTTP_400_BAD_REQUEST)
                 # Return an error message if the connection fails
-                return Response({'error': [str(err)]}, status=status.HTTP_400_BAD_REQUEST)
+                return Response({"error": [str(err)]}, status=status.HTTP_400_BAD_REQUEST)
             except Exception as e:
-                return Response(str(e),status=status.HTTP_400_BAD_REQUEST)
+                return Response(str(e), status=status.HTTP_400_BAD_REQUEST)
 
         elif database_type == Constants.SOURCE_POSTGRESQL_FILE_TYPE:
             """Create a PostgreSQL connection object on valid database credentials"""
@@ -1572,28 +1432,37 @@ class DataBaseViewSet(GenericViewSet):
 
                 # send the tables as a list in response body & set cookies
                 tables = [table for inner_list in table_list for table in inner_list]
-                response =  HttpResponse(json.dumps(tables), status=status.HTTP_200_OK)
-                response = update_cookies("conn_details",cookie_data,response)
+                response = HttpResponse(json.dumps(tables), status=status.HTTP_200_OK)
+                response = update_cookies("conn_details", cookie_data, response)
                 return response
             except Exception as error:
                 LOGGER.error(error, exc_info=True)
                 if str(error).__contains__("password authentication failed for user"):
-                    return Response({"user": ["Invalid username or password"], "password":["Invalid username or password."]}, status=status.HTTP_400_BAD_REQUEST)
+                    return Response(
+                        {"user": ["Invalid username or password"], "password": ["Invalid username or password."]},
+                        status=status.HTTP_400_BAD_REQUEST,
+                    )
                 elif str(error).__contains__("does not exist"):
-                    return Response({"dbname": ["Invalid database name. Connection Failed."]}, status=status.HTTP_400_BAD_REQUEST)
+                    return Response(
+                        {"dbname": ["Invalid database name. Connection Failed."]}, status=status.HTTP_400_BAD_REQUEST
+                    )
                 else:
-                    return Response({"host": ["Invalid host or port. Connection Failed."], "port": ["Invalid host or port. Connection Failed."]}, status=status.HTTP_400_BAD_REQUEST)
-
-
+                    return Response(
+                        {
+                            "host": ["Invalid host or port. Connection Failed."],
+                            "port": ["Invalid host or port. Connection Failed."],
+                        },
+                        status=status.HTTP_400_BAD_REQUEST,
+                    )
 
     @action(detail=False, methods=["post"])
-    def database_col_names(self,request):
+    def database_col_names(self, request):
         """Return the column names as a list from the requested table by reading the db config from cookies."""
-        conn_details = request.COOKIES.get('conn_details',request.data)
+        conn_details = request.COOKIES.get("conn_details", request.data)
         config = ast.literal_eval(conn_details)
         database_type = config.get("database_type")
-        table_name=request.data.get('table_name')
-        config.pop("database_type")     # remove database_type before passing it to db conn
+        table_name = request.data.get("table_name")
+        config.pop("database_type")  # remove database_type before passing it to db conn
 
         serializer = DatabaseColumnRetrieveSerializer(data=request.data)
         if not serializer.is_valid():
@@ -1607,28 +1476,34 @@ class DataBaseViewSet(GenericViewSet):
                 connection = mysql.connector.connect(**config)
                 mydb = connection
                 mycursor = mydb.cursor()
-                db_name=config['database']
-                mycursor.execute("use "+db_name+";")
-                mycursor.execute("SHOW COLUMNS FROM " +db_name +"." +table_name+";")
+                db_name = config["database"]
+                mycursor.execute("use " + db_name + ";")
+                mycursor.execute("SHOW COLUMNS FROM " + db_name + "." + table_name + ";")
 
                 # Fetch columns & return as a response
                 col_list = mycursor.fetchall()
-                cols=[column_details[0] for column_details in col_list]
-                response= HttpResponse(json.dumps(cols), status=status.HTTP_200_OK)
+                cols = [column_details[0] for column_details in col_list]
+                response = HttpResponse(json.dumps(cols), status=status.HTTP_200_OK)
                 return response
 
             except mysql.connector.Error as err:
                 if err.errno == mysql.connector.errorcode.ER_ACCESS_DENIED_ERROR:
-                    return Response({"username": ["Incorrect username or password"], "password": ["Incorrect username or password"]},status=status.HTTP_400_BAD_REQUEST)
+                    return Response(
+                        {
+                            "username": ["Incorrect username or password"],
+                            "password": ["Incorrect username or password"],
+                        },
+                        status=status.HTTP_400_BAD_REQUEST,
+                    )
                 elif err.errno == mysql.connector.errorcode.ER_NO_SUCH_TABLE:
-                    return Response({"table_name":["Table does not exist"]}, status=status.HTTP_400_BAD_REQUEST)
+                    return Response({"table_name": ["Table does not exist"]}, status=status.HTTP_400_BAD_REQUEST)
                 elif err.errno == mysql.connector.errorcode.ER_KEY_COLUMN_DOES_NOT_EXITS:
-                    return Response({"col":["Columns does not exist."]}, status=status.HTTP_400_BAD_REQUEST)
+                    return Response({"col": ["Columns does not exist."]}, status=status.HTTP_400_BAD_REQUEST)
                 # Return an error message if the connection fails
-                return Response({'error': [str(err)]}, status=status.HTTP_400_BAD_REQUEST)
+                return Response({"error": [str(err)]}, status=status.HTTP_400_BAD_REQUEST)
             except Exception as e:
                 LOGGER.error(e, exc_info=True)
-                return Response(str(e),status=status.HTTP_400_BAD_REQUEST)
+                return Response(str(e), status=status.HTTP_400_BAD_REQUEST)
 
         elif database_type == Constants.SOURCE_POSTGRESQL_FILE_TYPE:
             """Create a PostgreSQL connection object on valid database credentials"""
@@ -1639,20 +1514,23 @@ class DataBaseViewSet(GenericViewSet):
                     with closing(conn.cursor()) as cursor:
                         cursor = conn.cursor()
                         # Fetch columns & return as a response
-                        cursor.execute("SELECT column_name FROM information_schema.columns WHERE table_name='{0}';".format(table_name))
+                        cursor.execute(
+                            "SELECT column_name FROM information_schema.columns WHERE table_name='{0}';".format(
+                                table_name
+                            )
+                        )
                         col_list = cursor.fetchall()
 
                 if len(col_list) <= 0:
                     return Response({"table_name": ["Table does not exist."]}, status=status.HTTP_400_BAD_REQUEST)
 
-                cols=[column_details[0] for column_details in col_list]
+                cols = [column_details[0] for column_details in col_list]
                 return HttpResponse(json.dumps(cols), status=status.HTTP_200_OK)
             except psycopg2.Error as error:
                 LOGGER.error(error, exc_info=True)
 
-
     @action(detail=False, methods=["post"])
-    def database_xls_file(self,request):
+    def database_xls_file(self, request):
         """
         Export the data extracted from the database by reading the db config from cookies to a temporary location.
         """
@@ -1660,21 +1538,25 @@ class DataBaseViewSet(GenericViewSet):
 
         if not request.query_params.get("dataset_exists"):
             if DatasetV2.objects.filter(name=dataset_name).exists():
-                return Response({"dataset_name": ["dataset v2 with this name already exists."]}, status=status.HTTP_400_BAD_REQUEST)
+                return Response(
+                    {"dataset_name": ["dataset v2 with this name already exists."]}, status=status.HTTP_400_BAD_REQUEST
+                )
 
-        conn_details = request.COOKIES.get('conn_details',request.data)
+        conn_details = request.COOKIES.get("conn_details", request.data)
+
         config = ast.literal_eval(conn_details)
         database_type = config.get("database_type")
         serializer = DatabaseDataExportSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
-        t_name = request.data.get('table_name')
-        col_names = request.data.get('col')
+        dataset = request.data.get("dataset")
+        t_name = request.data.get("table_name")
+        col_names = request.data.get("col")
         col_names = ast.literal_eval(col_names)
-        col_names = ', '.join(col_names)
-        source = request.data.get('source')
+        col_names = ", ".join(col_names)
+        source = request.data.get("source")
         file_name = request.data.get("file_name")
-        config.pop("database_type")     # remove database_type before passing it to db conn
+        config.pop("database_type")  # remove database_type before passing it to db conn
 
         if database_type == Constants.SOURCE_MYSQL_FILE_TYPE:
             """Create a PostgreSQL connection object on valid database credentials"""
@@ -1683,31 +1565,38 @@ class DataBaseViewSet(GenericViewSet):
             try:
                 mydb = mysql.connector.connect(**config)
                 mycursor = mydb.cursor()
-                db_name = config['database']
-                mycursor.execute("use "+db_name+";")
-                query="select "+ col_names+" from "+t_name+" ;"
+                db_name = config["database"]
+                mycursor.execute("use " + db_name + ";")
+                query = "select " + col_names + " from " + t_name + " ;"
                 mycursor.execute(query)
                 result = mycursor.fetchall()
 
                 # save the list of files to a temp directory
-                file_path = file_ops.create_directory(settings.TEMP_DATASET_URL,[dataset_name,source])
-                df = pd.read_sql(query,mydb)
-                df=df.astype(str)
-                xls_file = df.to_excel(file_path+"/"+file_name+".xls")
+                file_path = file_ops.create_directory(settings.DATASET_FILES_URL, [dataset_name, source])
+                df = pd.read_sql(query, mydb)
+                df = df.astype(str)
+                xls_file = df.to_excel(file_path + "/" + file_name + ".xls")
+                DatasetV2File.objects.create(dataset=dataset, source=source, file=xls_file)
                 result = os.listdir(file_path)
-                return HttpResponse(json.dumps(result),status=status.HTTP_200_OK)
+                return HttpResponse(json.dumps(result), status=status.HTTP_200_OK)
 
             except mysql.connector.Error as err:
                 LOGGER.error(err, exc_info=True)
                 if err.errno == mysql.connector.errorcode.ER_ACCESS_DENIED_ERROR:
-                    return Response({"username": ["Incorrect username or password"], "password": ["Incorrect username or password"]},status=status.HTTP_400_BAD_REQUEST)
+                    return Response(
+                        {
+                            "username": ["Incorrect username or password"],
+                            "password": ["Incorrect username or password"],
+                        },
+                        status=status.HTTP_400_BAD_REQUEST,
+                    )
                 elif err.errno == mysql.connector.errorcode.ER_NO_SUCH_TABLE:
-                    return Response({"table_name":["Table does not exist"]}, status=status.HTTP_400_BAD_REQUEST)
+                    return Response({"table_name": ["Table does not exist"]}, status=status.HTTP_400_BAD_REQUEST)
                 # elif err.errno == mysql.connector.errorcode.ER_KEY_COLUMN_DOES_NOT_EXITS:
                 elif str(err).__contains__("Unknown column"):
-                    return Response({"col":["Columns does not exist."]}, status=status.HTTP_400_BAD_REQUEST)
+                    return Response({"col": ["Columns does not exist."]}, status=status.HTTP_400_BAD_REQUEST)
                 # Return an error message if the connection fails
-                return Response({'': [str(err)]}, status=status.HTTP_400_BAD_REQUEST)
+                return Response({"": [str(err)]}, status=status.HTTP_400_BAD_REQUEST)
 
         elif database_type == Constants.SOURCE_POSTGRESQL_FILE_TYPE:
             """Create a PostgreSQL connection object on valid database credentials"""
@@ -1715,46 +1604,48 @@ class DataBaseViewSet(GenericViewSet):
             try:
                 with closing(psycopg2.connect(**config)) as conn:
                     try:
-                        sql_query = ("SELECT {0} FROM {1};".format(col_names, t_name))
+                        sql_query = "SELECT {0} FROM {1};".format(col_names, t_name)
                         df = pd.read_sql(sql_query, conn)
-                        df=df.astype(str)
+                        df = df.astype(str)
                     except pd.errors.DatabaseError as error:
                         LOGGER.error(error, exc_info=True)
                         return Response({"col": ["Columns does not exist."]}, status=status.HTTP_400_BAD_REQUEST)
 
-                file_path = file_ops.create_directory(settings.TEMP_DATASET_URL, [dataset_name, source])
-                xls_file=df.to_excel(os.path.join(file_path, file_name+".xls"))
+                file_path = file_ops.create_directory(settings.DATASET_FILES_URL, [dataset_name, source])
+                xls_file = df.to_excel(os.path.join(file_path, file_name + ".xls"))
+                DatasetV2File.objects.create(dataset=dataset, source=source, file=xls_file)
                 result = os.listdir(file_path)
                 return HttpResponse(json.dumps(result), status=status.HTTP_200_OK)
 
             except psycopg2.Error as error:
                 LOGGER.error(error, exc_info=True)
 
-
     @action(detail=False, methods=["post"])
-    def database_live_api_export(self,request):
-        '''This is an API to fetch the data from an External API with an auth token
-        and store it in JSON format.'''
+    def database_live_api_export(self, request):
+        """This is an API to fetch the data from an External API with an auth token
+        and store it in JSON format."""
         try:
-            url=request.data.get('url')
-            headers={"Authorization": request.data.get('api_key')}
+            dataset = request.data.get("dataset")
+            url = request.data.get("url")
+            headers = {"Authorization": request.data.get("api_key")}
             response = requests.get(url, headers=headers)
             if response.status_code in [200, 201]:
-                data=response.json()
-                json_data=json.dumps(data)
-                dataset_name=request.data.get("dataset_name")
-                source=request.data.get('source')
-                file_name=request.data.get("file_name")
-                file_path=file_ops.create_directory(settings.TEMP_DATASET_URL,[dataset_name,source])
-                with open(file_path+"/"+file_name+".json", 'w') as outfile:
+                data = response.json()
+                json_data = json.dumps(data)
+                dataset_name = request.data.get("dataset_name")
+                source = request.data.get("source")
+                file_name = request.data.get("file_name")
+                file_path = file_ops.create_directory(settings.DATASET_FILES_URL, [dataset_name, source])
+                with open(file_path + "/" + file_name + ".json", "w") as outfile:
                     outfile.write(json_data)
 
-                result=os.listdir(file_path) 
-
-                return Response(result,status=status.HTTP_200_OK)
+                result = os.listdir(file_path)
+                DatasetV2File.objects.create(
+                    dataset=dataset, source=source, file=file_path + "/" + file_name + ".json"
+                )
+                return Response(result, status=status.HTTP_200_OK)
             LOGGER.error("Failed to fetch data from api")
             return Response({"message": f"API Response: {response.json()}"}, status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
             LOGGER.error(f"Failed to fetch data from api ERROR: {e} and input fields: {request.data}")
             return Response({"message": f"API Response: {e}"}, status=status.HTTP_400_BAD_REQUEST)
-

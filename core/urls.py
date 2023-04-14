@@ -23,6 +23,8 @@ from drf_yasg.views import get_schema_view
 from rest_framework import permissions
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 
+from .views import protected_media_view
+
 # schema for swagger API documentation
 schema_view = get_schema_view(
     openapi.Info(
@@ -59,13 +61,15 @@ urlpatterns = [
     path("participant/", include("participant.urls")),
     path("microsite/", include("microsite.urls")),
     path("connectors/", include("connectors.urls")),
-    path('token/refresh/', TokenRefreshView.as_view(), name='token_refresh')
+    path('token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
+    path('protected-media/<path:path>', protected_media_view),
 
 
-] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT) + static(settings.PROTECTED_MEDIA_URL, document_root=settings.PROTECTED_MEDIA_ROOT)
 
 
 if settings.DEBUG:
     urlpatterns += [
         path("__debug__/", include("debug_toolbar.urls")),
-    ]
+    ] 
+
