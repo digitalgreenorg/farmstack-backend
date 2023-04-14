@@ -2241,6 +2241,15 @@ class DatasetFileV2View(GenericViewSet):
         dataset_file = self.get_object()
         dataset_file.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
+    
+    # @action(detail=False, methods=["put"])
+    def patch(self, request, *args, **kwargs):
+        instance = self.get_object()
+        serializer = self.get_serializer(instance, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
 
 
 class UsagePolicyListCreateView(generics.ListCreateAPIView):
