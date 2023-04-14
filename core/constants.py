@@ -160,3 +160,7 @@ class Constants:
     REQUESTED = "requested"
     USAGEPOLICY = "usagepolicy"
     UNAPPROVED = 'unapproved'
+    REGISTERED = 'registered'
+    PUBLIC = 'public'
+    PRIVATE = 'private'
+    AUTHORIZATION = 'Authorization'
