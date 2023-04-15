@@ -62,8 +62,7 @@ urlpatterns = [
     path("microsite/", include("microsite.urls")),
     path("connectors/", include("connectors.urls")),
     path('token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
-    path('protected-media/<path:path>', protected_media_view),
-
+    path('protected-media/', protected_media_view),
 
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT) + static(settings.PROTECTED_MEDIA_URL, document_root=settings.PROTECTED_MEDIA_ROOT)
 
