@@ -40,7 +40,7 @@ def protected_media_view(request):
     elif file.accessibility == Constants.REGISTERED:
         file_path = str(file.file)
     elif file.accessibility == Constants.PRIVATE:
-        usage_policy = UsagePolicy.objects.select_related("user_organization_map__organization").filter(
+        usage_policy = UsagePolicy.objects.select_related("user_organization_map").filter(
                     user_organization_map__user_id=user_id, dataset_file_id=file.id).first()
         if usage_policy and usage_policy.approval_status == Constants.APPROVED:
             print("User has the acces to download file")
