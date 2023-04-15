@@ -36,7 +36,7 @@ def protected_media_view(request):
     user_id = extract_jwt(request)
 
     if not user_id or isinstance(user_id, Response):
-        return HttpResponse("Login to download this file.", status=404)
+        return HttpResponse("Login to download this file.", status=401)
     elif file.accessibility == Constants.REGISTERED:
         file_path = str(file.file)
     elif file.accessibility == Constants.PRIVATE:
@@ -49,7 +49,8 @@ def protected_media_view(request):
             print("Owner of the dataset requested the file")
             file_path = str(file.file)
         else:
-            return HttpResponse(f"You don't have access to download this file, Your request status is {usage_policy.approval_status if usage_policy else 'Not Available, Send request for approval'}.", status=403)
+            return HttpResponse(f"You don't have access to download this private file, Your request status is"\
+                                f" {usage_policy.approval_status if usage_policy else 'Not Available, Send request for approval'}.", status=403)
     
     file_path = os.path.join(settings.DATASET_FILES_URL, file_path)
     if not os.path.exists(file_path):
