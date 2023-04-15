@@ -28,11 +28,14 @@ from datahub.models import DatasetV2File, UsagePolicy, UserOrganizationMap
 
 def protected_media_view(request):
     file = get_object_or_404(DatasetV2File, id=request.GET.get("id"))
-    user_id = extract_jwt(request)
     file_path = ''
+
     if file.accessibility == Constants.PUBLIC:
         file_path = str(file.file)
-    elif not user_id or isinstance(user_id, Response):
+
+    user_id = extract_jwt(request)
+
+    if not user_id or isinstance(user_id, Response):
         return HttpResponse("Login to download this file.", status=404)
     elif file.accessibility == Constants.REGISTERED:
         file_path = str(file.file)
@@ -47,6 +50,7 @@ def protected_media_view(request):
             file_path = str(file.file)
         else:
             return HttpResponse(f"You don't have access to download this file, Your request status is {usage_policy.approval_status if usage_policy else 'Not Available, Send request for approval'}.", status=403)
+    
     file_path = os.path.join(settings.DATASET_FILES_URL, file_path)
     if not os.path.exists(file_path):
         return HttpResponseNotFound('File not found', 404)
