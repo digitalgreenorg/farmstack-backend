@@ -92,7 +92,7 @@ from participant.serializers import (
 from utils import custom_exceptions, file_operations, string_functions, validators
 
 from .models import Policy, UsagePolicy
-from .serializers import PolicySerializer, UsagePolicySerializer
+from .serializers import PolicySerializer, UsagePolicyDetailSerializer, UsagePolicySerializer
 
 LOGGER = logging.getLogger(__name__)
 
@@ -1769,7 +1769,7 @@ class DatasetV2ViewSet(GenericViewSet):
             file_path["accessibility"] = file.accessibility
             file_path["standardised_file"] =  os.path.join(settings.DATASET_FILES_URL, str(file.standardised_file))
             file_path["standardisation_config"] = file.standardised_configuration
-            file_path["usage_policy"] = UsagePolicySerializer(file.dataset_v2_file.all(), many=True).data
+            file_path["usage_policy"] = UsagePolicyDetailSerializer(file.dataset_v2_file.all(), many=True).data
 
             data.append(file_path)
 

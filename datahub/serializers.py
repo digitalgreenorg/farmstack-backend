@@ -920,3 +920,14 @@ class UsagePolicySerializer(serializers.ModelSerializer):
     class Meta:
         model = UsagePolicy
         fields = '__all__'
+
+class UsagePolicyDetailSerializer(serializers.ModelSerializer):
+    organization = DatahubDatasetsSerializer.OrganizationDatsetsListRetriveSerializer(
+        required=False, allow_null=True, read_only=True, source="user_organization_map.organization"
+    )
+    user = DatahubDatasetsSerializer.UserDatasetSerializer(
+        required=False, allow_null=True, read_only=True, source="user_organization_map.user"
+    )
+    class Meta:
+        model = UsagePolicy
+        fields = '__all__'
