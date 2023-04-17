@@ -550,7 +550,8 @@ class DatasetV2FileSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = DatasetV2File
-        fields = ["id", "dataset", "file", "source", "standardised_file", "standardised_configuration"]
+        fields = ["id", "dataset", "file", "source", "standardised_file", "standardised_configuration", "accessibility"
+]
 
 
 class DatasetV2Serializer(serializers.ModelSerializer):
@@ -621,7 +622,6 @@ class DatasetV2Serializer(serializers.ModelSerializer):
             "user",
             "datasets",
             "upload_datasets",
-            "accessibility"
         ]
 
     def create(self, validated_data):
