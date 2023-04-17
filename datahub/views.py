@@ -1766,6 +1766,7 @@ class DatasetV2ViewSet(GenericViewSet):
             )
             file_path["file"] = path_
             file_path["source"] = file.source
+            file_path["accessibility"] = file.accessibility
             file_path["standardised_file"] =  os.path.join(settings.DATASET_FILES_URL, str(file.standardised_file))
             file_path["standardisation_config"] = file.standardised_configuration
             file_path["usage_policy"] = UsagePolicySerializer(file.dataset_v2_file.all(), many=True).data
