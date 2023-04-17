@@ -621,6 +621,7 @@ class DatasetV2Serializer(serializers.ModelSerializer):
             "user",
             "datasets",
             "upload_datasets",
+            "accessibility"
         ]
 
     def create(self, validated_data):
