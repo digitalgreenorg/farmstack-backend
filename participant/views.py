@@ -17,19 +17,6 @@ import pandas as pd
 import psycopg2
 import requests
 import xlwt
-from django.conf import settings
-from django.core.exceptions import ValidationError
-from django.db.models import Q
-from django.db.models.functions import Lower
-from django.shortcuts import render
-from rest_framework import pagination, status
-from rest_framework.decorators import action
-from rest_framework.parsers import JSONParser
-from rest_framework.permissions import IsAuthenticated
-from rest_framework.response import Response
-from rest_framework.viewsets import GenericViewSet, ViewSet
-from uritemplate import partial
-
 from accounts.models import User
 from core.constants import Constants
 from core.utils import (
@@ -49,6 +36,21 @@ from datahub.models import (
     UserOrganizationMap,
 )
 from datahub.serializers import DatasetFileV2NewSerializer
+from django.conf import settings
+from django.core.exceptions import ValidationError
+from django.db.models import Q
+from django.db.models.functions import Lower
+from django.shortcuts import render
+from rest_framework import pagination, status
+from rest_framework.decorators import action
+from rest_framework.parsers import JSONParser
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
+from rest_framework.viewsets import GenericViewSet, ViewSet
+from uritemplate import partial
+from utils import string_functions
+from utils.connector_utils import run_containers, stop_containers
+
 from participant.models import (
     Connectors,
     ConnectorsMap,
@@ -81,8 +83,6 @@ from participant.serializers import (
     ProjectSerializer,
     TicketSupportSerializer,
 )
-from utils import string_functions
-from utils.connector_utils import run_containers, stop_containers
 
 LOGGER = logging.getLogger(__name__)
 import json
@@ -92,7 +92,6 @@ from django.http import HttpResponse
 from rest_framework import status
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
-
 from utils import file_operations as file_ops
 
 
@@ -1545,11 +1544,11 @@ class DataBaseViewSet(GenericViewSet):
         """
         dataset_name = request.data.get("dataset_name")
 
-        if not request.query_params.get("dataset_exists"):
-            if DatasetV2.objects.filter(name=dataset_name).exists():
-                return Response(
-                    {"dataset_name": ["dataset v2 with this name already exists."]}, status=status.HTTP_400_BAD_REQUEST
-                )
+        # if not request.query_params.get("dataset_exists"):
+        #     if DatasetV2.objects.filter(name=dataset_name).exists():
+        #         return Response(
+        #             {"dataset_name": ["dataset v2 with this name already exists."]}, status=status.HTTP_400_BAD_REQUEST
+        #         )
 
         conn_details = request.COOKIES.get("conn_details", request.data)
 
@@ -1585,7 +1584,9 @@ class DataBaseViewSet(GenericViewSet):
                 df = pd.read_sql(query, mydb)
                 df = df.astype(str)
                 xls_file = df.to_excel(file_path + "/" + file_name + ".xls")
-                DatasetV2File.objects.create(dataset=dataset, source=source, file=xls_file)
+                DatasetV2File.objects.create(
+                    dataset=dataset, source=source, file=os.path.join(dataset_name, source, file_name + ".xls")
+                )
                 result = os.listdir(file_path)
                 return HttpResponse(json.dumps(result), status=status.HTTP_200_OK)
 
@@ -1621,8 +1622,10 @@ class DataBaseViewSet(GenericViewSet):
                         return Response({"col": ["Columns does not exist."]}, status=status.HTTP_400_BAD_REQUEST)
 
                 file_path = file_ops.create_directory(settings.DATASET_FILES_URL, [dataset_name, source])
-                xls_file = df.to_excel(os.path.join(file_path, file_name + ".xls"))
-                DatasetV2File.objects.create(dataset=dataset, source=source, file=xls_file)
+                xls_file = df.to_excel(os.path.join(file_path + "/" + file_name + ".xls"))
+                DatasetV2File.objects.create(
+                    dataset=dataset, source=source, file=os.path.join(dataset_name, source, file_name + ".xls")
+                )
                 result = os.listdir(file_path)
                 return HttpResponse(json.dumps(result), status=status.HTTP_200_OK)
 
