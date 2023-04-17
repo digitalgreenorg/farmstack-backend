@@ -92,7 +92,11 @@ from participant.serializers import (
 from utils import custom_exceptions, file_operations, string_functions, validators
 
 from .models import Policy, UsagePolicy
-from .serializers import PolicySerializer, UsagePolicyDetailSerializer, UsagePolicySerializer
+from .serializers import (
+    PolicySerializer,
+    UsagePolicyDetailSerializer,
+    UsagePolicySerializer,
+)
 
 LOGGER = logging.getLogger(__name__)
 
@@ -2187,6 +2191,7 @@ class DatasetFileV2View(GenericViewSet):
         data = serializer.data
         instance = DatasetV2File.objects.get(id=data.get("id"))
         instance.standardised_file=instance.file # type: ignore
+        instance.save()
         LOGGER.info("Dataset created Successfully.")
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
