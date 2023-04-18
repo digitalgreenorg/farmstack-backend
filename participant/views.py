@@ -1360,14 +1360,6 @@ def update_cookies(key, value, response):
         domain=os.environ.get("PUBLIC_DOMAIN"),
         secure=False,
     )
-    response.set_cookie(
-        key,
-        value,
-        max_age=max_age,
-        expires=expires,
-        domain="localhost",
-        secure=False,
-    )
     return response
 
 
