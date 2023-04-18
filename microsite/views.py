@@ -297,7 +297,7 @@ class DatasetsMicrositeViewSet(GenericViewSet):
                     Constants.USER_MAP_USER,
                     Constants.USER_MAP_ORGANIZATION,
                 )
-                .filter(user_map__user__status=True, status=True, **filters)
+                .filter(user_map__user__status=True, is_temp=False, **filters)
                 .order_by(Constants.UPDATED_AT)
                 .reverse()
                 .all()

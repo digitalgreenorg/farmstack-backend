@@ -550,7 +550,8 @@ class DatasetV2FileSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = DatasetV2File
-        fields = ["id", "dataset", "file", "source", "standardised_file", "standardised_configuration"]
+        fields = ["id", "dataset", "file", "source", "standardised_file", "standardised_configuration", "accessibility"
+]
 
 
 class DatasetV2Serializer(serializers.ModelSerializer):
@@ -916,6 +917,17 @@ class DatasetV2DetailNewSerializer(serializers.ModelSerializer):
         # fields = ['id', 'name', 'geography', 'category', 'dataset_files']
         
 class UsagePolicySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = UsagePolicy
+        fields = '__all__'
+
+class UsagePolicyDetailSerializer(serializers.ModelSerializer):
+    organization = DatahubDatasetsSerializer.OrganizationDatsetsListRetriveSerializer(
+        required=False, allow_null=True, read_only=True, source="user_organization_map.organization"
+    )
+    user = DatahubDatasetsSerializer.UserDatasetSerializer(
+        required=False, allow_null=True, read_only=True, source="user_organization_map.user"
+    )
     class Meta:
         model = UsagePolicy
         fields = '__all__'

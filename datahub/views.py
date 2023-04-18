@@ -92,7 +92,11 @@ from participant.serializers import (
 from utils import custom_exceptions, file_operations, string_functions, validators
 
 from .models import Policy, UsagePolicy
-from .serializers import PolicySerializer, UsagePolicySerializer
+from .serializers import (
+    PolicySerializer,
+    UsagePolicyDetailSerializer,
+    UsagePolicySerializer,
+)
 
 LOGGER = logging.getLogger(__name__)
 
@@ -576,31 +580,31 @@ class MailInvitationViewSet(GenericViewSet):
         try:
             email_list = request.data.get("to_email")
             emails_found, emails_not_found = ([] for i in range(2))
+            # for email in email_list:
+            #     if User.objects.filter(email=email):
+            #         emails_found.append(email)
+            #     else:
+            #         emails_not_found.append(email)
+            user = User.objects.filter(role_id=1).first()
+            full_name = user.first_name + " " + str(user.last_name) if user.last_name else user.first_name
+            data = {
+                "datahub_name": os.environ.get("DATAHUB_NAME", "datahub_name"),
+                "participant_admin_name": full_name,
+                "datahub_site": os.environ.get("DATAHUB_SITE", "datahub_site"),
+            }
+            # render email from query_email template
             for email in email_list:
-                if User.objects.filter(email=email):
-                    emails_found.append(email)
-                else:
-                    emails_not_found.append(email)
-
-            for user in User.objects.filter(email__in=emails_found):
-                full_name = user.first_name + " " + str(user.last_name) if user.last_name else user.first_name
-                data = {
-                    "datahub_name": os.environ.get("DATAHUB_NAME", "datahub_name"),
-                    "participant_admin_name": full_name,
-                    "datahub_site": os.environ.get("DATAHUB_SITE", "datahub_site"),
-                }
-
-                # render email from query_email template
-                email_render = render(request, "datahub_admin_invites_participants.html", data)
-                mail_body = email_render.content.decode("utf-8")
-
-                Utils().send_email(
-                    to_email=[user.email],
-                    content=mail_body,
-                    subject=os.environ.get("DATAHUB_NAME", "datahub_name") + Constants.PARTICIPANT_INVITATION_SUBJECT,
-                )
-
-            failed = f"No participants found for emails: {emails_not_found}"
+                try:
+                    email_render = render(request, "datahub_admin_invites_participants.html", data)
+                    mail_body = email_render.content.decode("utf-8")
+                    Utils().send_email(
+                        to_email=[email],
+                        content=mail_body,
+                        subject=os.environ.get("DATAHUB_NAME", "datahub_name") + Constants.PARTICIPANT_INVITATION_SUBJECT,
+                    )
+                except Exception as e:
+                    emails_not_found.append()
+            failed = f"No able to send emails to this emails: {emails_not_found}"
             LOGGER.warning(failed)
             return Response(
                 {
@@ -1766,9 +1770,10 @@ class DatasetV2ViewSet(GenericViewSet):
             )
             file_path["file"] = path_
             file_path["source"] = file.source
+            file_path["accessibility"] = file.accessibility
             file_path["standardised_file"] =  os.path.join(settings.DATASET_FILES_URL, str(file.standardised_file))
             file_path["standardisation_config"] = file.standardised_configuration
-            file_path["usage_policy"] = UsagePolicySerializer(file.dataset_v2_file.all(), many=True).data
+            file_path["usage_policy"] = UsagePolicyDetailSerializer(file.dataset_v2_file.all(), many=True).data
 
             data.append(file_path)
 
@@ -2186,6 +2191,7 @@ class DatasetFileV2View(GenericViewSet):
         data = serializer.data
         instance = DatasetV2File.objects.get(id=data.get("id"))
         instance.standardised_file=instance.file # type: ignore
+        instance.save()
         LOGGER.info("Dataset created Successfully.")
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 

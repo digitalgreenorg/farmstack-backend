@@ -5,12 +5,15 @@ from tokenize import TokenError
 import jwt
 from django.conf import settings
 from django.contrib.auth import get_user_model
+from django.db.models import Q
 from django.http import (
     FileResponse,
     HttpResponse,
     HttpResponseBadRequest,
     HttpResponseNotFound,
 )
+from django.shortcuts import get_object_or_404
+from jsonschema import ValidationError
 
 # from requests import Response
 from rest_framework.response import Response
@@ -20,30 +23,35 @@ from rest_framework_simplejwt.serializers import TokenRefreshSerializer
 from rest_framework_simplejwt.tokens import AccessToken, RefreshToken
 
 from core.constants import Constants
-from datahub.models import DatasetV2File, UsagePolicy
+from datahub.models import DatasetV2File, UsagePolicy, UserOrganizationMap
 
 
-def protected_media_view(request, path):
-    file = DatasetV2File.objects.get(id=path)
+def protected_media_view(request):
+    file = get_object_or_404(DatasetV2File, id=request.GET.get("id"))
+    file_path = ''
+
     if file.accessibility == Constants.PUBLIC:
         file_path = str(file.file)
+
+    user_id = extract_jwt(request)
+
+    if not user_id or isinstance(user_id, Response):
+        return HttpResponse("Login to download this file.", status=401)
     elif file.accessibility == Constants.REGISTERED:
-        user_map = extract_jwt(request)
-        if not user_map or isinstance(user_map, Response):
-            return HttpResponse("Login to download this file.", status=404)
         file_path = str(file.file)
     elif file.accessibility == Constants.PRIVATE:
-        user_map = extract_jwt(request)
-        if not user_map or isinstance(user_map, Response):
-            return HttpResponse("Login to download this file.", status=404)
-        try:
-            usage_policy = UsagePolicy.objects.select_related(Constants.USER_MAP_ORGANIZATION,).get(user_organization_map__user_id=user_map, dataset_file_id=file.id)
-        except Exception as e:
-            return HttpResponse("You don't have access to download this file, Send request to provider to get access.", status=403)
-        if usage_policy.approval_status == Constants.APPROVED:
+        usage_policy = UsagePolicy.objects.select_related("user_organization_map").filter(
+                    user_organization_map__user_id=user_id, dataset_file_id=file.id).first()
+        if usage_policy and usage_policy.approval_status == Constants.APPROVED:
+            print("User has the acces to download file")
+            file_path = str(file.file)
+        elif DatasetV2File.objects.select_related("dataset").filter(dataset__user_map__user_id=user_id).first():
+            print("Owner of the dataset requested the file")
             file_path = str(file.file)
         else:
-            return HttpResponse(f"You don't have access to download this file, Your request status is: {usage_policy.approval_status}.", status=403)
+            return HttpResponse(f"You don't have access to download this private file, Your request status is"\
+                                f" {usage_policy.approval_status if usage_policy else 'Not Available, Send request for approval'}.", status=403)
+    
     file_path = os.path.join(settings.DATASET_FILES_URL, file_path)
     if not os.path.exists(file_path):
         return HttpResponseNotFound('File not found', 404)

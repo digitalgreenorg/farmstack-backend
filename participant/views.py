@@ -1536,11 +1536,11 @@ class DataBaseViewSet(GenericViewSet):
         """
         dataset_name = request.data.get("dataset_name")
 
-        if not request.query_params.get("dataset_exists"):
-            if DatasetV2.objects.filter(name=dataset_name).exists():
-                return Response(
-                    {"dataset_name": ["dataset v2 with this name already exists."]}, status=status.HTTP_400_BAD_REQUEST
-                )
+        # if not request.query_params.get("dataset_exists"):
+        #     if DatasetV2.objects.filter(name=dataset_name).exists():
+        #         return Response(
+        #             {"dataset_name": ["dataset v2 with this name already exists."]}, status=status.HTTP_400_BAD_REQUEST
+        #         )
 
         conn_details = request.COOKIES.get("conn_details", request.data)
 
@@ -1549,7 +1549,7 @@ class DataBaseViewSet(GenericViewSet):
         serializer = DatabaseDataExportSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
-        dataset = request.data.get("dataset")
+        dataset = DatasetV2(id=request.data.get("dataset"))
         t_name = request.data.get("table_name")
         col_names = request.data.get("col")
         col_names = ast.literal_eval(col_names)
@@ -1576,7 +1576,12 @@ class DataBaseViewSet(GenericViewSet):
                 df = pd.read_sql(query, mydb)
                 df = df.astype(str)
                 xls_file = df.to_excel(file_path + "/" + file_name + ".xls")
-                DatasetV2File.objects.create(dataset=dataset, source=source, file=xls_file)
+                DatasetV2File.objects.create(
+                    dataset=dataset,
+                    source=source,
+                    file=os.path.join(dataset_name, source, file_name + ".xls"),
+                    standardised_file=os.path.join(dataset_name, source, file_name + ".xls"),
+                )
                 result = os.listdir(file_path)
                 return HttpResponse(json.dumps(result), status=status.HTTP_200_OK)
 
@@ -1612,8 +1617,13 @@ class DataBaseViewSet(GenericViewSet):
                         return Response({"col": ["Columns does not exist."]}, status=status.HTTP_400_BAD_REQUEST)
 
                 file_path = file_ops.create_directory(settings.DATASET_FILES_URL, [dataset_name, source])
-                xls_file = df.to_excel(os.path.join(file_path, file_name + ".xls"))
-                DatasetV2File.objects.create(dataset=dataset, source=source, file=xls_file)
+                xls_file = df.to_excel(os.path.join(file_path + "/" + file_name + ".xls"))
+                DatasetV2File.objects.create(
+                    dataset=dataset,
+                    source=source,
+                    file=os.path.join(dataset_name, source, file_name + ".xls"),
+                    standardised_file=os.path.join(dataset_name, source, file_name + ".xls"),
+                )
                 result = os.listdir(file_path)
                 return HttpResponse(json.dumps(result), status=status.HTTP_200_OK)
 
