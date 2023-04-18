@@ -1585,7 +1585,10 @@ class DataBaseViewSet(GenericViewSet):
                 df = df.astype(str)
                 xls_file = df.to_excel(file_path + "/" + file_name + ".xls")
                 DatasetV2File.objects.create(
-                    dataset=dataset, source=source, file=os.path.join(dataset_name, source, file_name + ".xls")
+                    dataset=dataset,
+                    source=source,
+                    file=os.path.join(dataset_name, source, file_name + ".xls"),
+                    standardised_file=os.path.join(dataset_name, source, file_name + ".xls"),
                 )
                 result = os.listdir(file_path)
                 return HttpResponse(json.dumps(result), status=status.HTTP_200_OK)
@@ -1624,7 +1627,10 @@ class DataBaseViewSet(GenericViewSet):
                 file_path = file_ops.create_directory(settings.DATASET_FILES_URL, [dataset_name, source])
                 xls_file = df.to_excel(os.path.join(file_path + "/" + file_name + ".xls"))
                 DatasetV2File.objects.create(
-                    dataset=dataset, source=source, file=os.path.join(dataset_name, source, file_name + ".xls")
+                    dataset=dataset,
+                    source=source,
+                    file=os.path.join(dataset_name, source, file_name + ".xls"),
+                    standardised_file=os.path.join(dataset_name, source, file_name + ".xls"),
                 )
                 result = os.listdir(file_path)
                 return HttpResponse(json.dumps(result), status=status.HTTP_200_OK)
