@@ -1557,7 +1557,7 @@ class DataBaseViewSet(GenericViewSet):
         serializer = DatabaseDataExportSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
-        dataset = request.data.get("dataset")
+        dataset = DatasetV2(request.data.get("dataset"))
         t_name = request.data.get("table_name")
         col_names = request.data.get("col")
         col_names = ast.literal_eval(col_names)
