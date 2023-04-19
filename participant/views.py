@@ -1576,14 +1576,16 @@ class DataBaseViewSet(GenericViewSet):
                 df = pd.read_sql(query, mydb)
                 df = df.astype(str)
                 xls_file = df.to_excel(file_path + "/" + file_name + ".xls")
-                DatasetV2File.objects.create(
+                instance = DatasetV2File.objects.create(
                     dataset=dataset,
                     source=source,
                     file=os.path.join(dataset_name, source, file_name + ".xls"),
                     standardised_file=os.path.join(dataset_name, source, file_name + ".xls"),
                 )
-                result = os.listdir(file_path)
-                return HttpResponse(json.dumps(result), status=status.HTTP_200_OK)
+                # result = os.listdir(file_path)
+                serializer = DatasetFileV2NewSerializer(instance)
+                return HttpResponse(serializer.data, status=status.HTTP_200_OK)
+                # return HttpResponse(json.dumps(result), status=status.HTTP_200_OK)
 
             except mysql.connector.Error as err:
                 LOGGER.error(err, exc_info=True)
@@ -1617,15 +1619,16 @@ class DataBaseViewSet(GenericViewSet):
                         return Response({"col": ["Columns does not exist."]}, status=status.HTTP_400_BAD_REQUEST)
 
                 file_path = file_ops.create_directory(settings.DATASET_FILES_URL, [dataset_name, source])
-                xls_file = df.to_excel(os.path.join(file_path + "/" + file_name + ".xls"))
-                DatasetV2File.objects.create(
+                xls_file = df.to_excel(os.path.join(file_path, file_name + ".xls"))
+                instance = DatasetV2File.objects.create(
                     dataset=dataset,
                     source=source,
                     file=os.path.join(dataset_name, source, file_name + ".xls"),
                     standardised_file=os.path.join(dataset_name, source, file_name + ".xls"),
                 )
-                result = os.listdir(file_path)
-                return HttpResponse(json.dumps(result), status=status.HTTP_200_OK)
+                # result = os.listdir(file_path)
+                serializer = DatasetFileV2NewSerializer(instance)
+                return HttpResponse(serializer.data, status=status.HTTP_200_OK)
 
             except psycopg2.Error as error:
                 LOGGER.error(error, exc_info=True)
@@ -1635,25 +1638,40 @@ class DataBaseViewSet(GenericViewSet):
         """This is an API to fetch the data from an External API with an auth token
         and store it in JSON format."""
         try:
-            dataset = request.data.get("dataset")
+            dataset = DatasetV2(id=request.data.get("dataset"))
             url = request.data.get("url")
+            auth_type = request.data.get("auth_type")
+            dataset_name = request.data.get("dataset_name")
+            source = request.data.get("source")
             headers = {"Authorization": request.data.get("api_key")}
-            response = requests.get(url, headers=headers)
+            file_name = request.data.get("file_name")
+
+            if auth_type == 'NO_AUTH':
+                response = requests.get(url)
+            elif auth_type == 'API_KEY':
+                # response = 
+            elif auth_type == 'BEARER':
+                pass
+
+
             if response.status_code in [200, 201]:
                 data = response.json()
                 json_data = json.dumps(data)
-                dataset_name = request.data.get("dataset_name")
-                source = request.data.get("source")
-                file_name = request.data.get("file_name")
+
                 file_path = file_ops.create_directory(settings.DATASET_FILES_URL, [dataset_name, source])
                 with open(file_path + "/" + file_name + ".json", "w") as outfile:
                     outfile.write(json_data)
 
-                result = os.listdir(file_path)
-                DatasetV2File.objects.create(
-                    dataset=dataset, source=source, file=file_path + "/" + file_name + ".json"
+                # result = os.listdir(file_path)
+                instance = DatasetV2File.objects.create(
+                    dataset=dataset,
+                    source=source,
+                    file=os.path.join(dataset_name, source, file_name + ".xls"),
+                    standardised_file=os.path.join(dataset_name, source, file_name + ".xls"),
                 )
-                return Response(result, status=status.HTTP_200_OK)
+                serializer = DatasetFileV2NewSerializer(instance)
+                return HttpResponse(serializer.data, status=status.HTTP_200_OK)
+
             LOGGER.error("Failed to fetch data from api")
             return Response({"message": f"API Response: {response.json()}"}, status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
