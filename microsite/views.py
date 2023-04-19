@@ -8,7 +8,7 @@ from functools import reduce
 from django.conf import settings
 from django.db.models import Q
 from django.shortcuts import render
-from rest_framework import status
+from rest_framework import generics, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.viewsets import GenericViewSet
@@ -30,6 +30,8 @@ from datahub.models import (
     DatasetV2,
     DatasetV2File,
     Organization,
+    Policy,
+    UsagePolicy,
     UserOrganizationMap,
 )
 from datahub.serializers import (
@@ -44,6 +46,7 @@ from microsite.serializers import (
     DatasetsMicrositeSerializer,
     LegalDocumentSerializer,
     OrganizationMicrositeSerializer,
+    PolicySerializer,
     UserSerializer,
 )
 from utils import file_operations
@@ -96,7 +99,6 @@ class OrganizationMicrositeViewSet(GenericViewSet):
             LOGGER.error(error, exc_info=True)
             return Response({}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-
 class DatahubThemeMicrositeViewSet(GenericViewSet):
     permission_classes = []
 
@@ -130,7 +132,6 @@ class DatahubThemeMicrositeViewSet(GenericViewSet):
             LOGGER.error(e)
 
         return Response({}, status=status.HTTP_400_BAD_REQUEST)
-
 
 class DatasetsMicrositeViewSet(GenericViewSet):
     """Datasets viewset for microsite"""
@@ -312,7 +313,6 @@ class DatasetsMicrositeViewSet(GenericViewSet):
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
 
-
 class ContactFormViewSet(GenericViewSet):
     """Contact Form for guest users to mail queries or application to become participant on datahub"""
 
@@ -346,7 +346,6 @@ class ContactFormViewSet(GenericViewSet):
         except Exception as error:
             LOGGER.error(error, exc_info=True)
             return Response({}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
 
 class DocumentsMicrositeViewSet(GenericViewSet):
     """View for uploading all the datahub documents and content"""
@@ -404,6 +403,7 @@ class DocumentsMicrositeViewSet(GenericViewSet):
             return Response({}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 class ParticipantMicrositeViewSet(GenericViewSet):
+    
     """View for uploading all the datahub documents and content"""
 
     serializer_class = UserCreateSerializer
@@ -471,3 +471,13 @@ class ParticipantMicrositeViewSet(GenericViewSet):
         page = self.paginate_queryset(roles)
         participant_serializer = micrositeOrganizationSerializer(page, many=True)
         return self.get_paginated_response(participant_serializer.data)
+    
+
+class PolicyListAPIView(generics.ListAPIView):
+    queryset = Policy.objects.all()
+    serializer_class = PolicySerializer
+
+
+class PolicyDetailAPIView(generics.RetrieveAPIView):
+    queryset = Policy.objects.all()
+    serializer_class = PolicySerializer

@@ -1,6 +1,6 @@
 from core.utils import Constants
 from accounts.models import User
-from datahub.models import Organization, Datasets, DatahubDocuments
+from datahub.models import Organization, Datasets, DatahubDocuments, Policy
 from rest_framework import serializers
 
 
@@ -69,4 +69,10 @@ class LegalDocumentSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = DatahubDocuments
+        fields = Constants.ALL
+
+
+class PolicySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Policy
         fields = Constants.ALL
