@@ -88,7 +88,7 @@ LOGGER = logging.getLogger(__name__)
 import json
 
 import mysql.connector
-from django.http import HttpResponse
+from django.http import HttpResponse, JsonResponse
 from rest_framework import status
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
@@ -1584,7 +1584,7 @@ class DataBaseViewSet(GenericViewSet):
                 )
                 # result = os.listdir(file_path)
                 serializer = DatasetFileV2NewSerializer(instance)
-                return HttpResponse(serializer.data, status=status.HTTP_200_OK)
+                return JsonResponse(serializer.data, status=status.HTTP_200_OK)
                 # return HttpResponse(json.dumps(result), status=status.HTTP_200_OK)
 
             except mysql.connector.Error as err:
@@ -1628,7 +1628,7 @@ class DataBaseViewSet(GenericViewSet):
                 )
                 # result = os.listdir(file_path)
                 serializer = DatasetFileV2NewSerializer(instance)
-                return HttpResponse(serializer.data, status=status.HTTP_200_OK)
+                return JsonResponse(serializer.data, status=status.HTTP_200_OK)
 
             except psycopg2.Error as error:
                 LOGGER.error(error, exc_info=True)
@@ -1671,7 +1671,7 @@ class DataBaseViewSet(GenericViewSet):
                     standardised_file=os.path.join(dataset_name, source, file_name + ".xls"),
                 )
                 serializer = DatasetFileV2NewSerializer(instance)
-                return HttpResponse(serializer.data, status=status.HTTP_200_OK)
+                return JsonResponse(serializer.data, status=status.HTTP_200_OK)
 
             LOGGER.error("Failed to fetch data from api")
             return Response({"message": f"API Response: {response.json()}"}, status=status.HTTP_400_BAD_REQUEST)
