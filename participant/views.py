@@ -1643,17 +1643,18 @@ class DataBaseViewSet(GenericViewSet):
             auth_type = request.data.get("auth_type")
             dataset_name = request.data.get("dataset_name")
             source = request.data.get("source")
-            headers = {"Authorization": request.data.get("api_key")}
             file_name = request.data.get("file_name")
 
             if auth_type == 'NO_AUTH':
                 response = requests.get(url)
             elif auth_type == 'API_KEY':
-                # response = 
+                headers = {request.get("api_key_name"): request.get("api_key_value")}
+                response = requests.get(url, headers)
             elif auth_type == 'BEARER':
-                pass
+                headers = {"Authorization": "Bearer "+request.data.get("token")}
+                response = requests.get(url, headers)
 
-
+            response = requests.get(url)
             if response.status_code in [200, 201]:
                 data = response.json()
                 json_data = json.dumps(data)
