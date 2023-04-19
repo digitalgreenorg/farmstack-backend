@@ -2022,9 +2022,9 @@ class DatasetV2ViewSetOps(GenericViewSet):
                 path = file_path
                 file_path = unquote(file_path).replace("/media/", "")
                 if file_path.endswith(".xlsx") or file_path.endswith(".xls"):
-                    df = pd.read_excel(os.path.join(settings.DATASET_FILES_URL, file_path), index_col=0)
+                    df = pd.read_excel(os.path.join(settings.DATASET_FILES_URL, file_path), index_col=0, nrows=3)
                 else:
-                    df = pd.read_csv(os.path.join(settings.DATASET_FILES_URL, file_path), index_col=0)
+                    df = pd.read_csv(os.path.join(settings.DATASET_FILES_URL, file_path), index_col=0, nrows=3)
                 result[path] = df.columns.tolist()
                 result[Constants.ID] = DatasetV2File.objects.get(file=file_path).id
 
