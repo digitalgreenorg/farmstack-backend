@@ -1760,7 +1760,6 @@ class DatasetV2ViewSet(GenericViewSet):
         obj = self.get_object()
         serializer = self.get_serializer(obj).data
         dataset_file_obj = DatasetV2File.objects.prefetch_related("dataset_v2_file").filter(dataset_id=obj.id)
-        # import pdb; pdb.set_trace()
         data = []
         for file in dataset_file_obj:
             path_ = os.path.join(settings.DATASET_FILES_URL, str(file.standardised_file))
@@ -1778,7 +1777,6 @@ class DatasetV2ViewSet(GenericViewSet):
                                          if not user_map else UsagePolicyDetailSerializer(
                                             file.dataset_v2_file.filter(
                                                     user_organization_map=user_map).all(), many=True).data)
-
             data.append(file_path)
 
         serializer["datasets"] = data
