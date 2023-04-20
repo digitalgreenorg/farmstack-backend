@@ -2173,6 +2173,39 @@ class DatasetV2View(GenericViewSet):
         instance.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
 
+    @action(detail=False, methods=["post"])
+    def requested_datasets(self, request, *args, **kwargs):
+        try:
+            user_map_id = request.data.get("user_map")
+            requested_sent = UsagePolicy.objects.select_related(
+                    "dataset_file",
+                    "dataset_file__dataset",
+                    "user_organization_map__organization").filter(
+                user_organization_map=user_map_id).values(
+                    "approval_status",
+                    "accessibility_time",
+                    dataset_id=F('dataset_file__dataset_id'),
+                    dataset_name=F('dataset_file__dataset__name'),
+                    organization_name=F('dataset_file__dataset__user_map__organization__name'))
+            requested_recieved = UsagePolicy.objects.select_related(
+                    "dataset_file",
+                    "dataset_file__dataset",
+                    "user_organization_map__organization").filter(
+                dataset_file__dataset__user_map_id=user_map_id).values(
+                    "id", "approval_status",
+                    "accessibility_time",
+                    dataset_id=F('dataset_file__dataset_id'),
+                    dataset_name=F('dataset_file__dataset__name'),
+                    organization_name=F('user_organization_map__organization__name'))
+            return Response({"sent": requested_sent ,
+                       "recieved":  requested_recieved}, 200)
+        except Exception as error:
+            LOGGER.error("Issue while Retrive requeted data", exc_info=True)
+            return Response(
+                f"Issue while Retrive requeted data {error}", status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+
     # def list(self, request, *args, **kwargs):
     #     page = self.paginate_queryset(self.queryset)
     #     serializer = self.get_serializer(page, many=True).exclude(is_temp = True)
@@ -2262,7 +2295,8 @@ class UsagePolicyListCreateView(generics.ListCreateAPIView):
     queryset = UsagePolicy.objects.all()
     serializer_class = UsagePolicySerializer
 
-
 class UsagePolicyRetrieveUpdateDestroyView(generics.RetrieveUpdateDestroyAPIView):
     queryset = UsagePolicy.objects.all()
     serializer_class = UsagePolicySerializer
+
+    
