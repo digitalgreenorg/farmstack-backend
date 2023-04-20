@@ -1654,7 +1654,7 @@ class DataBaseViewSet(GenericViewSet):
                 headers = {"Authorization": "Bearer "+request.data.get("token")}
                 response = requests.get(url, headers)
 
-            response = requests.get(url)
+            # response = requests.get(url)
             if response.status_code in [200, 201]:
                 data = response.json()
                 json_data = json.dumps(data)
@@ -1662,13 +1662,13 @@ class DataBaseViewSet(GenericViewSet):
                 file_path = file_ops.create_directory(settings.DATASET_FILES_URL, [dataset_name, source])
                 with open(file_path + "/" + file_name + ".json", "w") as outfile:
                     outfile.write(json_data)
-
+                    
                 # result = os.listdir(file_path)
                 instance = DatasetV2File.objects.create(
                     dataset=dataset,
                     source=source,
-                    file=os.path.join(dataset_name, source, file_name + ".xls"),
-                    standardised_file=os.path.join(dataset_name, source, file_name + ".xls"),
+                    file=os.path.join(dataset_name, source, file_name + ".json"),
+                    standardised_file=os.path.join(dataset_name, source, file_name + ".json"),
                 )
                 serializer = DatasetFileV2NewSerializer(instance)
                 return JsonResponse(serializer.data, status=status.HTTP_200_OK)
