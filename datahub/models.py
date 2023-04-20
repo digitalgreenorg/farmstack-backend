@@ -243,6 +243,7 @@ class DatasetV2File(TimeStampMixin):
         (Constants.SOURCE_FILE_TYPE, Constants.SOURCE_FILE_TYPE),
         (Constants.SOURCE_MYSQL_FILE_TYPE, Constants.SOURCE_MYSQL_FILE_TYPE),
         (Constants.SOURCE_POSTGRESQL_FILE_TYPE, Constants.SOURCE_POSTGRESQL_FILE_TYPE),
+        (Constants.SOURCE_API_TYPE, Constants.SOURCE_API_TYPE),
     ]
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     dataset = models.ForeignKey(DatasetV2, on_delete=models.CASCADE, related_name="datasets")
