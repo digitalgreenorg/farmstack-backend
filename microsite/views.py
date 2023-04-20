@@ -8,6 +8,7 @@ from functools import reduce
 from django.conf import settings
 from django.db.models import Q
 from django.shortcuts import render
+from python_http_client import exceptions
 from rest_framework import generics, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
@@ -50,7 +51,6 @@ from microsite.serializers import (
     UserSerializer,
 )
 from utils import custom_exceptions, file_operations
-from python_http_client import exceptions
 
 LOGGER = logging.getLogger(__name__)
 
@@ -306,17 +306,6 @@ class DatasetsMicrositeViewSet(GenericViewSet):
             except Exception as error:
                 LOGGER.error(error, exc_info=True)
                 raise custom_exceptions.NotFoundException(detail="Categories not found")
-        elif request.method == "POST":
-            try:
-                data = request.data
-                with open(Constants.CATEGORIES_FILE, "w+", encoding="utf8") as json_obj:
-                    json.dump(data, json_obj, ensure_ascii=False)
-                    LOGGER.info(f"Updated Categories: {Constants.CATEGORIES_FILE}")
-                return Response(data, status=status.HTTP_201_CREATED)
-            except Exception as error:
-                LOGGER.error(error, exc_info=True)
-                raise exceptions.InternalServerError("Internal Server Error")
-
     
     @action(detail=False, methods=["post"])
     def search_datasets(self, request, *args, **kwargs):
