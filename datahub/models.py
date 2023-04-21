@@ -263,5 +263,5 @@ class UsagePolicy(TimeStampMixin):
     user_organization_map = models.ForeignKey(UserOrganizationMap, on_delete=models.PROTECT, related_name="org")
     dataset_file = models.ForeignKey(DatasetV2File, on_delete=models.CASCADE, related_name="dataset_v2_file")
     approval_status = models.CharField(max_length=255, null=True, choices=USAGE_POLICY_REQUEST_STATUS, default="requested")
-    accessibility_time = models.DateField(default=timezone.localdate() + timedelta(weeks=4))
+    accessibility_time = models.DateField(null=True)
 
