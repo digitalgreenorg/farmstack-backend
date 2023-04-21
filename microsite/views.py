@@ -434,21 +434,35 @@ class ParticipantMicrositeViewSet(GenericViewSet):
 
     def list(self, request, *args, **kwargs):
         """GET method: query all the list of objects from the Product model"""
+        on_boarded_by = request.GET.get("on_boarded_by", None)
         co_steward = request.GET.get("co_steward", False)
-        if co_steward:
+        approval_status = request.GET.get(Constants.APPROVAL_STATUS, True)
+        if on_boarded_by:
             roles = (
-                UserOrganizationMap.objects.select_related(
-                    Constants.USER, Constants.ORGANIZATION
+                UserOrganizationMap.objects.select_related(Constants.USER, Constants.ORGANIZATION)
+                .filter(
+                    user__status=True,
+                    user__on_boarded_by=on_boarded_by,
+                    user__role=3,
+                    user__approval_status=approval_status,
                 )
+                .order_by("user__updated_at")
+                .all()
+            )
+        elif co_steward:
+            roles = (
+                UserOrganizationMap.objects.select_related(Constants.USER, Constants.ORGANIZATION)
                 .filter(user__status=True, user__role=6)
+                .order_by("user__updated_at")
                 .all()
             )
         else:
             roles = (
-                UserOrganizationMap.objects.select_related(
-                    Constants.USER, Constants.ORGANIZATION
+                UserOrganizationMap.objects.select_related(Constants.USER, Constants.ORGANIZATION)
+                .filter(
+                    user__status=True, user__role=3, user__on_boarded_by=None, user__approval_status=approval_status
                 )
-                .filter(user__status=True, user__role=3)
+                .order_by("user__updated_at")
                 .all()
             )
         page = self.paginate_queryset(roles)
