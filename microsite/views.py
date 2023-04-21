@@ -437,6 +437,8 @@ class ParticipantMicrositeViewSet(GenericViewSet):
         on_boarded_by = request.GET.get("on_boarded_by", None)
         co_steward = request.GET.get("co_steward", False)
         approval_status = request.GET.get(Constants.APPROVAL_STATUS, True)
+        name = request.GET.get(Constants.NAME, "")
+        filter = {Constants.ORGANIZATION_NAME_ICONTAINS: name} if name else {}
         if on_boarded_by:
             roles = (
                 UserOrganizationMap.objects.select_related(Constants.USER, Constants.ORGANIZATION)
@@ -445,6 +447,7 @@ class ParticipantMicrositeViewSet(GenericViewSet):
                     user__on_boarded_by=on_boarded_by,
                     user__role=3,
                     user__approval_status=approval_status,
+                    **filter
                 )
                 .order_by("user__updated_at")
                 .all()
@@ -452,7 +455,7 @@ class ParticipantMicrositeViewSet(GenericViewSet):
         elif co_steward:
             roles = (
                 UserOrganizationMap.objects.select_related(Constants.USER, Constants.ORGANIZATION)
-                .filter(user__status=True, user__role=6)
+                .filter(user__status=True, user__role=6, **filter)
                 .order_by("user__updated_at")
                 .all()
             )
@@ -460,7 +463,8 @@ class ParticipantMicrositeViewSet(GenericViewSet):
             roles = (
                 UserOrganizationMap.objects.select_related(Constants.USER, Constants.ORGANIZATION)
                 .filter(
-                    user__status=True, user__role=3, user__on_boarded_by=None, user__approval_status=approval_status
+                    user__status=True, user__role=3, user__on_boarded_by=None,
+                    user__approval_status=approval_status, **filter
                 )
                 .order_by("user__updated_at")
                 .all()

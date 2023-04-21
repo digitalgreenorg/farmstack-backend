@@ -165,3 +165,4 @@ class Constants:
     PUBLIC = 'public'
     PRIVATE = 'private'
     AUTHORIZATION = 'Authorization'
+    ORGANIZATION_NAME_ICONTAINS = 'organization__name__icontains'
