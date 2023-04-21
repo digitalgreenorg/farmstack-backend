@@ -1978,16 +1978,12 @@ class DatasetV2ViewSetOps(GenericViewSet):
     def datasets_names(self, request, *args, **kwargs):
         try:
             datasets_with_excel_files = (
-                DatasetV2File.objects.filter(
-                    Q(file__endswith=".xls") | Q(file__endswith=".xlsx") | Q(file__endswith=".csv")
-                )
+                DatasetV2File.objects.prefetch_related("dataset_v2_file").select_related("user_map")
+                .filter(Q(file__endswith=".xls") | Q(file__endswith=".xlsx") | Q(file__endswith=".csv"))
+                .filter(user_map__organization_id=request.GET.get("org_id"))
                 .distinct()
                 .values_list("dataset__name", "dataset__id", "dataset__user_map__organization__name")
             )
-            if request.GET.get("org_id"):
-                datasets_with_excel_files = datasets_with_excel_files.filter(
-                    dataset__user_map__organization=request.GET.get("org_id")
-                )
             dataset_list = [
                 {"name": dataset_name, "id": dataset_id, "org_name": dataset__user_map__organization__name}
                 for dataset_name, dataset_id, dataset__user_map__organization__name in datasets_with_excel_files
@@ -2007,6 +2003,7 @@ class DatasetV2ViewSetOps(GenericViewSet):
                     DatasetV2File.objects.select_related()
                     .filter(dataset__in=dataset_ids)
                     .filter(Q(file__endswith=".xls") | Q(file__endswith=".xlsx") | Q(file__endswith=".csv"))
+                    .filter(Q(accesibility__in=["public", "registered"]) | Q(dataset_v2_file__user_organization_map=request.GET.get("user_map"), approval_status="approved"))
                     .values("id", "file", "dataset", dataset_name=F("dataset__name"))
                 )
                 files = [{**row, "file_name": row.get("file", "").split("/")[-1]} for row in files]
@@ -2074,9 +2071,28 @@ class DatasetV2ViewSetOps(GenericViewSet):
     @action(detail=False, methods=["get"])
     def organization(self, request, *args, **kwargs):
         """GET method: query the list of Organization objects"""
-
+        on_boarded_by = request.GET.get("on_boarded_by", "")
+        user_id = request.GET.get("user_id", "")
         try:
-            user_org_queryset = Organization.objects.values("name", "id", "org_description").filter(status=True).all()
+            user_org_queryset = UserOrganizationMap.objects.select_related(
+                "organization", "user").values(name=F('organization__name'),
+                org_id=F('organization_id'),
+                org_description=F("organization__org_description")).filter(user__status=True).all()
+            if on_boarded_by:
+                user_org_queryset = (
+                    user_org_queryset.filter(Q(user__on_boarded_by=on_boarded_by)| Q(user_id=on_boarded_by))
+                )
+            else:
+                user_onboarded_by = User.objects.get(id=user_id).on_boarded_by
+                if user_onboarded_by:
+                    user_org_queryset = (
+                        user_org_queryset.filter(
+                            Q(user__on_boarded_by=user_onboarded_by.id)
+                            | Q(user__id=user_onboarded_by.id)
+                        )
+                    )
+                else:
+                    user_org_queryset = user_org_queryset.filter(user__on_boarded_by=None).exclude(user__role_id=6)
             return Response(user_org_queryset, 200)
         except Exception as e:
             error_message = f"An error occurred while fetching Organization details: {e}"
