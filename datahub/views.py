@@ -19,6 +19,8 @@ from django.contrib.admin.utils import get_model_from_relation
 from django.core.files.base import ContentFile
 from django.db import transaction
 from django.db.models import DEFERRED, Count, F, OuterRef, Q, Subquery
+
+# from django.db.models.functions import Index, Substr
 from django.http import JsonResponse
 from django.shortcuts import render
 from drf_braces.mixins import MultipleSerializersViewMixin
@@ -2188,6 +2190,7 @@ class DatasetV2View(GenericViewSet):
                     "accessibility_time",
                     dataset_id=F('dataset_file__dataset_id'),
                     dataset_name=F('dataset_file__dataset__name'),
+                    file_name=F('dataset_file__file'),
                     organization_name=F('dataset_file__dataset__user_map__organization__name'))
             requested_recieved = UsagePolicy.objects.select_related(
                     "dataset_file",
@@ -2198,9 +2201,10 @@ class DatasetV2View(GenericViewSet):
                     "accessibility_time",
                     dataset_id=F('dataset_file__dataset_id'),
                     dataset_name=F('dataset_file__dataset__name'),
+                    file_name=F('dataset_file__file'),
                     organization_name=F('user_organization_map__organization__name'))
-            return Response({"sent": requested_sent ,
-                       "recieved":  requested_recieved}, 200)
+            return Response({"sent": [{**values,"file_name": values.get("file_name", "").split("/")[-1]}  for values in requested_sent] ,
+                       "recieved":  [{**values,"file_name": values.get("file_name", "").split("/")[-1]}  for values in requested_recieved]}, 200)
         except Exception as error:
             LOGGER.error("Issue while Retrive requeted data", exc_info=True)
             return Response(
