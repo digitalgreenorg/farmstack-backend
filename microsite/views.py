@@ -176,7 +176,7 @@ class DatasetsMicrositeViewSet(GenericViewSet):
             file_path = {}
             file_path["content"] = read_contents_from_csv_or_xlsx_file(path_)
             # Omitted the actual name of the file so the user can't manually download the file
-            # file_path["file"] = path_.split("/")[-1]
+            file_path["file"] = path_.split("/")[-1]
             file_path["source"] = file.source
             file_path["accessibility"] = file.accessibility
             file_path["standardised_file"] = file.standardised_file if file.accessibility == Constants.PUBLIC else None
