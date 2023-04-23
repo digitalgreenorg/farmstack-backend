@@ -36,7 +36,7 @@ from datahub.serializers import (
 from django.conf import settings
 from django.db.models import Q
 from django.http import FileResponse, HttpResponse, HttpResponseNotFound
-from django.shortcuts import render
+from django.shortcuts import get_object_or_404, render
 from python_http_client import exceptions
 from rest_framework import generics, status
 from rest_framework.decorators import action
