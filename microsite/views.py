@@ -35,6 +35,7 @@ from datahub.serializers import (
 )
 from django.conf import settings
 from django.db.models import Q
+from django.http import FileResponse, HttpResponse, HttpResponseNotFound
 from django.shortcuts import render
 from python_http_client import exceptions
 from rest_framework import generics, status
@@ -510,3 +511,18 @@ class PolicyListAPIView(generics.ListAPIView):
 class PolicyDetailAPIView(generics.RetrieveAPIView):
     queryset = Policy.objects.all()
     serializer_class = PolicySerializer
+
+def microsite_media_view(request):
+    file = get_object_or_404(DatasetV2File, id=request.GET.get("id"))
+    file_path = ''
+
+    if file.accessibility == Constants.PUBLIC:
+        file_path = str(file.file)
+        file_path = os.path.join(settings.DATASET_FILES_URL, file_path)
+        if not os.path.exists(file_path):
+            return HttpResponseNotFound('File not found', 404)
+        response = FileResponse(open(file_path, 'rb'))
+    else:
+        return HttpResponse(f"You don't have access to download this private file, Your request status is", status=403)
+    
+    return response
