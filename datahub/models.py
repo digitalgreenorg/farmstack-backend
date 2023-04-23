@@ -3,13 +3,12 @@ import uuid
 from datetime import timedelta
 from email.mime import application
 
-from django.conf import settings
-from django.db import models
-from django.utils import timezone
-
 from accounts.models import User
 from core.base_models import TimeStampMixin
 from core.constants import Constants
+from django.conf import settings
+from django.db import models
+from django.utils import timezone
 from utils.validators import (
     validate_25MB_file_size,
     validate_file_size,
@@ -194,6 +193,10 @@ class CustomStorage(Storage):
     def __init__(self, dataset_name, source):
         self.dataset_name = dataset_name
         self.source = source
+
+    def size(self, name):
+        path = self.path(name)
+        return os.path.getsize(path)
         
     def exists(self, name):
         """
@@ -237,6 +240,12 @@ class DatasetV2File(TimeStampMixin):
         # set the user_id before saving
         storage = CustomStorage(self.dataset.name, self.source)
         self.file.storage = storage # type: ignore
+        
+        if self.file:
+            # Get the file size
+            size = self.file.size
+            self.file_size = size
+        
         super().save(*args, **kwargs)
 
     SOURCES = [
@@ -248,6 +257,7 @@ class DatasetV2File(TimeStampMixin):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     dataset = models.ForeignKey(DatasetV2, on_delete=models.CASCADE, related_name="datasets")
     file = models.FileField(upload_to=get_upload_path, null=True, blank=True)
+    file_size = models.PositiveIntegerField(null=True, blank=True)
     source = models.CharField(max_length=50, choices=SOURCES)
     standardised_file = models.FileField(upload_to=get_upload_path, null=True, blank=True)
     standardised_configuration = models.JSONField(default = dict)
