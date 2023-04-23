@@ -19,11 +19,11 @@ router.register(r"datasets", DatasetsMicrositeViewSet, basename="datasets")
 router.register(r"", DocumentsMicrositeViewSet, basename="d")
 router.register(r"", DatahubThemeMicrositeViewSet, basename="t")
 router.register(r"participant", ParticipantMicrositeViewSet, basename="participant_microsite")
-router.register(r"microsite_media_view", microsite_media_view, basename="microsite_media_view")
 
 urlpatterns = [
     path("", include(router.urls)),
     path('policy/', PolicyListAPIView.as_view(), name='microsite-policy-list'),
     path('policy/<uuid:pk>/', PolicyDetailAPIView.as_view(), name='microsite-policy-detail'),
+    path("microsite_media_view", microsite_media_view, name="microsite_media_view")
 
 ]
