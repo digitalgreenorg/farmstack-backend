@@ -2028,10 +2028,8 @@ class DatasetV2ViewSetOps(GenericViewSet):
                 else:
                     df = pd.read_csv(os.path.join(settings.DATASET_FILES_URL, file_path), index_col=0, nrows=3)
                 result[path] = df.columns.tolist()
-                result[Constants.ID] = DatasetV2File.objects.get(file=file_path).id
-
+                result[Constants.ID] = DatasetV2File.objects.get(standardised_file=file_path).id
             return Response(result, status=status.HTTP_200_OK)
-
         except Exception as e:
             return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
