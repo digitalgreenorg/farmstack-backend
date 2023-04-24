@@ -3,12 +3,13 @@ import uuid
 from datetime import timedelta
 from email.mime import application
 
-from accounts.models import User
-from core.base_models import TimeStampMixin
-from core.constants import Constants
 from django.conf import settings
 from django.db import models
 from django.utils import timezone
+
+from accounts.models import User
+from core.base_models import TimeStampMixin
+from core.constants import Constants
 from utils.validators import (
     validate_25MB_file_size,
     validate_file_size,
@@ -194,9 +195,9 @@ class CustomStorage(Storage):
         self.dataset_name = dataset_name
         self.source = source
 
-    def size(self, name):
-        path = self.path(name)
-        return os.path.getsize(path)
+    # def size(self, name):
+    #     path = self.path(name)
+    #     return os.path.getsize(path)
         
     def exists(self, name):
         """
@@ -239,12 +240,12 @@ class DatasetV2File(TimeStampMixin):
     def save(self, *args, **kwargs):
         # set the user_id before saving
         storage = CustomStorage(self.dataset.name, self.source)
-        self.file.storage = storage # type: ignore
+        # self.file.storage = storage # type: ignore
         
-        if self.file:
-            # Get the file size
-            size = self.file.size
-            self.file_size = size
+        # if self.file:
+        #     # Get the file size
+        #     size = self.file.size
+        #     self.file_size = size
         
         super().save(*args, **kwargs)
 
