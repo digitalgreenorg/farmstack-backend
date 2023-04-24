@@ -2244,7 +2244,8 @@ class DatasetFileV2View(GenericViewSet):
         instance.file_size=os.path.getsize(os.path.join(settings.DATASET_FILES_URL, str(instance.file)))
         instance.save()
         LOGGER.info("Dataset created Successfully.")
-        return Response(serializer.data, status=status.HTTP_201_CREATED)
+        data = DatasetFileV2NewSerializer(instance)
+        return Response(data.data, status=status.HTTP_201_CREATED)
 
     def update(self, request, *args, **kwargs):
         # setattr(request.data, "_mutable", True)
