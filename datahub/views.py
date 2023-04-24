@@ -2263,12 +2263,8 @@ class DatasetFileV2View(GenericViewSet):
             df = pd.read_excel(os.path.join(settings.DATASET_FILES_URL, file_path), index_col=None)
         else:
             df = pd.read_csv(os.path.join(settings.DATASET_FILES_URL, file_path), index_col=None)
-
-        df["temp_status"] = True
-        df.loc[df["temp_status"] == True, mask_columns] = "######"
-        # df[mask_columns] = df[mask_columns].mask(True)
-        del df["temp_status"]
-        # print()
+            
+        df[mask_columns] = "######"
         df.rename(columns=standardised_configuration, inplace=True)
         df.columns = df.columns.astype(str)
 
