@@ -1580,6 +1580,7 @@ class DataBaseViewSet(GenericViewSet):
                     dataset=dataset,
                     source=source,
                     file=os.path.join(dataset_name, source, file_name + ".xls"),
+                    file_size=os.path.getsize(os.path.join(settings.DATASET_FILES_URL, dataset_name, source, file_name + ".xls"))
                     standardised_file=os.path.join(dataset_name, source, file_name + ".xls"),
                 )
                 # result = os.listdir(file_path)
@@ -1624,6 +1625,7 @@ class DataBaseViewSet(GenericViewSet):
                     dataset=dataset,
                     source=source,
                     file=os.path.join(dataset_name, source, file_name + ".xls"),
+                    file_size=os.path.getsize(os.path.join(settings.DATASET_FILES_URL, dataset_name, source, file_name + ".xls"))
                     standardised_file=os.path.join(dataset_name, source, file_name + ".xls"),
                 )
                 # result = os.listdir(file_path)
@@ -1668,6 +1670,7 @@ class DataBaseViewSet(GenericViewSet):
                     dataset=dataset,
                     source=source,
                     file=os.path.join(dataset_name, source, file_name + ".json"),
+                    file_size=os.path.getsize(os.path.join(settings.DATASET_FILES_URL, dataset_name, source, file_name + ".json"))
                     standardised_file=os.path.join(dataset_name, source, file_name + ".json"),
                 )
                 serializer = DatasetFileV2NewSerializer(instance)
