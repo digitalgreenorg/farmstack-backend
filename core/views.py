@@ -32,20 +32,20 @@ def protected_media_view(request):
     user_id = extract_jwt(request)
 
     if file.accessibility == Constants.PUBLIC:
-        file_path = str(file.file)
+        file_path = str(file.standardised_file)
     elif not user_id or isinstance(user_id, Response):
         return HttpResponse("Login to download this file.", status=401)
     elif file.accessibility == Constants.REGISTERED:
-        file_path = str(file.file)
+        file_path = str(file.standardised_file)
     elif file.accessibility == Constants.PRIVATE:
         usage_policy = UsagePolicy.objects.select_related("user_organization_map").filter(
                     user_organization_map__user_id=user_id, dataset_file_id=file.id).first()
         if usage_policy and usage_policy.approval_status == Constants.APPROVED:
             print("User has the acces to download file")
-            file_path = str(file.file)
+            file_path = str(file.standardised_file)
         elif DatasetV2File.objects.select_related("dataset").filter(dataset__user_map__user_id=user_id).first():
             print("Owner of the dataset requested the file")
-            file_path = str(file.file)
+            file_path = str(file.standardised_file)
         else:
             return HttpResponse(f"You don't have access to download this private file, Your request status is"\
                                 f" {usage_policy.approval_status if usage_policy else 'Not Available, Send request for approval'}.", status=403)
