@@ -2200,11 +2200,15 @@ class DatasetV2View(GenericViewSet):
                     "user_organization_map__organization").filter(
                 user_organization_map=user_map_id).values(
                     "approval_status",
+                    "updated_at",
                     "accessibility_time",
                     dataset_id=F('dataset_file__dataset_id'),
                     dataset_name=F('dataset_file__dataset__name'),
                     file_name=F('dataset_file__file'),
-                    organization_name=F('dataset_file__dataset__user_map__organization__name'))
+                    organization_name=F('dataset_file__dataset__user_map__organization__name'),
+                    organization_email=F('dataset_file__dataset__user_map__organization__org_email')
+                    )
+            
             requested_recieved = UsagePolicy.objects.select_related(
                     "dataset_file",
                     "dataset_file__dataset",
@@ -2212,10 +2216,12 @@ class DatasetV2View(GenericViewSet):
                 dataset_file__dataset__user_map_id=user_map_id).values(
                     "id", "approval_status",
                     "accessibility_time",
+                    "updated_at",
                     dataset_id=F('dataset_file__dataset_id'),
                     dataset_name=F('dataset_file__dataset__name'),
                     file_name=F('dataset_file__file'),
-                    organization_name=F('user_organization_map__organization__name'))
+                    organization_name=F('user_organization_map__organization__name'),
+                    organization_email=F('user_organization_map__organization__org_email'))
             return Response({"sent": [{**values,"file_name": values.get("file_name", "").split("/")[-1]}  for values in requested_sent] ,
                        "recieved":  [{**values,"file_name": values.get("file_name", "").split("/")[-1]}  for values in requested_recieved]}, 200)
         except Exception as error:
