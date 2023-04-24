@@ -1984,10 +1984,6 @@ class DatasetV2ViewSetOps(GenericViewSet):
                 .distinct()
                 .values("name", "id", org_name=F("user_map__organization__name"))
             )
-            # dataset_list = [
-            #     {"name": name, "id": id, "org_name": user_map__organization__name}
-            #     for name, id, user_map__organization__name in datasets_with_excel_files
-            # ]
             return Response(datasets_with_excel_files, status=status.HTTP_200_OK)
         except Exception as e:
             error_message = f"An error occurred while fetching dataset names: {e}"
