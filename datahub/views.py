@@ -2241,7 +2241,7 @@ class DatasetFileV2View(GenericViewSet):
         data = serializer.data
         instance = DatasetV2File.objects.get(id=data.get("id"))
         instance.standardised_file=instance.file # type: ignore
-        instance.file_size=os.path.getsize(os.path.join(settings.DATASET_FILES_URl, str(instance.file)))
+        instance.file_size=os.path.getsize(os.path.join(settings.DATASET_FILES_URL, str(instance.file)))
         instance.save()
         LOGGER.info("Dataset created Successfully.")
         return Response(serializer.data, status=status.HTTP_201_CREATED)
@@ -2263,7 +2263,7 @@ class DatasetFileV2View(GenericViewSet):
             df = pd.read_excel(os.path.join(settings.DATASET_FILES_URL, file_path), index_col=None)
         else:
             df = pd.read_csv(os.path.join(settings.DATASET_FILES_URL, file_path), index_col=None)
-            
+
         df[mask_columns] = "######"
         df.rename(columns=standardised_configuration, inplace=True)
         df.columns = df.columns.astype(str)
@@ -2280,7 +2280,7 @@ class DatasetFileV2View(GenericViewSet):
         # data = request.data
         standardised_file_path = os.path.join(instance.dataset.name, instance.source, file_name)
         data["standardised_configuration"] = config
-        data["file_size"]=os.path.getsize(os.path.join(settings.DATASET_FILES_URl, str(standardised_file_path)))
+        data["file_size"]=os.path.getsize(os.path.join(settings.DATASET_FILES_URL, str(standardised_file_path)))
         serializer = self.get_serializer(instance, data=data, partial=True)
         serializer.is_valid(raise_exception=True)
         serializer.save()
