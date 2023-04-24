@@ -1978,17 +1978,17 @@ class DatasetV2ViewSetOps(GenericViewSet):
     def datasets_names(self, request, *args, **kwargs):
         try:
             datasets_with_excel_files = (
-                DatasetV2File.objects.prefetch_related("dataset_v2_file").select_related("user_map")
-                .filter(Q(file__endswith=".xls") | Q(file__endswith=".xlsx") | Q(file__endswith=".csv"))
+                DatasetV2.objects.prefetch_related("datasets").select_related("user_map")
+                .filter(Q(datasets__file__endswith=".xls") | Q(datasets__file__endswith=".xlsx") | Q(datasets__file__endswith=".csv"))
                 .filter(user_map__organization_id=request.GET.get("org_id"))
                 .distinct()
-                .values_list("dataset__name", "dataset__id", "dataset__user_map__organization__name")
+                .values("name", "id", org_name=F("user_map__organization__name"))
             )
-            dataset_list = [
-                {"name": dataset_name, "id": dataset_id, "org_name": dataset__user_map__organization__name}
-                for dataset_name, dataset_id, dataset__user_map__organization__name in datasets_with_excel_files
-            ]
-            return Response(dataset_list, status=status.HTTP_200_OK)
+            # dataset_list = [
+            #     {"name": name, "id": id, "org_name": user_map__organization__name}
+            #     for name, id, user_map__organization__name in datasets_with_excel_files
+            # ]
+            return Response(datasets_with_excel_files, status=status.HTTP_200_OK)
         except Exception as e:
             error_message = f"An error occurred while fetching dataset names: {e}"
             return Response({"error": error_message}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
@@ -1996,15 +1996,16 @@ class DatasetV2ViewSetOps(GenericViewSet):
     @action(detail=False, methods=["post"])
     def datasets_file_names(self, request, *args, **kwargs):
         dataset_ids = request.data.get("datasets")
+        user_map = request.data.get("user_map")
         if dataset_ids:
             try:
                 # Get list of files for each dataset
                 files = (
-                    DatasetV2File.objects.select_related()
-                    .filter(dataset__in=dataset_ids)
+                    DatasetV2File.objects.select_related("dataset_v2_file", "dataset")
+                    .filter(dataset_id__in=dataset_ids)
                     .filter(Q(file__endswith=".xls") | Q(file__endswith=".xlsx") | Q(file__endswith=".csv"))
-                    .filter(Q(accesibility__in=["public", "registered"]) | Q(dataset_v2_file__user_organization_map=request.GET.get("user_map"), approval_status="approved"))
-                    .values("id", "file", "dataset", dataset_name=F("dataset__name"))
+                    .filter(Q(accessibility__in=["public", "registered"]) | Q(dataset_v2_file__user_organization_map=user_map, dataset_v2_file__approval_status="approved"))
+                    .values("id", "file", "dataset", dataset__name=F("dataset__name"))
                 )
                 files = [{**row, "file_name": row.get("file", "").split("/")[-1]} for row in files]
                 return Response(files, status=status.HTTP_200_OK)
