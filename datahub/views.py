@@ -19,6 +19,8 @@ from django.contrib.admin.utils import get_model_from_relation
 from django.core.files.base import ContentFile
 from django.db import transaction
 from django.db.models import DEFERRED, Count, F, OuterRef, Q, Subquery
+
+# from django.db.models.functions import Index, Substr
 from django.http import JsonResponse
 from django.shortcuts import render
 from drf_braces.mixins import MultipleSerializersViewMixin
@@ -1756,10 +1758,10 @@ class DatasetV2ViewSet(GenericViewSet):
         **Endpoint**
         [ref]: /datahub/dataset/v2/<id>/
         """
+        user_map = request.GET.get("user_map")
         obj = self.get_object()
         serializer = self.get_serializer(obj).data
         dataset_file_obj = DatasetV2File.objects.prefetch_related("dataset_v2_file").filter(dataset_id=obj.id)
-        # import pdb; pdb.set_trace()
         data = []
         for file in dataset_file_obj:
             path_ = os.path.join(settings.DATASET_FILES_URL, str(file.standardised_file))
@@ -1773,8 +1775,10 @@ class DatasetV2ViewSet(GenericViewSet):
             file_path["accessibility"] = file.accessibility
             file_path["standardised_file"] =  os.path.join(settings.DATASET_FILES_URL, str(file.standardised_file))
             file_path["standardisation_config"] = file.standardised_configuration
-            file_path["usage_policy"] = UsagePolicyDetailSerializer(file.dataset_v2_file.all(), many=True).data
-
+            file_path["usage_policy"] = (UsagePolicyDetailSerializer(file.dataset_v2_file.all(), many=True).data 
+                                         if not user_map else UsagePolicyDetailSerializer(
+                                            file.dataset_v2_file.filter(
+                                                    user_organization_map=user_map).all(), many=True).data)
             data.append(file_path)
 
         serializer["datasets"] = data
@@ -1974,21 +1978,13 @@ class DatasetV2ViewSetOps(GenericViewSet):
     def datasets_names(self, request, *args, **kwargs):
         try:
             datasets_with_excel_files = (
-                DatasetV2File.objects.filter(
-                    Q(file__endswith=".xls") | Q(file__endswith=".xlsx") | Q(file__endswith=".csv")
-                )
+                DatasetV2.objects.prefetch_related("datasets").select_related("user_map")
+                .filter(Q(datasets__file__endswith=".xls") | Q(datasets__file__endswith=".xlsx") | Q(datasets__file__endswith=".csv"))
+                .filter(user_map__organization_id=request.GET.get("org_id"))
                 .distinct()
-                .values_list("dataset__name", "dataset__id", "dataset__user_map__organization__name")
+                .values("name", "id", org_name=F("user_map__organization__name"))
             )
-            if request.GET.get("org_id"):
-                datasets_with_excel_files = datasets_with_excel_files.filter(
-                    dataset__user_map__organization=request.GET.get("org_id")
-                )
-            dataset_list = [
-                {"name": dataset_name, "id": dataset_id, "org_name": dataset__user_map__organization__name}
-                for dataset_name, dataset_id, dataset__user_map__organization__name in datasets_with_excel_files
-            ]
-            return Response(dataset_list, status=status.HTTP_200_OK)
+            return Response(datasets_with_excel_files, status=status.HTTP_200_OK)
         except Exception as e:
             error_message = f"An error occurred while fetching dataset names: {e}"
             return Response({"error": error_message}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
@@ -1996,14 +1992,16 @@ class DatasetV2ViewSetOps(GenericViewSet):
     @action(detail=False, methods=["post"])
     def datasets_file_names(self, request, *args, **kwargs):
         dataset_ids = request.data.get("datasets")
+        user_map = request.data.get("user_map")
         if dataset_ids:
             try:
                 # Get list of files for each dataset
                 files = (
-                    DatasetV2File.objects.select_related()
-                    .filter(dataset__in=dataset_ids)
+                    DatasetV2File.objects.select_related("dataset_v2_file", "dataset")
+                    .filter(dataset_id__in=dataset_ids)
                     .filter(Q(file__endswith=".xls") | Q(file__endswith=".xlsx") | Q(file__endswith=".csv"))
-                    .values("id", "file", "dataset", dataset_name=F("dataset__name"))
+                    .filter(Q(accessibility__in=["public", "registered"]) | Q(dataset_v2_file__user_organization_map=user_map, dataset_v2_file__approval_status="approved"))
+                    .values("id", "file", "dataset", dataset__name=F("dataset__name"))
                 )
                 files = [{**row, "file_name": row.get("file", "").split("/")[-1]} for row in files]
                 return Response(files, status=status.HTTP_200_OK)
@@ -2022,14 +2020,12 @@ class DatasetV2ViewSetOps(GenericViewSet):
                 path = file_path
                 file_path = unquote(file_path).replace("/media/", "")
                 if file_path.endswith(".xlsx") or file_path.endswith(".xls"):
-                    df = pd.read_excel(os.path.join(settings.DATASET_FILES_URL, file_path), index_col=0)
+                    df = pd.read_excel(os.path.join(settings.DATASET_FILES_URL, file_path), index_col=0, nrows=3)
                 else:
-                    df = pd.read_csv(os.path.join(settings.DATASET_FILES_URL, file_path), index_col=0)
+                    df = pd.read_csv(os.path.join(settings.DATASET_FILES_URL, file_path), index_col=0, nrows=3)
                 result[path] = df.columns.tolist()
-                result[Constants.ID] = DatasetV2File.objects.get(file=file_path).id
-
+                result[Constants.ID] = DatasetV2File.objects.get(standardised_file=file_path).id
             return Response(result, status=status.HTTP_200_OK)
-
         except Exception as e:
             return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
@@ -2070,9 +2066,28 @@ class DatasetV2ViewSetOps(GenericViewSet):
     @action(detail=False, methods=["get"])
     def organization(self, request, *args, **kwargs):
         """GET method: query the list of Organization objects"""
-
+        on_boarded_by = request.GET.get("on_boarded_by", "")
+        user_id = request.GET.get("user_id", "")
         try:
-            user_org_queryset = Organization.objects.values("name", "id", "org_description").filter(status=True).all()
+            user_org_queryset = UserOrganizationMap.objects.select_related(
+                "organization", "user").values(name=F('organization__name'),
+                org_id=F('organization_id'),
+                org_description=F("organization__org_description")).filter(user__status=True).all()
+            if on_boarded_by:
+                user_org_queryset = (
+                    user_org_queryset.filter(Q(user__on_boarded_by=on_boarded_by)| Q(user_id=on_boarded_by))
+                )
+            else:
+                user_onboarded_by = User.objects.get(id=user_id).on_boarded_by
+                if user_onboarded_by:
+                    user_org_queryset = (
+                        user_org_queryset.filter(
+                            Q(user__on_boarded_by=user_onboarded_by.id)
+                            | Q(user__id=user_onboarded_by.id)
+                        )
+                    )
+                else:
+                    user_org_queryset = user_org_queryset.filter(user__on_boarded_by=None).exclude(user__role_id=6)
             return Response(user_org_queryset, 200)
         except Exception as e:
             error_message = f"An error occurred while fetching Organization details: {e}"
@@ -2173,6 +2188,41 @@ class DatasetV2View(GenericViewSet):
         instance.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
 
+    @action(detail=False, methods=["post"])
+    def requested_datasets(self, request, *args, **kwargs):
+        try:
+            user_map_id = request.data.get("user_map")
+            requested_sent = UsagePolicy.objects.select_related(
+                    "dataset_file",
+                    "dataset_file__dataset",
+                    "user_organization_map__organization").filter(
+                user_organization_map=user_map_id).values(
+                    "approval_status",
+                    "accessibility_time",
+                    dataset_id=F('dataset_file__dataset_id'),
+                    dataset_name=F('dataset_file__dataset__name'),
+                    file_name=F('dataset_file__file'),
+                    organization_name=F('dataset_file__dataset__user_map__organization__name'))
+            requested_recieved = UsagePolicy.objects.select_related(
+                    "dataset_file",
+                    "dataset_file__dataset",
+                    "user_organization_map__organization").filter(
+                dataset_file__dataset__user_map_id=user_map_id).values(
+                    "id", "approval_status",
+                    "accessibility_time",
+                    dataset_id=F('dataset_file__dataset_id'),
+                    dataset_name=F('dataset_file__dataset__name'),
+                    file_name=F('dataset_file__file'),
+                    organization_name=F('user_organization_map__organization__name'))
+            return Response({"sent": [{**values,"file_name": values.get("file_name", "").split("/")[-1]}  for values in requested_sent] ,
+                       "recieved":  [{**values,"file_name": values.get("file_name", "").split("/")[-1]}  for values in requested_recieved]}, 200)
+        except Exception as error:
+            LOGGER.error("Issue while Retrive requeted data", exc_info=True)
+            return Response(
+                f"Issue while Retrive requeted data {error}", status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+
     # def list(self, request, *args, **kwargs):
     #     page = self.paginate_queryset(self.queryset)
     #     serializer = self.get_serializer(page, many=True).exclude(is_temp = True)
@@ -2262,7 +2312,8 @@ class UsagePolicyListCreateView(generics.ListCreateAPIView):
     queryset = UsagePolicy.objects.all()
     serializer_class = UsagePolicySerializer
 
-
 class UsagePolicyRetrieveUpdateDestroyView(generics.RetrieveUpdateDestroyAPIView):
     queryset = UsagePolicy.objects.all()
     serializer_class = UsagePolicySerializer
+
+    

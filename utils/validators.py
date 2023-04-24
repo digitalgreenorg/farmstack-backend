@@ -21,7 +21,7 @@ def validate_25MB_file_size(value):
     filesize = value.size
     print("file_size", filesize)
     if filesize > Constants.FILE_25MB_SIZE:
-        raise ValidationError("You cannot upload file more than 2Mb")
+        raise ValidationError("You cannot upload file more than 25Mb")
     else:
         return value
 

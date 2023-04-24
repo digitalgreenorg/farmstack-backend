@@ -133,6 +133,7 @@ class Constants:
     SOURCE_FILE = "source_file"
     SOURCE_MYSQL = "source_mysql"
     SOURCE_POSTGRESQL = "source_postgresql"
+    SOURCE_API_TYPE = "live_api"
     DATASET_FILE_TYPES = ["xls", "xlsx", "csv", "pdf", "jpeg", "jpg", "png", "tiff"]
     DATASET_MAX_FILE_SIZE = 50
     DATASET_V2_URL = "dataset/v2"
@@ -164,3 +165,4 @@ class Constants:
     PUBLIC = 'public'
     PRIVATE = 'private'
     AUTHORIZATION = 'Authorization'
+    ORGANIZATION_NAME_ICONTAINS = 'organization__name__icontains'

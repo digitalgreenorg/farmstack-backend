@@ -152,7 +152,7 @@ class DatasetV2(TimeStampMixin):
     user_map = models.ForeignKey(UserOrganizationMap, on_delete=models.PROTECT)
     description = models.TextField(max_length=512, null=True, blank=True)
     category = models.JSONField(default=dict)
-    geography = models.CharField(max_length=255, null=True, blank=True)
+    geography = models.JSONField(default=dict)
     data_capture_start = models.DateTimeField(null=True, blank=True)
     data_capture_end = models.DateTimeField(null=True, blank=True)
     constantly_update = models.BooleanField(default=False)
@@ -194,6 +194,10 @@ class CustomStorage(Storage):
     def __init__(self, dataset_name, source):
         self.dataset_name = dataset_name
         self.source = source
+
+    # def size(self, name):
+    #     path = self.path(name)
+    #     return os.path.getsize(path)
         
     def exists(self, name):
         """
@@ -236,17 +240,25 @@ class DatasetV2File(TimeStampMixin):
     def save(self, *args, **kwargs):
         # set the user_id before saving
         storage = CustomStorage(self.dataset.name, self.source)
-        self.file.storage = storage # type: ignore
+        # self.file.storage = storage # type: ignore
+        
+        # if self.file:
+        #     # Get the file size
+        #     size = self.file.size
+        #     self.file_size = size
+        
         super().save(*args, **kwargs)
 
     SOURCES = [
         (Constants.SOURCE_FILE_TYPE, Constants.SOURCE_FILE_TYPE),
         (Constants.SOURCE_MYSQL_FILE_TYPE, Constants.SOURCE_MYSQL_FILE_TYPE),
         (Constants.SOURCE_POSTGRESQL_FILE_TYPE, Constants.SOURCE_POSTGRESQL_FILE_TYPE),
+        (Constants.SOURCE_API_TYPE, Constants.SOURCE_API_TYPE),
     ]
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     dataset = models.ForeignKey(DatasetV2, on_delete=models.CASCADE, related_name="datasets")
     file = models.FileField(upload_to=get_upload_path, null=True, blank=True)
+    file_size = models.PositiveIntegerField(null=True, blank=True)
     source = models.CharField(max_length=50, choices=SOURCES)
     standardised_file = models.FileField(upload_to=get_upload_path, null=True, blank=True)
     standardised_configuration = models.JSONField(default = dict)
@@ -262,5 +274,5 @@ class UsagePolicy(TimeStampMixin):
     user_organization_map = models.ForeignKey(UserOrganizationMap, on_delete=models.PROTECT, related_name="org")
     dataset_file = models.ForeignKey(DatasetV2File, on_delete=models.CASCADE, related_name="dataset_v2_file")
     approval_status = models.CharField(max_length=255, null=True, choices=USAGE_POLICY_REQUEST_STATUS, default="requested")
-    accessibility_time = models.DateField(default=timezone.localdate() + timedelta(weeks=4))
+    accessibility_time = models.DateField(null=True)
 

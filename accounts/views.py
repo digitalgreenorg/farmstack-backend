@@ -7,6 +7,7 @@ from asyncio.log import logger
 
 from django.conf import settings
 from django.core.cache import cache
+from django.db import transaction
 from django.shortcuts import render
 from rest_framework import serializers, status
 from rest_framework.decorators import action, permission_classes
@@ -437,13 +438,13 @@ class SelfRegisterParticipantViewSet(GenericViewSet):
         """
         return serializer.save()
 
+    @transaction.atomic
     def create(self, request, *args, **kwargs):
         """POST method: create action to save an object by sending a POST request"""
         org_serializer = OrganizationSerializer(data=request.data, partial=True)
         org_serializer.is_valid(raise_exception=True)
         org_queryset = self.perform_create(org_serializer)
         org_id = org_queryset.id
-        org_id = org_queryset[0].get(Constants.ID)
         request.data._mutable=True
         request.data.update({'role':3})
         request.data.update({'approval_status':False})
