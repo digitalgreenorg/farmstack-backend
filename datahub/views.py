@@ -341,7 +341,8 @@ class ParticipantViewSet(GenericViewSet):
             _type_: Returns the saved details.
         """
         return serializer.save()
-
+    
+    @transaction.atomic
     def create(self, request, *args, **kwargs):
         """POST method: create action to save an object by sending a POST request"""
         org_serializer = OrganizationSerializer(data=request.data, partial=True)
@@ -443,6 +444,7 @@ class ParticipantViewSet(GenericViewSet):
             return Response(participant_serializer.data, status=status.HTTP_200_OK)
         return Response([], status=status.HTTP_200_OK)
 
+    @transaction.atomic
     def update(self, request, *args, **kwargs):
         """PUT method: update or send a PUT request on an object of the Product model"""
         participant = self.get_object()
@@ -1792,7 +1794,6 @@ class DatasetV2ViewSet(GenericViewSet):
         others = data.pop(Constants.OTHERS, "")
         categories = data.pop(Constants.CATEGORY, None)
         user_id = data.pop(Constants.USER_ID, "")
-        # requested = data.pop(Constants.REQUESTED, "")
         on_boarded_by = data.pop("on_boarded_by", "")
         exclude, filters = {}, {}
         if others:
@@ -2207,7 +2208,7 @@ class DatasetV2View(GenericViewSet):
                     file_name=F('dataset_file__file'),
                     organization_name=F('dataset_file__dataset__user_map__organization__name'),
                     organization_email=F('dataset_file__dataset__user_map__organization__org_email')
-                    )
+                    ).order_by("-updated_at")
             
             requested_recieved = UsagePolicy.objects.select_related(
                     "dataset_file",
@@ -2221,7 +2222,7 @@ class DatasetV2View(GenericViewSet):
                     dataset_name=F('dataset_file__dataset__name'),
                     file_name=F('dataset_file__file'),
                     organization_name=F('user_organization_map__organization__name'),
-                    organization_email=F('user_organization_map__organization__org_email'))
+                    organization_email=F('user_organization_map__organization__org_email')).order_by("-updated_at")
             return Response({"sent": [{**values,"file_name": values.get("file_name", "").split("/")[-1]}  for values in requested_sent] ,
                        "recieved":  [{**values,"file_name": values.get("file_name", "").split("/")[-1]}  for values in requested_recieved]}, 200)
         except Exception as error:
@@ -2269,9 +2270,9 @@ class DatasetFileV2View(GenericViewSet):
         file_path = str(instance.file)
 
         if file_path.endswith(".xlsx") or file_path.endswith(".xls"):
-            df = pd.read_excel(os.path.join(settings.DATASET_FILES_URL, file_path), index_col=None)
+            df = pd.read_excel(os.path.join(settings.DATASET_FILES_URL, file_path), index_col=0)
         else:
-            df = pd.read_csv(os.path.join(settings.DATASET_FILES_URL, file_path), index_col=None)
+            df = pd.read_csv(os.path.join(settings.DATASET_FILES_URL, file_path), index_col=0)
 
         df[mask_columns] = "######"
 
