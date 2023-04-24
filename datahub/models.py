@@ -149,7 +149,7 @@ class DatasetV2(TimeStampMixin):
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     name = models.CharField(max_length=100, unique=True)
-    user_map = models.ForeignKey(UserOrganizationMap, on_delete=models.PROTECT)
+    user_map = models.ForeignKey(UserOrganizationMap, on_delete=models.PROTECT, related_name="user_org_map")
     description = models.TextField(max_length=512, null=True, blank=True)
     category = models.JSONField(default=dict)
     geography = models.JSONField(default=dict)

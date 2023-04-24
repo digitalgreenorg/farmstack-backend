@@ -2069,10 +2069,12 @@ class DatasetV2ViewSetOps(GenericViewSet):
         on_boarded_by = request.GET.get("on_boarded_by", "")
         user_id = request.GET.get("user_id", "")
         try:
-            user_org_queryset = UserOrganizationMap.objects.select_related(
-                "organization", "user").values(name=F('organization__name'),
+            user_org_queryset = UserOrganizationMap.objects.prefetch_related("user_org_map").select_related("user_org_map"
+                "organization", "user").annotate(dataset_count=Count("user_org_map__id")
+                                                 ).values(name=F('organization__name'),
                 org_id=F('organization_id'),
-                org_description=F("organization__org_description")).filter(user__status=True).all()
+                org_description=F("organization__org_description")
+                ).filter(user__status=True,dataset_count__gt=0).all()
             if on_boarded_by:
                 user_org_queryset = (
                     user_org_queryset.filter(Q(user__on_boarded_by=on_boarded_by)| Q(user_id=on_boarded_by))
