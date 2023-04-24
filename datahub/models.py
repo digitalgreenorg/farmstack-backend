@@ -186,6 +186,7 @@ class Policy(TimeStampMixin):
     file = models.FileField(
         upload_to=settings.POLICY_FILES_URL,
         validators=[validate_25MB_file_size],
+        null=True
     )
 from django.core.files.storage import Storage
 
