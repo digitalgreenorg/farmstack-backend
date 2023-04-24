@@ -2265,6 +2265,7 @@ class DatasetFileV2View(GenericViewSet):
             df = pd.read_csv(os.path.join(settings.DATASET_FILES_URL, file_path), index_col=None)
 
         df[mask_columns] = "######"
+
         df.rename(columns=standardised_configuration, inplace=True)
         df.columns = df.columns.astype(str)
 

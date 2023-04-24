@@ -240,7 +240,7 @@ class DatasetV2File(TimeStampMixin):
     def save(self, *args, **kwargs):
         # set the user_id before saving
         storage = CustomStorage(self.dataset.name, self.source)
-        # self.file.storage = storage # type: ignore
+        self.file.storage = storage # type: ignore
         
         # if self.file:
         #     # Get the file size
