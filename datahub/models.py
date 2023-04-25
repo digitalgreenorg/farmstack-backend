@@ -149,7 +149,7 @@ class DatasetV2(TimeStampMixin):
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     name = models.CharField(max_length=100, unique=True)
-    user_map = models.ForeignKey(UserOrganizationMap, on_delete=models.PROTECT)
+    user_map = models.ForeignKey(UserOrganizationMap, on_delete=models.PROTECT, related_name="user_org_map")
     description = models.TextField(max_length=512, null=True, blank=True)
     category = models.JSONField(default=dict)
     geography = models.JSONField(default=dict)
@@ -186,6 +186,7 @@ class Policy(TimeStampMixin):
     file = models.FileField(
         upload_to=settings.POLICY_FILES_URL,
         validators=[validate_25MB_file_size],
+        null=True
     )
 from django.core.files.storage import Storage
 
@@ -240,7 +241,7 @@ class DatasetV2File(TimeStampMixin):
     def save(self, *args, **kwargs):
         # set the user_id before saving
         storage = CustomStorage(self.dataset.name, self.source)
-        # self.file.storage = storage # type: ignore
+        self.file.storage = storage # type: ignore
         
         # if self.file:
         #     # Get the file size

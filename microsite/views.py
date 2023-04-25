@@ -5,6 +5,16 @@ import operator
 import os
 from functools import reduce
 
+from django.conf import settings
+from django.db.models import Q
+from django.http import FileResponse, HttpResponse, HttpResponseNotFound
+from django.shortcuts import get_object_or_404, render
+from python_http_client import exceptions
+from rest_framework import generics, status
+from rest_framework.decorators import action
+from rest_framework.response import Response
+from rest_framework.viewsets import GenericViewSet
+
 from accounts.models import User, UserRole
 from accounts.serializers import UserCreateSerializer
 from core.constants import Constants
@@ -33,17 +43,6 @@ from datahub.serializers import (
     ParticipantSerializer,
     micrositeOrganizationSerializer,
 )
-from django.conf import settings
-from django.db.models import Q
-from django.http import FileResponse, HttpResponse, HttpResponseNotFound
-from django.shortcuts import get_object_or_404, render
-from python_http_client import exceptions
-from rest_framework import generics, status
-from rest_framework.decorators import action
-from rest_framework.response import Response
-from rest_framework.viewsets import GenericViewSet
-from utils import custom_exceptions, file_operations
-
 from microsite.serializers import (
     ContactFormSerializer,
     DatasetsMicrositeSerializer,
@@ -52,6 +51,7 @@ from microsite.serializers import (
     PolicySerializer,
     UserSerializer,
 )
+from utils import custom_exceptions, file_operations
 
 LOGGER = logging.getLogger(__name__)
 
