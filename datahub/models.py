@@ -182,7 +182,7 @@ class Policy(TimeStampMixin):
     """
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     name = models.CharField(max_length=100, unique=True)
-    description = models.CharField(max_length=512, unique=False)
+    description = models.CharField(max_length=2048, unique=False)
     file = models.FileField(
         upload_to=settings.POLICY_FILES_URL,
         validators=[validate_25MB_file_size],
