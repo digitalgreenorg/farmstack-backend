@@ -1808,8 +1808,8 @@ class DatasetV2ViewSet(GenericViewSet):
                     Constants.USER_MAP_ORGANIZATION,
                     # Constants.USAGE_POLICY
                 )
-                .filter(**data, **filters)
-                .exclude(is_temp=True, **exclude)
+                .filter(**data)
+                .exclude(is_temp=True)
                 .order_by(Constants.UPDATED_AT)
                 .reverse()
                 .all()
@@ -1823,9 +1823,9 @@ class DatasetV2ViewSet(GenericViewSet):
                 )
             if on_boarded_by:
                 data = (
-                    data.filter(user_map__user__on_boarded_by=user_id)
+                    data.filter(user_map__user__on_boarded_by=user_id, **filters).exclude(**exclude)
                     if others
-                    else data.filter(Q(user_map__user__on_boarded_by=user_id) | Q(user_map__user__id=user_id))
+                    else data.filter(user_map__user_id=user_id, **filters)
                 )
             else:
                 user_onboarded_by = User.objects.get(id=user_id).on_boarded_by
@@ -1833,13 +1833,13 @@ class DatasetV2ViewSet(GenericViewSet):
                     data = (
                         data.filter(
                             Q(user_map__user__on_boarded_by=user_onboarded_by.id)
-                            | Q(user_map__user__id=user_onboarded_by.id)
-                        )
+                            | Q(user_map__user_id=user_onboarded_by.id)
+                        ).filter(**filters).exclude(**exclude)
                         if others
-                        else data.filter(user_map__user__on_boarded_by=user_onboarded_by.id)
+                        else data.filter(user_map__user_id=user_id, **filters)
                     )
                 else:
-                    data = data.filter(user_map__user__on_boarded_by=None).exclude(user_map__user__role_id=6)
+                    data = data.filter(user_map__user__on_boarded_by=None, **filters).exclude(**exclude, user_map__user__role_id=6)
         except Exception as error:  # type: ignore
             logging.error("Error while filtering the datasets. ERROR: %s", error, exc_info=True)
             return Response(f"Invalid filter fields: {list(request.data.keys())}", status=500)
