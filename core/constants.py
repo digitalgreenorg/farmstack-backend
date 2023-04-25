@@ -12,11 +12,12 @@ class Constants:
     USER_MAP_USER = "user_map__user"
     DATASETS = "datasets"
     DATASET = "dataset"
-    USER_MAP_ORGANIZATION_ID = "user_map__organization_id"
+    USER_MAP_ORGANIZATION_ID = "user_map__organization__id"
     USER_MAP_ORGANIZATION = "user_map__organization"
-
     USER_ID = "user_id"
     UPDATED_AT = "updated_at"
+    DESC_UPDATED_AT = "-updated_at"
+
     CREATED_AT = "created_at"
     EXCLUDE_DATES = ["created_at", "updated_at"]
     ALL = "__all__"
