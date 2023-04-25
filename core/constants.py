@@ -12,7 +12,9 @@ class Constants:
     USER_MAP_USER = "user_map__user"
     DATASETS = "datasets"
     DATASET = "dataset"
+    USER_MAP_ORGANIZATION_ID = "user_map__organization_id"
     USER_MAP_ORGANIZATION = "user_map__organization"
+
     USER_ID = "user_id"
     UPDATED_AT = "updated_at"
     CREATED_AT = "created_at"
