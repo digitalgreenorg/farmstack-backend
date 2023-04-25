@@ -2002,7 +2002,7 @@ class DatasetV2ViewSetOps(GenericViewSet):
                     .filter(dataset_id__in=dataset_ids)
                     .filter(Q(file__endswith=".xls") | Q(file__endswith=".xlsx") | Q(file__endswith=".csv"))
                     .filter(Q(accessibility__in=["public", "registered"]) | Q(dataset_v2_file__user_organization_map=user_map, dataset_v2_file__approval_status="approved"))
-                    .values("id", "dataset", "file", dataset__name=F("dataset__name")).distinct()
+                    .values("id", "dataset", "file", dataset_name=F("dataset__name")).distinct()
                 )
                 files = [{**row, "file_name": row.get("file", "").split("/")[-1]} for row in files]
                 return Response(files, status=status.HTTP_200_OK)
