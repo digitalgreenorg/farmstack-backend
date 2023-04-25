@@ -1795,9 +1795,9 @@ class DatasetV2ViewSet(GenericViewSet):
         categories = data.pop(Constants.CATEGORY, None)
         user_id = data.pop(Constants.USER_ID, "")
         on_boarded_by = data.pop("on_boarded_by", "")
-        exclude, filters = {}, {}
+        exclude_filters, filters = {}, {}
         if others:
-            exclude = {Constants.USER_MAP_ORGANIZATION: org_id} if org_id else {}
+            exclude_filters = {Constants.USER_MAP_ORGANIZATION: org_id} if org_id else {}
         else:
             filters = {Constants.USER_MAP_ORGANIZATION: org_id} if org_id else {}
         try:
@@ -1805,14 +1805,12 @@ class DatasetV2ViewSet(GenericViewSet):
                 DatasetV2.objects.select_related(
                     Constants.USER_MAP,
                     Constants.USER_MAP_USER,
-                    Constants.USER_MAP_ORGANIZATION,
-                    # Constants.USAGE_POLICY
+                    Constants.USER_MAP_ORGANIZATION
                 )
-                .filter(**data)
+                .filter(**data, **filters)
                 .exclude(is_temp=True)
-                .order_by(Constants.UPDATED_AT)
-                .reverse()
-                .all()
+                .exclude(**exclude_filters)
+                .order_by(Constants.UPDATED_AT).reverse().all()
             )
             if categories is not None:
                 data = data.filter(
@@ -1823,9 +1821,9 @@ class DatasetV2ViewSet(GenericViewSet):
                 )
             if on_boarded_by:
                 data = (
-                    data.filter(user_map__user__on_boarded_by=user_id, **filters).exclude(**exclude)
+                    data.filter(user_map__user__on_boarded_by=user_id)
                     if others
-                    else data.filter(user_map__user_id=user_id, **filters)
+                    else data.filter(user_map__user_id=user_id)
                 )
             else:
                 user_onboarded_by = User.objects.get(id=user_id).on_boarded_by
@@ -1834,12 +1832,13 @@ class DatasetV2ViewSet(GenericViewSet):
                         data.filter(
                             Q(user_map__user__on_boarded_by=user_onboarded_by.id)
                             | Q(user_map__user_id=user_onboarded_by.id)
-                        ).filter(**filters).exclude(**exclude)
+                        )
                         if others
-                        else data.filter(user_map__user_id=user_id, **filters)
+                        else data.filter(user_map__user_id=user_id)
                     )
                 else:
-                    data = data.filter(user_map__user__on_boarded_by=None, **filters).exclude(**exclude, user_map__user__role_id=6)
+                    data = data.filter(user_map__user__on_boarded_by=None).exclude(
+                        user_map__user__role_id=6) if others else data
         except Exception as error:  # type: ignore
             logging.error("Error while filtering the datasets. ERROR: %s", error, exc_info=True)
             return Response(f"Invalid filter fields: {list(request.data.keys())}", status=500)
