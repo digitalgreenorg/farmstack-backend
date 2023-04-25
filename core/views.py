@@ -39,7 +39,7 @@ def protected_media_view(request):
         file_path = str(file.standardised_file)
     elif file.accessibility == Constants.PRIVATE:
         usage_policy = UsagePolicy.objects.select_related("user_organization_map").filter(
-                    user_organization_map__user_id=user_id, dataset_file_id=file.id).first()
+                    user_organization_map__user_id=user_id, dataset_file_id=file.id).order_by("-updated_at").first()
         if usage_policy and usage_policy.approval_status == Constants.APPROVED:
             print("User has the acces to download file")
             file_path = str(file.standardised_file)
