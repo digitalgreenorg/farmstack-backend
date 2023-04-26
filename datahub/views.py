@@ -1785,7 +1785,7 @@ class DatasetV2ViewSet(GenericViewSet):
             file_path["usage_policy"] = (UsagePolicyDetailSerializer(file.dataset_v2_file.all(), many=True).data 
                                          if not user_map else UsagePolicyDetailSerializer(
                                             file.dataset_v2_file.filter(
-                                                    user_organization_map=user_map).all(), many=True).data)
+                                                    user_organization_map=user_map).order_by("-updated_at").first()).data)
             data.append(file_path)
 
         serializer["datasets"] = data
