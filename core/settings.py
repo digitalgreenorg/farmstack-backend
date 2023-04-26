@@ -119,10 +119,10 @@ DATABASES = {
  
         "ENGINE": "django.db.backends.postgresql",
         "NAME": "postgres",
-        "USER": os.environ.get("POSTGRES_USER"),
-        "PASSWORD": os.environ.get("POSTGRES_PASSWORD"),
-        "HOST": "db",
-        "PORT": "5432",
+        "USER": os.environ.get("POSTGRES_USER", "postgres"),
+        "PASSWORD": os.environ.get("POSTGRES_PASSWORD", "$famrstack@!21"),
+        "HOST": "datahubethdev.farmstack.co",
+        "PORT": "7000",
         "OPTIONS": {
             "client_encoding": "UTF8",
         },
