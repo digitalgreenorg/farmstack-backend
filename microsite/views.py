@@ -443,14 +443,14 @@ class ParticipantMicrositeViewSet(GenericViewSet):
                     user__approval_status=approval_status,
                     **filter,
                 )
-                .order_by("user__updated_at")
+                .order_by("-user__updated_at")
                 .all()
             )
         elif co_steward:
             roles = (
                 UserOrganizationMap.objects.select_related(Constants.USER, Constants.ORGANIZATION)
                 .filter(user__status=True, user__role=6, **filter)
-                .order_by("user__updated_at")
+                .order_by("-user__updated_at")
                 .all()
             )
         else:
@@ -463,7 +463,7 @@ class ParticipantMicrositeViewSet(GenericViewSet):
                     user__approval_status=approval_status,
                     **filter,
                 )
-                .order_by("user__updated_at")
+                .order_by("-user__updated_at")
                 .all()
             )
         page = self.paginate_queryset(roles)

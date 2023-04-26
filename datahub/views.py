@@ -400,6 +400,8 @@ class ParticipantViewSet(GenericViewSet):
         on_boarded_by = request.GET.get("on_boarded_by", None)
         co_steward = request.GET.get("co_steward", False)
         approval_status = request.GET.get(Constants.APPROVAL_STATUS, True)
+        name = request.GET.get(Constants.NAME, "")
+        filter = {Constants.ORGANIZATION_NAME_ICONTAINS: name} if name else {}
         if on_boarded_by:
             roles = (
                 UserOrganizationMap.objects.select_related(Constants.USER, Constants.ORGANIZATION)
@@ -407,25 +409,27 @@ class ParticipantViewSet(GenericViewSet):
                     user__status=True,
                     user__on_boarded_by=on_boarded_by,
                     user__role=3,
-                    user__approval_status=approval_status,
+                    user__approval_status=approval_status, **filter
                 )
-                .order_by("user__updated_at")
+                .order_by("-user__updated_at")
                 .all()
             )
         elif co_steward:
             roles = (
                 UserOrganizationMap.objects.select_related(Constants.USER, Constants.ORGANIZATION)
-                .filter(user__status=True, user__role=6)
-                .order_by("user__updated_at")
+                .filter(user__status=True, user__role=6, **filter)
+                .order_by("-user__updated_at")
                 .all()
             )
         else:
             roles = (
                 UserOrganizationMap.objects.select_related(Constants.USER, Constants.ORGANIZATION)
                 .filter(
-                    user__status=True, user__role=3, user__on_boarded_by=None, user__approval_status=approval_status
+                    user__status=True, user__role=3,
+                      user__on_boarded_by=None,
+                        user__approval_status=approval_status, **filter
                 )
-                .order_by("user__updated_at")
+                .order_by("-user__updated_at")
                 .all()
             )
         page = self.paginate_queryset(roles)
@@ -1774,13 +1778,14 @@ class DatasetV2ViewSet(GenericViewSet):
             )
             file_path["file"] = path_
             file_path["source"] = file.source
+            file_path["file_size"] = file.file_size
             file_path["accessibility"] = file.accessibility
             file_path["standardised_file"] =  os.path.join(settings.DATASET_FILES_URL, str(file.standardised_file))
             file_path["standardisation_config"] = file.standardised_configuration
             file_path["usage_policy"] = (UsagePolicyDetailSerializer(file.dataset_v2_file.all(), many=True).data 
                                          if not user_map else UsagePolicyDetailSerializer(
                                             file.dataset_v2_file.filter(
-                                                    user_organization_map=user_map).all(), many=True).data)
+                                                    user_organization_map=user_map).order_by("-updated_at").first()).data)
             data.append(file_path)
 
         serializer["datasets"] = data
