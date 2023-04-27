@@ -1782,10 +1782,14 @@ class DatasetV2ViewSet(GenericViewSet):
             file_path["accessibility"] = file.accessibility
             file_path["standardised_file"] =  os.path.join(settings.DATASET_FILES_URL, str(file.standardised_file))
             file_path["standardisation_config"] = file.standardised_configuration
-            file_path["usage_policy"] = (UsagePolicyDetailSerializer(file.dataset_v2_file.all(), many=True).data 
-                                         if not user_map else UsagePolicyDetailSerializer(
-                                            file.dataset_v2_file.filter(
-                                                    user_organization_map=user_map).order_by("-updated_at").first()).data)
+            if not user_map:
+                usage_policy = UsagePolicyDetailSerializer(file.dataset_v2_file.all(), many=True).data 
+            else:
+                usage_policy = file.dataset_v2_file.filter(
+                                                    user_organization_map=user_map).order_by("-updated_at").first()
+                                            
+                usage_policy = UsagePolicyDetailSerializer(usage_policy).data if usage_policy else {}
+            file_path["usage_policy"] = usage_policy
             data.append(file_path)
 
         serializer["datasets"] = data
