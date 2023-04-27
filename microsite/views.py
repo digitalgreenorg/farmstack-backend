@@ -504,11 +504,13 @@ class ParticipantMicrositeViewSet(GenericViewSet):
 
 
 class PolicyListAPIView(generics.ListAPIView):
+    permission_classes = []
     queryset = Policy.objects.all()
     serializer_class = PolicySerializer
 
 
 class PolicyDetailAPIView(generics.RetrieveAPIView):
+    permission_classes = []
     queryset = Policy.objects.all()
     serializer_class = PolicySerializer
 
