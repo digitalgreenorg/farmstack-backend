@@ -160,9 +160,10 @@ class LoginViewset(GenericViewSet):
                     status=status.HTTP_401_UNAUTHORIZED,
                 )
 
-            elif user.status == False:
+            elif user.status == False or user.approval_status == False:
+                message = "Approval status is still pending." if user.approval_status else 'User is deleted.'
                 return Response(
-                    {"email": "User is deleted"},
+                    {"email": message},
                     status=status.HTTP_401_UNAUTHORIZED,
                 )
 
