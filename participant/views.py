@@ -1371,7 +1371,6 @@ class DataBaseViewSet(GenericViewSet):
 
     parser_class = JSONParser
     serializer_class = DatabaseConfigSerializer
-    # permission_classes=[IsAuthenticated]
 
     @action(detail=False, methods=["post"])
     def database_config(self, request):

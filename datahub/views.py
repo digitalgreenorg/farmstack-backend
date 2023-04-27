@@ -171,7 +171,6 @@ class OrganizationViewSet(GenericViewSet):
 
     serializer_class = OrganizationSerializer
     queryset = Organization.objects.all()
-    permission_classes = []
     pagination_class = CustomPagination
     parser_class = MultiPartParser
 
@@ -2170,7 +2169,6 @@ class PolicyDetailAPIView(generics.RetrieveUpdateDestroyAPIView):
 class DatasetV2View(GenericViewSet):
     queryset = DatasetV2.objects.all()
     serializer_class = DatasetV2NewListSerializer
-    permission_classes = []
     pagination_class = CustomPagination
 
     def create(self, request, *args, **kwargs):
@@ -2249,7 +2247,6 @@ class DatasetV2View(GenericViewSet):
 class DatasetFileV2View(GenericViewSet):
     queryset = DatasetV2File.objects.all()
     serializer_class = DatasetFileV2NewSerializer
-    permission_classes = []
 
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data, partial=True)
