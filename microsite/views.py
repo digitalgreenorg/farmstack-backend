@@ -10,7 +10,7 @@ from django.db.models import Q
 from django.http import FileResponse, HttpResponse, HttpResponseNotFound
 from django.shortcuts import get_object_or_404, render
 from python_http_client import exceptions
-from rest_framework import generics, status
+from rest_framework import generics, permissions, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.viewsets import GenericViewSet
@@ -137,7 +137,7 @@ class DatasetsMicrositeViewSet(GenericViewSet):
     serializer_class = DatasetV2Serializer
     queryset = DatasetV2.objects.all()
     pagination_class = CustomPagination
-    permission_classes = []
+    permission_classes = [permissions.AllowAny]
 
     def list(self, request, *args, **kwargs):
         """
