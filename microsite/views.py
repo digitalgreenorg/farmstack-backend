@@ -503,16 +503,32 @@ class ParticipantMicrositeViewSet(GenericViewSet):
         return self.get_paginated_response(participant_serializer.data)
 
 
-class PolicyListAPIView(generics.ListAPIView):
-    permission_classes = []
+class PolicyAPIView(GenericViewSet):
     queryset = Policy.objects.all()
     serializer_class = PolicySerializer
-
-
-class PolicyDetailAPIView(generics.RetrieveAPIView):
     permission_classes = []
-    queryset = Policy.objects.all()
-    serializer_class = PolicySerializer
+
+
+    def list(self, request, *args, **kwargs):
+        queryset = self.filter_queryset(self.get_queryset())
+
+        page = self.paginate_queryset(queryset)
+        if page is not None:
+            serializer = self.get_serializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
+
+        serializer = self.get_serializer(queryset, many=True)
+        return Response(serializer.data)
+    
+    def retrieve(self, request, *args, **kwargs):
+        instance = self.get_object()
+        serializer = self.get_serializer(instance)
+        return Response(serializer.data)
+
+# @permissions.AllowAny
+# class PolicyDetailAPIView(generics.RetrieveAPIView):
+#     queryset = Policy.objects.all()
+#     serializer_class = PolicySerializer
 
 def microsite_media_view(request):
     file = get_object_or_404(DatasetV2File, id=request.GET.get("id"))
