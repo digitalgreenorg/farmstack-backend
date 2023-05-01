@@ -42,7 +42,7 @@ from django.db.models import Q
 from django.db.models.functions import Lower
 from django.shortcuts import render
 from rest_framework import pagination, status
-from rest_framework.decorators import action
+from rest_framework.decorators import action, permission_classes
 from rest_framework.parsers import JSONParser
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
@@ -1668,7 +1668,7 @@ class DataBaseViewSet(GenericViewSet):
                     if type(data) == list:
                         json.dump(data, outfile)
                     else:
-                        outfile.write(data)
+                        outfile.write(json.dumps(data))
                     
                 # result = os.listdir(file_path)
                 instance = DatasetV2File.objects.create(
