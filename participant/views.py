@@ -42,7 +42,7 @@ from django.db.models import Q
 from django.db.models.functions import Lower
 from django.shortcuts import render
 from rest_framework import pagination, status
-from rest_framework.decorators import action
+from rest_framework.decorators import action, permission_classes
 from rest_framework.parsers import JSONParser
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
@@ -1657,12 +1657,18 @@ class DataBaseViewSet(GenericViewSet):
 
             # response = requests.get(url)
             if response.status_code in [200, 201]:
-                data = response.json()
-                json_data = json.dumps(data)
+                try:
+                    data = response.json()
+                except ValueError:
+                    data = response.text
+
 
                 file_path = file_ops.create_directory(settings.DATASET_FILES_URL, [dataset_name, source])
                 with open(file_path + "/" + file_name + ".json", "w") as outfile:
-                    outfile.write(json_data)
+                    if type(data) == list:
+                        json.dump(data, outfile)
+                    else:
+                        outfile.write(json.dumps(data))
                     
                 # result = os.listdir(file_path)
                 instance = DatasetV2File.objects.create(
