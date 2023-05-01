@@ -1649,7 +1649,7 @@ class DataBaseViewSet(GenericViewSet):
             if auth_type == 'NO_AUTH':
                 response = requests.get(url)
             elif auth_type == 'API_KEY':
-                headers = {request.get("api_key_name"): request.get("api_key_value")}
+                headers = {requests.get("api_key_name"): requests.get("api_key_value")}
                 response = requests.get(url, headers = headers)
             elif auth_type == 'BEARER':
                 headers = {"Authorization": "Bearer "+request.data.get("token")}
