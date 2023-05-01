@@ -1658,11 +1658,11 @@ class DataBaseViewSet(GenericViewSet):
             # response = requests.get(url)
             if response.status_code in [200, 201]:
                 data = response.json()
-                json_data = json.dumps(data)
+                # json_data = json.dumps(data)
 
                 file_path = file_ops.create_directory(settings.DATASET_FILES_URL, [dataset_name, source])
                 with open(file_path + "/" + file_name + ".json", "w") as outfile:
-                    outfile.write(json_data)
+                    outfile.write(data)
                     
                 # result = os.listdir(file_path)
                 instance = DatasetV2File.objects.create(
