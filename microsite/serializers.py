@@ -58,6 +58,14 @@ class ContactFormSerializer(serializers.Serializer):
     describe_query = serializers.CharField()
 
 
+class UserDataMicrositeSerializer(serializers.ModelSerializer):
+    class Meta:
+        """_summary_"""
+
+        model = User
+        fields = ["id", "role_id", "on_boarded"]
+
+
 class LegalDocumentSerializer(serializers.ModelSerializer):
     """Legal DocumentSerializer class"""
 
