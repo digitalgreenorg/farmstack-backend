@@ -12,9 +12,12 @@ class Constants:
     USER_MAP_USER = "user_map__user"
     DATASETS = "datasets"
     DATASET = "dataset"
+    USER_MAP_ORGANIZATION_ID = "user_map__organization__id"
     USER_MAP_ORGANIZATION = "user_map__organization"
     USER_ID = "user_id"
     UPDATED_AT = "updated_at"
+    DESC_UPDATED_AT = "-updated_at"
+
     CREATED_AT = "created_at"
     EXCLUDE_DATES = ["created_at", "updated_at"]
     ALL = "__all__"
@@ -133,9 +136,12 @@ class Constants:
     SOURCE_FILE = "source_file"
     SOURCE_MYSQL = "source_mysql"
     SOURCE_POSTGRESQL = "source_postgresql"
+    SOURCE_API_TYPE = "live_api"
     DATASET_FILE_TYPES = ["xls", "xlsx", "csv", "pdf", "jpeg", "jpg", "png", "tiff"]
     DATASET_MAX_FILE_SIZE = 50
     DATASET_V2_URL = "dataset/v2"
+    DATASETS_V2_URL = "datasets/v2"
+    DATASET_FILES = "dataset_files"
     CATEGORIES_FILE = "categories.json"
     CONNECTORS = "connectors"
     STANDARDISE = "standardise"
@@ -155,3 +161,11 @@ class Constants:
     DATA = "data"
     LEFT = "left"
     EDIT = "edit"
+    REQUESTED = "requested"
+    USAGEPOLICY = "usagepolicy"
+    UNAPPROVED = 'unapproved'
+    REGISTERED = 'registered'
+    PUBLIC = 'public'
+    PRIVATE = 'private'
+    AUTHORIZATION = 'Authorization'
+    ORGANIZATION_NAME_ICONTAINS = 'organization__name__icontains'

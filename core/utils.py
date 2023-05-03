@@ -165,9 +165,9 @@ def csv_and_xlsx_file_validatation(file_obj):
     try:
         name = file_obj.name
         if name.endswith(".xlsx") or name.endswith(".xls"):
-            df = pd.read_excel(file_obj, header=0)
+            df = pd.read_excel(file_obj, header=0, nrows=21)
         else:
-            df = pd.read_csv(file_obj, encoding="unicode_escape", header=0)
+            df = pd.read_csv(file_obj, encoding="unicode_escape", header=0, nrows=21)
         if len(df) < 5:
             return False
     except Exception as error:
@@ -181,9 +181,9 @@ def read_contents_from_csv_or_xlsx_file(file_path):
     dataframe = pd.DataFrame([])
     try:
         if file_path.endswith(".xlsx") or file_path.endswith(".xls"):
-            content = pd.read_excel("." + file_path, header=0).head(2) if file_path else dataframe
+            content = pd.read_excel(file_path, index_col=0, nrows=21).head(2) if file_path else dataframe
         else:
-            content = pd.read_csv("." + file_path, header=0).head(2) if file_path else dataframe
+            content = pd.read_csv(file_path, index_col=0, nrows=21).head(2) if file_path else dataframe
         content = content.fillna("")
     except Exception as error:
         logging.error("Invalid file ERROR: %s", error)

@@ -1,8 +1,11 @@
+import os
 import uuid
+from datetime import timedelta
 from email.mime import application
 
 from django.conf import settings
 from django.db import models
+from django.utils import timezone
 
 from accounts.models import User
 from core.base_models import TimeStampMixin
@@ -95,7 +98,9 @@ APPROVAL_STATUS = (
 )
 USAGE_POLICY_REQUEST_STATUS = (
     ("approved", "approved"),
-    ("rejected", "rejected")
+    ("rejected", "rejected"),
+    ("requested", "requested")
+
 )
 
 USAGE_POLICY_APPROVAL_STATUS = (
@@ -143,49 +148,18 @@ class DatasetV2(TimeStampMixin):
     """
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    name = models.CharField(max_length=100, unique=True)
-    user_map = models.ForeignKey(UserOrganizationMap, on_delete=models.PROTECT)
+    name = models.CharField(max_length=50, unique=True)
+    user_map = models.ForeignKey(UserOrganizationMap, on_delete=models.PROTECT, related_name="user_org_map")
     description = models.TextField(max_length=512, null=True, blank=True)
-    category = models.JSONField()
-    geography = models.CharField(max_length=255, null=True, blank=True)
+    category = models.JSONField(default=dict)
+    geography = models.JSONField(default=dict)
     data_capture_start = models.DateTimeField(null=True, blank=True)
     data_capture_end = models.DateTimeField(null=True, blank=True)
     constantly_update = models.BooleanField(default=False)
-    status = models.BooleanField(default=True)
+    is_temp = models.BooleanField(default=True)
 
     class Meta:
         indexes = [models.Index(fields=["name", "category"])]
-
-
-@auto_str
-class DatasetV2File(TimeStampMixin):
-    """
-    Stores a single file (file paths/urls) entry for datasets with a reference to DatasetV2 instance.
-    related to :model:`datahub_datasetv2` (DatasetV2)
-
-    `Source` (enum): Enum to store file type
-        `file`: dataset of file type
-        `mysql`: dataset of mysql connection
-        `postgresql`: dataset of postgresql connection
-    """
-
-    def dataset_directory_path(instance, filename):
-        # file will be uploaded to MEDIA_ROOT/user_<id>/<filename>
-        return "datasets/{0}/{1}".format(instance.dataset.name, filename)
-
-    SOURCES = [
-        (Constants.SOURCE_FILE_TYPE, Constants.SOURCE_FILE_TYPE),
-        (Constants.SOURCE_MYSQL_FILE_TYPE, Constants.SOURCE_MYSQL_FILE_TYPE),
-        (Constants.SOURCE_POSTGRESQL_FILE_TYPE, Constants.SOURCE_POSTGRESQL_FILE_TYPE),
-    ]
-    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    dataset = models.ForeignKey(DatasetV2, on_delete=models.PROTECT, related_name="datasets")
-    file = models.FileField(max_length=255, upload_to=dataset_directory_path, null=True, blank=True)
-    source = models.CharField(max_length=50, choices=SOURCES)
-    standardised_file = models.FileField(max_length=255, upload_to=dataset_directory_path, null=True, blank=True )
-    standardised_configuration = models.JSONField(default = dict)
-    accessibility = models.CharField(max_length=255, null=True, choices=USAGE_POLICY_APPROVAL_STATUS, default="public")
-
 @auto_str
 class StandardisationTemplate(TimeStampMixin):
     """
@@ -208,21 +182,98 @@ class Policy(TimeStampMixin):
     """
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     name = models.CharField(max_length=100, unique=True)
-    description = models.CharField(max_length=512, unique=False)
+    description = models.CharField(max_length=2048, unique=False)
     file = models.FileField(
         upload_to=settings.POLICY_FILES_URL,
         validators=[validate_25MB_file_size],
+        null=True
     )
+from django.core.files.storage import Storage
 
-# class UsagePolicy(TimeStampMixin):
-#     """
-#     Policy documentation Model.
-#     datapoint category - Name of the category for a group of attributes
-#     datapoint attribute - datapoints for each attribute (JSON)
-#     """
 
-#     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-#     org_id = models.ForeignKey(Organization, on_delete=models.PROTECT, related_name="org")
-#     dataset_file = models.ForeignKey(DatasetV2File, on_delete=models.PROTECT, related_name="dataset_file")
-#     approval_status = models.CharField(max_length=255, null=True, choices=USAGE_POLICY_REQUEST_STATUS, default="public")
-#     accessibility_time =  models.DateField(null=True)
+class CustomStorage(Storage):
+    def __init__(self, dataset_name, source):
+        self.dataset_name = dataset_name
+        self.source = source
+
+    # def size(self, name):
+    #     path = self.path(name)
+    #     return os.path.getsize(path)
+        
+    def exists(self, name):
+        """
+        Check if a file with the given name already exists in the storage.
+        """
+        return os.path.exists(name)
+    
+    def url(self, url):
+        return url
+
+    def _save(self, name, content): 
+        # Save file to a directory outside MEDIA_ROOT
+        full_path = os.path.join(settings.DATASET_FILES_URL, name)
+        directory = os.path.dirname(full_path)
+        if not self.exists(directory):
+            os.makedirs(directory)
+        with open(full_path, 'wb') as f:
+            f.write(content.read())
+        return name
+
+@auto_str
+class DatasetV2File(TimeStampMixin):
+    """
+    Stores a single file (file paths/urls) entry for datasets with a reference to DatasetV2 instance.
+    related to :model:`datahub_datasetv2` (DatasetV2)
+
+    `Source` (enum): Enum to store file type
+        `file`: dataset of file type
+        `mysql`: dataset of mysql connection
+        `postgresql`: dataset of postgresql connection
+    """
+
+    def dataset_directory_path(instance, filename):
+        # file will be uploaded to MEDIA_ROOT/user_<id>/<filename>
+        return f"{settings.DATASET_FILES_URL}/{instance.dataset.name}/{instance.source}/{filename}"
+    
+    def get_upload_path(instance, filename):
+        return f"{instance.dataset.name}/{instance.source}/{filename}"
+
+    def save(self, *args, **kwargs):
+        # set the user_id before saving
+        storage = CustomStorage(self.dataset.name, self.source)
+        self.file.storage = storage # type: ignore
+        
+        # if self.file:
+        #     # Get the file size
+        #     size = self.file.size
+        #     self.file_size = size
+        
+        super().save(*args, **kwargs)
+
+    SOURCES = [
+        (Constants.SOURCE_FILE_TYPE, Constants.SOURCE_FILE_TYPE),
+        (Constants.SOURCE_MYSQL_FILE_TYPE, Constants.SOURCE_MYSQL_FILE_TYPE),
+        (Constants.SOURCE_POSTGRESQL_FILE_TYPE, Constants.SOURCE_POSTGRESQL_FILE_TYPE),
+        (Constants.SOURCE_API_TYPE, Constants.SOURCE_API_TYPE),
+    ]
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    dataset = models.ForeignKey(DatasetV2, on_delete=models.CASCADE, related_name="datasets")
+    file = models.FileField(upload_to=get_upload_path, null=True, blank=True)
+    file_size = models.PositiveIntegerField(null=True, blank=True)
+    source = models.CharField(max_length=50, choices=SOURCES)
+    standardised_file = models.FileField(upload_to=get_upload_path, null=True, blank=True)
+    standardised_configuration = models.JSONField(default = dict)
+    accessibility = models.CharField(max_length=255, null=True, choices=USAGE_POLICY_APPROVAL_STATUS, default="public")
+
+class UsagePolicy(TimeStampMixin):
+    """
+    Policy documentation Model.
+    datapoint category - Name of the category for a group of attributes
+    datapoint attribute - datapoints for each attribute (JSON)
+    """
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    user_organization_map = models.ForeignKey(UserOrganizationMap, on_delete=models.PROTECT, related_name="org")
+    dataset_file = models.ForeignKey(DatasetV2File, on_delete=models.CASCADE, related_name="dataset_v2_file")
+    approval_status = models.CharField(max_length=255, null=True, choices=USAGE_POLICY_REQUEST_STATUS, default="requested")
+    accessibility_time = models.DateField(null=True)
+

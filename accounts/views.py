@@ -1,11 +1,13 @@
 import datetime
 import logging
 import os
+
 # from asyncio import exceptions
 from asyncio.log import logger
 
 from django.conf import settings
 from django.core.cache import cache
+from django.db import transaction
 from django.shortcuts import render
 from rest_framework import serializers, status
 from rest_framework.decorators import action, permission_classes
@@ -37,7 +39,15 @@ from core.utils import (
     date_formater,
     read_contents_from_csv_or_xlsx_file,
 )
-from datahub.serializers import(
+from datahub.models import (
+    DatahubDocuments,
+    Datasets,
+    DatasetV2,
+    DatasetV2File,
+    Organization,
+    UserOrganizationMap,
+)
+from datahub.serializers import (
     DatahubDatasetsSerializer,
     DatahubDatasetsV2Serializer,
     DatahubThemeSerializer,
@@ -57,14 +67,6 @@ from datahub.serializers import(
     TeamMemberUpdateSerializer,
     UserOrganizationCreateSerializer,
     UserOrganizationMapSerializer,
-)
-from datahub.models import (
-    DatahubDocuments,
-    Datasets,
-    DatasetV2,
-    DatasetV2File,
-    Organization,
-    UserOrganizationMap,
 )
 
 
@@ -158,9 +160,10 @@ class LoginViewset(GenericViewSet):
                     status=status.HTTP_401_UNAUTHORIZED,
                 )
 
-            elif user.status == False:
+            elif user.status == False or user.approval_status == False:
+                message = "Approval status is still pending." if user.approval_status else 'User is deleted.'
                 return Response(
-                    {"email": "User is deleted"},
+                    {"email": message},
                     status=status.HTTP_401_UNAUTHORIZED,
                 )
 
@@ -355,7 +358,7 @@ class VerifyLoginOTPViewset(GenericViewSet):
                     # On successful validation generate JWT tokens
                     if (correct_otp == int(otp_entered) and cache.get(email)["email"] == email) or email == "imran+1@digitalgreen.org":
                         cache.delete(email)
-                        refresh = RefreshToken.for_user(user)
+                        refresh = RefreshToken.for_user(user) # type: ignore
                         return Response(
                             {
                                 "user": user.id,
@@ -436,22 +439,16 @@ class SelfRegisterParticipantViewSet(GenericViewSet):
         """
         return serializer.save()
 
+    @transaction.atomic
     def create(self, request, *args, **kwargs):
         """POST method: create action to save an object by sending a POST request"""
-        org_queryset = list(
-            Organization.objects.filter(org_email=self.request.data.get(Constants.ORG_EMAIL, "")).values()
-        )
-        if not org_queryset:
-            org_serializer = OrganizationSerializer(data=request.data, partial=True)
-            org_serializer.is_valid(raise_exception=True)
-            org_queryset = self.perform_create(org_serializer)
-            org_id = org_queryset.id
-        else:
-            org_id = org_queryset[0].get(Constants.ID)
-        
+        org_serializer = OrganizationSerializer(data=request.data, partial=True)
+        org_serializer.is_valid(raise_exception=True)
+        org_queryset = self.perform_create(org_serializer)
+        org_id = org_queryset.id
         request.data._mutable=True
-
         request.data.update({'role':3})
+        request.data.update({'approval_status':False})
         user_serializer = UserCreateSerializer(data=request.data)
         user_serializer.is_valid(raise_exception=True)
         user_saved = self.perform_create(user_serializer)
@@ -460,7 +457,7 @@ class SelfRegisterParticipantViewSet(GenericViewSet):
             data={
                 Constants.USER: user_saved.id,
                 Constants.ORGANIZATION: org_id,
-            }
+            } # type: ignore
         )
         user_org_serializer.is_valid(raise_exception=True)
         self.perform_create(user_org_serializer)
@@ -493,4 +490,3 @@ class SelfRegisterParticipantViewSet(GenericViewSet):
 
         return Response(user_org_serializer.data, status=status.HTTP_201_CREATED)
 
-    
