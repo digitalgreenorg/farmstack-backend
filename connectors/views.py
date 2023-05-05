@@ -116,7 +116,7 @@ class ConnectorsViewSet(GenericViewSet):
             integrated_file = str(integrated_file).replace("media/", "").replace("%20", " ")
             size = os.path.getsize(os.path.join(settings.MEDIA_ROOT, integrated_file))
             if size > Constants.MAX_CONNECTOR_FILE:
-                return Response({f"Integrated data size exceeds maximum limit: {size}"}, status=500)
+                return Response({f"Integrated data exceeds maximum limit: {size/1000000} MB"}, status=500)
         if not request.GET.get(Constants.EDIT, False):
             serializer = ConnectorsCreateSerializer(data=data)
             serializer.is_valid(raise_exception=True)
