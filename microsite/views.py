@@ -557,24 +557,13 @@ class UserDataMicrositeViewSet(GenericViewSet):
 
     @action(detail=False, methods=["get"])
     def user_data(self, request):
-        """GET method: retrieve an object of Organization using User ID of the User (IMPORTANT: Using USER ID instead of Organization ID)"""
-        try:
-            datahub_admin = User.objects.get(
-                id=request.GET.get("user_id", ""))
-            print(datahub_admin, "datahub_admin")
-
-            serializer = UserDataMicrositeSerializer(datahub_admin)
-            return Response(serializer.data, status=status.HTTP_200_OK)
-
-        except Exception as error:
-            LOGGER.error(error, exc_info=True)
-            return Response({}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-
-# @permissions.AllowAny
-# class PolicyDetailAPIView(generics.RetrieveAPIView):
-#     queryset = Policy.objects.all()
-#     serializer_class = PolicySerializer
+        """GET method: retrieve an object of User using User ID of the User (IMPORTANT: Using USER ID instead of Organization ID)"""
+        datahub_admin = get_object_or_404(
+                User, id=request.GET.get("user_id", ""))
+        
+        serializer = UserDataMicrositeSerializer(datahub_admin)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+        
 
 def microsite_media_view(request):
     file = get_object_or_404(DatasetV2File, id=request.GET.get("id"))
