@@ -1988,7 +1988,7 @@ class DatasetV2ViewSetOps(GenericViewSet):
             datasets_with_excel_files = (
                 DatasetV2.objects.prefetch_related("datasets").select_related("user_map")
                 .filter(Q(datasets__file__endswith=".xls") | Q(datasets__file__endswith=".xlsx") | Q(datasets__file__endswith=".csv"))
-                .filter(user_map__organization_id=request.GET.get("org_id"), status=True)
+                .filter(user_map__organization_id=request.GET.get("org_id"), is_temp=False)
                 .distinct()
                 .values("name", "id", org_name=F("user_map__organization__name"))
             )
