@@ -9,7 +9,7 @@ from microsite.views import (
     OrganizationMicrositeViewSet,
     ParticipantMicrositeViewSet,
     PolicyAPIView,
-    microsite_media_view,
+    microsite_media_view, UserDataMicrositeViewSet
 )
 
 router = DefaultRouter()
@@ -18,8 +18,12 @@ router.register(r"contact_form", ContactFormViewSet, basename="contact_form")
 router.register(r"datasets", DatasetsMicrositeViewSet, basename="datasets")
 router.register(r"", DocumentsMicrositeViewSet, basename="d")
 router.register(r"", DatahubThemeMicrositeViewSet, basename="t")
-router.register(r"participant", ParticipantMicrositeViewSet, basename="participant_microsite")
+router.register(r"participant", ParticipantMicrositeViewSet,
+                basename="participant_microsite")
 router.register(r"policy", PolicyAPIView, basename="policy_microsite")
+router.register(r"microsite_user_data", UserDataMicrositeViewSet,
+                basename="microsite_user_data")
+
 
 urlpatterns = [
     path("", include(router.urls)),

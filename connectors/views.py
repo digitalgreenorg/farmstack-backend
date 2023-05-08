@@ -111,6 +111,12 @@ class ConnectorsViewSet(GenericViewSet):
     def integration(self, request, *args, **kwargs):
         data = request.data
         maps = request.data.get(Constants.MAPS)
+        integrated_file = request.GET.get(Constants.INTEGRATED_FILE, '')
+        if integrated_file:
+            integrated_file = str(integrated_file).replace("media/", "").replace("%20", " ")
+            size = os.path.getsize(os.path.join(settings.MEDIA_ROOT, integrated_file))
+            if size > Constants.MAX_CONNECTOR_FILE:
+                return Response({f"Integrated data exceeds maximum limit: {size/1000000} MB"}, status=500)
         if not request.GET.get(Constants.EDIT, False):
             serializer = ConnectorsCreateSerializer(data=data)
             serializer.is_valid(raise_exception=True)
