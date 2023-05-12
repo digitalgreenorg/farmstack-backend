@@ -358,12 +358,7 @@ class VerifyLoginOTPViewset(GenericViewSet):
                     # On successful validation generate JWT tokens
                     if (correct_otp == int(otp_entered) and cache.get(email)["email"] == email) or email == "imran+1@digitalgreen.org":
                         cache.delete(email)
-                        refresh = RefreshToken.for_user(user)
-                        refresh["org_id"] = str(user_map.organization_id) if user_map else None
-                        refresh["map_id"] = str(user_map.id) if user_map else None
-                        refresh.access_token["org_id"] = str(user_map.organization_id) if user_map else None
-                        refresh.access_token["map_id"] = str(user_map.id) if user_map else None
-
+                        refresh = RefreshToken.for_user(user) # type: ignore
                         return Response(
                             {
                                 "user": user.id,
