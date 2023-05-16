@@ -1587,9 +1587,9 @@ class DatasetV2ViewSet(GenericViewSet):
             dataset_file = DatasetV2File.objects.get(id=request.data.get("id"))
             file_path = str(dataset_file.file)
             if file_path.endswith(".xlsx") or file_path.endswith(".xls"):
-                df = pd.read_excel(os.path.join(settings.DATASET_FILES_URL, file_path), index_col=0)
+                df = pd.read_excel(os.path.join(settings.DATASET_FILES_URL, file_path), index_col=None)
             else:
-                df = pd.read_csv(os.path.join(settings.DATASET_FILES_URL, file_path), index_col=0)
+                df = pd.read_csv(os.path.join(settings.DATASET_FILES_URL, file_path), index_col=False)
             df.columns = df.columns.astype(str)
             result = df.columns.tolist()
             return Response(result, status=status.HTTP_200_OK)
@@ -1618,7 +1618,7 @@ class DatasetV2ViewSet(GenericViewSet):
             if file_path.endswith(".xlsx") or file_path.endswith(".xls"):
                 df = pd.read_excel(os.path.join(settings.DATASET_FILES_URL, file_path), index_col=None)
             else:
-                df = pd.read_csv(os.path.join(settings.DATASET_FILES_URL, file_path), index_col=None)
+                df = pd.read_csv(os.path.join(settings.DATASET_FILES_URL, file_path), index_col=False)
 
             df["status"] = True
             df.loc[df["status"] == True, mask_columns] = "######"
@@ -2028,9 +2028,10 @@ class DatasetV2ViewSetOps(GenericViewSet):
                 path = file_path
                 file_path = unquote(file_path).replace("/media/", "")
                 if file_path.endswith(".xlsx") or file_path.endswith(".xls"):
-                    df = pd.read_excel(os.path.join(settings.DATASET_FILES_URL, file_path), index_col=0, nrows=3)
+                    df = pd.read_excel(os.path.join(settings.DATASET_FILES_URL, file_path), index_col=None, nrows=3)
                 else:
-                    df = pd.read_csv(os.path.join(settings.DATASET_FILES_URL, file_path), index_col=0, nrows=3)
+                    df = pd.read_csv(os.path.join(settings.DATASET_FILES_URL, file_path), index_col=False, nrows=3)
+                df = df.drop(df.filter(regex='Unnamed').columns, axis=1)
                 result[path] = df.columns.tolist()
                 result[Constants.ID] = DatasetV2File.objects.get(standardised_file=file_path).id
             return Response(result, status=status.HTTP_200_OK)
@@ -2077,12 +2078,12 @@ class DatasetV2ViewSetOps(GenericViewSet):
         on_boarded_by = request.GET.get("on_boarded_by", "")
         user_id = request.GET.get("user_id", "")
         try:
-            user_org_queryset = UserOrganizationMap.objects.prefetch_related("user_org_map").select_related("user_org_map"
+            user_org_queryset = UserOrganizationMap.objects.prefetch_related("user_org_map").select_related(
                 "organization", "user").annotate(dataset_count=Count("user_org_map__id")
                                                  ).values(name=F('organization__name'),
                 org_id=F('organization_id'),
                 org_description=F("organization__org_description")
-                ).filter(user__status=True,dataset_count__gt=0).all()
+                ).filter(user__status=True, dataset_count__gt=0).all()
             if on_boarded_by:
                 user_org_queryset = (
                     user_org_queryset.filter(Q(user__on_boarded_by=on_boarded_by)| Q(user_id=on_boarded_by))
@@ -2275,14 +2276,15 @@ class DatasetFileV2View(GenericViewSet):
         file_path = str(instance.file)
 
         if file_path.endswith(".xlsx") or file_path.endswith(".xls"):
-            df = pd.read_excel(os.path.join(settings.DATASET_FILES_URL, file_path), index_col=0)
+            df = pd.read_excel(os.path.join(settings.DATASET_FILES_URL, file_path), index_col=None)
         else:
-            df = pd.read_csv(os.path.join(settings.DATASET_FILES_URL, file_path), index_col=0)
+            df = pd.read_csv(os.path.join(settings.DATASET_FILES_URL, file_path), index_col=False)
 
         df[mask_columns] = "######"
 
         df.rename(columns=standardised_configuration, inplace=True)
         df.columns = df.columns.astype(str)
+        df = df.drop(df.filter(regex='Unnamed').columns, axis=1)
 
         if not os.path.exists(os.path.join(settings.DATASET_FILES_URL, instance.dataset.name, instance.source)):
             os.makedirs(os.path.join(settings.DATASET_FILES_URL, instance.dataset.name, instance.source))
