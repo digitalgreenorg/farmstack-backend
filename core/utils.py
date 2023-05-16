@@ -185,6 +185,7 @@ def read_contents_from_csv_or_xlsx_file(file_path):
         else:
             content = pd.read_csv(file_path, index_col=False, nrows=21).head(2) if file_path else dataframe
         content = content.fillna("")
+        content = content.drop(df.filter(regex='Unnamed').columns, axis=1)
     except Exception as error:
         logging.error("Invalid file ERROR: %s", error)
         return []

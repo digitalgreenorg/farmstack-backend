@@ -2031,6 +2031,7 @@ class DatasetV2ViewSetOps(GenericViewSet):
                     df = pd.read_excel(os.path.join(settings.DATASET_FILES_URL, file_path), index_col=None, nrows=3)
                 else:
                     df = pd.read_csv(os.path.join(settings.DATASET_FILES_URL, file_path), index_col=False, nrows=3)
+                df = df.drop(df.filter(regex='Unnamed').columns, axis=1)
                 result[path] = df.columns.tolist()
                 result[Constants.ID] = DatasetV2File.objects.get(standardised_file=file_path).id
             return Response(result, status=status.HTTP_200_OK)
@@ -2283,6 +2284,7 @@ class DatasetFileV2View(GenericViewSet):
 
         df.rename(columns=standardised_configuration, inplace=True)
         df.columns = df.columns.astype(str)
+        df = df.drop(df.filter(regex='Unnamed').columns, axis=1)
 
         if not os.path.exists(os.path.join(settings.DATASET_FILES_URL, instance.dataset.name, instance.source)):
             os.makedirs(os.path.join(settings.DATASET_FILES_URL, instance.dataset.name, instance.source))
