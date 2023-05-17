@@ -116,13 +116,12 @@ WSGI_APPLICATION = "core.wsgi.application"
 
 DATABASES = {
     "default": {
- 
         "ENGINE": "django.db.backends.postgresql",
         "NAME": "postgres",
-        "USER": os.environ.get("POSTGRES_USER"),
-        "PASSWORD": os.environ.get("POSTGRES_PASSWORD"),
-        "HOST": "db",
-        "PORT": "5432",
+        "USER": "postgres",
+        "PASSWORD": "$farmstack@!21",
+        "HOST": "datahubethdev.farmstack.co",
+        "PORT": "7000",
         "OPTIONS": {
             "client_encoding": "UTF8",
         },
