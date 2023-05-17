@@ -350,7 +350,7 @@ class ParticipantDatasetsViewSet(GenericViewSet):
 
         # reset the approval status b/c the user modified the dataset after an approval
         if getattr(instance, Constants.APPROVAL_STATUS) == Constants.APPROVED and (
-            user_obj.role_id == 3 or user_obj.role_id == 4
+                user_obj.role_id == 3 or user_obj.role_id == 4
         ):
             data[Constants.APPROVAL_STATUS] = Constants.AWAITING_REVIEW
 
@@ -766,7 +766,7 @@ class ParticipantConnectorsViewSet(GenericViewSet):
             )
             dataset = Datasets.objects.get(id=serializer.data.get(Constants.DATASET))
             subject = (
-                "A certificate on " + os.environ.get("DATAHUB_NAME", "datahub_name") + " was successfully installed"
+                    "A certificate on " + os.environ.get("DATAHUB_NAME", "datahub_name") + " was successfully installed"
             )
             self.trigger_email(
                 request,
@@ -1006,7 +1006,7 @@ class ParticipantConnectorsMapViewSet(GenericViewSet):
         consumer_obj = Connectors.objects.get(id=consumer)
         if provider_obj.connector_status == Constants.PAIRED:
             return Response(
-                [f"Provider connector ({({provider_obj.connector_name}) }) is already paired with another connector"],
+                [f"Provider connector ({({provider_obj.connector_name})}) is already paired with another connector"],
                 400,
             )
         elif consumer_obj.connector_status == Constants.PAIRED:
@@ -1056,12 +1056,12 @@ class ParticipantConnectorsMapViewSet(GenericViewSet):
             self.perform_create(connectors)
 
             if (
-                not ConnectorsMap.objects.all()
-                .filter(
-                    provider=instance.provider.id,
-                    connector_pair_status=Constants.AWAITING_FOR_APPROVAL,
-                )
-                .exclude(id=instance.id)
+                    not ConnectorsMap.objects.all()
+                            .filter(
+                        provider=instance.provider.id,
+                        connector_pair_status=Constants.AWAITING_FOR_APPROVAL,
+                    )
+                            .exclude(id=instance.id)
             ):
                 connectors = Connectors.objects.get(id=instance.provider.id)
                 connectors.connector_status = Constants.UNPAIRED
@@ -1085,7 +1085,7 @@ class ParticipantConnectorsMapViewSet(GenericViewSet):
             if provider_connectors.connector_status == Constants.PAIRED:
                 return Response(
                     [
-                        f"Provider connector ({({provider_connectors.connector_name}) }) is already paired with another connector"
+                        f"Provider connector ({({provider_connectors.connector_name})}) is already paired with another connector"
                     ],
                     400,
                 )
@@ -1579,7 +1579,8 @@ class DataBaseViewSet(GenericViewSet):
                     dataset=dataset,
                     source=source,
                     file=os.path.join(dataset_name, source, file_name + ".xls"),
-                    file_size=os.path.getsize(os.path.join(settings.DATASET_FILES_URL, dataset_name, source, file_name + ".xls")),
+                    file_size=os.path.getsize(
+                        os.path.join(settings.DATASET_FILES_URL, dataset_name, source, file_name + ".xls")),
                     standardised_file=os.path.join(dataset_name, source, file_name + ".xls"),
                 )
                 # result = os.listdir(file_path)
@@ -1624,7 +1625,8 @@ class DataBaseViewSet(GenericViewSet):
                     dataset=dataset,
                     source=source,
                     file=os.path.join(dataset_name, source, file_name + ".xls"),
-                    file_size=os.path.getsize(os.path.join(settings.DATASET_FILES_URL, dataset_name, source, file_name + ".xls")),
+                    file_size=os.path.getsize(
+                        os.path.join(settings.DATASET_FILES_URL, dataset_name, source, file_name + ".xls")),
                     standardised_file=os.path.join(dataset_name, source, file_name + ".xls"),
                 )
                 # result = os.listdir(file_path)
@@ -1650,10 +1652,10 @@ class DataBaseViewSet(GenericViewSet):
                 response = requests.get(url)
             elif auth_type == 'API_KEY':
                 headers = {request.data.get("api_key_name"): request.data.get("api_key_value")}
-                response = requests.get(url, headers = headers)
+                response = requests.get(url, headers=headers)
             elif auth_type == 'BEARER':
-                headers = {"Authorization": "Bearer "+request.data.get("token")}
-                response = requests.get(url, headers = headers)
+                headers = {"Authorization": "Bearer " + request.data.get("token")}
+                response = requests.get(url, headers=headers)
 
             # response = requests.get(url)
             if response.status_code in [200, 201]:
@@ -1662,20 +1664,20 @@ class DataBaseViewSet(GenericViewSet):
                 except ValueError:
                     data = response.text
 
-
                 file_path = file_ops.create_directory(settings.DATASET_FILES_URL, [dataset_name, source])
                 with open(file_path + "/" + file_name + ".json", "w") as outfile:
                     if type(data) == list:
                         json.dump(data, outfile)
                     else:
                         outfile.write(json.dumps(data))
-                    
+
                 # result = os.listdir(file_path)
                 instance = DatasetV2File.objects.create(
                     dataset=dataset,
                     source=source,
                     file=os.path.join(dataset_name, source, file_name + ".json"),
-                    file_size=os.path.getsize(os.path.join(settings.DATASET_FILES_URL, dataset_name, source, file_name + ".json")),
+                    file_size=os.path.getsize(
+                        os.path.join(settings.DATASET_FILES_URL, dataset_name, source, file_name + ".json")),
                     standardised_file=os.path.join(dataset_name, source, file_name + ".json"),
                 )
                 serializer = DatasetFileV2NewSerializer(instance)
