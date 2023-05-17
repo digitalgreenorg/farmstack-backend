@@ -28,6 +28,7 @@ from core.constants import Constants
 from core.utils import Utils
 from datahub.models import UserOrganizationMap
 from utils import login_helper, string_functions
+from utils.jwt_services import http_request_mutation
 
 LOGGER = logging.getLogger(__name__)
 from rest_framework.parsers import JSONParser, MultiPartParser
@@ -221,10 +222,11 @@ class LoginViewset(GenericViewSet):
         return Response({}, status=status.HTTP_400_BAD_REQUEST)
 
     @action(detail=False, methods=["post"])
+    @http_request_mutation
     def onboarded(self, request):
         """This method makes the user on-boarded"""
         try:
-            user = User.objects.get(id=request.data.get(Constants.USER_ID, ""))
+            user = User.objects.get(id=request.META.get(Constants.USER_ID, ""))
         except Exception as error:
             LOGGER.error("Invalid user id: %s", error)
             return Response(["Invalid User id"], 400)
