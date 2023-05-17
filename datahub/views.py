@@ -1070,7 +1070,7 @@ class DatahubDatasetsViewSet(GenericViewSet):
         """GET method: query all the list of objects from the Product model"""
         data = []
         user_id = request.META.get(Constants.USER_ID)
-        others = request.META.get(Constants.OTHERS)
+        others = request.data.get(Constants.OTHERS)
         filters = {Constants.USER_MAP_USER: user_id} if user_id and not others else {}
         exclude = {Constants.USER_MAP_USER: user_id} if others else {}
         if exclude or filters:
@@ -1259,10 +1259,18 @@ class DatahubDatasetsViewSet(GenericViewSet):
     @http_request_mutation
     def filters_data(self, request, *args, **kwargs):
         """This function provides the filters data"""
-        data = request.META
+        data = request.data
         org_id = data.pop(Constants.ORG_ID, "")
         others = data.pop(Constants.OTHERS, "")
         user_id = data.pop(Constants.USER_ID, "")
+
+        ####
+
+        org_id = request.META.pop(Constants.ORG_ID, "")
+        others = request.META.pop(Constants.OTHERS, "")
+        user_id = request.META.pop(Constants.USER_ID, "")
+
+
         exclude, filters = {}, {}
         if others:
             exclude = {Constants.USER_MAP_ORGANIZATION: org_id} if org_id else {}
@@ -1310,10 +1318,15 @@ class DatahubDatasetsViewSet(GenericViewSet):
     @action(detail=False, methods=["post"])
     @http_request_mutation
     def search_datasets(self, request, *args, **kwargs):
-        data = request.META
+        data = request.data
         org_id = data.pop(Constants.ORG_ID, "")
         others = data.pop(Constants.OTHERS, "")
         user_id = data.pop(Constants.USER_ID, "")
+
+        org_id = request.META.pop(Constants.ORG_ID, "")
+        others = request.META.pop(Constants.OTHERS, "")
+        user_id = request.META.pop(Constants.USER_ID, "")
+
         search_pattern = data.pop(Constants.SEARCH_PATTERNS, "")
         exclude, filters = {}, {}
 
@@ -1866,6 +1879,11 @@ class DatasetV2ViewSet(GenericViewSet):
         org_id = data.pop(Constants.ORG_ID, "")
         others = data.pop(Constants.OTHERS, "")
         user_id = data.pop(Constants.USER_ID, "")
+
+        org_id = request.META.pop(Constants.ORG_ID, "")
+        others = request.META.pop(Constants.OTHERS, "")
+        user_id = request.META.pop(Constants.USER_ID, "")
+
         exclude, filters = {}, {}
         if others:
             exclude = {Constants.USER_MAP_ORGANIZATION: org_id} if org_id else {}

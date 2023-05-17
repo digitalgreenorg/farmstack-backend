@@ -406,10 +406,15 @@ class ParticipantDatasetsViewSet(GenericViewSet):
     @http_request_mutation
     def dataset_filters(self, request, *args, **kwargs):
         """This function get the filter args in body. based on the filter args orm filters the data."""
-        data = request.META
+        data = request.data
         org_id = data.pop(Constants.ORG_ID, "")
         others = data.pop(Constants.OTHERS, "")
         user_id = data.pop(Constants.USER_ID, "")
+
+        org_id = request.META.pop(Constants.ORG_ID, "")
+        others = request.META.pop(Constants.OTHERS, "")
+        user_id = request.META.pop(Constants.USER_ID, "")
+
         categories = data.pop(Constants.CATEGORY, None)
         exclude, filters = {}, {}
         if others:
@@ -468,10 +473,15 @@ class ParticipantDatasetsViewSet(GenericViewSet):
     @http_request_mutation
     def filters_data(self, request, *args, **kwargs):
         """This function provides the filters data"""
-        data = request.META
+        data = request.data
         org_id = data.pop(Constants.ORG_ID, "")
         others = data.pop(Constants.OTHERS, "")
         user_id = data.pop(Constants.USER_ID, "")
+
+        org_id = request.META.pop(Constants.ORG_ID, "")
+        others = request.META.pop(Constants.OTHERS, "")
+        user_id = request.META.pop(Constants.USER_ID, "")
+
         exclude, filters = {}, {}
         if others:
             exclude = {Constants.USER_MAP_ORGANIZATION: org_id} if org_id else {}
@@ -516,10 +526,15 @@ class ParticipantDatasetsViewSet(GenericViewSet):
     @action(detail=False, methods=["post"])
     @http_request_mutation
     def search_datasets(self, request, *args, **kwargs):
-        data = request.META
+        data = request.data
         org_id = data.pop(Constants.ORG_ID, "")
         others = data.pop(Constants.OTHERS, "")
         user_id = data.pop(Constants.USER_ID, "")
+
+        org_id = request.META.pop(Constants.ORG_ID, "")
+        others = request.META.pop(Constants.OTHERS, "")
+        user_id = request.META.pop(Constants.USER_ID, "")
+
         search_pattern = data.pop(Constants.SEARCH_PATTERNS, "")
         exclude, filters = {}, {}
 

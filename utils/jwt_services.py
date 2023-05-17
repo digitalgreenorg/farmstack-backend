@@ -7,8 +7,10 @@ class JWTServices:
     @classmethod
     def extract_information_from_token(cls, request: Request):
         mapping = {}
-
+        
         current_user, payload = JWTAuthentication().authenticate(request)
+        print(current_user)
+        print(payload)
         mapping.update({
             "user_id": str(payload.get("user_id")),
             "org_id": str(payload.get("org_id")),
