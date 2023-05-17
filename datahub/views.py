@@ -1318,7 +1318,7 @@ class DatahubDatasetsViewSet(GenericViewSet):
     @action(detail=False, methods=["post"])
     @http_request_mutation
     def search_datasets(self, request, *args, **kwargs):
-        data = request.META
+        data = request.data
         org_id = data.pop(Constants.ORG_ID, "")
         others = data.pop(Constants.OTHERS, "")
         user_id = data.pop(Constants.USER_ID, "")
