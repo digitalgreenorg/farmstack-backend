@@ -197,7 +197,6 @@ class DatasetsMicrositeViewSet(GenericViewSet):
         return Response(serializer, status=status.HTTP_200_OK)
 
     @action(detail=False, methods=["post"])
-    @http_request_mutation
     def dataset_filters(self, request, *args, **kwargs):
         """This function get the filter args in body. based on the filter args orm filters the data."""
         data = request.data
@@ -255,7 +254,6 @@ class DatasetsMicrositeViewSet(GenericViewSet):
         return self.get_paginated_response(participant_serializer.data)
 
     @action(detail=False, methods=["post"])
-    @http_request_mutation
     def filters_data(self, request, *args, **kwargs):
         """This function provides the filters data"""
         data = request.data
@@ -559,12 +557,11 @@ class UserDataMicrositeViewSet(GenericViewSet):
     permission_classes = []
 
     @action(detail=False, methods=["get"])
-    @http_request_mutation
     def user_data(self, request):
         """GET method: retrieve an object of Organization using User ID of the User (IMPORTANT: Using USER ID instead of Organization ID)"""
         try:
             datahub_admin = User.objects.get(
-                id=request.META.get("user_id", ""))
+                id=request.GET.get("user_id", ""))
             print(datahub_admin, "datahub_admin")
 
             serializer = UserDataMicrositeSerializer(datahub_admin)
