@@ -1200,10 +1200,9 @@ class DatahubDatasetsViewSet(GenericViewSet):
         return Response(status=status.HTTP_204_NO_CONTENT)
 
     @action(detail=False, methods=["post"])
-    @http_request_mutation
     def dataset_filters(self, request, *args, **kwargs):
         """This function get the filter args in body. based on the filter args orm filters the data."""
-        data = request.META
+        data = request.data
         org_id = data.pop(Constants.ORG_ID, "")
         others = data.pop(Constants.OTHERS, "")
         user_id = data.pop(Constants.USER_ID, "")
@@ -1800,10 +1799,9 @@ class DatasetV2ViewSet(GenericViewSet):
         return Response(serializer, status=status.HTTP_200_OK)
 
     @action(detail=False, methods=["post"])
-    @http_request_mutation
     def dataset_filters(self, request, *args, **kwargs):
         """This function get the filter args in body. based on the filter args orm filters the data."""
-        data = request.META
+        data = request.data
         org_id = data.pop(Constants.ORG_ID, "")
         others = data.pop(Constants.OTHERS, "")
         categories = data.pop(Constants.CATEGORY, None)
