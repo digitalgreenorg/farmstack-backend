@@ -811,8 +811,9 @@ class ParticipantConnectorsViewSet(GenericViewSet):
             status=400,
         )
 
-    @http_request_mutation
+
     @action(detail=False, methods=["post"])
+    @http_request_mutation
     def connectors_filters(self, request, *args, **kwargs):
         """This function get the filter args in body. based on the filter args orm filters the data."""
         data = request.META
