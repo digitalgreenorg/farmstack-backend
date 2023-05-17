@@ -92,6 +92,7 @@ from participant.serializers import (
     TicketSupportSerializer,
 )
 from utils import custom_exceptions, file_operations, string_functions, validators
+from utils.jwt_services import http_request_mutation
 
 from .models import Policy, UsagePolicy
 from .serializers import (
@@ -1064,11 +1065,12 @@ class DatahubDatasetsViewSet(GenericViewSet):
         self.perform_create(serializer)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
+    @http_request_mutation
     def list(self, request, *args, **kwargs):
         """GET method: query all the list of objects from the Product model"""
         data = []
-        user_id = request.query_params.get(Constants.USER_ID)
-        others = request.query_params.get(Constants.OTHERS)
+        user_id = request.META.get(Constants.USER_ID)
+        others = request.META.get(Constants.OTHERS)
         filters = {Constants.USER_MAP_USER: user_id} if user_id and not others else {}
         exclude = {Constants.USER_MAP_USER: user_id} if others else {}
         if exclude or filters:
@@ -1198,9 +1200,10 @@ class DatahubDatasetsViewSet(GenericViewSet):
         return Response(status=status.HTTP_204_NO_CONTENT)
 
     @action(detail=False, methods=["post"])
+    @http_request_mutation
     def dataset_filters(self, request, *args, **kwargs):
         """This function get the filter args in body. based on the filter args orm filters the data."""
-        data = request.data
+        data = request.META
         org_id = data.pop(Constants.ORG_ID, "")
         others = data.pop(Constants.OTHERS, "")
         user_id = data.pop(Constants.USER_ID, "")
@@ -1254,9 +1257,10 @@ class DatahubDatasetsViewSet(GenericViewSet):
         return self.get_paginated_response(participant_serializer.data)
 
     @action(detail=False, methods=["post"])
+    @http_request_mutation
     def filters_data(self, request, *args, **kwargs):
         """This function provides the filters data"""
-        data = request.data
+        data = request.META
         org_id = data.pop(Constants.ORG_ID, "")
         others = data.pop(Constants.OTHERS, "")
         user_id = data.pop(Constants.USER_ID, "")
@@ -1305,8 +1309,9 @@ class DatahubDatasetsViewSet(GenericViewSet):
         )
 
     @action(detail=False, methods=["post"])
+    @http_request_mutation
     def search_datasets(self, request, *args, **kwargs):
-        data = request.data
+        data = request.META
         org_id = data.pop(Constants.ORG_ID, "")
         others = data.pop(Constants.OTHERS, "")
         user_id = data.pop(Constants.USER_ID, "")
@@ -1795,9 +1800,10 @@ class DatasetV2ViewSet(GenericViewSet):
         return Response(serializer, status=status.HTTP_200_OK)
 
     @action(detail=False, methods=["post"])
+    @http_request_mutation
     def dataset_filters(self, request, *args, **kwargs):
         """This function get the filter args in body. based on the filter args orm filters the data."""
-        data = request.data
+        data = request.META
         org_id = data.pop(Constants.ORG_ID, "")
         others = data.pop(Constants.OTHERS, "")
         categories = data.pop(Constants.CATEGORY, None)
@@ -1855,9 +1861,10 @@ class DatasetV2ViewSet(GenericViewSet):
         return self.get_paginated_response(participant_serializer.data)
 
     @action(detail=False, methods=["post"])
+    @http_request_mutation
     def filters_data(self, request, *args, **kwargs):
         """This function provides the filters data"""
-        data = request.data
+        data = request.META
         org_id = data.pop(Constants.ORG_ID, "")
         others = data.pop(Constants.OTHERS, "")
         user_id = data.pop(Constants.USER_ID, "")
