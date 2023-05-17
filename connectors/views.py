@@ -24,6 +24,7 @@ from connectors.serializers import (
 from core import settings
 from core.constants import Constants
 from core.utils import CustomPagination
+from utils.jwt_services import http_request_mutation
 
 # Create your views here.
 
@@ -57,13 +58,15 @@ class ConnectorsViewSet(GenericViewSet):
             serializer.save()
         return Response(connectors_data, status=status.HTTP_201_CREATED)
 
+    @http_request_mutation
     def list(self, request, *args, **kwargs):
-        """GET method: query all the list of objects from the Product model"""
-        data = Connectors.objects.all().filter(user=request.GET.get("user", ''), user__status=True).order_by(Constants.UPDATED_AT).reverse()
+        data = Connectors.objects.all().filter(user_id=request.META.get("user_id"), user__status=True).order_by(
+            Constants.UPDATED_AT).reverse()
         page = self.paginate_queryset(data)
         connectors_data = ConnectorsListSerializer(page, many=True)
         return self.get_paginated_response(connectors_data.data)
 
+    @http_request_mutation
     def retrieve(self, request, pk):
         """GET method: retrieve an object or instance of the Product model"""
         instance = self.get_object()
@@ -116,7 +119,7 @@ class ConnectorsViewSet(GenericViewSet):
             integrated_file = str(integrated_file).replace("media/", "").replace("%20", " ")
             size = os.path.getsize(os.path.join(settings.MEDIA_ROOT, integrated_file))
             if size > Constants.MAX_CONNECTOR_FILE:
-                return Response({f"Integrated data exceeds maximum limit: {size/1000000} MB"}, status=500)
+                return Response({f"Integrated data exceeds maximum limit: {size / 1000000} MB"}, status=500)
         if not request.GET.get(Constants.EDIT, False):
             serializer = ConnectorsCreateSerializer(data=data)
             serializer.is_valid(raise_exception=True)
@@ -132,16 +135,16 @@ class ConnectorsViewSet(GenericViewSet):
 
             if left_dataset_file_path.endswith(".xlsx") or left_dataset_file_path.endswith(".xls"):
                 left_dataset = pd.read_excel(os.path.join(settings.DATASET_FILES_URL, left_dataset_file_path),
-                                     usecols=condition.get(Constants.LEFT_SELECTED))
+                                             usecols=condition.get(Constants.LEFT_SELECTED))
             else:
                 left_dataset = pd.read_csv(os.path.join(settings.DATASET_FILES_URL, left_dataset_file_path),
-                                   usecols=condition.get(Constants.LEFT_SELECTED))
+                                           usecols=condition.get(Constants.LEFT_SELECTED))
             if right_dataset_file_path.endswith(".xlsx") or right_dataset_file_path.endswith(".xls"):
                 right_dataset = pd.read_excel(os.path.join(settings.DATASET_FILES_URL, right_dataset_file_path),
-                                     usecols=condition.get(Constants.RIGHT_SELECTED))
+                                              usecols=condition.get(Constants.RIGHT_SELECTED))
             else:
                 right_dataset = pd.read_csv(os.path.join(settings.DATASET_FILES_URL, right_dataset_file_path),
-                                   usecols=condition.get(Constants.RIGHT_SELECTED))
+                                            usecols=condition.get(Constants.RIGHT_SELECTED))
             # Join the dataframes
             result = pd.merge(
                 left_dataset,
@@ -158,12 +161,12 @@ class ConnectorsViewSet(GenericViewSet):
                 if right_dataset_file_path.endswith(".xlsx") or right_dataset_file_path.endswith(".xls"):
                     right_dataset = pd.read_excel(
                         os.path.join(settings.DATASET_FILES_URL, right_dataset_file_path),
-                          usecols=condition.get(Constants.RIGHT_SELECTED)
+                        usecols=condition.get(Constants.RIGHT_SELECTED)
                     )
                 else:
                     right_dataset = pd.read_csv(
                         os.path.join(settings.DATASET_FILES_URL, right_dataset_file_path),
-                          usecols=condition.get(Constants.RIGHT_SELECTED)
+                        usecols=condition.get(Constants.RIGHT_SELECTED)
                     )
                 # Join the dataframes
                 result = pd.merge(
@@ -180,9 +183,9 @@ class ConnectorsViewSet(GenericViewSet):
             if result_length > 20:
                 result = result.iloc[:20]
             return Response({Constants.INTEGRATED_FILE: file_path,
-                              Constants.DATA: json.loads(result.to_json(orient='table',index=False)),
-                              "no_of_records": result_length},
-                                status=status.HTTP_200_OK)
+                             Constants.DATA: json.loads(result.to_json(orient='table', index=False)),
+                             "no_of_records": result_length},
+                            status=status.HTTP_200_OK)
         except Exception as e:
             logging.error(str(e), exc_info=True)
             return Response({f"error while integration {integrate} ": str(e)}, status=500)
