@@ -363,8 +363,14 @@ class VerifyLoginOTPViewset(GenericViewSet):
                         refresh = RefreshToken.for_user(user)
                         refresh["org_id"] = str(user_map.organization_id) if user_map else None
                         refresh["map_id"] = str(user_map.id) if user_map else None
+                        refresh["role"] = str(user.role_id) 
+                        refresh["onboarded_by"] = str(user.onboarded_by)
+
                         refresh.access_token["org_id"] = str(user_map.organization_id) if user_map else None
-                        refresh.access_token["map_id"] = str(user_map.id) if user_map else None
+                        refresh.access_token["map_id"] = str(user_map.id) if user_map else None 
+                        refresh.access_token["role"] = str(user.role_id) 
+                        refresh.access_token["onboarded_by"] = str(user.onboarded_by)
+
 
                         return Response(
                             {
