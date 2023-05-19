@@ -24,7 +24,10 @@ from connectors.serializers import (
 from core import settings
 from core.constants import Constants
 from core.utils import CustomPagination
+from datahub.models import Datasets
+from utils.authentication_services import authenticate_user
 from utils.jwt_services import http_request_mutation
+
 
 # Create your views here.
 
@@ -57,7 +60,6 @@ class ConnectorsViewSet(GenericViewSet):
             serializer.is_valid(raise_exception=True)
             serializer.save()
         return Response(connectors_data, status=status.HTTP_201_CREATED)
-
     @http_request_mutation
     def list(self, request, *args, **kwargs):
         data = Connectors.objects.all().filter(user_id=request.META.get("user_id"), user__status=True).order_by(
@@ -74,6 +76,7 @@ class ConnectorsViewSet(GenericViewSet):
         return Response(serializer.data, status=status.HTTP_200_OK)
 
     @transaction.atomic
+    @authenticate_user(model=Connectors)
     def update(self, request, pk):
         """PUT method: update or send a PUT request on an object of the Product model"""
         instance = self.get_object()
@@ -99,6 +102,7 @@ class ConnectorsViewSet(GenericViewSet):
             serializer.save()
         return Response(connector_serializer.data, status=status.HTTP_200_OK)
 
+    @authenticate_user(model=Connectors)
     def destroy(self, request, pk):
         """DELETE method: delete an object"""
         if request.GET.get(Constants.MAPS):
