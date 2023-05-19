@@ -60,7 +60,7 @@ class ConnectorsViewSet(GenericViewSet):
             serializer.is_valid(raise_exception=True)
             serializer.save()
         return Response(connectors_data, status=status.HTTP_201_CREATED)
-
+    @http_request_mutation
     def list(self, request, *args, **kwargs):
         data = Connectors.objects.all().filter(user_id=request.META.get("user_id"), user__status=True).order_by(
             Constants.UPDATED_AT).reverse()
