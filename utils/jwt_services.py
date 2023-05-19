@@ -9,12 +9,13 @@ class JWTServices:
         mapping = {}
         
         current_user, payload = JWTAuthentication().authenticate(request)
-        print(current_user)
         print(payload)
         mapping.update({
             "user_id": str(payload.get("user_id")),
             "org_id": str(payload.get("org_id")),
             "map_id": str(payload.get("map_id")),
+            "role_id" : str(payload.get("role")),
+            "onboarded_by" : str(payload.get("onboarded_by"))
         })
         return mapping
 

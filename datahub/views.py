@@ -92,6 +92,7 @@ from participant.serializers import (
     TicketSupportSerializer,
 )
 from utils import custom_exceptions, file_operations, string_functions, validators
+from utils.authentication_services import authenticate_user
 from utils.jwt_services import http_request_mutation
 
 from .models import Policy, UsagePolicy
@@ -341,7 +342,7 @@ class ParticipantViewSet(GenericViewSet):
             _type_: Returns the saved details.
         """
         return serializer.save()
-    
+
     @transaction.atomic
     def create(self, request, *args, **kwargs):
         """POST method: create action to save an object by sending a POST request"""
@@ -387,7 +388,7 @@ class ParticipantViewSet(GenericViewSet):
                 to_email=request.data.get("email"),
                 content=mail_body,
                 subject=Constants.PARTICIPANT_ORG_ADDITION_SUBJECT
-                + os.environ.get(Constants.DATAHUB_NAME, Constants.datahub_name),
+                        + os.environ.get(Constants.DATAHUB_NAME, Constants.datahub_name),
             )
         except Exception as error:
             LOGGER.error(error, exc_info=True)
@@ -426,8 +427,8 @@ class ParticipantViewSet(GenericViewSet):
                 UserOrganizationMap.objects.select_related(Constants.USER, Constants.ORGANIZATION)
                 .filter(
                     user__status=True, user__role=3,
-                      user__on_boarded_by=None,
-                        user__approval_status=approval_status, **filter
+                    user__on_boarded_by=None,
+                    user__approval_status=approval_status, **filter
                 )
                 .order_by("-user__updated_at")
                 .all()
@@ -482,7 +483,7 @@ class ParticipantViewSet(GenericViewSet):
                 to_email=participant.email,
                 content=mail_body,
                 subject=Constants.PARTICIPANT_ORG_UPDATION_SUBJECT
-                + os.environ.get(Constants.DATAHUB_NAME, Constants.datahub_name),
+                        + os.environ.get(Constants.DATAHUB_NAME, Constants.datahub_name),
             )
 
             data = {
@@ -530,7 +531,7 @@ class ParticipantViewSet(GenericViewSet):
                     to_email=participant.email,
                     content=mail_body,
                     subject=Constants.PARTICIPANT_ORG_DELETION_SUBJECT
-                    + os.environ.get(Constants.DATAHUB_NAME, Constants.datahub_name),
+                            + os.environ.get(Constants.DATAHUB_NAME, Constants.datahub_name),
                 )
 
                 # Set the on_boarded_by_id to null if co_steward is deleted
@@ -608,7 +609,8 @@ class MailInvitationViewSet(GenericViewSet):
                     Utils().send_email(
                         to_email=[email],
                         content=mail_body,
-                        subject=os.environ.get("DATAHUB_NAME", "datahub_name") + Constants.PARTICIPANT_INVITATION_SUBJECT,
+                        subject=os.environ.get("DATAHUB_NAME",
+                                               "datahub_name") + Constants.PARTICIPANT_INVITATION_SUBJECT,
                     )
                 except Exception as e:
                     emails_not_found.append()
@@ -624,7 +626,8 @@ class MailInvitationViewSet(GenericViewSet):
 
         except Exception as error:
             LOGGER.error(error, exc_info=True)
-            return Response({"Error": f"Failed to send email"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)  # type: ignore
+            return Response({"Error": f"Failed to send email"},
+                            status=status.HTTP_500_INTERNAL_SERVER_ERROR)  # type: ignore
 
 
 class DropDocumentView(GenericViewSet):
@@ -1136,7 +1139,7 @@ class DatahubDatasetsViewSet(GenericViewSet):
 
         # reset the approval status b/c the user modified the dataset after an approval
         if getattr(instance, Constants.APPROVAL_STATUS) == Constants.APPROVED and (
-            user_obj.role_id == 3 or user_obj.role_id == 4
+                user_obj.role_id == 3 or user_obj.role_id == 4
         ):
             data[Constants.APPROVAL_STATUS] = Constants.AWAITING_REVIEW
 
@@ -1269,7 +1272,6 @@ class DatahubDatasetsViewSet(GenericViewSet):
         org_id = request.META.pop(Constants.ORG_ID, "")
         others = request.META.pop(Constants.OTHERS, "")
         user_id = request.META.pop(Constants.USER_ID, "")
-
 
         exclude, filters = {}, {}
         if others:
@@ -1651,9 +1653,11 @@ class DatasetV2ViewSet(GenericViewSet):
                 os.makedirs(os.path.join(settings.TEMP_STANDARDISED_DIR, standardised_dir_path))
             # print(df)
             if file_name.endswith(".csv"):
-                df.to_csv(os.path.join(settings.TEMP_STANDARDISED_DIR, standardised_dir_path, file_name))  # type: ignore
+                df.to_csv(
+                    os.path.join(settings.TEMP_STANDARDISED_DIR, standardised_dir_path, file_name))  # type: ignore
             else:
-                df.to_excel(os.path.join(settings.TEMP_STANDARDISED_DIR, standardised_dir_path, file_name))  # type: ignore
+                df.to_excel(
+                    os.path.join(settings.TEMP_STANDARDISED_DIR, standardised_dir_path, file_name))  # type: ignore
             return Response(
                 {"standardised_file_path": f"{standardised_dir_path}/{file_name}"}, status=status.HTTP_200_OK
             )
@@ -1711,6 +1715,7 @@ class DatasetV2ViewSet(GenericViewSet):
         serializer.save()
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
+    @authenticate_user(model=DatasetV2)
     def update(self, request, pk, *args, **kwargs):
         """
         ``PUT`` method: PUT method to edit or update the dataset (DatasetV2) and its files (DatasetV2File). [see here][ref]
@@ -1736,6 +1741,7 @@ class DatasetV2ViewSet(GenericViewSet):
         serializer.save()
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
+    # not being used
     @action(detail=False, methods=["delete"])
     def dataset_files(self, request, id=[]):
         """
@@ -1796,14 +1802,14 @@ class DatasetV2ViewSet(GenericViewSet):
             file_path["source"] = file.source
             file_path["file_size"] = file.file_size
             file_path["accessibility"] = file.accessibility
-            file_path["standardised_file"] =  os.path.join(settings.DATASET_FILES_URL, str(file.standardised_file))
+            file_path["standardised_file"] = os.path.join(settings.DATASET_FILES_URL, str(file.standardised_file))
             file_path["standardisation_config"] = file.standardised_configuration
             if not user_map:
-                usage_policy = UsagePolicyDetailSerializer(file.dataset_v2_file.all(), many=True).data 
+                usage_policy = UsagePolicyDetailSerializer(file.dataset_v2_file.all(), many=True).data
             else:
                 usage_policy = file.dataset_v2_file.filter(
-                                                    user_organization_map=user_map).order_by("-updated_at").first()
-                                            
+                    user_organization_map=user_map).order_by("-updated_at").first()
+
                 usage_policy = UsagePolicyDetailSerializer(usage_policy).data if usage_policy else {}
             file_path["usage_policy"] = usage_policy
             data.append(file_path)
@@ -1965,6 +1971,7 @@ class DatasetV2ViewSet(GenericViewSet):
     #             status=status.HTTP_500_INTERNAL_SERVER_ERROR,
     #         )
 
+    @authenticate_user(model=DatasetV2File)
     def destroy(self, request, pk, *args, **kwargs):
         """
         ``DELETE`` method: DELETE method to delete the DatasetV2 instance and its reference DatasetV2File instances,
@@ -2010,7 +2017,8 @@ class DatasetV2ViewSetOps(GenericViewSet):
         try:
             datasets_with_excel_files = (
                 DatasetV2.objects.prefetch_related("datasets").select_related("user_map")
-                .filter(Q(datasets__file__endswith=".xls") | Q(datasets__file__endswith=".xlsx") | Q(datasets__file__endswith=".csv"))
+                .filter(Q(datasets__file__endswith=".xls") | Q(datasets__file__endswith=".xlsx") | Q(
+                    datasets__file__endswith=".csv"))
                 .filter(user_map__organization_id=request.GET.get("org_id"), is_temp=False)
                 .distinct()
                 .values("name", "id", org_name=F("user_map__organization__name"))
@@ -2031,7 +2039,8 @@ class DatasetV2ViewSetOps(GenericViewSet):
                     DatasetV2File.objects.select_related("dataset_v2_file", "dataset")
                     .filter(dataset_id__in=dataset_ids)
                     .filter(Q(file__endswith=".xls") | Q(file__endswith=".xlsx") | Q(file__endswith=".csv"))
-                    .filter(Q(accessibility__in=["public", "registered"]) | Q(dataset_v2_file__user_organization_map=user_map, dataset_v2_file__approval_status="approved"))
+                    .filter(Q(accessibility__in=["public", "registered"]) | Q(
+                        dataset_v2_file__user_organization_map=user_map, dataset_v2_file__approval_status="approved"))
                     .values("id", "dataset", "standardised_file", dataset_name=F("dataset__name")).distinct()
                 )
                 files = [{**row, "file_name": row.get("standardised_file", "").split("/")[-1]} for row in files]
@@ -2104,12 +2113,12 @@ class DatasetV2ViewSetOps(GenericViewSet):
             user_org_queryset = UserOrganizationMap.objects.prefetch_related("user_org_map").select_related(
                 "organization", "user").annotate(dataset_count=Count("user_org_map__id")
                                                  ).values(name=F('organization__name'),
-                org_id=F('organization_id'),
-                org_description=F("organization__org_description")
-                ).filter(user__status=True, dataset_count__gt=0).all()
+                                                          org_id=F('organization_id'),
+                                                          org_description=F("organization__org_description")
+                                                          ).filter(user__status=True, dataset_count__gt=0).all()
             if on_boarded_by:
                 user_org_queryset = (
-                    user_org_queryset.filter(Q(user__on_boarded_by=on_boarded_by)| Q(user_id=on_boarded_by))
+                    user_org_queryset.filter(Q(user__on_boarded_by=on_boarded_by) | Q(user_id=on_boarded_by))
                 )
             else:
                 user_onboarded_by = User.objects.get(id=user_id).on_boarded_by
@@ -2206,6 +2215,7 @@ class DatasetV2View(GenericViewSet):
         serializer = DatasetV2DetailNewSerializer(instance=self.get_object())
         return Response(serializer.data, status=status.HTTP_200_OK)
 
+    @authenticate_user(model=DatasetV2)
     def update(self, request, *args, **kwargs):
         # setattr(request.data, "_mutable", True)
         instance = self.get_object()
@@ -2216,6 +2226,7 @@ class DatasetV2View(GenericViewSet):
         serializer.save()
         return Response(serializer.data, status=status.HTTP_200_OK)
 
+    @authenticate_user(model=DatasetV2)
     def destroy(self, request, *args, **kwargs):
         instance = self.get_object()
         instance.delete()
@@ -2226,41 +2237,42 @@ class DatasetV2View(GenericViewSet):
         try:
             user_map_id = request.data.get("user_map")
             requested_sent = UsagePolicy.objects.select_related(
-                    "dataset_file",
-                    "dataset_file__dataset",
-                    "user_organization_map__organization").filter(
+                "dataset_file",
+                "dataset_file__dataset",
+                "user_organization_map__organization").filter(
                 user_organization_map=user_map_id).values(
-                    "approval_status",
-                    "updated_at",
-                    "accessibility_time",
-                    dataset_id=F('dataset_file__dataset_id'),
-                    dataset_name=F('dataset_file__dataset__name'),
-                    file_name=F('dataset_file__file'),
-                    organization_name=F('dataset_file__dataset__user_map__organization__name'),
-                    organization_email=F('dataset_file__dataset__user_map__organization__org_email')
-                    ).order_by("-updated_at")
-            
+                "approval_status",
+                "updated_at",
+                "accessibility_time",
+                dataset_id=F('dataset_file__dataset_id'),
+                dataset_name=F('dataset_file__dataset__name'),
+                file_name=F('dataset_file__file'),
+                organization_name=F('dataset_file__dataset__user_map__organization__name'),
+                organization_email=F('dataset_file__dataset__user_map__organization__org_email')
+            ).order_by("-updated_at")
+
             requested_recieved = UsagePolicy.objects.select_related(
-                    "dataset_file",
-                    "dataset_file__dataset",
-                    "user_organization_map__organization").filter(
+                "dataset_file",
+                "dataset_file__dataset",
+                "user_organization_map__organization").filter(
                 dataset_file__dataset__user_map_id=user_map_id).values(
-                    "id", "approval_status",
-                    "accessibility_time",
-                    "updated_at",
-                    dataset_id=F('dataset_file__dataset_id'),
-                    dataset_name=F('dataset_file__dataset__name'),
-                    file_name=F('dataset_file__file'),
-                    organization_name=F('user_organization_map__organization__name'),
-                    organization_email=F('user_organization_map__organization__org_email')).order_by("-updated_at")
-            return Response({"sent": [{**values,"file_name": values.get("file_name", "").split("/")[-1]}  for values in requested_sent] ,
-                       "recieved":  [{**values,"file_name": values.get("file_name", "").split("/")[-1]}  for values in requested_recieved]}, 200)
+                "id", "approval_status",
+                "accessibility_time",
+                "updated_at",
+                dataset_id=F('dataset_file__dataset_id'),
+                dataset_name=F('dataset_file__dataset__name'),
+                file_name=F('dataset_file__file'),
+                organization_name=F('user_organization_map__organization__name'),
+                organization_email=F('user_organization_map__organization__org_email')).order_by("-updated_at")
+            return Response({"sent": [{**values, "file_name": values.get("file_name", "").split("/")[-1]} for values in
+                                      requested_sent],
+                             "recieved": [{**values, "file_name": values.get("file_name", "").split("/")[-1]} for values
+                                          in requested_recieved]}, 200)
         except Exception as error:
             LOGGER.error("Issue while Retrive requeted data", exc_info=True)
             return Response(
                 f"Issue while Retrive requeted data {error}", status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
-
 
     # def list(self, request, *args, **kwargs):
     #     page = self.paginate_queryset(self.queryset)
@@ -2278,13 +2290,14 @@ class DatasetFileV2View(GenericViewSet):
         serializer.save()
         data = serializer.data
         instance = DatasetV2File.objects.get(id=data.get("id"))
-        instance.standardised_file=instance.file # type: ignore
-        instance.file_size=os.path.getsize(os.path.join(settings.DATASET_FILES_URL, str(instance.file)))
+        instance.standardised_file = instance.file  # type: ignore
+        instance.file_size = os.path.getsize(os.path.join(settings.DATASET_FILES_URL, str(instance.file)))
         instance.save()
         LOGGER.info("Dataset created Successfully.")
         data = DatasetFileV2NewSerializer(instance)
         return Response(data.data, status=status.HTTP_201_CREATED)
 
+    @authenticate_user(model=DatasetV2File)
     def update(self, request, *args, **kwargs):
         # setattr(request.data, "_mutable", True)
 
@@ -2314,14 +2327,16 @@ class DatasetFileV2View(GenericViewSet):
 
         file_name = os.path.basename(file_path).replace(".", "_standerdise.")
         if file_path.endswith(".csv"):
-            df.to_csv(os.path.join(settings.DATASET_FILES_URL, instance.dataset.name, instance.source, file_name))  # type: ignore
+            df.to_csv(os.path.join(settings.DATASET_FILES_URL, instance.dataset.name, instance.source,
+                                   file_name))  # type: ignore
         else:
-            df.to_excel(os.path.join(settings.DATASET_FILES_URL, instance.dataset.name, instance.source, file_name))  # type: ignore
+            df.to_excel(os.path.join(settings.DATASET_FILES_URL, instance.dataset.name, instance.source,
+                                     file_name))  # type: ignore
 
         # data = request.data
         standardised_file_path = os.path.join(instance.dataset.name, instance.source, file_name)
         data["standardised_configuration"] = config
-        data["file_size"]=os.path.getsize(os.path.join(settings.DATASET_FILES_URL, str(standardised_file_path)))
+        data["file_size"] = os.path.getsize(os.path.join(settings.DATASET_FILES_URL, str(standardised_file_path)))
         serializer = self.get_serializer(instance, data=data, partial=True)
         serializer.is_valid(raise_exception=True)
         serializer.save()
@@ -2332,11 +2347,12 @@ class DatasetFileV2View(GenericViewSet):
         data = DatasetV2File.objects.filter(dataset=request.GET.get("dataset")).values("id", "file")
         return Response(data, status=status.HTTP_200_OK)
 
+    @authenticate_user(model=DatasetV2File)
     def destroy(self, request, *args, **kwargs):
         dataset_file = self.get_object()
         dataset_file.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
-    
+
     # @action(detail=False, methods=["put"])
     def patch(self, request, *args, **kwargs):
         instance = self.get_object()
@@ -2346,13 +2362,11 @@ class DatasetFileV2View(GenericViewSet):
         return Response(serializer.data, status=status.HTTP_200_OK)
 
 
-
 class UsagePolicyListCreateView(generics.ListCreateAPIView):
     queryset = UsagePolicy.objects.all()
     serializer_class = UsagePolicySerializer
 
+
 class UsagePolicyRetrieveUpdateDestroyView(generics.RetrieveUpdateDestroyAPIView):
     queryset = UsagePolicy.objects.all()
     serializer_class = UsagePolicySerializer
-
-    
