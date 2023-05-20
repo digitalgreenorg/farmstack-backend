@@ -53,6 +53,7 @@ from microsite.serializers import (
     UserDataMicrositeSerializer
 )
 from utils import custom_exceptions, file_operations
+from utils.jwt_services import http_request_mutation
 
 LOGGER = logging.getLogger(__name__)
 

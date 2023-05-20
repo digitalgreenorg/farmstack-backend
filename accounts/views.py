@@ -28,6 +28,7 @@ from core.constants import Constants
 from core.utils import Utils
 from datahub.models import UserOrganizationMap
 from utils import login_helper, string_functions
+from utils.jwt_services import http_request_mutation
 
 LOGGER = logging.getLogger(__name__)
 from rest_framework.parsers import JSONParser, MultiPartParser
@@ -221,10 +222,11 @@ class LoginViewset(GenericViewSet):
         return Response({}, status=status.HTTP_400_BAD_REQUEST)
 
     @action(detail=False, methods=["post"])
+    @http_request_mutation
     def onboarded(self, request):
         """This method makes the user on-boarded"""
         try:
-            user = User.objects.get(id=request.data.get(Constants.USER_ID, ""))
+            user = User.objects.get(id=request.META.get(Constants.USER_ID, ""))
         except Exception as error:
             LOGGER.error("Invalid user id: %s", error)
             return Response(["Invalid User id"], 400)
@@ -361,8 +363,14 @@ class VerifyLoginOTPViewset(GenericViewSet):
                         refresh = RefreshToken.for_user(user)
                         refresh["org_id"] = str(user_map.organization_id) if user_map else None
                         refresh["map_id"] = str(user_map.id) if user_map else None
+                        refresh["role"] = str(user.role_id) 
+                        refresh["onboarded_by"] = str(user.on_boarded_by)
+
                         refresh.access_token["org_id"] = str(user_map.organization_id) if user_map else None
-                        refresh.access_token["map_id"] = str(user_map.id) if user_map else None
+                        refresh.access_token["map_id"] = str(user_map.id) if user_map else None 
+                        refresh.access_token["role"] = str(user.role_id) 
+                        refresh.access_token["onboarded_by"] = str(user.on_boarded_by)
+
 
                         return Response(
                             {
