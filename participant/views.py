@@ -83,6 +83,7 @@ from participant.serializers import (
     ProjectSerializer,
     TicketSupportSerializer,
 )
+from utils.jwt_services import http_request_mutation
 
 LOGGER = logging.getLogger(__name__)
 import json
@@ -123,9 +124,10 @@ class ParticipantSupportViewSet(GenericViewSet):
         self.perform_create(serializer)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
+    @http_request_mutation
     def list(self, request, *args, **kwargs):
         """GET method: query all the list of objects from the Product model"""
-        user_id = request.GET.get(Constants.USER_ID)
+        user_id = request.META.get(Constants.USER_ID)
         data = (
             SupportTicket.objects.select_related(
                 Constants.USER_MAP,
@@ -247,11 +249,12 @@ class ParticipantDatasetsViewSet(GenericViewSet):
             LOGGER.error(error, exc_info=True)
             return Response({"Error": ["Bad Request"]}, status=status.HTTP_400_BAD_REQUEST)
 
+    @http_request_mutation
     def list(self, request, *args, **kwargs):
         """GET method: query all the list of objects from the Product model"""
         data = []
-        user_id = request.query_params.get(Constants.USER_ID, "")
-        org_id = request.query_params.get(Constants.ORG_ID)
+        user_id = request.META.get(Constants.USER_ID, "")
+        org_id = request.META.get(Constants.ORG_ID)
         exclude = {Constants.USER_MAP_USER: user_id} if org_id else {}
         filters = {Constants.USER_MAP_ORGANIZATION: org_id} if org_id else {Constants.USER_MAP_USER: user_id}
         if filters:
@@ -272,10 +275,11 @@ class ParticipantDatasetsViewSet(GenericViewSet):
         return self.get_paginated_response(participant_serializer.data)
 
     @action(detail=False, methods=["get"])
+    @http_request_mutation
     def list_of_datasets(self, request, *args, **kwargs):
         """GET method: query all the list of objects from the Product model"""
         data = []
-        user_id = request.query_params.get(Constants.USER_ID, "")
+        user_id = request.META.get(Constants.USER_ID, "")
         filters = {Constants.USER_MAP_USER: user_id} if user_id else {}
         data = (
             Datasets.objects.select_related(
@@ -350,7 +354,7 @@ class ParticipantDatasetsViewSet(GenericViewSet):
 
         # reset the approval status b/c the user modified the dataset after an approval
         if getattr(instance, Constants.APPROVAL_STATUS) == Constants.APPROVED and (
-            user_obj.role_id == 3 or user_obj.role_id == 4
+                user_obj.role_id == 3 or user_obj.role_id == 4
         ):
             data[Constants.APPROVAL_STATUS] = Constants.AWAITING_REVIEW
 
@@ -399,12 +403,18 @@ class ParticipantDatasetsViewSet(GenericViewSet):
         return Response(status=status.HTTP_204_NO_CONTENT)
 
     @action(detail=False, methods=["post"])
+    @http_request_mutation
     def dataset_filters(self, request, *args, **kwargs):
         """This function get the filter args in body. based on the filter args orm filters the data."""
         data = request.data
         org_id = data.pop(Constants.ORG_ID, "")
         others = data.pop(Constants.OTHERS, "")
         user_id = data.pop(Constants.USER_ID, "")
+
+        org_id = request.META.pop(Constants.ORG_ID, "")
+        others = request.META.pop(Constants.OTHERS, "")
+        user_id = request.META.pop(Constants.USER_ID, "")
+
         categories = data.pop(Constants.CATEGORY, None)
         exclude, filters = {}, {}
         if others:
@@ -460,12 +470,18 @@ class ParticipantDatasetsViewSet(GenericViewSet):
         return self.get_paginated_response(participant_serializer.data)
 
     @action(detail=False, methods=["post"])
+    @http_request_mutation
     def filters_data(self, request, *args, **kwargs):
         """This function provides the filters data"""
         data = request.data
         org_id = data.pop(Constants.ORG_ID, "")
         others = data.pop(Constants.OTHERS, "")
         user_id = data.pop(Constants.USER_ID, "")
+
+        org_id = request.META.pop(Constants.ORG_ID, "")
+        others = request.META.pop(Constants.OTHERS, "")
+        user_id = request.META.pop(Constants.USER_ID, "")
+
         exclude, filters = {}, {}
         if others:
             exclude = {Constants.USER_MAP_ORGANIZATION: org_id} if org_id else {}
@@ -508,11 +524,17 @@ class ParticipantDatasetsViewSet(GenericViewSet):
         )
 
     @action(detail=False, methods=["post"])
+    @http_request_mutation
     def search_datasets(self, request, *args, **kwargs):
         data = request.data
         org_id = data.pop(Constants.ORG_ID, "")
         others = data.pop(Constants.OTHERS, "")
         user_id = data.pop(Constants.USER_ID, "")
+
+        org_id = request.META.pop(Constants.ORG_ID, "")
+        others = request.META.pop(Constants.OTHERS, "")
+        user_id = request.META.pop(Constants.USER_ID, "")
+
         search_pattern = data.pop(Constants.SEARCH_PATTERNS, "")
         exclude, filters = {}, {}
 
@@ -766,7 +788,7 @@ class ParticipantConnectorsViewSet(GenericViewSet):
             )
             dataset = Datasets.objects.get(id=serializer.data.get(Constants.DATASET))
             subject = (
-                "A certificate on " + os.environ.get("DATAHUB_NAME", "datahub_name") + " was successfully installed"
+                    "A certificate on " + os.environ.get("DATAHUB_NAME", "datahub_name") + " was successfully installed"
             )
             self.trigger_email(
                 request,
@@ -804,10 +826,12 @@ class ParticipantConnectorsViewSet(GenericViewSet):
             status=400,
         )
 
+
     @action(detail=False, methods=["post"])
+    @http_request_mutation
     def connectors_filters(self, request, *args, **kwargs):
         """This function get the filter args in body. based on the filter args orm filters the data."""
-        data = request.data
+        data = request.META
         user_id = data.pop(Constants.USER_ID, "")
         filters = {Constants.USER_MAP_USER: user_id} if user_id else {}
         try:
@@ -837,9 +861,10 @@ class ParticipantConnectorsViewSet(GenericViewSet):
         return self.get_paginated_response(participant_serializer.data)
 
     @action(detail=False, methods=["post"])
+    @http_request_mutation
     def filters_data(self, request, *args, **kwargs):
         """This function provides the filters data"""
-        data = request.data
+        data = request.META
         user_id = data.pop(Constants.USER_ID)
         filters = {Constants.USER_MAP_USER: user_id} if user_id else {}
         try:
@@ -1006,7 +1031,7 @@ class ParticipantConnectorsMapViewSet(GenericViewSet):
         consumer_obj = Connectors.objects.get(id=consumer)
         if provider_obj.connector_status == Constants.PAIRED:
             return Response(
-                [f"Provider connector ({({provider_obj.connector_name}) }) is already paired with another connector"],
+                [f"Provider connector ({({provider_obj.connector_name})}) is already paired with another connector"],
                 400,
             )
         elif consumer_obj.connector_status == Constants.PAIRED:
@@ -1056,12 +1081,12 @@ class ParticipantConnectorsMapViewSet(GenericViewSet):
             self.perform_create(connectors)
 
             if (
-                not ConnectorsMap.objects.all()
-                .filter(
-                    provider=instance.provider.id,
-                    connector_pair_status=Constants.AWAITING_FOR_APPROVAL,
-                )
-                .exclude(id=instance.id)
+                    not ConnectorsMap.objects.all()
+                            .filter(
+                        provider=instance.provider.id,
+                        connector_pair_status=Constants.AWAITING_FOR_APPROVAL,
+                    )
+                            .exclude(id=instance.id)
             ):
                 connectors = Connectors.objects.get(id=instance.provider.id)
                 connectors.connector_status = Constants.UNPAIRED
@@ -1085,7 +1110,7 @@ class ParticipantConnectorsMapViewSet(GenericViewSet):
             if provider_connectors.connector_status == Constants.PAIRED:
                 return Response(
                     [
-                        f"Provider connector ({({provider_connectors.connector_name}) }) is already paired with another connector"
+                        f"Provider connector ({({provider_connectors.connector_name})}) is already paired with another connector"
                     ],
                     400,
                 )
@@ -1211,10 +1236,11 @@ class ParticipantDepatrmentViewSet(GenericViewSet):
         return Response([], status=status.HTTP_200_OK)
 
     @action(detail=False, methods=["get"])
+    @http_request_mutation
     def department_list(self, request, *args, **kwargs):
         """GET method: query all the list of objects from the Product model"""
         data = []
-        org_id = request.query_params.get(Constants.ORG_ID)
+        org_id = request.META.get(Constants.ORG_ID)
         filters = {Constants.ORGANIZATION: org_id} if org_id else {}
         data = (
             # Department.objects.filter(Q(status=True, **filters) | Q(department_name=Constants.DEFAULT))
@@ -1228,10 +1254,11 @@ class ParticipantDepatrmentViewSet(GenericViewSet):
         department_serializer = DepartmentSerializer(page, many=True)
         return self.get_paginated_response(department_serializer.data)
 
+    @http_request_mutation
     def list(self, request, *args, **kwargs):
         """GET method: query all the list of objects from the Product model"""
         data = []
-        org_id = request.query_params.get(Constants.ORG_ID)
+        org_id = request.META.get(Constants.ORG_ID)
         filters = {Constants.ORGANIZATION: org_id} if org_id else {}
         data = (
             Department.objects.filter(Q(status=True, **filters) | Q(department_name=Constants.DEFAULT))
@@ -1300,10 +1327,11 @@ class ParticipantProjectViewSet(GenericViewSet):
         return Response({}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     @action(detail=False, methods=["post"])
+    @http_request_mutation
     def project_list(self, request, *args, **kwargs):
         """GET method: query all the list of objects from the Product model"""
         data = []
-        org_id = request.data.get(Constants.ORG_ID)
+        org_id = request.META.get(Constants.ORG_ID)
         filters = {Constants.ORGANIZATION: org_id} if org_id else {}
         data = (
             Project.objects.select_related(Constants.DEPARTMENT_ORGANIZATION)
@@ -1579,7 +1607,8 @@ class DataBaseViewSet(GenericViewSet):
                     dataset=dataset,
                     source=source,
                     file=os.path.join(dataset_name, source, file_name + ".xls"),
-                    file_size=os.path.getsize(os.path.join(settings.DATASET_FILES_URL, dataset_name, source, file_name + ".xls")),
+                    file_size=os.path.getsize(
+                        os.path.join(settings.DATASET_FILES_URL, dataset_name, source, file_name + ".xls")),
                     standardised_file=os.path.join(dataset_name, source, file_name + ".xls"),
                 )
                 # result = os.listdir(file_path)
@@ -1624,7 +1653,8 @@ class DataBaseViewSet(GenericViewSet):
                     dataset=dataset,
                     source=source,
                     file=os.path.join(dataset_name, source, file_name + ".xls"),
-                    file_size=os.path.getsize(os.path.join(settings.DATASET_FILES_URL, dataset_name, source, file_name + ".xls")),
+                    file_size=os.path.getsize(
+                        os.path.join(settings.DATASET_FILES_URL, dataset_name, source, file_name + ".xls")),
                     standardised_file=os.path.join(dataset_name, source, file_name + ".xls"),
                 )
                 # result = os.listdir(file_path)
@@ -1650,10 +1680,10 @@ class DataBaseViewSet(GenericViewSet):
                 response = requests.get(url)
             elif auth_type == 'API_KEY':
                 headers = {request.data.get("api_key_name"): request.data.get("api_key_value")}
-                response = requests.get(url, headers = headers)
+                response = requests.get(url, headers=headers)
             elif auth_type == 'BEARER':
-                headers = {"Authorization": "Bearer "+request.data.get("token")}
-                response = requests.get(url, headers = headers)
+                headers = {"Authorization": "Bearer " + request.data.get("token")}
+                response = requests.get(url, headers=headers)
 
             # response = requests.get(url)
             if response.status_code in [200, 201]:
@@ -1662,20 +1692,20 @@ class DataBaseViewSet(GenericViewSet):
                 except ValueError:
                     data = response.text
 
-
                 file_path = file_ops.create_directory(settings.DATASET_FILES_URL, [dataset_name, source])
                 with open(file_path + "/" + file_name + ".json", "w") as outfile:
                     if type(data) == list:
                         json.dump(data, outfile)
                     else:
                         outfile.write(json.dumps(data))
-                    
+
                 # result = os.listdir(file_path)
                 instance = DatasetV2File.objects.create(
                     dataset=dataset,
                     source=source,
                     file=os.path.join(dataset_name, source, file_name + ".json"),
-                    file_size=os.path.getsize(os.path.join(settings.DATASET_FILES_URL, dataset_name, source, file_name + ".json")),
+                    file_size=os.path.getsize(
+                        os.path.join(settings.DATASET_FILES_URL, dataset_name, source, file_name + ".json")),
                     standardised_file=os.path.join(dataset_name, source, file_name + ".json"),
                 )
                 serializer = DatasetFileV2NewSerializer(instance)
