@@ -2354,6 +2354,7 @@ class DatasetFileV2View(GenericViewSet):
         return Response(status=status.HTTP_204_NO_CONTENT)
 
     # @action(detail=False, methods=["put"])
+    @authenticate_user(model=DatasetV2File)
     def patch(self, request, *args, **kwargs):
         instance = self.get_object()
         serializer = self.get_serializer(instance, data=request.data, partial=True)
