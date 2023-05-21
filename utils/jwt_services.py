@@ -28,6 +28,10 @@ def http_request_mutation(view_func):
         request.META["user_id"] = payload.get("user_id")
         request.META["org_id"] = payload.get("org_id")
         request.META["map_id"] = payload.get("map_id")
+        request.META["onboarded_by"] = payload.get("onboarded_by")
+        request.META["role_id"] = payload.get("role_id")
+
+
 
         return view_func(self, request, *args, **kwargs)
 

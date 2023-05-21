@@ -909,6 +909,17 @@ class DatasetFileV2StandardisedSerializer(serializers.ModelSerializer):
         fields = Constants.ALL
 
 
+class DatasetFileV2ListSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = DatasetV2File
+        exclude = ["created_at", "updated_at"]
+
+class DatasetV2ListNewSerializer(serializers.ModelSerializer):
+    dataset_files = DatasetFileV2ListSerializer(many=True, source='datasets')
+    class Meta:
+        model = DatasetV2
+        exclude = ["created_at", "updated_at"]
+
 class DatasetV2DetailNewSerializer(serializers.ModelSerializer):
     dataset_files = DatasetFileV2StandardisedSerializer(many=True, source='datasets')
     class Meta:
