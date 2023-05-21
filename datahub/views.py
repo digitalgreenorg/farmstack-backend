@@ -19,6 +19,7 @@ from django.contrib.admin.utils import get_model_from_relation
 from django.core.files.base import ContentFile
 from django.db import transaction
 from django.db.models import DEFERRED, Count, F, OuterRef, Q, Subquery
+from django.db.models import Func, CharField
 
 # from django.db.models.functions import Index, Substr
 from django.http import JsonResponse
@@ -60,6 +61,7 @@ from datahub.models import (
     UserOrganizationMap,
 )
 from datahub.serializers import (
+    DatasetV2ListNewSerializer,
     DatahubDatasetsSerializer,
     DatahubDatasetsV2Serializer,
     DatahubThemeSerializer,
@@ -86,7 +88,8 @@ from datahub.serializers import (
     UserOrganizationCreateSerializer,
     UserOrganizationMapSerializer,
 )
-from participant.models import Connectors, SupportTicket
+from participant.models import  SupportTicket
+from connectors.models import Connectors
 from participant.serializers import (
     ParticipantSupportTicketSerializer,
     TicketSupportSerializer,
@@ -101,6 +104,8 @@ from .serializers import (
     UsagePolicyDetailSerializer,
     UsagePolicySerializer,
 )
+from django.db.models import Sum
+from connectors.serializers import ConnectorsListSerializer
 
 LOGGER = logging.getLogger(__name__)
 
@@ -433,6 +438,7 @@ class ParticipantViewSet(GenericViewSet):
                 .order_by("-user__updated_at")
                 .all()
             )
+
         page = self.paginate_queryset(roles)
         participant_serializer = ParticipantSerializer(page, many=True)
         return self.get_paginated_response(participant_serializer.data)
@@ -2371,3 +2377,144 @@ class UsagePolicyListCreateView(generics.ListCreateAPIView):
 class UsagePolicyRetrieveUpdateDestroyView(generics.RetrieveUpdateDestroyAPIView):
     queryset = UsagePolicy.objects.all()
     serializer_class = UsagePolicySerializer
+
+    
+
+class DatahubNewDashboard(GenericViewSet):
+    """Datahub Dashboard viewset"""
+
+    pagination_class = CustomPagination
+
+    def participant_metics(self, data):
+        on_boarded_by = data.get("onboarded_by")
+        role_id = data.get("role_id")
+        user_id = data.get("user_id")
+        result = {}
+        if on_boarded_by or role_id==6:
+                result["participants_count"] = (
+                UserOrganizationMap.objects.select_related(Constants.USER, Constants.ORGANIZATION)
+                .filter(
+                    user__status=True,
+                    user__on_boarded_by=on_boarded_by if on_boarded_by else user_id,
+                    user__role=3,
+                    user__approval_status=True
+                ).count()
+            )
+
+        elif role_id==1:
+            result["co_steward_count"] = (
+                UserOrganizationMap.objects.select_related(Constants.USER, Constants.ORGANIZATION)
+                .filter(user__status=True, user__role=6)
+                .count()
+            )
+
+        else:
+            result["participants_count"] = (
+                UserOrganizationMap.objects.select_related(Constants.USER, Constants.ORGANIZATION)
+                .filter(
+                    user__status=True, user__role=3,
+                      user__on_boarded_by=None,
+                        user__approval_status=True,
+                )
+                .count()
+            )
+        return result
+    
+    def dataset_metrics(self, data):
+        on_boarded_by = data.get("onboarded_by")
+        role_id = data.get("role_id")
+        user_id = data.get("user_id")
+        user_org_map = data.get("map_id")
+        result = {}
+        try:
+            data = (
+                DatasetV2.objects.prefetch_related("datasets").select_related(
+                    Constants.USER_MAP,
+                    Constants.USER_MAP_USER,
+                    Constants.USER_MAP_ORGANIZATION
+                )
+                .exclude(is_temp=True)
+            )
+            if on_boarded_by or role_id==6:
+                data = (
+                    data.filter(
+                            Q(user_map__user__on_boarded_by=on_boarded_by if on_boarded_by else user_id)
+                            | Q(user_map__user_id=on_boarded_by if on_boarded_by else user_id)
+                        )
+                )
+            else:
+                data = data.filter(user_map__user__on_boarded_by=None).exclude(
+                        user_map__user__role_id=6)
+            return data
+        except Exception as error:  # type: ignore
+            logging.error("Error while filtering the datasets. ERROR: %s", error, exc_info=True)
+            return {}
+
+    def connector_metrics(self, data, dataset_query):
+        on_boarded_by = data.get("onboarded_by")
+        role_id = data.get("role_id")
+        user_id = data.get("user_id")
+        user_org_map = data.get("map_id")
+        print(role_id)
+        my_dataset_used_in_connectors = dataset_query.prefetch_related("datasets__right_dataset_file").values('datasets__right_dataset_file').filter(
+            user_map_id=user_org_map).distinct().count() + dataset_query.prefetch_related("datasets__left_dataset_file").values(
+                'datasets__left_dataset_file').filter(user_map_id=user_org_map).distinct().count()
+        connectors_query = Connectors.objects.filter(user_id=user_id).all()
+        
+        other_datasets_used_in_my_connectors = (dataset_query.prefetch_related("datasets__right_dataset_file")
+            .select_related("datasets__right_dataset_file__connectors")
+            .filter(datasets__right_dataset_file__connectors__user_id=user_id)
+            .values('datasets__right_dataset_file')
+            .exclude(user_map_id=user_org_map).distinct().count()
+            ) + (
+                dataset_query.prefetch_related("datasets__left_dataset_file")
+                .select_related("datasets__left_dataset_file__connectors")
+                .filter(datasets__left_dataset_file__connectors__user_id=user_id)
+                .values('datasets__left_dataset_file')
+                .exclude(user_map_id=user_org_map).distinct().count())
+        return {"total_connectors_count":connectors_query.count(),
+         "other_datasets_used_in_my_connectors":other_datasets_used_in_my_connectors,
+         'my_dataset_used_in_connectors':my_dataset_used_in_connectors,
+         "recent_connectors": ConnectorsListSerializer(connectors_query.order_by("-updated_at")[0:3], many=True).data
+         }
+    @action(detail=False, methods=["get"])
+    @http_request_mutation
+    def dashboard(self, request):
+        """Retrieve datahub dashboard details"""
+        data = request.META
+        try:
+            # total_participants = User.objects.filter(role_id=3, status=True).count()
+            participant_metrics = self.participant_metics(data)
+            dataset_query = self.dataset_metrics(data)
+            dataset_file_metrics = dataset_query.values('datasets__source') \
+                        .annotate(dataset_count=Count('id', distinct=True),
+                                  file_count=Count('datasets__file', distinct=True),
+                                  total_size=Sum("datasets__file_size"))
+
+            dataset_state_metrics = dataset_query.values(state_name = F('geography__state__name'))\
+                        .annotate(dataset_count=Count('id', distinct=True))
+            distinct_keys = DatasetV2.objects.annotate(key=Func('category', function='JSONB_OBJECT_KEYS', output_field=CharField())) \
+                        .values_list('key', flat=True).distinct()
+
+            # Iterate over the distinct keys and find the count for each key
+            dataset_category_metrics = {}
+            for key in distinct_keys:
+                dataset_count = dataset_query.filter(category__has_key=key).count()
+                dataset_category_metrics[key] = dataset_count
+            recent_datasets = DatasetV2ListNewSerializer(dataset_query.order_by("-updated_at")[0:3], many=True).data
+            connector_metrics = self.connector_metrics(data, dataset_query)
+            data = {
+                **connector_metrics,
+                "total_participants": participant_metrics,
+                "dataset_file_metrics": dataset_file_metrics,
+                "dataset_state_metrics": dataset_state_metrics,
+                "total_dataset_count": dataset_query.count(),
+                "dataset_category_metrics": dataset_category_metrics,
+                "recent_datasets": recent_datasets,
+            }
+            return Response(data, status=status.HTTP_200_OK)
+
+        except Exception as error:
+            LOGGER.error(error, exc_info=True)
+            return Response({}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
