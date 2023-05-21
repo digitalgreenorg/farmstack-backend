@@ -45,7 +45,7 @@ def authenticate_user(model):
             elif model == Organization:
                 if str(payload.get("role_id")) == str(1):
                     pass
-                if str(payload.get("role_id")) == str(6) and str(payload.get("onboarded_by")) == str(
+                elif str(payload.get("role_id")) == str(6) and str(payload.get("onboarded_by")) == str(
                         payload.get("user_id")):
                     pass
 

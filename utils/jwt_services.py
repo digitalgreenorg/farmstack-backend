@@ -1,4 +1,5 @@
 from functools import wraps
+
 from rest_framework.request import Request
 from rest_framework_simplejwt.authentication import JWTAuthentication
 
@@ -9,7 +10,6 @@ class JWTServices:
         mapping = {}
         
         current_user, payload = JWTAuthentication().authenticate(request)
-        print(payload)
         mapping.update({
             "user_id": str(payload.get("user_id")),
             "org_id": str(payload.get("org_id")),
