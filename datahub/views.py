@@ -18,8 +18,17 @@ from django.conf import settings
 from django.contrib.admin.utils import get_model_from_relation
 from django.core.files.base import ContentFile
 from django.db import transaction
-from django.db.models import DEFERRED, Count, F, OuterRef, Q, Subquery
-from django.db.models import Func, CharField
+from django.db.models import (
+    DEFERRED,
+    CharField,
+    Count,
+    F,
+    Func,
+    OuterRef,
+    Q,
+    Subquery,
+    Sum,
+)
 
 # from django.db.models.functions import Index, Substr
 from django.http import JsonResponse
@@ -42,6 +51,8 @@ from accounts.serializers import (
     UserSerializer,
     UserUpdateSerializer,
 )
+from connectors.models import Connectors
+from connectors.serializers import ConnectorsListSerializer
 from core.constants import Constants
 from core.settings import BASE_DIR
 from core.utils import (
@@ -61,7 +72,6 @@ from datahub.models import (
     UserOrganizationMap,
 )
 from datahub.serializers import (
-    DatasetV2ListNewSerializer,
     DatahubDatasetsSerializer,
     DatahubDatasetsV2Serializer,
     DatahubThemeSerializer,
@@ -69,6 +79,7 @@ from datahub.serializers import (
     DatasetSerializer,
     DatasetUpdateSerializer,
     DatasetV2DetailNewSerializer,
+    DatasetV2ListNewSerializer,
     DatasetV2NewListSerializer,
     DatasetV2Serializer,
     DatasetV2TempFileSerializer,
@@ -88,8 +99,7 @@ from datahub.serializers import (
     UserOrganizationCreateSerializer,
     UserOrganizationMapSerializer,
 )
-from participant.models import  SupportTicket
-from connectors.models import Connectors
+from participant.models import SupportTicket
 from participant.serializers import (
     ParticipantSupportTicketSerializer,
     TicketSupportSerializer,
@@ -104,8 +114,6 @@ from .serializers import (
     UsagePolicyDetailSerializer,
     UsagePolicySerializer,
 )
-from django.db.models import Sum
-from connectors.serializers import ConnectorsListSerializer
 
 LOGGER = logging.getLogger(__name__)
 
@@ -348,6 +356,7 @@ class ParticipantViewSet(GenericViewSet):
         """
         return serializer.save()
 
+    @authenticate_user(model=Organization)
     @transaction.atomic
     def create(self, request, *args, **kwargs):
         """POST method: create action to save an object by sending a POST request"""
@@ -455,6 +464,7 @@ class ParticipantViewSet(GenericViewSet):
             return Response(participant_serializer.data, status=status.HTTP_200_OK)
         return Response([], status=status.HTTP_200_OK)
 
+    @authenticate_user(model=Organization)
     @transaction.atomic
     def update(self, request, *args, **kwargs):
         """PUT method: update or send a PUT request on an object of the Product model"""
@@ -501,12 +511,12 @@ class ParticipantViewSet(GenericViewSet):
             LOGGER.error(error, exc_info=True)
             return Response({"message": ["An error occured"]}, status=status.HTTP_200_OK)
 
+    @authenticate_user(model=Organization)
     def destroy(self, request, pk):
         """DELETE method: delete an object"""
         participant = self.get_object()
-        user_organization = UserOrganizationMap.objects.select_related(Constants.ORGANIZATION).get(user_id=pk)
+        user_organization = UserOrganizationMap.objects.select_related(Constants.ORGANIZATION).filter(user_id=pk).first()
         organization = Organization.objects.get(id=user_organization.organization_id)
-
         if participant.status:
             participant.status = False
             try:
@@ -2455,7 +2465,6 @@ class DatahubNewDashboard(GenericViewSet):
         role_id = data.get("role_id")
         user_id = data.get("user_id")
         user_org_map = data.get("map_id")
-        print(role_id)
         my_dataset_used_in_connectors = dataset_query.prefetch_related("datasets__right_dataset_file").values('datasets__right_dataset_file').filter(
             user_map_id=user_org_map).distinct().count() + dataset_query.prefetch_related("datasets__left_dataset_file").values(
                 'datasets__left_dataset_file').filter(user_map_id=user_org_map).distinct().count()
