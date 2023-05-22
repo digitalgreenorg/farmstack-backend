@@ -22,7 +22,8 @@
         box-sizing: border-box;
         width: 100%;
         height: 100vh;
-        line-height: 16.64px;
+        color: #4d4d4d;
+        /* line-height: 16.64px; */
         /* border: 1px solid red; */
       }
       .mainBox {
@@ -40,7 +41,7 @@
         /* border: 1px solid green; */
         background-color: #eaeff2;
 
-        display: block;
+        display: inline-block;
         /* flex-direction: column; */
         row-gap: 33px;
         padding: 33px;
@@ -135,15 +136,14 @@
         border: none;
         outline: none;
         font-weight: 400;
-        text-decoration: none;
         box-sizing: content-box;
-        width: fit-content !important;
+        width: fit-content;
       }
       .whiteButton {
         border: 1px solid #00ab55;
         color: #00ab55;
-        padding: 10px 50px;
-        font-weight: 600;
+        padding: 10px;
+        font-weight: 400;
       }
       .logo {
         margin: 33px auto 0px auto;
@@ -172,11 +172,16 @@
         /* border-bottom-left-radius: 10px !important; */
         /* border-bottom-right-radius: 10px !important; */
       }
-      
-
       .margint5px {
         margin-top: 5px;
       }
+      a {
+        height: 100%;
+        font-weight: 500;
+        text-decoration: none;
+        color: #4d4d4d;
+      }
+
       @media screen and (max-width: 480px) {
         .biggerCard {
           padding: 2px;
@@ -192,18 +197,19 @@
           <tr class="biggerCard">
             <td>
               <!-- <div class='title'>
-                Your organisation has been added as a participant in datahub
-                name &gt;.
+                Your dataset has been deleted .
               </div> -->
               <div class="card">
                 <div class="topLine"></div>
                 <div class="contentBox textCenter">
                   <div>
                     <div class="blackHead">Hi {{ participant_admin_name }}</div>
-                    <div class="font12px margint5px">
-                      Your {{ participant_organization_name }} is successfully added by {{ datahub_admin }} in {{ datahub_name }} as a {{as_user}}}.
+                    <div class="font14px margint5px">
+                      Your {{ dataset_name }} has been deleted in {{ datahub_name }}.
                     </div>
                   </div>
+
+                  <!-- <button class='yellowButton'>View dataset</button> -->
                   <div style="margin-top: 33px">
                     <a target="_blank" class="yellowButton" href="{{ datahub_site }}">View details</a>
                   </div>

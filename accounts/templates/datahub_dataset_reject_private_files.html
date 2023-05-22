@@ -128,16 +128,13 @@
         display: none;
       }
       .yellowButton {
-        background-color: #00ab55;
+        background-color: #dbbf60;
         /* height: 35px; */
         padding: 10px 50px;
-        color: white !important;
+        color: white;
         border: none;
         outline: none;
-        font-weight: 400;
-        text-decoration: none;
-        box-sizing: content-box;
-        width: fit-content !important;
+        font-weight: 600;
       }
       .whiteButton {
         border: 1px solid #00ab55;
@@ -172,7 +169,10 @@
         /* border-bottom-left-radius: 10px !important; */
         /* border-bottom-right-radius: 10px !important; */
       }
-      
+      a {
+        text-decoration: none !important;
+        color: #4d4d4d !important;
+      }
 
       .margint5px {
         margin-top: 5px;
@@ -192,8 +192,7 @@
           <tr class="biggerCard">
             <td>
               <!-- <div class='title'>
-                Your organisation has been added as a participant in datahub
-                name &gt;.
+                Your request has been rejected
               </div> -->
               <div class="card">
                 <div class="topLine"></div>
@@ -201,11 +200,8 @@
                   <div>
                     <div class="blackHead">Hi {{ participant_admin_name }}</div>
                     <div class="font12px margint5px">
-                      Your {{ participant_organization_name }} is successfully added by {{ datahub_admin }} in {{ datahub_name }} as a {{as_user}}}.
+                      Your request for accessing the private file of {{ dataset_name }} has been rejected.
                     </div>
-                  </div>
-                  <div style="margin-top: 33px">
-                    <a target="_blank" class="yellowButton" href="{{ datahub_site }}">View details</a>
                   </div>
                 </div>
                 <div class="bottomLine"></div>
