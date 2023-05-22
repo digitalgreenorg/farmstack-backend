@@ -28,7 +28,6 @@ from datahub.models import Datasets
 from utils.authentication_services import authenticate_user
 from utils.jwt_services import http_request_mutation
 
-
 # Create your views here.
 
 
@@ -192,4 +191,4 @@ class ConnectorsViewSet(GenericViewSet):
                             status=status.HTTP_200_OK)
         except Exception as e:
             logging.error(str(e), exc_info=True)
-            return Response({f"error while integration": str(e)}, status=400)
+            return Response({"message": "To perform column joins in Dathub, Columns should have matching data types"}, status=400)
