@@ -192,4 +192,4 @@ class ConnectorsViewSet(GenericViewSet):
                             status=status.HTTP_200_OK)
         except Exception as e:
             logging.error(str(e), exc_info=True)
-            return Response({f"error while integration {integrate} ": str(e)}, status=500)
+            return Response({f"error while integration": str(e)}, status=400)
