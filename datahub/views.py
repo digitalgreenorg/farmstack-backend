@@ -2400,44 +2400,53 @@ class DatahubNewDashboard(GenericViewSet):
         role_id = data.get("role_id")
         user_id = data.get("user_id")
         result = {}
-        if on_boarded_by or role_id==6:
-                result["participants_count"] = (
-                UserOrganizationMap.objects.select_related(Constants.USER, Constants.ORGANIZATION)
-                .filter(
-                    user__status=True,
-                    user__on_boarded_by=on_boarded_by if on_boarded_by else user_id,
-                    user__role=3,
-                    user__approval_status=True
-                ).count()
-            )
-
-        elif role_id==1:
-            result["co_steward_count"] = (
-                UserOrganizationMap.objects.select_related(Constants.USER, Constants.ORGANIZATION)
-                .filter(user__status=True, user__role=6)
-                .count()
-            )
-
-        else:
-            result["participants_count"] = (
-                UserOrganizationMap.objects.select_related(Constants.USER, Constants.ORGANIZATION)
-                .filter(
-                    user__status=True, user__role=3,
-                      user__on_boarded_by=None,
-                        user__approval_status=True,
+        try:
+            if on_boarded_by !='None' or role_id==str(6):
+                    result["participants_count"] = (
+                    UserOrganizationMap.objects.select_related(Constants.USER, Constants.ORGANIZATION)
+                    .filter(
+                        user__status=True,
+                        user__on_boarded_by=on_boarded_by if on_boarded_by !='None' else user_id,
+                        user__role=3,
+                        user__approval_status=True
+                    ).count()
                 )
-                .count()
-            )
-        return result
-    
+            elif role_id==str(1):
+                result["co_steward_count"] = (
+                    UserOrganizationMap.objects.select_related(Constants.USER, Constants.ORGANIZATION)
+                    .filter(user__status=True, user__role=6).count()
+                )
+                result["participants_count"] = (
+                    UserOrganizationMap.objects.select_related(Constants.USER, Constants.ORGANIZATION)
+                    .filter(
+                        user__status=True, user__role=3,
+                            user__on_boarded_by=None,
+                            user__approval_status=True,
+                    ).count()
+                )
+            else:
+                result["participants_count"] = (
+                    UserOrganizationMap.objects.select_related(Constants.USER, Constants.ORGANIZATION)
+                    .filter(
+                        user__status=True, user__role=3,
+                            user__on_boarded_by=None,
+                            user__approval_status=True,
+                    ).count()
+                )
+            logging.info("Participants Metrics completed")
+            return result
+        except Exception as error:  # type: ignore
+            import pdb; pdb.set_trace()
+            logging.error("Error while filtering the participants. ERROR: %s", error, exc_info=True)
+            raise Exception(str(error))
+        
     def dataset_metrics(self, data):
         on_boarded_by = data.get("onboarded_by")
         role_id = data.get("role_id")
         user_id = data.get("user_id")
         user_org_map = data.get("map_id")
-        result = {}
         try:
-            data = (
+            query = (
                 DatasetV2.objects.prefetch_related("datasets").select_related(
                     Constants.USER_MAP,
                     Constants.USER_MAP_USER,
@@ -2445,20 +2454,21 @@ class DatahubNewDashboard(GenericViewSet):
                 )
                 .exclude(is_temp=True)
             )
-            if on_boarded_by or role_id==6:
-                data = (
-                    data.filter(
-                            Q(user_map__user__on_boarded_by=on_boarded_by if on_boarded_by else user_id)
-                            | Q(user_map__user_id=on_boarded_by if on_boarded_by else user_id)
+            if on_boarded_by !='None' or role_id==str(6):
+                query = (
+                    query.filter(
+                            Q(user_map__user__on_boarded_by=on_boarded_by if on_boarded_by !='None' else user_id)
+                            | Q(user_map__user_id=on_boarded_by if on_boarded_by !='None' else user_id)
                         )
                 )
             else:
-                data = data.filter(user_map__user__on_boarded_by=None).exclude(
+                query = query.filter(user_map__user__on_boarded_by=None).exclude(
                         user_map__user__role_id=6)
-            return data
+            logging.info("Datasets Metrics completed")
+            return query
         except Exception as error:  # type: ignore
             logging.error("Error while filtering the datasets. ERROR: %s", error, exc_info=True)
-            return {}
+            raise Exception(str(error))
 
     def connector_metrics(self, data, dataset_query):
         on_boarded_by = data.get("onboarded_by")
@@ -2510,7 +2520,8 @@ class DatahubNewDashboard(GenericViewSet):
             for key in distinct_keys:
                 dataset_count = dataset_query.filter(category__has_key=key).count()
                 dataset_category_metrics[key] = dataset_count
-            recent_datasets = DatasetV2ListNewSerializer(dataset_query.order_by("-updated_at")[0:3], many=True).data
+            recent_datasets = DatasetV2ListNewSerializer(
+                dataset_query.order_by("-updated_at")[0:3], many=True).data
             connector_metrics = self.connector_metrics(data, dataset_query)
             data = {
                 **connector_metrics,
