@@ -1,10 +1,11 @@
 from functools import wraps
+
 from rest_framework import status
 from rest_framework.response import Response
 
 from connectors.models import Connectors
 from core.constants import Constants
-from datahub.models import Datasets, DatasetV2File, Organization, DatasetV2
+from datahub.models import Datasets, DatasetV2, DatasetV2File, Organization
 from utils.jwt_services import JWTServices
 
 
@@ -24,7 +25,7 @@ def authenticate_user(model):
                         "message": "Authorization Failed"
                     }, status=status.HTTP_403_FORBIDDEN)
 
-            if model == DatasetV2:
+            elif model == DatasetV2:
                 query_id = kwargs.get('pk')
                 dsv = DatasetV2.objects.filter(id=query_id, user_map_id=payload.get("map_id"))
                 if not dsv:
@@ -44,7 +45,7 @@ def authenticate_user(model):
             elif model == Organization:
                 if str(payload.get("role_id")) == str(1):
                     pass
-                if str(payload.get("role_id")) == str(6) and str(payload.get("onboarded_by")) == str(
+                elif str(payload.get("role_id")) == str(6) and str(payload.get("onboarded_by")) == str(
                         payload.get("user_id")):
                     pass
 
