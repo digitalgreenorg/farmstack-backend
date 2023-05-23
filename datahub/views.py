@@ -2440,7 +2440,7 @@ class DatahubNewDashboard(GenericViewSet):
             logging.error("Error while filtering the participants. ERROR: %s", error, exc_info=True)
             raise Exception(str(error))
         
-    def dataset_metrics(self, data):
+    def dataset_metrics(self, data, request):
         on_boarded_by = data.get("onboarded_by")
         role_id = data.get("role_id")
         user_id = data.get("user_id")
@@ -2470,9 +2470,9 @@ class DatahubNewDashboard(GenericViewSet):
             logging.error("Error while filtering the datasets. ERROR: %s", error, exc_info=True)
             raise Exception(str(error))
 
-    def connector_metrics(self, data, dataset_query):
-        on_boarded_by = data.get("onboarded_by")
-        role_id = data.get("role_id")
+    def connector_metrics(self, data, dataset_query, request):
+        # on_boarded_by = data.get("onboarded_by")
+        # role_id = data.get("role_id")
         user_id = data.get("user_id")
         user_org_map = data.get("map_id")
         my_dataset_used_in_connectors = dataset_query.prefetch_related("datasets__right_dataset_file").values('datasets__right_dataset_file').filter(
@@ -2496,15 +2496,19 @@ class DatahubNewDashboard(GenericViewSet):
          'my_dataset_used_in_connectors':my_dataset_used_in_connectors,
          "recent_connectors": ConnectorsListSerializer(connectors_query.order_by("-updated_at")[0:3], many=True).data
          }
+    
     @action(detail=False, methods=["get"])
     @http_request_mutation
     def dashboard(self, request):
         """Retrieve datahub dashboard details"""
         data = request.META
         try:
-            # total_participants = User.objects.filter(role_id=3, status=True).count()
             participant_metrics = self.participant_metics(data)
-            dataset_query = self.dataset_metrics(data)
+            dataset_query = self.dataset_metrics(data, request)
+            # This will fetch connectors metrics
+            connector_metrics = self.connector_metrics(data, dataset_query, request)
+            if request.GET.get("my_org", False):
+                dataset_query = dataset_query.filter(user_map_id=data.get("map_id"))
             dataset_file_metrics = dataset_query.values('datasets__source') \
                         .annotate(dataset_count=Count('id', distinct=True),
                                   file_count=Count('datasets__file', distinct=True),
@@ -2522,7 +2526,6 @@ class DatahubNewDashboard(GenericViewSet):
                 dataset_category_metrics[key] = dataset_count
             recent_datasets = DatasetV2ListNewSerializer(
                 dataset_query.order_by("-updated_at")[0:3], many=True).data
-            connector_metrics = self.connector_metrics(data, dataset_query)
             data = {
                 **connector_metrics,
                 "total_participants": participant_metrics,
