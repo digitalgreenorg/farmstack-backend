@@ -2527,13 +2527,14 @@ class DatahubNewDashboard(GenericViewSet):
             recent_datasets = DatasetV2ListNewSerializer(
                 dataset_query.order_by("-updated_at")[0:3], many=True).data
             data = {
-                **connector_metrics,
+                "user": User.objects.filter(id=data.get("user_id")).values("first_name", "last_name").first(),
                 "total_participants": participant_metrics,
                 "dataset_file_metrics": dataset_file_metrics,
                 "dataset_state_metrics": dataset_state_metrics,
                 "total_dataset_count": dataset_query.count(),
                 "dataset_category_metrics": dataset_category_metrics,
                 "recent_datasets": recent_datasets,
+                **connector_metrics
             }
             return Response(data, status=status.HTTP_200_OK)
 
