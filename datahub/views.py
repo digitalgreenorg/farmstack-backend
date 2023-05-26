@@ -2523,7 +2523,8 @@ class DatahubNewDashboard(GenericViewSet):
             dataset_category_metrics = {}
             for key in distinct_keys:
                 dataset_count = dataset_query.filter(category__has_key=key).count()
-                dataset_category_metrics[key] = dataset_count
+                if dataset_count:
+                    dataset_category_metrics[key] = dataset_count
             recent_datasets = DatasetV2ListNewSerializer(
                 dataset_query.order_by("-updated_at")[0:3], many=True).data
             data = {
