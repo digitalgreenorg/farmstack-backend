@@ -2512,7 +2512,8 @@ class DatahubNewDashboard(GenericViewSet):
             dataset_file_metrics = dataset_query.values('datasets__source') \
                         .annotate(dataset_count=Count('id', distinct=True),
                                   file_count=Count('datasets__file', distinct=True),
-                                  total_size=Sum("datasets__file_size"))
+                                  total_size=Sum("datasets__file_size")).filter(file_count__gt=0)
+
 
             dataset_state_metrics = dataset_query.values(state_name = F('geography__state__name'))\
                         .annotate(dataset_count=Count('id', distinct=True))
