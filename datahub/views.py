@@ -28,7 +28,10 @@ from django.db.models import (
     Q,
     Subquery,
     Sum,
+    Value,
 )
+
+from django.db.models.functions import Concat
 
 # from django.db.models.functions import Index, Substr
 from django.http import JsonResponse
@@ -379,7 +382,8 @@ class ParticipantViewSet(GenericViewSet):
             if user_saved.on_boarded_by:
                 # datahub_admin = User.objects.filter(id=user_saved.on_boarded_by).first()
                 admin_full_name = string_functions.get_full_name(
-                    user_saved.on_boarded_by.first_name, user_saved.on_boarded_by.last_name
+                    user_saved.on_boarded_by.first_name,
+                    user_saved.on_boarded_by.last_name,
                 )
             else:
                 datahub_admin = User.objects.filter(role_id=1).first()
@@ -402,7 +406,7 @@ class ParticipantViewSet(GenericViewSet):
                 to_email=request.data.get("email"),
                 content=mail_body,
                 subject=Constants.PARTICIPANT_ORG_ADDITION_SUBJECT
-                        + os.environ.get(Constants.DATAHUB_NAME, Constants.datahub_name),
+                + os.environ.get(Constants.DATAHUB_NAME, Constants.datahub_name),
             )
         except Exception as error:
             LOGGER.error(error, exc_info=True)
@@ -424,7 +428,8 @@ class ParticipantViewSet(GenericViewSet):
                     user__status=True,
                     user__on_boarded_by=on_boarded_by,
                     user__role=3,
-                    user__approval_status=approval_status, **filter
+                    user__approval_status=approval_status,
+                    **filter,
                 )
                 .order_by("-user__updated_at")
                 .all()
@@ -440,9 +445,11 @@ class ParticipantViewSet(GenericViewSet):
             roles = (
                 UserOrganizationMap.objects.select_related(Constants.USER, Constants.ORGANIZATION)
                 .filter(
-                    user__status=True, user__role=3,
+                    user__status=True,
+                    user__role=3,
                     user__on_boarded_by=None,
-                    user__approval_status=approval_status, **filter
+                    user__approval_status=approval_status,
+                    **filter,
                 )
                 .order_by("-user__updated_at")
                 .all()
@@ -499,7 +506,7 @@ class ParticipantViewSet(GenericViewSet):
                 to_email=participant.email,
                 content=mail_body,
                 subject=Constants.PARTICIPANT_ORG_UPDATION_SUBJECT
-                        + os.environ.get(Constants.DATAHUB_NAME, Constants.datahub_name),
+                + os.environ.get(Constants.DATAHUB_NAME, Constants.datahub_name),
             )
 
             data = {
@@ -515,7 +522,9 @@ class ParticipantViewSet(GenericViewSet):
     def destroy(self, request, pk):
         """DELETE method: delete an object"""
         participant = self.get_object()
-        user_organization = UserOrganizationMap.objects.select_related(Constants.ORGANIZATION).filter(user_id=pk).first()
+        user_organization = (
+            UserOrganizationMap.objects.select_related(Constants.ORGANIZATION).filter(user_id=pk).first()
+        )
         organization = Organization.objects.get(id=user_organization.organization_id)
         if participant.status:
             participant.status = False
@@ -547,7 +556,7 @@ class ParticipantViewSet(GenericViewSet):
                     to_email=participant.email,
                     content=mail_body,
                     subject=Constants.PARTICIPANT_ORG_DELETION_SUBJECT
-                            + os.environ.get(Constants.DATAHUB_NAME, Constants.datahub_name),
+                    + os.environ.get(Constants.DATAHUB_NAME, Constants.datahub_name),
                 )
 
                 # Set the on_boarded_by_id to null if co_steward is deleted
@@ -579,7 +588,10 @@ class ParticipantViewSet(GenericViewSet):
             )
 
             data = [
-                {"user": user["id"], "organization_name": user["userorganizationmap__organization__name"]}
+                {
+                    "user": user["id"],
+                    "organization_name": user["userorganizationmap__organization__name"],
+                }
                 for user in users
             ]
             return Response(data, status=200)
@@ -625,8 +637,8 @@ class MailInvitationViewSet(GenericViewSet):
                     Utils().send_email(
                         to_email=[email],
                         content=mail_body,
-                        subject=os.environ.get("DATAHUB_NAME",
-                                               "datahub_name") + Constants.PARTICIPANT_INVITATION_SUBJECT,
+                        subject=os.environ.get("DATAHUB_NAME", "datahub_name")
+                        + Constants.PARTICIPANT_INVITATION_SUBJECT,
                     )
                 except Exception as e:
                     emails_not_found.append()
@@ -642,8 +654,10 @@ class MailInvitationViewSet(GenericViewSet):
 
         except Exception as error:
             LOGGER.error(error, exc_info=True)
-            return Response({"Error": f"Failed to send email"},
-                            status=status.HTTP_500_INTERNAL_SERVER_ERROR)  # type: ignore
+            return Response(
+                {"Error": f"Failed to send email"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )  # type: ignore
 
 
 class DropDocumentView(GenericViewSet):
@@ -1155,7 +1169,7 @@ class DatahubDatasetsViewSet(GenericViewSet):
 
         # reset the approval status b/c the user modified the dataset after an approval
         if getattr(instance, Constants.APPROVAL_STATUS) == Constants.APPROVED and (
-                user_obj.role_id == 3 or user_obj.role_id == 4
+            user_obj.role_id == 3 or user_obj.role_id == 4
         ):
             data[Constants.APPROVAL_STATUS] = Constants.AWAITING_REVIEW
 
@@ -1631,7 +1645,8 @@ class DatasetV2ViewSet(GenericViewSet):
         except Exception as error:
             LOGGER.error(f"Cannot get the columns of the selected file: {error}")
             return Response(
-                f"Cannot get the columns of the selected file: {error}", status=status.HTTP_400_BAD_REQUEST
+                f"Cannot get the columns of the selected file: {error}",
+                status=status.HTTP_400_BAD_REQUEST,
             )
 
     @action(detail=False, methods=["post"])
@@ -1670,12 +1685,15 @@ class DatasetV2ViewSet(GenericViewSet):
             # print(df)
             if file_name.endswith(".csv"):
                 df.to_csv(
-                    os.path.join(settings.TEMP_STANDARDISED_DIR, standardised_dir_path, file_name))  # type: ignore
+                    os.path.join(settings.TEMP_STANDARDISED_DIR, standardised_dir_path, file_name)
+                )  # type: ignore
             else:
                 df.to_excel(
-                    os.path.join(settings.TEMP_STANDARDISED_DIR, standardised_dir_path, file_name))  # type: ignore
+                    os.path.join(settings.TEMP_STANDARDISED_DIR, standardised_dir_path, file_name)
+                )  # type: ignore
             return Response(
-                {"standardised_file_path": f"{standardised_dir_path}/{file_name}"}, status=status.HTTP_200_OK
+                {"standardised_file_path": f"{standardised_dir_path}/{file_name}"},
+                status=status.HTTP_200_OK,
             )
 
         except Exception as error:
@@ -1823,8 +1841,9 @@ class DatasetV2ViewSet(GenericViewSet):
             if not user_map:
                 usage_policy = UsagePolicyDetailSerializer(file.dataset_v2_file.all(), many=True).data
             else:
-                usage_policy = file.dataset_v2_file.filter(
-                    user_organization_map=user_map).order_by("-updated_at").first()
+                usage_policy = (
+                    file.dataset_v2_file.filter(user_organization_map=user_map).order_by("-updated_at").first()
+                )
 
                 usage_policy = UsagePolicyDetailSerializer(usage_policy).data if usage_policy else {}
             file_path["usage_policy"] = usage_policy
@@ -1852,12 +1871,14 @@ class DatasetV2ViewSet(GenericViewSet):
                 DatasetV2.objects.select_related(
                     Constants.USER_MAP,
                     Constants.USER_MAP_USER,
-                    Constants.USER_MAP_ORGANIZATION
+                    Constants.USER_MAP_ORGANIZATION,
                 )
                 .filter(**data, **filters)
                 .exclude(is_temp=True)
                 .exclude(**exclude_filters)
-                .order_by(Constants.UPDATED_AT).reverse().all()
+                .order_by(Constants.UPDATED_AT)
+                .reverse()
+                .all()
             )
             if categories is not None:
                 data = data.filter(
@@ -1884,8 +1905,11 @@ class DatasetV2ViewSet(GenericViewSet):
                         else data.filter(user_map__user_id=user_id)
                     )
                 else:
-                    data = data.filter(user_map__user__on_boarded_by=None).exclude(
-                        user_map__user__role_id=6) if others else data
+                    data = (
+                        data.filter(user_map__user__on_boarded_by=None).exclude(user_map__user__role_id=6)
+                        if others
+                        else data
+                    )
         except Exception as error:  # type: ignore
             logging.error("Error while filtering the datasets. ERROR: %s", error, exc_info=True)
             return Response(f"Invalid filter fields: {list(request.data.keys())}", status=500)
@@ -2032,9 +2056,13 @@ class DatasetV2ViewSetOps(GenericViewSet):
     def datasets_names(self, request, *args, **kwargs):
         try:
             datasets_with_excel_files = (
-                DatasetV2.objects.prefetch_related("datasets").select_related("user_map")
-                .filter(Q(datasets__file__endswith=".xls") | Q(datasets__file__endswith=".xlsx") | Q(
-                    datasets__file__endswith=".csv"))
+                DatasetV2.objects.prefetch_related("datasets")
+                .select_related("user_map")
+                .filter(
+                    Q(datasets__file__endswith=".xls")
+                    | Q(datasets__file__endswith=".xlsx")
+                    | Q(datasets__file__endswith=".csv")
+                )
                 .filter(user_map__organization_id=request.GET.get("org_id"), is_temp=False)
                 .distinct()
                 .values("name", "id", org_name=F("user_map__organization__name"))
@@ -2055,11 +2083,28 @@ class DatasetV2ViewSetOps(GenericViewSet):
                     DatasetV2File.objects.select_related("dataset_v2_file", "dataset")
                     .filter(dataset_id__in=dataset_ids)
                     .filter(Q(file__endswith=".xls") | Q(file__endswith=".xlsx") | Q(file__endswith=".csv"))
-                    .filter(Q(accessibility__in=["public", "registered"]) | Q(
-                        dataset_v2_file__user_organization_map=user_map, dataset_v2_file__approval_status="approved"))
-                    .values("id", "dataset", "standardised_file", dataset_name=F("dataset__name")).distinct()
+                    .filter(
+                        Q(accessibility__in=["public", "registered"])
+                        | Q(
+                            dataset_v2_file__user_organization_map=user_map,
+                            dataset_v2_file__approval_status="approved",
+                        )
+                    )
+                    .values(
+                        "id",
+                        "dataset",
+                        "standardised_file",
+                        dataset_name=F("dataset__name"),
+                    )
+                    .distinct()
                 )
-                files = [{**row, "file_name": row.get("standardised_file", "").split("/")[-1]} for row in files]
+                files = [
+                    {
+                        **row,
+                        "file_name": row.get("standardised_file", "").split("/")[-1],
+                    }
+                    for row in files
+                ]
                 return Response(files, status=status.HTTP_200_OK)
 
             except Exception as e:
@@ -2076,10 +2121,18 @@ class DatasetV2ViewSetOps(GenericViewSet):
                 path = file_path
                 file_path = unquote(file_path).replace("/media/", "")
                 if file_path.endswith(".xlsx") or file_path.endswith(".xls"):
-                    df = pd.read_excel(os.path.join(settings.DATASET_FILES_URL, file_path), index_col=None, nrows=3)
+                    df = pd.read_excel(
+                        os.path.join(settings.DATASET_FILES_URL, file_path),
+                        index_col=None,
+                        nrows=3,
+                    )
                 else:
-                    df = pd.read_csv(os.path.join(settings.DATASET_FILES_URL, file_path), index_col=False, nrows=3)
-                df = df.drop(df.filter(regex='Unnamed').columns, axis=1)
+                    df = pd.read_csv(
+                        os.path.join(settings.DATASET_FILES_URL, file_path),
+                        index_col=False,
+                        nrows=3,
+                    )
+                df = df.drop(df.filter(regex="Unnamed").columns, axis=1)
                 result[path] = df.columns.tolist()
                 result[Constants.ID] = DatasetV2File.objects.get(standardised_file=file_path).id
             return Response(result, status=status.HTTP_200_OK)
@@ -2126,24 +2179,27 @@ class DatasetV2ViewSetOps(GenericViewSet):
         on_boarded_by = request.GET.get("on_boarded_by", "")
         user_id = request.GET.get("user_id", "")
         try:
-            user_org_queryset = UserOrganizationMap.objects.prefetch_related("user_org_map").select_related(
-                "organization", "user").annotate(dataset_count=Count("user_org_map__id")
-                                                 ).values(name=F('organization__name'),
-                                                          org_id=F('organization_id'),
-                                                          org_description=F("organization__org_description")
-                                                          ).filter(user__status=True, dataset_count__gt=0).all()
+            user_org_queryset = (
+                UserOrganizationMap.objects.prefetch_related("user_org_map")
+                .select_related("organization", "user")
+                .annotate(dataset_count=Count("user_org_map__id"))
+                .values(
+                    name=F("organization__name"),
+                    org_id=F("organization_id"),
+                    org_description=F("organization__org_description"),
+                )
+                .filter(user__status=True, dataset_count__gt=0)
+                .all()
+            )
             if on_boarded_by:
-                user_org_queryset = (
-                    user_org_queryset.filter(Q(user__on_boarded_by=on_boarded_by) | Q(user_id=on_boarded_by))
+                user_org_queryset = user_org_queryset.filter(
+                    Q(user__on_boarded_by=on_boarded_by) | Q(user_id=on_boarded_by)
                 )
             else:
                 user_onboarded_by = User.objects.get(id=user_id).on_boarded_by
                 if user_onboarded_by:
-                    user_org_queryset = (
-                        user_org_queryset.filter(
-                            Q(user__on_boarded_by=user_onboarded_by.id)
-                            | Q(user__id=user_onboarded_by.id)
-                        )
+                    user_org_queryset = user_org_queryset.filter(
+                        Q(user__on_boarded_by=user_onboarded_by.id) | Q(user__id=user_onboarded_by.id)
                     )
                 else:
                     user_org_queryset = user_org_queryset.filter(user__on_boarded_by=None).exclude(user__role_id=6)
@@ -2191,7 +2247,8 @@ class StandardisationTemplateView(GenericViewSet):
         except Exception as error:
             LOGGER.error("Issue while Updating Standardisation Template", exc_info=True)
             return Response(
-                f"Issue while Updating Standardisation Template {error}", status=status.HTTP_500_INTERNAL_SERVER_ERROR
+                f"Issue while Updating Standardisation Template {error}",
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
 
     def destroy(self, request, *args, **kwargs):
@@ -2252,42 +2309,70 @@ class DatasetV2View(GenericViewSet):
     def requested_datasets(self, request, *args, **kwargs):
         try:
             user_map_id = request.data.get("user_map")
-            requested_sent = UsagePolicy.objects.select_related(
-                "dataset_file",
-                "dataset_file__dataset",
-                "user_organization_map__organization").filter(
-                user_organization_map=user_map_id).values(
-                "approval_status",
-                "updated_at",
-                "accessibility_time",
-                dataset_id=F('dataset_file__dataset_id'),
-                dataset_name=F('dataset_file__dataset__name'),
-                file_name=F('dataset_file__file'),
-                organization_name=F('dataset_file__dataset__user_map__organization__name'),
-                organization_email=F('dataset_file__dataset__user_map__organization__org_email')
-            ).order_by("-updated_at")
+            requested_sent = (
+                UsagePolicy.objects.select_related(
+                    "dataset_file",
+                    "dataset_file__dataset",
+                    "user_organization_map__organization",
+                )
+                .filter(user_organization_map=user_map_id)
+                .values(
+                    "approval_status",
+                    "updated_at",
+                    "accessibility_time",
+                    dataset_id=F("dataset_file__dataset_id"),
+                    dataset_name=F("dataset_file__dataset__name"),
+                    file_name=F("dataset_file__file"),
+                    organization_name=F("dataset_file__dataset__user_map__organization__name"),
+                    organization_email=F("dataset_file__dataset__user_map__organization__org_email"),
+                )
+                .order_by("-updated_at")
+            )
 
-            requested_recieved = UsagePolicy.objects.select_related(
-                "dataset_file",
-                "dataset_file__dataset",
-                "user_organization_map__organization").filter(
-                dataset_file__dataset__user_map_id=user_map_id).values(
-                "id", "approval_status",
-                "accessibility_time",
-                "updated_at",
-                dataset_id=F('dataset_file__dataset_id'),
-                dataset_name=F('dataset_file__dataset__name'),
-                file_name=F('dataset_file__file'),
-                organization_name=F('user_organization_map__organization__name'),
-                organization_email=F('user_organization_map__organization__org_email')).order_by("-updated_at")
-            return Response({"sent": [{**values, "file_name": values.get("file_name", "").split("/")[-1]} for values in
-                                      requested_sent],
-                             "recieved": [{**values, "file_name": values.get("file_name", "").split("/")[-1]} for values
-                                          in requested_recieved]}, 200)
+            requested_recieved = (
+                UsagePolicy.objects.select_related(
+                    "dataset_file",
+                    "dataset_file__dataset",
+                    "user_organization_map__organization",
+                )
+                .filter(dataset_file__dataset__user_map_id=user_map_id)
+                .values(
+                    "id",
+                    "approval_status",
+                    "accessibility_time",
+                    "updated_at",
+                    dataset_id=F("dataset_file__dataset_id"),
+                    dataset_name=F("dataset_file__dataset__name"),
+                    file_name=F("dataset_file__file"),
+                    organization_name=F("user_organization_map__organization__name"),
+                    organization_email=F("user_organization_map__organization__org_email"),
+                )
+                .order_by("-updated_at")
+            )
+            return Response(
+                {
+                    "sent": [
+                        {
+                            **values,
+                            "file_name": values.get("file_name", "").split("/")[-1],
+                        }
+                        for values in requested_sent
+                    ],
+                    "recieved": [
+                        {
+                            **values,
+                            "file_name": values.get("file_name", "").split("/")[-1],
+                        }
+                        for values in requested_recieved
+                    ],
+                },
+                200,
+            )
         except Exception as error:
             LOGGER.error("Issue while Retrive requeted data", exc_info=True)
             return Response(
-                f"Issue while Retrive requeted data {error}", status=status.HTTP_500_INTERNAL_SERVER_ERROR
+                f"Issue while Retrive requeted data {error}",
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
 
     # def list(self, request, *args, **kwargs):
@@ -2336,18 +2421,30 @@ class DatasetFileV2View(GenericViewSet):
 
         df.rename(columns=standardised_configuration, inplace=True)
         df.columns = df.columns.astype(str)
-        df = df.drop(df.filter(regex='Unnamed').columns, axis=1)
+        df = df.drop(df.filter(regex="Unnamed").columns, axis=1)
 
         if not os.path.exists(os.path.join(settings.DATASET_FILES_URL, instance.dataset.name, instance.source)):
             os.makedirs(os.path.join(settings.DATASET_FILES_URL, instance.dataset.name, instance.source))
 
         file_name = os.path.basename(file_path).replace(".", "_standerdise.")
         if file_path.endswith(".csv"):
-            df.to_csv(os.path.join(settings.DATASET_FILES_URL, instance.dataset.name, instance.source,
-                                   file_name))  # type: ignore
+            df.to_csv(
+                os.path.join(
+                    settings.DATASET_FILES_URL,
+                    instance.dataset.name,
+                    instance.source,
+                    file_name,
+                )
+            )  # type: ignore
         else:
-            df.to_excel(os.path.join(settings.DATASET_FILES_URL, instance.dataset.name, instance.source,
-                                     file_name))  # type: ignore
+            df.to_excel(
+                os.path.join(
+                    settings.DATASET_FILES_URL,
+                    instance.dataset.name,
+                    instance.source,
+                    file_name,
+                )
+            )  # type: ignore
 
         # data = request.data
         standardised_file_path = os.path.join(instance.dataset.name, instance.source, file_name)
@@ -2388,7 +2485,6 @@ class UsagePolicyRetrieveUpdateDestroyView(generics.RetrieveUpdateDestroyAPIView
     queryset = UsagePolicy.objects.all()
     serializer_class = UsagePolicySerializer
 
-    
 
 class DatahubNewDashboard(GenericViewSet):
     """Datahub Dashboard viewset"""
@@ -2401,45 +2497,57 @@ class DatahubNewDashboard(GenericViewSet):
         user_id = data.get("user_id")
         result = {}
         try:
-            if on_boarded_by !='None' or role_id==str(6):
-                    result["participants_count"] = (
+            if on_boarded_by != "None" or role_id == str(6):
+                result["participants_count"] = (
                     UserOrganizationMap.objects.select_related(Constants.USER, Constants.ORGANIZATION)
                     .filter(
                         user__status=True,
-                        user__on_boarded_by=on_boarded_by if on_boarded_by !='None' else user_id,
+                        user__on_boarded_by=on_boarded_by if on_boarded_by != "None" else user_id,
                         user__role=3,
-                        user__approval_status=True
-                    ).count()
+                        user__approval_status=True,
+                    )
+                    .count()
                 )
-            elif role_id==str(1):
+            elif role_id == str(1):
                 result["co_steward_count"] = (
                     UserOrganizationMap.objects.select_related(Constants.USER, Constants.ORGANIZATION)
-                    .filter(user__status=True, user__role=6).count()
+                    .filter(user__status=True, user__role=6)
+                    .count()
                 )
                 result["participants_count"] = (
                     UserOrganizationMap.objects.select_related(Constants.USER, Constants.ORGANIZATION)
                     .filter(
-                        user__status=True, user__role=3,
-                            user__on_boarded_by=None,
-                            user__approval_status=True,
-                    ).count()
+                        user__status=True,
+                        user__role=3,
+                        user__on_boarded_by=None,
+                        user__approval_status=True,
+                    )
+                    .count()
                 )
             else:
                 result["participants_count"] = (
                     UserOrganizationMap.objects.select_related(Constants.USER, Constants.ORGANIZATION)
                     .filter(
-                        user__status=True, user__role=3,
-                            user__on_boarded_by=None,
-                            user__approval_status=True,
-                    ).count()
+                        user__status=True,
+                        user__role=3,
+                        user__on_boarded_by=None,
+                        user__approval_status=True,
+                    )
+                    .count()
                 )
             logging.info("Participants Metrics completed")
             return result
         except Exception as error:  # type: ignore
-            import pdb; pdb.set_trace()
-            logging.error("Error while filtering the participants. ERROR: %s", error, exc_info=True)
+            import pdb
+
+            pdb.set_trace()
+            logging.error(
+                "Error while filtering the participants. ERROR: %s",
+                error,
+                exc_info=True,
+            )
             raise Exception(str(error))
-        
+
     def dataset_metrics(self, data, request):
         on_boarded_by = data.get("onboarded_by")
         role_id = data.get("role_id")
@@ -2447,23 +2555,21 @@ class DatahubNewDashboard(GenericViewSet):
         user_org_map = data.get("map_id")
         try:
             query = (
-                DatasetV2.objects.prefetch_related("datasets").select_related(
+                DatasetV2.objects.prefetch_related("datasets")
+                .select_related(
                     Constants.USER_MAP,
                     Constants.USER_MAP_USER,
-                    Constants.USER_MAP_ORGANIZATION
+                    Constants.USER_MAP_ORGANIZATION,
                 )
                 .exclude(is_temp=True)
             )
-            if on_boarded_by !='None' or role_id==str(6):
-                query = (
-                    query.filter(
-                            Q(user_map__user__on_boarded_by=on_boarded_by if on_boarded_by !='None' else user_id)
-                            | Q(user_map__user_id=on_boarded_by if on_boarded_by !='None' else user_id)
-                        )
+            if on_boarded_by != "None" or role_id == str(6):
+                query = query.filter(
+                    Q(user_map__user__on_boarded_by=on_boarded_by if on_boarded_by != "None" else user_id)
+                    | Q(user_map__user_id=on_boarded_by if on_boarded_by != "None" else user_id)
                 )
             else:
-                query = query.filter(user_map__user__on_boarded_by=None).exclude(
-                        user_map__user__role_id=6)
+                query = query.filter(user_map__user__on_boarded_by=None).exclude(user_map__user__role_id=6)
             logging.info("Datasets Metrics completed")
             return query
         except Exception as error:  # type: ignore
@@ -2475,28 +2581,46 @@ class DatahubNewDashboard(GenericViewSet):
         # role_id = data.get("role_id")
         user_id = data.get("user_id")
         user_org_map = data.get("map_id")
-        my_dataset_used_in_connectors = dataset_query.prefetch_related("datasets__right_dataset_file").values('datasets__right_dataset_file').filter(
-            user_map_id=user_org_map).distinct().count() + dataset_query.prefetch_related("datasets__left_dataset_file").values(
-                'datasets__left_dataset_file').filter(user_map_id=user_org_map).distinct().count()
+        my_dataset_used_in_connectors = (
+            dataset_query.prefetch_related("datasets__right_dataset_file")
+            .values("datasets__right_dataset_file")
+            .filter(user_map_id=user_org_map)
+            .distinct()
+            .count()
+            + dataset_query.prefetch_related("datasets__left_dataset_file")
+            .values("datasets__left_dataset_file")
+            .filter(user_map_id=user_org_map)
+            .distinct()
+            .count()
+        )
         connectors_query = Connectors.objects.filter(user_id=user_id).all()
-        
-        other_datasets_used_in_my_connectors = (dataset_query.prefetch_related("datasets__right_dataset_file")
+
+        other_datasets_used_in_my_connectors = (
+            dataset_query.prefetch_related("datasets__right_dataset_file")
             .select_related("datasets__right_dataset_file__connectors")
             .filter(datasets__right_dataset_file__connectors__user_id=user_id)
-            .values('datasets__right_dataset_file')
-            .exclude(user_map_id=user_org_map).distinct().count()
-            ) + (
-                dataset_query.prefetch_related("datasets__left_dataset_file")
-                .select_related("datasets__left_dataset_file__connectors")
-                .filter(datasets__left_dataset_file__connectors__user_id=user_id)
-                .values('datasets__left_dataset_file')
-                .exclude(user_map_id=user_org_map).distinct().count())
-        return {"total_connectors_count":connectors_query.count(),
-         "other_datasets_used_in_my_connectors":other_datasets_used_in_my_connectors,
-         'my_dataset_used_in_connectors':my_dataset_used_in_connectors,
-         "recent_connectors": ConnectorsListSerializer(connectors_query.order_by("-updated_at")[0:3], many=True).data
-         }
-    
+            .values("datasets__right_dataset_file")
+            .exclude(user_map_id=user_org_map)
+            .distinct()
+            .count()
+        ) + (
+            dataset_query.prefetch_related("datasets__left_dataset_file")
+            .select_related("datasets__left_dataset_file__connectors")
+            .filter(datasets__left_dataset_file__connectors__user_id=user_id)
+            .values("datasets__left_dataset_file")
+            .exclude(user_map_id=user_org_map)
+            .distinct()
+            .count()
+        )
+        return {
+            "total_connectors_count": connectors_query.count(),
+            "other_datasets_used_in_my_connectors": other_datasets_used_in_my_connectors,
+            "my_dataset_used_in_connectors": my_dataset_used_in_connectors,
+            "recent_connectors": ConnectorsListSerializer(
+                connectors_query.order_by("-updated_at")[0:3], many=True
+            ).data,
+        }
+
     @action(detail=False, methods=["get"])
     @http_request_mutation
     def dashboard(self, request):
@@ -2509,16 +2633,30 @@ class DatahubNewDashboard(GenericViewSet):
             connector_metrics = self.connector_metrics(data, dataset_query, request)
             if request.GET.get("my_org", False):
                 dataset_query = dataset_query.filter(user_map_id=data.get("map_id"))
-            dataset_file_metrics = dataset_query.values('datasets__source') \
-                        .annotate(dataset_count=Count('id', distinct=True),
-                                  file_count=Count('datasets__file', distinct=True),
-                                  total_size=Sum("datasets__file_size")).filter(file_count__gt=0)
+            dataset_file_metrics = (
+                dataset_query.values("datasets__source")
+                .annotate(
+                    dataset_count=Count("id", distinct=True),
+                    file_count=Count("datasets__file", distinct=True),
+                    total_size=Sum("datasets__file_size"),
+                )
+                .filter(file_count__gt=0)
+            )
 
-
-            dataset_state_metrics = dataset_query.values(state_name = F('geography__state__name'))\
-                        .annotate(dataset_count=Count('id', distinct=True))
-            distinct_keys = DatasetV2.objects.annotate(key=Func('category', function='JSONB_OBJECT_KEYS', output_field=CharField())) \
-                        .values_list('key', flat=True).distinct()
+            dataset_state_metrics = dataset_query.values(state_name=F("geography__state__name")).annotate(
+                dataset_count=Count("id", distinct=True)
+            )
+            distinct_keys = (
+                DatasetV2.objects.annotate(
+                    key=Func(
+                        "category",
+                        function="JSONB_OBJECT_KEYS",
+                        output_field=CharField(),
+                    )
+                )
+                .values_list("key", flat=True)
+                .distinct()
+            )
 
             # Iterate over the distinct keys and find the count for each key
             dataset_category_metrics = {}
@@ -2526,26 +2664,32 @@ class DatahubNewDashboard(GenericViewSet):
                 dataset_count = dataset_query.filter(category__has_key=key).count()
                 if dataset_count:
                     dataset_category_metrics[key] = dataset_count
-            recent_datasets = DatasetV2ListNewSerializer(
-                dataset_query.order_by("-updated_at")[0:3], many=True).data
+            recent_datasets = DatasetV2ListNewSerializer(dataset_query.order_by("-updated_at")[0:3], many=True).data
             data = {
-                "user": UserOrganizationMap.objects.select_related("user", "organization").filter(id=data.get("map_id")).values(
-                first_name=F("user__first_name"),
-                 last_name=F("user__last_name"), 
-                 logo=F("organization__logo"),
-                 org_email=F("organization__org_email"),
-                 name=F("organization__name")).first(),
+                "user": UserOrganizationMap.objects.select_related("user", "organization")
+                .filter(id=data.get("map_id"))
+                .values(
+                    first_name=F("user__first_name"),
+                    last_name=F("user__last_name"),
+                    logo=Concat(
+                        Value("media/"),
+                        F("organization__logo"),
+                        output_field=CharField(),
+                    ),
+                    org_email=F("organization__org_email"),
+                    name=F("organization__name"),
+                )
+                .first(),
                 "total_participants": participant_metrics,
                 "dataset_file_metrics": dataset_file_metrics,
                 "dataset_state_metrics": dataset_state_metrics,
                 "total_dataset_count": dataset_query.count(),
                 "dataset_category_metrics": dataset_category_metrics,
                 "recent_datasets": recent_datasets,
-                **connector_metrics
+                **connector_metrics,
             }
             return Response(data, status=status.HTTP_200_OK)
 
         except Exception as error:
             LOGGER.error(error, exc_info=True)
             return Response({}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
