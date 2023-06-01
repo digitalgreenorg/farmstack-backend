@@ -209,15 +209,16 @@ class CustomStorage(Storage):
     def url(self, url):
         return url
 
-    def _save(self, name, content): 
+    def _save(self, name, content):
         # Save file to a directory outside MEDIA_ROOT
-        full_path = os.path.join(settings.DATASET_FILES_URL, name)
+        full_path = os.path.join(settings.MEDIA_ROOT, name)
         directory = os.path.dirname(full_path)
-        if not self.exists(directory):
+        if not os.path.exists(directory):
             os.makedirs(directory)
         with open(full_path, 'wb') as f:
-            f.write(content.read())
+            f.write(content.file.read())
         return name
+
 
 @auto_str
 class DatasetV2File(TimeStampMixin):
