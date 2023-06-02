@@ -1450,7 +1450,7 @@ class DataBaseViewSet(GenericViewSet):
                         },
                         status=status.HTTP_400_BAD_REQUEST,
                     )
-                elif str(err).__contains__("Can't connect to MySQL server"):
+                elif str(err).__contains__("Can't connect to MySQL server") or str(err).__contains__("Unknown MySQL server host"):
                     return Response(
                         {
                             "host": ["Invalid host or port. Connection Failed."],
