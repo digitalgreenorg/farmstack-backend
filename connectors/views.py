@@ -101,7 +101,6 @@ class ConnectorsViewSet(GenericViewSet):
             serializer.save()
         return Response(connector_serializer.data, status=status.HTTP_200_OK)
 
-    @authenticate_user(model=Connectors)
     def destroy(self, request, pk):
         """DELETE method: delete an object"""
         if request.GET.get(Constants.MAPS):
