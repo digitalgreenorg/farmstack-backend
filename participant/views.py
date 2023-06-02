@@ -1443,6 +1443,21 @@ class DataBaseViewSet(GenericViewSet):
                 elif err.errno == mysql.connector.errorcode.ER_NO_SUCH_TABLE:
                     return Response({"table": ["Table does not exist"]}, status=status.HTTP_400_BAD_REQUEST)
                 # Return an error message if the connection fails
+                elif str(err).__contains__("Unknown database"):
+                    return Response(
+                        {
+                            "dbname": ["Invalid database name. Connection Failed."]
+                        },
+                        status=status.HTTP_400_BAD_REQUEST,
+                    )
+                elif str(err).__contains__("Can't connect to MySQL server"):
+                    return Response(
+                        {
+                            "host": ["Invalid host or port. Connection Failed."],
+                            "port": ["Invalid host or port. Connection Failed."],
+                        },
+                        status=status.HTTP_400_BAD_REQUEST,
+                    )
                 return Response({"error": [str(err)]}, status=status.HTTP_400_BAD_REQUEST)
             except Exception as e:
                 return Response(str(e), status=status.HTTP_400_BAD_REQUEST)
