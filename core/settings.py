@@ -116,11 +116,12 @@ WSGI_APPLICATION = "core.wsgi.application"
 
 DATABASES = {
     "default": {
+
         "ENGINE": "django.db.backends.postgresql",
-        "NAME": "postgres",
-        "USER": os.environ.get("POSTGRES_USER" ),
-        "PASSWORD": os.environ.get("POSTGRES_PASSWORD"),
-        "HOST": "db",
+        "NAME": "db2",
+        "USER": "jai",
+        "PASSWORD": "password",
+        "HOST": "localhost",
         "PORT": "5432",
         "OPTIONS": {
             "client_encoding": "UTF8",
@@ -180,6 +181,8 @@ MEDIA_URL = "media/"
 
 PROTECTED_MEDIA_ROOT = os.path.join(BASE_DIR, 'protected')
 PROTECTED_MEDIA_URL = "protected/"
+SUPPORT_TICKET_V2 = "support_ticket/"
+SUPPORT_RESOLUTIONS = "support_resolutions/"
 
 STATICFILES_DIRS = [
     os.path.join(BASE_DIR, "media/"),
@@ -213,6 +216,10 @@ POLICY_FILES_URL = os.path.join(MEDIA_URL, "policy/")
 TEMP_CONNECTOR_URL = os.path.join(MEDIA_URL, "temp/connectors/")
 CONNECTOR_FILES_URL =  os.path.join(MEDIA_URL, "connectors/")
 STANDARDISED_FILES_URL = os.path.join(PROTECTED_MEDIA_URL, "standardised/")
+
+RESOLUTIONS_ATTACHMENT_URL = os.path.join(SUPPORT_RESOLUTIONS, "resolutions/")
+SUPPORT_TICKET_FILES_URL = os.path.join(SUPPORT_TICKET_V2, "support/")
+
 # os.makedirs(CONNECTOR_FILES_URL)
 
 if not os.path.exists(TEMP_STANDARDISED_DIR):
@@ -267,7 +274,7 @@ AUTH_USER_MODEL = "accounts.User"
 
 REST_FRAMEWORK = {
     "DEFAULT_FILTER_BACKENDS": ["django_filters.rest_framework.DjangoFilterBackend"],
-     "DEFAULT_AUTHENTICATION_CLASSES": ("rest_framework_simplejwt.authentication.JWTAuthentication",),
+    "DEFAULT_AUTHENTICATION_CLASSES": ("rest_framework_simplejwt.authentication.JWTAuthentication",),
     # "DEFAULT_PERMISSION_CLASSES": [
     #     "rest_framework.permissions.AllowAny"
     # ],
@@ -278,7 +285,8 @@ REST_FRAMEWORK = {
     #  # Un comment this to enable authentication
     "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
     "EXCEPTION_HANDLER": "rest_framework.views.exception_handler",
-    
+
+
 }
 
 SIMPLE_JWT = {
@@ -301,6 +309,7 @@ USE_X_FORWARDED_HOST = True
 OTP_DURATION = 900
 OTP_LIMIT = 3
 USER_SUSPENSION_DURATION = 300
+
 
 # Store cache in file
 CACHES = {
@@ -378,6 +387,7 @@ CORS_ORIGIN_ALLOW_ALL = True
 #   'https://127.0.0.1:8000'
 # )
 CORS_ALLOW_CREDENTIALS = True
+# making sure CORS_ALLOW_HEADERS  is not "*"
 #making sure CORS_ALLOW_HEADERS  is not "*"
 CORS_ALLOW_HEADERS = list(default_headers) + ['Set-Cookie']
 INTERNAL_IPS = [

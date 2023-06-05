@@ -17,6 +17,7 @@ import pandas as pd
 import psycopg2
 import requests
 import xlwt
+from rest_framework.generics import get_object_or_404
 from accounts.models import User
 from core.constants import Constants
 from core.utils import (
@@ -55,9 +56,9 @@ from participant.models import (
     Connectors,
     ConnectorsMap,
     Department,
-    Project,
-    SupportTicket,
-)
+    Project
+, SupportTicketV2,
+    SupportTicket)
 from participant.serializers import (
     ConnectorListSerializer,
     ConnectorsConsumerRelationSerializer,
@@ -81,8 +82,7 @@ from participant.serializers import (
     ParticipantSupportTicketSerializer,
     ProjectDepartmentSerializer,
     ProjectSerializer,
-    TicketSupportSerializer,
-)
+    TicketSupportSerializer, SupportTicketV2Serializer, )
 from utils.jwt_services import http_request_mutation
 
 LOGGER = logging.getLogger(__name__)
@@ -825,7 +825,6 @@ class ParticipantConnectorsViewSet(GenericViewSet):
             ["Connector status should be either unpaired or rejected to delete"],
             status=400,
         )
-
 
     @action(detail=False, methods=["post"])
     @http_request_mutation
@@ -1716,3 +1715,61 @@ class DataBaseViewSet(GenericViewSet):
         except Exception as e:
             LOGGER.error(f"Failed to fetch data from api ERROR: {e} and input fields: {request.data}")
             return Response({"message": f"API Response: {e}"}, status=status.HTTP_400_BAD_REQUEST)
+
+
+class SupportTicketV2ModelViewSet(GenericViewSet):
+    parser_class = JSONParser
+    queryset = SupportTicketV2.objects.all()
+    serializer_class = SupportTicketV2Serializer
+    pagination_class = CustomPagination
+
+    @http_request_mutation
+    def list(self, request):
+        queryset = self.get_queryset()
+        map_id = request.META.get('map_id')
+        queryset = queryset.filter(user_map=map_id)
+        page = self.paginate_queryset(queryset)
+        support_tickets_serializer = SupportTicketV2Serializer(page, many=True)
+        return self.get_paginated_response(support_tickets_serializer.data)
+
+    # API to retrieve a single object by its ID
+    def retrieve(self, request, pk=None):
+        queryset = self.get_queryset()
+        object = get_object_or_404(queryset, pk=pk)
+        serializer = self.get_serializer(object)
+        return Response(serializer.data)
+
+    # API to create a new object
+    def create(self, request):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        object = serializer.save()
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+    # API to update an existing object by its ID
+    def update(self, request, pk=None):
+        queryset = self.get_queryset()
+        object = get_object_or_404(queryset, pk=pk)
+        serializer = self.get_serializer(object, data=request.data)
+        serializer.is_valid(raise_exception=True)
+        object = serializer.save()
+        return Response(serializer.data)
+
+    # API to delete an existing object by its ID
+    def destroy(self, request, pk=None):
+        queryset = self.get_queryset()
+        object = get_object_or_404(queryset, pk=pk)
+        object.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+    @http_request_mutation
+    @action(detail=False, methods=["get"])
+
+    def filter_support_tickets(self,request,*args,**kwargs):
+      for i in range(0,40):
+          SupportTicketV2.objects.create(
+              ticket_title=f'some_ticket_title{i}',
+              description=f'some_ticket_desc{i}',
+              category="datasets",
+              user_map_id='65ffcfd2-acb6-431d-8969-dc53ecfd8723'
+          )

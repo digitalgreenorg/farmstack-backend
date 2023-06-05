@@ -13,14 +13,14 @@ from core.constants import Constants
 from datahub.models import Datasets, Organization, UserOrganizationMap
 from datahub.serializers import (
     OrganizationRetriveSerializer,
-    UserOrganizationMapSerializer,
+    UserOrganizationMapSerializer, OrganizationSerializer,
 )
 from participant.models import (
     Connectors,
     ConnectorsMap,
     Department,
     Project,
-    SupportTicket,
+    SupportTicket, SupportTicketV2,
 )
 from utils import string_functions
 
@@ -40,7 +40,6 @@ class TicketSupportSerializer(serializers.ModelSerializer):
 
 
 class ParticipantSupportTicketSerializer(serializers.ModelSerializer):
-
     user_id = serializers.PrimaryKeyRelatedField(
         queryset=models.User.objects.all(), required=True, source="user_map.user"
     )
@@ -310,7 +309,7 @@ class ConnectorsSerializerForEmail(serializers.ModelSerializer):
     class UserSerializer(serializers.ModelSerializer):
         class Meta:
             model = User
-            fields = ["full_name", "email", "phone_number",  "on_boarded_by"]
+            fields = ["full_name", "email", "phone_number", "on_boarded_by"]
 
         full_name = serializers.SerializerMethodField(method_name="get_full_name")
 
@@ -345,7 +344,6 @@ class ConnectorsSerializerForEmail(serializers.ModelSerializer):
 
 
 class ConnectorsListSerializer(serializers.ModelSerializer):
-
     department_details = DepartmentSerializer(required=False, allow_null=True, read_only=True, source="department")
     project_details = ProjectSerializer(required=False, allow_null=True, read_only=True, source="project")
 
@@ -493,7 +491,9 @@ class ConnectorListSerializer(serializers.ModelSerializer):
         model = Connectors
         fields = ["id", "connector_name"]
 
+
 from rest_framework import serializers
+
 
 class DatabaseConfigSerializer(serializers.Serializer):
 
@@ -510,7 +510,6 @@ class DatabaseConfigSerializer(serializers.Serializer):
                 elif not source == Constants.SOURCE_POSTGRESQL_FILE_TYPE:
                     self.fields.pop("user")
                     self.fields.pop("dbname")
-
 
     host = serializers.CharField(max_length=200, allow_blank=False)
     port = serializers.IntegerField()
@@ -536,3 +535,43 @@ class DatabaseDataExportSerializer(serializers.Serializer):
     dataset_name = serializers.CharField(max_length=200, allow_blank=False)
     source = serializers.CharField(max_length=200, allow_blank=False)
     file_name = serializers.CharField(max_length=200, allow_blank=False)
+
+
+class UserSupportTicketSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = (
+            "first_name",
+            "last_name",
+            "phone_number",
+            "role",
+        )
+
+
+class OrganizationsSupportTicketSerializer(serializers.ModelSerializer):
+    class Meta:
+        """_summary_"""
+
+        model = Organization
+        fields = (
+            "name",
+            "hero_image",
+            "phone_number",
+            "logo",
+        )
+
+class UserOrganizationMapSerializerSupport(serializers.ModelSerializer):
+    user = UserSupportTicketSerializer()
+    organization = OrganizationsSupportTicketSerializer()
+
+    class Meta:
+        model = UserOrganizationMap
+        exclude = Constants.EXCLUDE_DATES
+
+
+class SupportTicketV2Serializer(serializers.ModelSerializer):
+    user_map = UserOrganizationMapSerializerSupport()
+
+    class Meta:
+        model = SupportTicketV2
+        fields = '__all__'
