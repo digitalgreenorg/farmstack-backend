@@ -123,5 +123,38 @@ class ConnectorsMap(TimeStampMixin):
     status = models.BooleanField(default=True)
 
 
+@auto_str
+class SupportTicketV2(TimeStampMixin):
+    """SupportTicket model of all the participant users"""
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    ticket_title = models.CharField(max_length=255)
+    user_map = models.ForeignKey(UserOrganizationMap, on_delete=models.CASCADE)
+    description = models.CharField(max_length=1000, null=True)
+    category = models.CharField(max_length=255, null=False, choices=CATEGORY)
+    ticket_attachment = models.FileField(
+        upload_to=settings.SUPPORT_TICKET_FILES_URL,
+        null=True,
+        blank=True,
+        validators=[validate_file_size],
+    )
+    status = models.CharField(max_length=255, null=False, default="closed", choices=STATUS)
+
+    class Meta:
+        db_table = "support_ticket_v2"
 
 
+@auto_str
+class Resolution(TimeStampMixin):
+    """SupportTicket model of all the participant users"""
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    ticket = models.ForeignKey(SupportTicketV2, on_delete=models.CASCADE)
+    resolution_text = models.CharField(max_length=1000)
+    solution_attachments = models.FileField(
+        upload_to=settings.RESOLUTIONS_ATTACHMENT_URL,
+        null=True,
+        blank=True,
+        validators=[validate_file_size],
+    )
+
+    class Meta:
+        db_table = "resolution"
