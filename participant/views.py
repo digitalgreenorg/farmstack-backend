@@ -17,7 +17,20 @@ import pandas as pd
 import psycopg2
 import requests
 import xlwt
+from django.conf import settings
+from django.core.exceptions import ValidationError
+from django.db.models import Q
+from django.db.models.functions import Lower
+from django.shortcuts import render
+from rest_framework import pagination, status
+from rest_framework.decorators import action, permission_classes
 from rest_framework.generics import get_object_or_404
+from rest_framework.parsers import JSONParser
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
+from rest_framework.viewsets import GenericViewSet, ViewSet
+from uritemplate import partial
+
 from accounts.models import User
 from core.constants import Constants
 from core.utils import (
@@ -37,28 +50,14 @@ from datahub.models import (
     UserOrganizationMap,
 )
 from datahub.serializers import DatasetFileV2NewSerializer
-from django.conf import settings
-from django.core.exceptions import ValidationError
-from django.db.models import Q
-from django.db.models.functions import Lower
-from django.shortcuts import render
-from rest_framework import pagination, status
-from rest_framework.decorators import action, permission_classes
-from rest_framework.parsers import JSONParser
-from rest_framework.permissions import IsAuthenticated
-from rest_framework.response import Response
-from rest_framework.viewsets import GenericViewSet, ViewSet
-from uritemplate import partial
-from utils import string_functions
-from utils.connector_utils import run_containers, stop_containers
-
 from participant.models import (
     Connectors,
     ConnectorsMap,
     Department,
-    Project
-, SupportTicketV2,
-    SupportTicket)
+    Project,
+    SupportTicket,
+    SupportTicketV2,
+)
 from participant.serializers import (
     ConnectorListSerializer,
     ConnectorsConsumerRelationSerializer,
@@ -70,6 +69,7 @@ from participant.serializers import (
     ConnectorsRetriveSerializer,
     ConnectorsSerializer,
     ConnectorsSerializerForEmail,
+    CreateSupportTicketV2Serializer,
     DatabaseColumnRetrieveSerializer,
     DatabaseConfigSerializer,
     DatabaseDataExportSerializer,
@@ -82,7 +82,11 @@ from participant.serializers import (
     ParticipantSupportTicketSerializer,
     ProjectDepartmentSerializer,
     ProjectSerializer,
-    TicketSupportSerializer, SupportTicketV2Serializer, CreateSupportTicketV2Serializer, )
+    SupportTicketV2Serializer,
+    TicketSupportSerializer,
+)
+from utils import string_functions
+from utils.connector_utils import run_containers, stop_containers
 from utils.jwt_services import http_request_mutation
 
 LOGGER = logging.getLogger(__name__)
@@ -93,6 +97,7 @@ from django.http import HttpResponse, JsonResponse
 from rest_framework import status
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
+
 from utils import file_operations as file_ops
 
 
@@ -1440,10 +1445,12 @@ class DataBaseViewSet(GenericViewSet):
                         status=status.HTTP_400_BAD_REQUEST,
                     )
                 elif err.errno == mysql.connector.errorcode.ER_NO_SUCH_TABLE:
-                    return Response({"table": ["Table does not exist"]}, status=status.HTTP_400_BAD_REQUEST)
+                    return Response({"table": ["Table does not exist"]},
+                                     status=status.HTTP_400_BAD_REQUEST)
                 elif err.errno == mysql.connector.errorcode.ER_BAD_DB_ERROR:
                     # Port is incorrect
-                    return Response({"port": ["Incorrect port"]}, status=status.HTTP_400_BAD_REQUEST)
+                    return Response({"port": ["Incorrect port"],
+                                     "database": ["Incorrect database name"],}, status=status.HTTP_400_BAD_REQUEST)
                 # Return an error message if the connection fails
                 return Response({"error": [str(err)]}, status=status.HTTP_400_BAD_REQUEST)
             except Exception as e:
@@ -1468,12 +1475,14 @@ class DataBaseViewSet(GenericViewSet):
                 LOGGER.error(error, exc_info=True)
                 if str(error).__contains__("password authentication failed for user"):
                     return Response(
-                        {"user": ["Invalid username or password"], "password": ["Invalid username or password."]},
+                        {"user": ["Invalid username or password"], 
+                         "password": ["Invalid username or password."]},
                         status=status.HTTP_400_BAD_REQUEST,
                     )
                 elif str(error).__contains__("does not exist"):
                     return Response(
-                        {"dbname": ["Invalid database name. Connection Failed."]}, status=status.HTTP_400_BAD_REQUEST
+                        {"dbname": ["Invalid database name. Connection Failed."]},
+                          status=status.HTTP_400_BAD_REQUEST
                     )
                 else:
                     return Response(
