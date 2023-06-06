@@ -1762,14 +1762,14 @@ class SupportTicketV2ModelViewSet(GenericViewSet):
         object.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
 
-    @http_request_mutation
-    @action(detail=False, methods=["get"])
-
-    def filter_support_tickets(self,request,*args,**kwargs):
-      for i in range(0,40):
-          SupportTicketV2.objects.create(
-              ticket_title=f'some_ticket_title{i}',
-              description=f'some_ticket_desc{i}',
-              category="datasets",
-              user_map_id='65ffcfd2-acb6-431d-8969-dc53ecfd8723'
-          )
+    # @http_request_mutation
+    # @action(detail=False, methods=["get"])
+    #
+    # def filter_support_tickets(self,request,*args,**kwargs):
+    #   for i in range(0,40):
+    #       SupportTicketV2.objects.create(
+    #           ticket_title=f'some_ticket_title{i}',
+    #           description=f'some_ticket_desc{i}',
+    #           category="datasets",
+    #           user_map_id='65ffcfd2-acb6-431d-8969-dc53ecfd8723'
+    #       )
