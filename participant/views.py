@@ -1441,6 +1441,9 @@ class DataBaseViewSet(GenericViewSet):
                     )
                 elif err.errno == mysql.connector.errorcode.ER_NO_SUCH_TABLE:
                     return Response({"table": ["Table does not exist"]}, status=status.HTTP_400_BAD_REQUEST)
+                elif err.errno == mysql.connector.errorcode.ER_BAD_DB_ERROR:
+                    # Port is incorrect
+                    return Response({"port": ["Incorrect port"]}, status=status.HTTP_400_BAD_REQUEST)
                 # Return an error message if the connection fails
                 return Response({"error": [str(err)]}, status=status.HTTP_400_BAD_REQUEST)
             except Exception as e:
