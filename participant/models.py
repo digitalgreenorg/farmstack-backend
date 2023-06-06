@@ -148,6 +148,8 @@ class Resolution(TimeStampMixin):
     """SupportTicket model of all the participant users"""
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     ticket = models.ForeignKey(SupportTicketV2, on_delete=models.CASCADE)
+    # reference FK to the resolution providing authority
+    user_map = models.ForeignKey(UserOrganizationMap, on_delete=models.CASCADE,null=True)
     resolution_text = models.CharField(max_length=1000)
     solution_attachments = models.FileField(
         upload_to=settings.RESOLUTIONS_ATTACHMENT_URL,
