@@ -82,7 +82,7 @@ from participant.serializers import (
     ParticipantSupportTicketSerializer,
     ProjectDepartmentSerializer,
     ProjectSerializer,
-    TicketSupportSerializer, SupportTicketV2Serializer, )
+    TicketSupportSerializer, SupportTicketV2Serializer, CreateSupportTicketV2Serializer, )
 from utils.jwt_services import http_request_mutation
 
 LOGGER = logging.getLogger(__name__)
@@ -1741,7 +1741,7 @@ class SupportTicketV2ModelViewSet(GenericViewSet):
 
     # API to create a new object
     def create(self, request):
-        serializer = self.get_serializer(data=request.data)
+        serializer = CreateSupportTicketV2Serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         object = serializer.save()
         return Response(serializer.data, status=status.HTTP_201_CREATED)
