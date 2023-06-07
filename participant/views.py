@@ -22,6 +22,7 @@ from django.core.exceptions import ValidationError
 from django.db.models import Q
 from django.db.models.functions import Lower
 from django.shortcuts import render
+from psycopg2 import errorcodes
 from rest_framework import pagination, status
 from rest_framework.decorators import action, permission_classes
 from rest_framework.generics import get_object_or_404
@@ -1415,7 +1416,6 @@ class DataBaseViewSet(GenericViewSet):
         cookie_data = serializer.data
         config = serializer.validated_data
         config.pop("database_type")  # remove database_type before passing it to db conn
-
         if database_type == Constants.SOURCE_MYSQL_FILE_TYPE:
             """Create a MySQL connection object on valid database credentials and return tables"""
             LOGGER.info(f"Connecting to {database_type}")
@@ -1466,32 +1466,43 @@ class DataBaseViewSet(GenericViewSet):
                     with closing(conn.cursor()) as cursor:
                         cursor.execute("SELECT table_name FROM information_schema.tables WHERE table_schema='public';")
                         table_list = cursor.fetchall()
-
+                # conn = psycopg2.connect(**config)
+                # cursor = conn.cursor()
+                # cursor.execute("SELECT table_name FROM information_schema.tables WHERE table_schema='public';")
+                # table_list = cursor.fetchall()
                 # send the tables as a list in response body & set cookies
                 tables = [table for inner_list in table_list for table in inner_list]
                 response = HttpResponse(json.dumps(tables), status=status.HTTP_200_OK)
                 response = update_cookies("conn_details", cookie_data, response)
                 return response
-            except Exception as error:
-                LOGGER.error(error, exc_info=True)
-                if str(error).__contains__("password authentication failed for user"):
-                    return Response(
-                        {"user": ["Invalid username or password"], 
-                         "password": ["Invalid username or password."]},
-                        status=status.HTTP_400_BAD_REQUEST,
-                    )
-                elif str(error).__contains__("does not exist"):
-                    return Response(
-                        {"dbname": ["Invalid database name. Connection Failed."]},
-                          status=status.HTTP_400_BAD_REQUEST
-                    )
-                else:
+            except psycopg2.Error as err:
+                if "password authentication failed for user" in str(err):
+                    # Incorrect username or password
                     return Response(
                         {
-                            "host": ["Invalid host. Connection Failed."],
+                            "username": ["Incorrect username or password"],
+                            "password": ["Incorrect username or password"],
                         },
                         status=status.HTTP_400_BAD_REQUEST,
                     )
+                elif "database" in str(err):
+                    # Database does not exist
+                    return Response({"dbname": ["Database does not exist"]}, status=status.HTTP_400_BAD_REQUEST)
+                elif "to address: nodename nor servname provided, or not known" in str(err):
+                    # Database does not exist
+                    return Response({"Host": ["Invalid Host address"]}, status=status.HTTP_400_BAD_REQUEST)
+                
+                elif "Operation timed out" in str(err):
+                    # Server is not available
+                    return Response({"port": ["Invalid port or DB Server is down"]}, status=status.HTTP_400_BAD_REQUEST)
+                
+                # Return an error message if the connection fails
+                return Response({"error": [str(err)]}, status=status.HTTP_400_BAD_REQUEST)
+
+
+
+
+
 
     @action(detail=False, methods=["post"])
     def database_col_names(self, request):
