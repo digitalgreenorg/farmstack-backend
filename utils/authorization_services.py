@@ -8,6 +8,7 @@ from rest_framework.response import Response
 from rest_framework_simplejwt.authentication import JWTAuthentication
 
 from accounts.models import User
+from participant.models import SupportTicketV2
 from utils.jwt_services import JWTServices
 
 
@@ -29,21 +30,56 @@ class AuthorizationServices:
 
 def role_authorization(view_func):
     @wraps(view_func)
-    def wrapper(self, request, *args, **kwargs):
+    def wrapper(self, request, pk, *args, **kwargs):
         payload = JWTServices.extract_information_from_token(request=request)
 
         request.META["user_id"] = payload.get("user_id")
         request.META["org_id"] = payload.get("org_id")
         request.META["map_id"] = payload.get("map_id")
-        request.META["onboarded_by"] = payload.get("onboarded_by", None)
+        request.META["onboarded_by"] = payload.get("onboarded_by")
         request.META["role_id"] = payload.get("role_id")
-        # check the relationship coupling
 
-        role = identify_user()
-        return view_func(self, request, *args, **kwargs)
+
+        # if pk is not coming then the api is only for access
+        if not pk:
+            validation = validate_role_for_access(
+                onboarding_by_id=payload.get("onboarded_by"),
+                user_id=payload.get("user_id"),
+                role_id=payload.get("role_id")
+            )
+
+        # if pk is coming then api has an update / delete logic
+        else:
+            validation = validate_role_for_updatedelete(
+                map_id=payload.get("map_id"),
+                ticket_id=pk
+            )
+
+        if not validation:
+            return Response(
+                {"message": "Authorization Failed. You do not have access to this resource."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        return view_func(self, request, pk, *args, **kwargs)
 
     return wrapper
 
 
-def identify_user():
-    return True
+def validate_role_for_access(onboarding_by_id: Union[str, None], user_id: str, role_id: str):
+    if onboarding_by_id is None and role_id == 1:
+        return True
+
+    elif onboarding_by_id is not None and onboarding_by_id == user_id:
+        return True
+
+    return False
+
+
+def validate_role_for_updatedelete(map_id: str, ticket_id: str):
+    try:
+        ticket = SupportTicketV2.objects.get(id=ticket_id)
+        return True if str(ticket.user_map_id) == str(map_id) else False
+
+    except SupportTicketV2.DoesNotExist:
+        return False

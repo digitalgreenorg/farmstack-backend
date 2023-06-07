@@ -1737,7 +1737,7 @@ class SupportTicketV2ModelViewSet(GenericViewSet):
     serializer_class = SupportTicketV2Serializer
     pagination_class = CustomPagination
 
-    @role_authorization
+    @http_request_mutation
     def list(self, request):
         queryset = self.get_queryset()
         map_id = request.META.get('map_id')
@@ -1748,20 +1748,23 @@ class SupportTicketV2ModelViewSet(GenericViewSet):
 
     # API to retrieve a single object by its ID
 
+    @http_request_mutation
     def retrieve(self, request, pk=None):
         queryset = self.get_queryset()
-        object = get_object_or_404(queryset, pk=pk)
+        print(request.META.get("map_id"))
+        object = get_object_or_404(queryset, pk=pk,user_map_id=request.META.get("map_id"))
         serializer = self.get_serializer(object)
         return Response(serializer.data)
 
     # API to create a new object
+    @http_request_mutation
     def create(self, request):
         serializer = CreateSupportTicketV2Serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         object = serializer.save()
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
-    # API to update an existing object by its ID
+    @role_authorization
     def update(self, request, pk=None):
         queryset = self.get_queryset()
         object = get_object_or_404(queryset, pk=pk)
@@ -1771,6 +1774,7 @@ class SupportTicketV2ModelViewSet(GenericViewSet):
         return Response(serializer.data)
 
     # API to delete an existing object by its ID
+    @role_authorization
     def destroy(self, request, pk=None):
         queryset = self.get_queryset()
         object = get_object_or_404(queryset, pk=pk)
