@@ -4,7 +4,6 @@ from typing import Union
 from rest_framework import status
 from rest_framework.request import Request
 from rest_framework.response import Response
-
 from rest_framework_simplejwt.authentication import JWTAuthentication
 
 from accounts.models import User
@@ -41,19 +40,21 @@ def role_authorization(view_func):
 
 
         # if pk is not coming then the api is only for access
-        if not pk:
-            validation = validate_role_for_access(
-                onboarding_by_id=payload.get("onboarded_by"),
-                user_id=payload.get("user_id"),
-                role_id=payload.get("role_id")
-            )
+        # if not pk:
+        validation = validate_role_for_access(
+            onboarding_by_id=payload.get("onboarded_by"),
+            user_id=payload.get("user_id"),
+            role_id=payload.get("role_id"),
+            map_id = payload.get("map_id"),
+            pk=pk,
+        )
 
         # if pk is coming then api has an update / delete logic
-        else:
-            validation = validate_role_for_updatedelete(
-                map_id=payload.get("map_id"),
-                ticket_id=pk
-            )
+        # else:
+        #     validation = validate_role_for_updatedelete(
+        #         map_id=payload.get("map_id"),
+        #         ticket_id=pk
+        #     )
 
         if not validation:
             return Response(
@@ -66,20 +67,21 @@ def role_authorization(view_func):
     return wrapper
 
 
-def validate_role_for_access(onboarding_by_id: Union[str, None], user_id: str, role_id: str):
+def validate_role_for_access(onboarding_by_id: Union[str, None],
+                              user_id: str, role_id: str,  map_id: str, pk: str):
     if onboarding_by_id is None and role_id == 1:
         return True
-
     elif onboarding_by_id is not None and onboarding_by_id == user_id:
         return True
-
+    elif SupportTicketV2.objects.get(id=pk, user_map_id=map_id):
+        return True
     return False
 
 
-def validate_role_for_updatedelete(map_id: str, ticket_id: str):
-    try:
-        ticket = SupportTicketV2.objects.get(id=ticket_id)
-        return True if str(ticket.user_map_id) == str(map_id) else False
+# def validate_role_for_updatedelete(map_id: str, ticket_id: str):
+#     try:
+#         ticket = SupportTicketV2.objects.get(id=ticket_id)
+#         return True if str(ticket.user_map_id) == str(map_id) else False
 
-    except SupportTicketV2.DoesNotExist:
-        return False
+#     except SupportTicketV2.DoesNotExist:
+#         return False
