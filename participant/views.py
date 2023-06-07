@@ -87,6 +87,7 @@ from participant.serializers import (
     TicketSupportSerializer, CreateSupportTicketResolutionsSerializer, SupportTicketResolutionsSerializer,
 )
 from utils import string_functions
+from utils.authorization_services import role_authorization
 from utils.connector_utils import run_containers, stop_containers
 from utils.jwt_services import http_request_mutation
 
@@ -1736,16 +1737,17 @@ class SupportTicketV2ModelViewSet(GenericViewSet):
     serializer_class = SupportTicketV2Serializer
     pagination_class = CustomPagination
 
-    @http_request_mutation
+    @role_authorization
     def list(self, request):
         queryset = self.get_queryset()
         map_id = request.META.get('map_id')
-        queryset = queryset.filter(user_map=map_id)
+        queryset = queryset.filter(user_map=map_id).order_by("created_at")
         page = self.paginate_queryset(queryset)
         support_tickets_serializer = SupportTicketV2Serializer(page, many=True)
         return self.get_paginated_response(support_tickets_serializer.data)
 
     # API to retrieve a single object by its ID
+
     def retrieve(self, request, pk=None):
         queryset = self.get_queryset()
         object = get_object_or_404(queryset, pk=pk)
@@ -1791,52 +1793,50 @@ class SupportTicketV2ModelViewSet(GenericViewSet):
     #     support_tickets_serializer = SupportTicketV2Serializer(page, many=True)
     #     return self.get_paginated_response(support_tickets_serializer.data)
 
-    class SupportTicketResolutionsViewset(GenericViewSet):
-        parser_class = JSONParser
-        queryset = Resolution.objects.all()
-        serializer_class = SupportTicketResolutionsSerializer
-        pagination_class = CustomPagination
 
-        @http_request_mutation
-        def list(self, request):
-            queryset = self.get_queryset()
-            map_id = request.META.get('map_id')
-            queryset = queryset.filter(user_map=map_id).order_by("created_at")
-            page = self.paginate_queryset(queryset)
-            support_tickets_serializer = SupportTicketResolutionsSerializer(page, many=True)
-            return self.get_paginated_response(support_tickets_serializer.data)
+class SupportTicketResolutionsViewset(GenericViewSet):
+    parser_class = JSONParser
+    queryset = Resolution.objects.all()
+    serializer_class = SupportTicketResolutionsSerializer
+    pagination_class = CustomPagination
 
-        # API to retrieve a single object by its ID
-        def retrieve(self, request, pk=None):
-            queryset = self.get_queryset()
-            object = get_object_or_404(queryset, pk=pk)
-            serializer = self.get_serializer(object)
-            return Response(serializer.data)
+    def list(self, request):
+        queryset = self.get_queryset()
+        map_id = request.META.get('map_id')
+        queryset = queryset.filter(user_map=map_id).order_by("created_at")
+        page = self.paginate_queryset(queryset)
+        support_tickets_serializer = SupportTicketResolutionsSerializer(page, many=True)
+        return self.get_paginated_response(support_tickets_serializer.data)
 
-        # API to create a new object
-        @http_request_mutation
-        def create(self, request):
-            # set map in in request object
-            request.data["user_map"] = request.META.get("map_id")
-            serializer = CreateSupportTicketResolutionsSerializer(data=request.data)
-            serializer.is_valid(raise_exception=True)
-            object = serializer.save()
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
+    # API to retrieve a single object by its ID
+    def retrieve(self, request, pk=None):
+        queryset = self.get_queryset()
+        object = get_object_or_404(queryset, pk=pk)
+        serializer = self.get_serializer(object)
+        return Response(serializer.data)
 
-        # API to update an existing object by its ID
-        def update(self, request, pk=None):
-            queryset = self.get_queryset()
-            object = get_object_or_404(queryset, pk=pk)
-            serializer = self.get_serializer(object, data=request.data)
-            serializer.is_valid(raise_exception=True)
-            object = serializer.save()
-            return Response(serializer.data)
+    # API to create a new object
 
-        # API to delete an existing object by its ID
-        def destroy(self, request, pk=None):
-            queryset = self.get_queryset()
-            object = get_object_or_404(queryset, pk=pk)
-            object.delete()
-            return Response(status=status.HTTP_204_NO_CONTENT)
+    def create(self, request):
+        # set map in in request object
+        request.data["user_map"] = request.META.get("map_id")
+        serializer = CreateSupportTicketResolutionsSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        object = serializer.save()
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
 
+    # API to update an existing object by its ID
+    def update(self, request, pk=None):
+        queryset = self.get_queryset()
+        object = get_object_or_404(queryset, pk=pk)
+        serializer = self.get_serializer(object, data=request.data)
+        serializer.is_valid(raise_exception=True)
+        object = serializer.save()
+        return Response(serializer.data)
 
+    # API to delete an existing object by its ID
+    def destroy(self, request, pk=None):
+        queryset = self.get_queryset()
+        object = get_object_or_404(queryset, pk=pk)
+        object.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
