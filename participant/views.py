@@ -1450,7 +1450,7 @@ class DataBaseViewSet(GenericViewSet):
                 elif err.errno == mysql.connector.errorcode.ER_BAD_DB_ERROR:
                     # Port is incorrect
                     return Response({
-                            "database": ["Invalid database name. Connection Failed."]}
+                            "dbname": ["Invalid database name. Connection Failed."]}
                             ,status=status.HTTP_400_BAD_REQUEST)
                 # Return an error message if the connection fails
                 return Response({"host": ["Invalid host . Connection Failed."]}, status=status.HTTP_400_BAD_REQUEST)
