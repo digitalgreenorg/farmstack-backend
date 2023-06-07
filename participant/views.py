@@ -1484,7 +1484,7 @@ class DataBaseViewSet(GenericViewSet):
                 elif "database" in str(err):
                     # Database does not exist
                     return Response({"dbname": ["Database does not exist"]}, status=status.HTTP_400_BAD_REQUEST)
-                elif "to address: nodename nor servname provided, or not known" in str(err):
+                elif "could not translate host name" in str(err):
                     # Database does not exist
                     return Response({"Host": ["Invalid Host address"]}, status=status.HTTP_400_BAD_REQUEST)
                 
