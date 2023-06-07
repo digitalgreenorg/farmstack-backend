@@ -38,23 +38,13 @@ def role_authorization(view_func):
         request.META["onboarded_by"] = payload.get("onboarded_by")
         request.META["role_id"] = payload.get("role_id")
 
-
-        # if pk is not coming then the api is only for access
-        # if not pk:
         validation = validate_role_for_access(
             onboarding_by_id=payload.get("onboarded_by"),
             user_id=payload.get("user_id"),
             role_id=payload.get("role_id"),
-            map_id = payload.get("map_id"),
+            map_id=payload.get("map_id"),
             pk=pk,
         )
-
-        # if pk is coming then api has an update / delete logic
-        # else:
-        #     validation = validate_role_for_updatedelete(
-        #         map_id=payload.get("map_id"),
-        #         ticket_id=pk
-        #     )
 
         if not validation:
             return Response(
@@ -68,20 +58,16 @@ def role_authorization(view_func):
 
 
 def validate_role_for_access(onboarding_by_id: Union[str, None],
-                              user_id: str, role_id: str,  map_id: str, pk: str):
+                             user_id: str, role_id: str, map_id: str, pk: str):
     if onboarding_by_id is None and role_id == 1:
         return True
     elif onboarding_by_id is not None and onboarding_by_id == user_id:
         return True
-    elif SupportTicketV2.objects.get(id=pk, user_map_id=map_id):
-        return True
+    else:
+        try:
+            ticket = SupportTicketV2.objects.get(id=pk, user_map_id=map_id)
+            if ticket:
+                return True
+        except SupportTicketV2.DoesNotExist:
+            return False
     return False
-
-
-# def validate_role_for_updatedelete(map_id: str, ticket_id: str):
-#     try:
-#         ticket = SupportTicketV2.objects.get(id=ticket_id)
-#         return True if str(ticket.user_map_id) == str(map_id) else False
-
-#     except SupportTicketV2.DoesNotExist:
-#         return False
