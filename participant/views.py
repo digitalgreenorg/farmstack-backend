@@ -75,10 +75,9 @@ from participant.models import (
     Project,
     SupportTicket,
     SupportTicketV2,
+    Resolution
 )
-    Project
-, SupportTicketV2,
-    SupportTicket, Resolution)
+
 from participant.serializers import (
     ConnectorListSerializer,
     ConnectorsConsumerRelationSerializer,
@@ -104,12 +103,10 @@ from participant.serializers import (
     ProjectDepartmentSerializer,
     ProjectSerializer,
     SupportTicketV2Serializer,
-    TicketSupportSerializer,
+    TicketSupportSerializer, SupportTicketResolutionsSerializer, CreateSupportTicketResolutionsSerializer,
 )
 from utils import string_functions
 from utils.connector_utils import run_containers, stop_containers
-    TicketSupportSerializer, SupportTicketV2Serializer, CreateSupportTicketV2Serializer,
-    SupportTicketResolutionsSerializer, CreateSupportTicketResolutionsSerializer, )
 from utils.jwt_services import http_request_mutation
 
 LOGGER = logging.getLogger(__name__)
