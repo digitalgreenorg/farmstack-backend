@@ -87,7 +87,7 @@ from participant.serializers import (
     TicketSupportSerializer, CreateSupportTicketResolutionsSerializer, SupportTicketResolutionsSerializer,
 )
 from utils import string_functions
-from utils.authorization_services import role_authorization
+from utils.authorization_services import support_ticket_role_authorization
 from utils.connector_utils import run_containers, stop_containers
 from utils.jwt_services import http_request_mutation
 
@@ -1764,7 +1764,7 @@ class SupportTicketV2ModelViewSet(GenericViewSet):
         object = serializer.save()
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
-    @role_authorization
+    @support_ticket_role_authorization
     def update(self, request, pk=None):
         queryset = self.get_queryset()
         object = get_object_or_404(queryset, pk=pk)
@@ -1774,7 +1774,7 @@ class SupportTicketV2ModelViewSet(GenericViewSet):
         return Response(serializer.data)
 
     # API to delete an existing object by its ID
-    @role_authorization
+    @support_ticket_role_authorization
     def destroy(self, request, pk=None):
         queryset = self.get_queryset()
         object = get_object_or_404(queryset, pk=pk)

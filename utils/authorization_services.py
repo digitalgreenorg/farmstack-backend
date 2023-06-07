@@ -27,7 +27,7 @@ class AuthorizationServices:
         return mapping
 
 
-def role_authorization(view_func):
+def support_ticket_role_authorization(view_func):
     @wraps(view_func)
     def wrapper(self, request, pk, *args, **kwargs):
         payload = JWTServices.extract_information_from_token(request=request)
@@ -38,7 +38,7 @@ def role_authorization(view_func):
         request.META["onboarded_by"] = payload.get("onboarded_by")
         request.META["role_id"] = payload.get("role_id")
 
-        validation = validate_role_for_access(
+        validation = validate_role_modify(
             onboarding_by_id=payload.get("onboarded_by"),
             user_id=payload.get("user_id"),
             role_id=payload.get("role_id"),
@@ -57,8 +57,7 @@ def role_authorization(view_func):
     return wrapper
 
 
-def validate_role_for_access(onboarding_by_id: Union[str, None],
-                             user_id: str, role_id: str, map_id: str, pk: str):
+def validate_role_modify(onboarding_by_id: Union[str, None],user_id: str, role_id: str, map_id: str, pk: str):
     if onboarding_by_id is None and role_id == 1:
         return True
     elif onboarding_by_id is not None and onboarding_by_id == user_id:
@@ -66,8 +65,6 @@ def validate_role_for_access(onboarding_by_id: Union[str, None],
     else:
         try:
             ticket = SupportTicketV2.objects.get(id=pk, user_map_id=map_id)
-            if ticket:
-                return True
+            return True if ticket else False
         except SupportTicketV2.DoesNotExist:
             return False
-    return False
