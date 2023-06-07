@@ -17,7 +17,21 @@ import pandas as pd
 import psycopg2
 import requests
 import xlwt
+from django.conf import settings
+from django.core.exceptions import ValidationError
+from django.db.models import Q
+from django.db.models.functions import Lower
+from django.shortcuts import render
+from psycopg2 import errorcodes
+from rest_framework import pagination, status
+from rest_framework.decorators import action, permission_classes
 from rest_framework.generics import get_object_or_404
+from rest_framework.parsers import JSONParser
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
+from rest_framework.viewsets import GenericViewSet, ViewSet
+from uritemplate import partial
+
 from accounts.models import User
 from core.constants import Constants
 from core.utils import (
@@ -58,6 +72,10 @@ from participant.models import (
     Connectors,
     ConnectorsMap,
     Department,
+    Project,
+    SupportTicket,
+    SupportTicketV2,
+)
     Project
 , SupportTicketV2,
     SupportTicket, Resolution)
@@ -72,6 +90,7 @@ from participant.serializers import (
     ConnectorsRetriveSerializer,
     ConnectorsSerializer,
     ConnectorsSerializerForEmail,
+    CreateSupportTicketV2Serializer,
     DatabaseColumnRetrieveSerializer,
     DatabaseConfigSerializer,
     DatabaseDataExportSerializer,
@@ -84,6 +103,11 @@ from participant.serializers import (
     ParticipantSupportTicketSerializer,
     ProjectDepartmentSerializer,
     ProjectSerializer,
+    SupportTicketV2Serializer,
+    TicketSupportSerializer,
+)
+from utils import string_functions
+from utils.connector_utils import run_containers, stop_containers
     TicketSupportSerializer, SupportTicketV2Serializer, CreateSupportTicketV2Serializer,
     SupportTicketResolutionsSerializer, CreateSupportTicketResolutionsSerializer, )
 from utils.jwt_services import http_request_mutation
@@ -1443,9 +1467,15 @@ class DataBaseViewSet(GenericViewSet):
                         status=status.HTTP_400_BAD_REQUEST,
                     )
                 elif err.errno == mysql.connector.errorcode.ER_NO_SUCH_TABLE:
-                    return Response({"table": ["Table does not exist"]}, status=status.HTTP_400_BAD_REQUEST)
+                    return Response({"table": ["Table does not exist"]},
+                                     status=status.HTTP_400_BAD_REQUEST)
+                elif err.errno == mysql.connector.errorcode.ER_BAD_DB_ERROR:
+                    # Port is incorrect
+                    return Response({
+                            "database": ["Invalid database name. Connection Failed."]}
+                            ,status=status.HTTP_400_BAD_REQUEST)
                 # Return an error message if the connection fails
-                return Response({"error": [str(err)]}, status=status.HTTP_400_BAD_REQUEST)
+                return Response({"host": ["Invalid host . Connection Failed."]}, status=status.HTTP_400_BAD_REQUEST)
             except Exception as e:
                 return Response(str(e), status=status.HTTP_400_BAD_REQUEST)
 
@@ -1730,7 +1760,7 @@ class SupportTicketV2ModelViewSet(GenericViewSet):
     def list(self, request):
         queryset = self.get_queryset()
         map_id = request.META.get('map_id')
-        queryset = queryset.filter(user_map=map_id).order_by("created_at")
+        queryset = queryset.filter(user_map=map_id)
         page = self.paginate_queryset(queryset)
         support_tickets_serializer = SupportTicketV2Serializer(page, many=True)
         return self.get_paginated_response(support_tickets_serializer.data)
