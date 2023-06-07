@@ -1466,10 +1466,6 @@ class DataBaseViewSet(GenericViewSet):
                     with closing(conn.cursor()) as cursor:
                         cursor.execute("SELECT table_name FROM information_schema.tables WHERE table_schema='public';")
                         table_list = cursor.fetchall()
-                # conn = psycopg2.connect(**config)
-                # cursor = conn.cursor()
-                # cursor.execute("SELECT table_name FROM information_schema.tables WHERE table_schema='public';")
-                # table_list = cursor.fetchall()
                 # send the tables as a list in response body & set cookies
                 tables = [table for inner_list in table_list for table in inner_list]
                 response = HttpResponse(json.dumps(tables), status=status.HTTP_200_OK)
@@ -1498,11 +1494,6 @@ class DataBaseViewSet(GenericViewSet):
                 
                 # Return an error message if the connection fails
                 return Response({"error": [str(err)]}, status=status.HTTP_400_BAD_REQUEST)
-
-
-
-
-
 
     @action(detail=False, methods=["post"])
     def database_col_names(self, request):
