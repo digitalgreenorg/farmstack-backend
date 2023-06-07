@@ -1472,7 +1472,7 @@ class DataBaseViewSet(GenericViewSet):
                 response = update_cookies("conn_details", cookie_data, response)
                 return response
             except psycopg2.Error as err:
-                if "password authentication failed for user" in str(err):
+                if "password authentication failed for user" or "role" in str(err):
                     # Incorrect username or password
                     return Response(
                         {
