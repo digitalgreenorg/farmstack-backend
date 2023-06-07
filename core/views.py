@@ -1,4 +1,5 @@
 
+import mimetypes
 import os
 from tokenize import TokenError
 
@@ -53,7 +54,14 @@ def protected_media_view(request):
     file_path = os.path.join(settings.DATASET_FILES_URL, file_path)
     if not os.path.exists(file_path):
         return HttpResponseNotFound('File not found', 404)
+    # Get the MIME type based on the file extension
+    mime_type, _ = mimetypes.guess_type(file_path)
+
     response = FileResponse(open(file_path, 'rb'))
+    if mime_type is not None:
+    # Set the Content-Type header
+        response['Content-Type'] = mime_type
+
     return response
 
 def extract_jwt(request):

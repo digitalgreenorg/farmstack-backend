@@ -17,6 +17,21 @@ import pandas as pd
 import psycopg2
 import requests
 import xlwt
+from django.conf import settings
+from django.core.exceptions import ValidationError
+from django.db.models import Q
+from django.db.models.functions import Lower
+from django.shortcuts import render
+from psycopg2 import errorcodes
+from rest_framework import pagination, status
+from rest_framework.decorators import action, permission_classes
+from rest_framework.generics import get_object_or_404
+from rest_framework.parsers import JSONParser
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
+from rest_framework.viewsets import GenericViewSet, ViewSet
+from uritemplate import partial
+
 from accounts.models import User
 from core.constants import Constants
 from core.utils import (
@@ -36,27 +51,13 @@ from datahub.models import (
     UserOrganizationMap,
 )
 from datahub.serializers import DatasetFileV2NewSerializer
-from django.conf import settings
-from django.core.exceptions import ValidationError
-from django.db.models import Q
-from django.db.models.functions import Lower
-from django.shortcuts import render
-from rest_framework import pagination, status
-from rest_framework.decorators import action, permission_classes
-from rest_framework.parsers import JSONParser
-from rest_framework.permissions import IsAuthenticated
-from rest_framework.response import Response
-from rest_framework.viewsets import GenericViewSet, ViewSet
-from uritemplate import partial
-from utils import string_functions
-from utils.connector_utils import run_containers, stop_containers
-
 from participant.models import (
     Connectors,
     ConnectorsMap,
     Department,
     Project,
     SupportTicket,
+    SupportTicketV2,
 )
 from participant.serializers import (
     ConnectorListSerializer,
@@ -69,6 +70,7 @@ from participant.serializers import (
     ConnectorsRetriveSerializer,
     ConnectorsSerializer,
     ConnectorsSerializerForEmail,
+    CreateSupportTicketV2Serializer,
     DatabaseColumnRetrieveSerializer,
     DatabaseConfigSerializer,
     DatabaseDataExportSerializer,
@@ -81,8 +83,11 @@ from participant.serializers import (
     ParticipantSupportTicketSerializer,
     ProjectDepartmentSerializer,
     ProjectSerializer,
+    SupportTicketV2Serializer,
     TicketSupportSerializer,
 )
+from utils import string_functions
+from utils.connector_utils import run_containers, stop_containers
 from utils.jwt_services import http_request_mutation
 
 LOGGER = logging.getLogger(__name__)
@@ -93,6 +98,7 @@ from django.http import HttpResponse, JsonResponse
 from rest_framework import status
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
+
 from utils import file_operations as file_ops
 
 
@@ -826,7 +832,6 @@ class ParticipantConnectorsViewSet(GenericViewSet):
             status=400,
         )
 
-
     @action(detail=False, methods=["post"])
     @http_request_mutation
     def connectors_filters(self, request, *args, **kwargs):
@@ -1411,7 +1416,6 @@ class DataBaseViewSet(GenericViewSet):
         cookie_data = serializer.data
         config = serializer.validated_data
         config.pop("database_type")  # remove database_type before passing it to db conn
-
         if database_type == Constants.SOURCE_MYSQL_FILE_TYPE:
             """Create a MySQL connection object on valid database credentials and return tables"""
             LOGGER.info(f"Connecting to {database_type}")
@@ -1441,9 +1445,15 @@ class DataBaseViewSet(GenericViewSet):
                         status=status.HTTP_400_BAD_REQUEST,
                     )
                 elif err.errno == mysql.connector.errorcode.ER_NO_SUCH_TABLE:
-                    return Response({"table": ["Table does not exist"]}, status=status.HTTP_400_BAD_REQUEST)
+                    return Response({"table": ["Table does not exist"]},
+                                     status=status.HTTP_400_BAD_REQUEST)
+                elif err.errno == mysql.connector.errorcode.ER_BAD_DB_ERROR:
+                    # Port is incorrect
+                    return Response({
+                            "database": ["Invalid database name. Connection Failed."]}
+                            ,status=status.HTTP_400_BAD_REQUEST)
                 # Return an error message if the connection fails
-                return Response({"error": [str(err)]}, status=status.HTTP_400_BAD_REQUEST)
+                return Response({"host": ["Invalid host . Connection Failed."]}, status=status.HTTP_400_BAD_REQUEST)
             except Exception as e:
                 return Response(str(e), status=status.HTTP_400_BAD_REQUEST)
 
@@ -1456,31 +1466,34 @@ class DataBaseViewSet(GenericViewSet):
                     with closing(conn.cursor()) as cursor:
                         cursor.execute("SELECT table_name FROM information_schema.tables WHERE table_schema='public';")
                         table_list = cursor.fetchall()
-
                 # send the tables as a list in response body & set cookies
                 tables = [table for inner_list in table_list for table in inner_list]
                 response = HttpResponse(json.dumps(tables), status=status.HTTP_200_OK)
                 response = update_cookies("conn_details", cookie_data, response)
                 return response
-            except Exception as error:
-                LOGGER.error(error, exc_info=True)
-                if str(error).__contains__("password authentication failed for user"):
-                    return Response(
-                        {"user": ["Invalid username or password"], "password": ["Invalid username or password."]},
-                        status=status.HTTP_400_BAD_REQUEST,
-                    )
-                elif str(error).__contains__("does not exist"):
-                    return Response(
-                        {"dbname": ["Invalid database name. Connection Failed."]}, status=status.HTTP_400_BAD_REQUEST
-                    )
-                else:
+            except psycopg2.Error as err:
+                if "password authentication failed for user" in str(err):
+                    # Incorrect username or password
                     return Response(
                         {
-                            "host": ["Invalid host or port. Connection Failed."],
-                            "port": ["Invalid host or port. Connection Failed."],
+                            "username": ["Incorrect username or password"],
+                            "password": ["Incorrect username or password"],
                         },
                         status=status.HTTP_400_BAD_REQUEST,
                     )
+                elif "database" in str(err):
+                    # Database does not exist
+                    return Response({"dbname": ["Database does not exist"]}, status=status.HTTP_400_BAD_REQUEST)
+                elif "to address: nodename nor servname provided, or not known" in str(err):
+                    # Database does not exist
+                    return Response({"Host": ["Invalid Host address"]}, status=status.HTTP_400_BAD_REQUEST)
+                
+                elif "Operation timed out" in str(err):
+                    # Server is not available
+                    return Response({"port": ["Invalid port or DB Server is down"]}, status=status.HTTP_400_BAD_REQUEST)
+                
+                # Return an error message if the connection fails
+                return Response({"error": [str(err)]}, status=status.HTTP_400_BAD_REQUEST)
 
     @action(detail=False, methods=["post"])
     def database_col_names(self, request):
@@ -1716,3 +1729,61 @@ class DataBaseViewSet(GenericViewSet):
         except Exception as e:
             LOGGER.error(f"Failed to fetch data from api ERROR: {e} and input fields: {request.data}")
             return Response({"message": f"API Response: {e}"}, status=status.HTTP_400_BAD_REQUEST)
+
+
+class SupportTicketV2ModelViewSet(GenericViewSet):
+    parser_class = JSONParser
+    queryset = SupportTicketV2.objects.all()
+    serializer_class = SupportTicketV2Serializer
+    pagination_class = CustomPagination
+
+    @http_request_mutation
+    def list(self, request):
+        queryset = self.get_queryset()
+        map_id = request.META.get('map_id')
+        queryset = queryset.filter(user_map=map_id)
+        page = self.paginate_queryset(queryset)
+        support_tickets_serializer = SupportTicketV2Serializer(page, many=True)
+        return self.get_paginated_response(support_tickets_serializer.data)
+
+    # API to retrieve a single object by its ID
+    def retrieve(self, request, pk=None):
+        queryset = self.get_queryset()
+        object = get_object_or_404(queryset, pk=pk)
+        serializer = self.get_serializer(object)
+        return Response(serializer.data)
+
+    # API to create a new object
+    def create(self, request):
+        serializer = CreateSupportTicketV2Serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        object = serializer.save()
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+    # API to update an existing object by its ID
+    def update(self, request, pk=None):
+        queryset = self.get_queryset()
+        object = get_object_or_404(queryset, pk=pk)
+        serializer = self.get_serializer(object, data=request.data)
+        serializer.is_valid(raise_exception=True)
+        object = serializer.save()
+        return Response(serializer.data)
+
+    # API to delete an existing object by its ID
+    def destroy(self, request, pk=None):
+        queryset = self.get_queryset()
+        object = get_object_or_404(queryset, pk=pk)
+        object.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+    # @http_request_mutation
+    # @action(detail=False, methods=["get"])
+    #
+    # def filter_support_tickets(self,request,*args,**kwargs):
+    #   for i in range(0,40):
+    #       SupportTicketV2.objects.create(
+    #           ticket_title=f'some_ticket_title{i}',
+    #           description=f'some_ticket_desc{i}',
+    #           category="datasets",
+    #           user_map_id='65ffcfd2-acb6-431d-8969-dc53ecfd8723'
+    #       )
