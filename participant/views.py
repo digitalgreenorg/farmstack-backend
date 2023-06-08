@@ -1825,7 +1825,7 @@ class SupportTicketResolutionsViewset(GenericViewSet):
     @http_request_mutation
     def create(self, request):
         # set map in in request object
-        request_data = request.data
+        request_data = request.data.copy()
         request_data["user_map"] = request.META.get("map_id")
 
         print(request.data)
