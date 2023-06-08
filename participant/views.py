@@ -1822,10 +1822,14 @@ class SupportTicketResolutionsViewset(GenericViewSet):
 
     # API to create a new object
 
+    @http_request_mutation
     def create(self, request):
         # set map in in request object
-        request.data["user_map"] = request.META.get("map_id")
-        serializer = CreateSupportTicketResolutionsSerializer(data=request.data)
+        request_data = request.data
+        request_data["user_map"] = request.META.get("map_id")
+
+        print(request.data)
+        serializer = CreateSupportTicketResolutionsSerializer(data=request_data)
         serializer.is_valid(raise_exception=True)
         object = serializer.save()
         return Response(serializer.data, status=status.HTTP_201_CREATED)
