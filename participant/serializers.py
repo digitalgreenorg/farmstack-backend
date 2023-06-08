@@ -20,7 +20,7 @@ from participant.models import (
     ConnectorsMap,
     Department,
     Project,
-    SupportTicket, SupportTicketV2,
+    SupportTicket, SupportTicketV2, Resolution,
 )
 from utils import string_functions
 
@@ -579,4 +579,18 @@ class SupportTicketV2Serializer(serializers.ModelSerializer):
 class CreateSupportTicketV2Serializer(serializers.ModelSerializer):
     class Meta:
         model = SupportTicketV2
+        fields = '__all__'
+
+
+class SupportTicketResolutionsSerializer(serializers.ModelSerializer):
+    ticket = SupportTicketV2Serializer()
+
+    class Meta:
+        model = Resolution
+        fields = '__all__'
+
+
+class CreateSupportTicketResolutionsSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Resolution
         fields = '__all__'
