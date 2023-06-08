@@ -1450,8 +1450,8 @@ class DataBaseViewSet(GenericViewSet):
                 elif err.errno == mysql.connector.errorcode.ER_BAD_DB_ERROR:
                     # Port is incorrect
                     return Response({
-                        "database": ["Invalid database name. Connection Failed."]}
-                        , status=status.HTTP_400_BAD_REQUEST)
+                            "dbname": ["Invalid database name. Connection Failed."]}
+                            ,status=status.HTTP_400_BAD_REQUEST)
                 # Return an error message if the connection fails
                 return Response({"host": ["Invalid host . Connection Failed."]}, status=status.HTTP_400_BAD_REQUEST)
             except Exception as e:
@@ -1472,7 +1472,8 @@ class DataBaseViewSet(GenericViewSet):
                 response = update_cookies("conn_details", cookie_data, response)
                 return response
             except psycopg2.Error as err:
-                if "password authentication failed for user" in str(err):
+                print(err)
+                if "password authentication failed for user" in str(err) or "role" in str(err):
                     # Incorrect username or password
                     return Response(
                         {
@@ -1484,7 +1485,7 @@ class DataBaseViewSet(GenericViewSet):
                 elif "database" in str(err):
                     # Database does not exist
                     return Response({"dbname": ["Database does not exist"]}, status=status.HTTP_400_BAD_REQUEST)
-                elif "to address: nodename nor servname provided, or not known" in str(err):
+                elif "could not translate host name" in str(err):
                     # Database does not exist
                     return Response({"Host": ["Invalid Host address"]}, status=status.HTTP_400_BAD_REQUEST)
 
