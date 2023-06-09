@@ -1754,27 +1754,20 @@ class SupportTicketV2ModelViewSet(GenericViewSet):
     @http_request_mutation
     def retrieve(self, request, pk):
         try:
-            ticket_instance = SupportTicketV2.objects.get(id=pk, user_map_id=request.META.get("map_id"))
+            ticket_instance = SupportTicketV2.objects.prefetch_related('resolution_set').get(id=pk)
         except SupportTicketV2.DoesNotExist:
             return Response({
                 "message": "No ticket found for this id.",
-                "status": status.HTTP_404_NOT_FOUND
-            }
-            )
-        ticket_serializer = SupportTicketV2Serializer(ticket_instance)
-        resolutions = Resolution.objects.filter(ticket=ticket_instance)
+            }, status=status.HTTP_404_NOT_FOUND)
 
-        if resolutions.count():
-            resolution_serializer = SupportTicketResolutionsSerializerMinimised(resolutions, many=True)
-            data = {
-                'ticket': ticket_serializer.data,
-                'resolutions': resolution_serializer.data
-            }
-        else:
-            data = {
-                'ticket': ticket_serializer.data,
-                'resolutions': []
-            }
+        ticket_serializer = SupportTicketV2Serializer(ticket_instance)
+        resolution_serializer = SupportTicketResolutionsSerializerMinimised(ticket_instance.resolution_set,
+                                                                            many=True)
+
+        data = {
+            'ticket': ticket_serializer.data,
+            'resolutions': resolution_serializer.data
+        }
 
         return Response(data)
 

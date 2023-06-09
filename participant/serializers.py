@@ -591,7 +591,7 @@ class SupportTicketResolutionsSerializer(serializers.ModelSerializer):
 
 
 class SupportTicketResolutionsSerializerMinimised(serializers.ModelSerializer):
-
+    user_map = UserOrganizationMapSerializerSupport()
     class Meta:
         model = Resolution
         fields = '__all__'
