@@ -87,10 +87,8 @@ def support_ticket_role_authorization(model_name):
 def validate_role_modify( user_id: str, role_id: str, map_id: str,
                           pk: str, owner_details: User):
     if owner_details.on_boarded_by_id is None and role_id == str(1):
-        print("admin changing the ticket")
         return True
     elif owner_details.on_boarded_by_id == user_id:
-        print("cp_stewaed changing the ticket")
         return True
     else:
         try:
