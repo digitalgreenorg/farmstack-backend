@@ -1749,8 +1749,36 @@ class SupportTicketV2ModelViewSet(GenericViewSet):
     @http_request_mutation
     def list(self, request):
         queryset = self.get_queryset()
-        map_id = request.META.get('map_id')
-        queryset = queryset.filter(user_map=map_id).order_by("-created_at")
+
+        role_id = request.META.get("role_id")
+        org_id = request.META.get("org_id")
+        onboarded_by_id = request.META.get("onboarded_by")
+        queryset = SupportTicketV2.objects.filter(user_map__organization_id=org_id).order_by("-created_at")
+        roles_under_me = []
+
+        if str(role_id) == "1":
+            # the person is an admin/steward so he should be able to view tickets:
+            # 1. raise by co-stewards
+            # 2. raised by participants under the steward.
+            roles_under_me = [3, 6]
+            queryset = queryset.filter(user_map_id=map_id, user_map__user__on_boarded_by_id=None)
+
+        if str(role_id) == "6":
+            # the person is co-steward
+            # 1. raised by himself
+            # 2. raised by participants under himself.
+            roles_under_me = [3, 6]
+            queryset = queryset.filter(
+                user_map__user__on_boarded_by_id=onboarded_by_id
+            )
+
+        if str(role_id) == "3":
+            # participant
+            # can only see his tickets
+            roles_under_me = [3]
+            queryset = queryset.filter(
+                user_map__user__on_boarded_by_id=onboarded_by_id
+            )
         page = self.paginate_queryset(queryset)
         support_tickets_serializer = SupportTicketV2Serializer(page, many=True)
         return self.get_paginated_response(support_tickets_serializer.data)
@@ -1805,13 +1833,18 @@ class SupportTicketV2ModelViewSet(GenericViewSet):
     @http_request_mutation
     @action(detail=False, methods=["get"])
     def filter_support_tickets(self, request, *args, **kwargs):
+        org_id = request.META.get("org_id")
         map_id = request.META.get("map_id")
         tickets = SupportTicketInternalServices.filter_support_ticket_service(
-            user_map_id=map_id,
+            map_id=map_id,
+            org_id=org_id,
+            role_id=request.META.get("role_id"),
+            onboarded_by_id=request.META.get("onboarded_by"),
             status=request.GET.dict().get("status", None),
             category=request.GET.dict().get("category", None),
             start_date=request.GET.dict().get("start_date", None),
             end_date=request.GET.dict().get("end_date", None),
+            results_for=request.GET.dict().get("results_for")
         )
 
         page = self.paginate_queryset(tickets)
