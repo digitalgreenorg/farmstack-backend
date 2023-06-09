@@ -45,9 +45,7 @@ class SupportTicketInternalServices:
 
         if start_date and end_date:
             print("comes here")
-            queryset = queryset.filter(
-
-            )
+            queryset = queryset.filter(created_at__range=(start_date, end_date))
 
         if results_for == "myself":
             queryset = queryset
