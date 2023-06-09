@@ -1757,7 +1757,7 @@ class SupportTicketV2ModelViewSet(GenericViewSet):
         map_id = request.META.get("map_id")
         user_id = request.META.get("user_id")
         onboarded_by_id = request.META.get("onboarded_by")
-        queryset = SupportTicketV2.objects.filter(user_map__organization_id=org_id).order_by("-created_at")
+        queryset = SupportTicketV2.objects.all().order_by("-created_at")
         roles_under_me = []
 
         if str(role_id) == "1":
