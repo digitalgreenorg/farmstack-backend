@@ -51,14 +51,17 @@ from datahub.models import (
     UserOrganizationMap,
 )
 from datahub.serializers import DatasetFileV2NewSerializer
-from participant.internal_services.support_ticket_internal_services import SupportTicketInternalServices
+from participant.internal_services.support_ticket_internal_services import (
+    SupportTicketInternalServices,
+)
 from participant.models import (
     Connectors,
     ConnectorsMap,
     Department,
     Project,
+    Resolution,
     SupportTicket,
-    SupportTicketV2, Resolution,
+    SupportTicketV2,
 )
 from participant.serializers import (
     ConnectorListSerializer,
@@ -71,6 +74,7 @@ from participant.serializers import (
     ConnectorsRetriveSerializer,
     ConnectorsSerializer,
     ConnectorsSerializerForEmail,
+    CreateSupportTicketResolutionsSerializer,
     CreateSupportTicketV2Serializer,
     DatabaseColumnRetrieveSerializer,
     DatabaseConfigSerializer,
@@ -84,9 +88,10 @@ from participant.serializers import (
     ParticipantSupportTicketSerializer,
     ProjectDepartmentSerializer,
     ProjectSerializer,
-    SupportTicketV2Serializer,
-    TicketSupportSerializer, CreateSupportTicketResolutionsSerializer, SupportTicketResolutionsSerializer,
+    SupportTicketResolutionsSerializer,
     SupportTicketResolutionsSerializerMinimised,
+    SupportTicketV2Serializer,
+    TicketSupportSerializer,
 )
 from utils import string_functions
 from utils.authorization_services import support_ticket_role_authorization
@@ -101,6 +106,7 @@ from django.http import HttpResponse, JsonResponse
 from rest_framework import status
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
+
 from utils import file_operations as file_ops
 
 
@@ -1783,7 +1789,7 @@ class SupportTicketV2ModelViewSet(GenericViewSet):
     def update(self, request, pk=None):
         queryset = self.get_queryset()
         object = get_object_or_404(queryset, pk=pk)
-        serializer = self.get_serializer(object, data=request.data)
+        serializer = self.get_serializer(object, data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
         object = serializer.save()
         return Response(serializer.data)

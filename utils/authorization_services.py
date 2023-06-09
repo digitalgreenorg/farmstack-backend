@@ -47,10 +47,7 @@ def support_ticket_role_authorization(model_name):
                 else:
                     # pk = resolution ID from path for update / delete
                     try:
-                        res = Resolution.objects.get(id=kwargs.get("pk")).ticket_id
-                        primary_key = res
-                        user= SupportTicketV2.objects.select_related("user_map__user").get(id=primary_key)
-                        owner_details = user.user_map__user # type: ignore
+                        primary_key = Resolution.objects.get(id=kwargs.get("pk")).ticket_id
                     except Resolution.DoesNotExist:
                         return Response(
                             {"message": "Invalid Resolution ID."},
@@ -60,23 +57,20 @@ def support_ticket_role_authorization(model_name):
             elif model_name == "SupportTicketV2":
                 # pk = ticket ID from path for update / delete
                 primary_key = kwargs.get("pk")
-                user= SupportTicketV2.objects.select_related("user_map__user").get(id=primary_key)
-                owner_details = user.user_map__user # type: ignore
             else:
                 return Response(
                     {"message": "Invalid parameters."},
                     status=status.HTTP_403_FORBIDDEN,
                 )
-            import pdb; pdb.set_trace()
+            user= SupportTicketV2.objects.select_related("user_map", "user_map__user").filter(id=primary_key).first()
+            owner_details = user.user_map.user # type: ignore
             validation = validate_role_modify(
-                onboarding_by_id=payload.get("onboarded_by"),
                 user_id=payload.get("user_id"),
                 role_id=payload.get("role_id"),
                 map_id=payload.get("map_id"),
                 pk=primary_key,
                 owner_details=owner_details,
             )
-
             if not validation:
                 return Response(
                     {"message": "Authorization Failed. You do not have access to this resource."},
@@ -90,11 +84,13 @@ def support_ticket_role_authorization(model_name):
     return decorator
 
 
-def validate_role_modify(onboarding_by_id: Union[str, None], user_id: str,
-                          role_id: str, map_id: str, pk: str, owner_details: dict):
-    if owner_details.onboarding_by_id is None and role_id == 1:
+def validate_role_modify( user_id: str, role_id: str, map_id: str,
+                          pk: str, owner_details: dict):
+    if owner_details.on_boarded_by_id is None and role_id == str(1):
+        print("admin changing the ticket")
         return True
-    elif owner_details.onboarding_by_id == user_id:
+    elif owner_details.on_boarded_by_id == user_id:
+        print("cp_stewaed changing the ticket")
         return True
     else:
         try:
