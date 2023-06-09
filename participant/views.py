@@ -1743,8 +1743,35 @@ class SupportTicketV2ModelViewSet(GenericViewSet):
     @http_request_mutation
     def list(self, request):
         queryset = self.get_queryset()
-        map_id = request.META.get('map_id')
-        queryset = queryset.filter(user_map=map_id).order_by("-created_at")
+
+        role_id = request.META.get("role_id")
+        org_id = request.META.get("org_id")
+        onboarded_by_id = request.META.get("onboarded_by")
+        queryset = queryset.filter(user_map__organization_id=org_id).order_by("-created_at")
+
+        if str(role_id) == 1:
+            # the person is an admin/steward so he should be able to view tickets:
+            # 1. raise by co-stewards
+            # 2. raised by participants under the steward.
+
+            queryset = queryset.objects.filter(
+                user__map__user__role_id__in=[6, 3], user__map__user__onboarded_by_id=onboarded_by_id
+            )
+
+        if str(role_id) == 6:
+            # the person is co-steward
+            # 1. raised by himself
+            # 2. raised by participants under himself.
+            queryset = queryset.objects.filter(
+                user__map__user__role_id__in=[6, 3],user__map__user__onboarded_by_id=onboarded_by_id
+            )
+
+        if str(role_id) == 3:
+            # participant
+            # can only see his tickets
+            queryset = queryset.objects.filter(
+                user__map__user__role_id__in=[3]
+            )
         page = self.paginate_queryset(queryset)
         support_tickets_serializer = SupportTicketV2Serializer(page, many=True)
         return self.get_paginated_response(support_tickets_serializer.data)
