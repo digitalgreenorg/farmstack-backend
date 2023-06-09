@@ -26,10 +26,18 @@ class SupportTicketInternalServices:
             # the person is co-steward
             # 1. raised by himself
             # 2. raised by participants under himself.
+            queryset_for_self = queryset
+            queryset_for_underme = queryset
             roles_under_me = [3, 6]
-            queryset = queryset.filter(
+
+            queryset1 = queryset_for_underme.filter(
                 user_map__user__on_boarded_by_id=user_id
             )
+            queryset2 = queryset_for_self.filter(
+                user_map_id=map_id
+            )
+
+            queryset = queryset1.union(queryset2)
 
         if str(role_id) == "3":
             # participant

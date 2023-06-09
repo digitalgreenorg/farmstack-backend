@@ -1750,8 +1750,9 @@ class SupportTicketV2ModelViewSet(GenericViewSet):
     def list(self, request):
         queryset = self.get_queryset()
         print("This is R$EQue")
-        print(request.META)
+
         role_id = request.META.get("role_id")
+        # role_id = "6"
         org_id = request.META.get("org_id")
         map_id = request.META.get("map_id")
         user_id = request.META.get("user_id")
@@ -1770,10 +1771,18 @@ class SupportTicketV2ModelViewSet(GenericViewSet):
             # the person is co-steward
             # 1. raised by himself
             # 2. raised by participants under himself.
-            roles_under_me = [3,6]
-            queryset = queryset.filter(
+            queryset_for_self = queryset
+            queryset_for_underme = queryset
+            roles_under_me = [3, 6]
+
+            queryset1 = queryset_for_underme.filter(
                 user_map__user__on_boarded_by_id=user_id
             )
+            queryset2 = queryset_for_self.filter(
+                user_map_id=map_id
+            )
+
+            queryset = queryset1.union(queryset2)
         print("SFDSFS")
         print(onboarded_by_id)
         if str(role_id) == "3":
