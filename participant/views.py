@@ -1761,7 +1761,7 @@ class SupportTicketV2ModelViewSet(GenericViewSet):
             # 1. raise by co-stewards
             # 2. raised by participants under the steward.
             roles_under_me = [3, 6]
-            queryset = queryset.filter(user_map_id=map_id, user__map__user__on_boarded_by_id=None)
+            queryset = queryset.filter(user_map_id=map_id, user_map__user__on_boarded_by_id=None)
 
         if str(role_id) == "6":
             # the person is co-steward
