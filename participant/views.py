@@ -1752,6 +1752,7 @@ class SupportTicketV2ModelViewSet(GenericViewSet):
 
         role_id = request.META.get("role_id")
         org_id = request.META.get("org_id")
+        map_id = request.META.get("map_id")
         onboarded_by_id = request.META.get("onboarded_by")
         queryset = SupportTicketV2.objects.filter(user_map__organization_id=org_id).order_by("-created_at")
         roles_under_me = []
@@ -1761,15 +1762,15 @@ class SupportTicketV2ModelViewSet(GenericViewSet):
             # 1. raise by co-stewards
             # 2. raised by participants under the steward.
             roles_under_me = [3, 6]
-            queryset = queryset.filter(user_map_id=map_id, user_map__user__on_boarded_by_id=None)
+            queryset = queryset.filter(user_map__user__on_boarded_by_id=None,user_map__user__role_id__in=roles_under_me)
 
         if str(role_id) == "6":
             # the person is co-steward
             # 1. raised by himself
             # 2. raised by participants under himself.
-            roles_under_me = [3, 6]
+            roles_under_me = [3,6]
             queryset = queryset.filter(
-                user_map__user__on_boarded_by_id=onboarded_by_id
+                user_map__user__on_boarded_by_id=onboarded_by_id,user_map__user__role_id__in=roles_under_me
             )
 
         if str(role_id) == "3":
@@ -1777,7 +1778,8 @@ class SupportTicketV2ModelViewSet(GenericViewSet):
             # can only see his tickets
             roles_under_me = [3]
             queryset = queryset.filter(
-                user_map__user__on_boarded_by_id=onboarded_by_id
+                user_map__user__on_boarded_by_id=onboarded_by_id,
+                user_map_id=map_id,
             )
         page = self.paginate_queryset(queryset)
         support_tickets_serializer = SupportTicketV2Serializer(page, many=True)

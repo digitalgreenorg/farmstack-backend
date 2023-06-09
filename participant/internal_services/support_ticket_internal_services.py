@@ -20,7 +20,8 @@ class SupportTicketInternalServices:
             # 1. raise by co-stewards
             # 2. raised by participants under the steward.
             roles_under_me = [3, 6]
-            queryset = queryset.filter(user_map_id=map_id, user_map__user__on_boarded_by_id=None)
+            queryset = queryset.filter(user_map__user__on_boarded_by_id=None,
+                                       user_map__user__role_id__in=roles_under_me)
 
         if str(role_id) == "6":
             # the person is co-steward
@@ -28,7 +29,7 @@ class SupportTicketInternalServices:
             # 2. raised by participants under himself.
             roles_under_me = [3, 6]
             queryset = queryset.filter(
-                user_map__user__on_boarded_by_id=onboarded_by_id
+                user_map__user__on_boarded_by_id=onboarded_by_id, user_map__user__role_id__in=roles_under_me
             )
 
         if str(role_id) == "3":
@@ -36,7 +37,8 @@ class SupportTicketInternalServices:
             # can only see his tickets
             roles_under_me = [3]
             queryset = queryset.filter(
-                user_map__user__on_boarded_by_id=onboarded_by_id
+                user_map__user__on_boarded_by_id=onboarded_by_id,
+                user_map_id=map_id,
             )
 
         if status:
@@ -49,9 +51,9 @@ class SupportTicketInternalServices:
             print("comes here")
             queryset = queryset.filter(created_at__range=(start_date, end_date))
 
-        if results_for == "myself":
+        if results_for == "role_6":
             queryset = queryset
-        elif results_for == "underme":
+        elif results_for == "role_3":
             print(roles_under_me)
             queryset = queryset.filter(
                 user_map__user__role_id__in=roles_under_me
