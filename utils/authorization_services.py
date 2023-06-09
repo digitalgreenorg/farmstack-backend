@@ -62,8 +62,8 @@ def support_ticket_role_authorization(model_name):
                     {"message": "Invalid parameters."},
                     status=status.HTTP_403_FORBIDDEN,
                 )
-            support_ticket= SupportTicketV2.objects.select_related("user_map", "user_map__user").filter(id=primary_key).first()
-            owner_details = support_ticket.user_map.user # type: ignore
+            user= SupportTicketV2.objects.select_related("user_map", "user_map__user").filter(id=primary_key).first()
+            owner_details = user.user_map.user # type: ignore
             validation = validate_role_modify(
                 user_id=payload.get("user_id"),
                 role_id=payload.get("role_id"),
@@ -85,10 +85,12 @@ def support_ticket_role_authorization(model_name):
 
 
 def validate_role_modify( user_id: str, role_id: str, map_id: str,
-                          pk: str, owner_details: User):
+                          pk: str, owner_details: dict):
     if owner_details.on_boarded_by_id is None and role_id == str(1):
+        print("admin changing the ticket")
         return True
     elif owner_details.on_boarded_by_id == user_id:
+        print("cp_stewaed changing the ticket")
         return True
     else:
         try:
