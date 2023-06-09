@@ -1866,6 +1866,17 @@ class SupportTicketV2ModelViewSet(GenericViewSet):
         support_tickets_serializer = SupportTicketV2Serializer(page, many=True)
         return self.get_paginated_response(support_tickets_serializer.data)
 
+    @http_request_mutation
+    @action(detail=False, methods=["post"])
+    def search_support_tickets(self, request, *args, **kwargs):
+        tickets = SupportTicketInternalServices.search_tickets(
+            search_text=request.data.get("name__icontains")
+        )
+
+        page = self.paginate_queryset(tickets)
+        support_tickets_serializer = SupportTicketV2Serializer(page, many=True)
+        return self.get_paginated_response(support_tickets_serializer.data)
+
 
 class SupportTicketResolutionsViewset(GenericViewSet):
     parser_class = JSONParser
