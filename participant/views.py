@@ -1749,9 +1749,13 @@ class SupportTicketV2ModelViewSet(GenericViewSet):
     @http_request_mutation
     def list(self, request):
         queryset = self.get_queryset()
+        print("This is R$EQue")
 
         role_id = request.META.get("role_id")
+        # role_id = "6"
         org_id = request.META.get("org_id")
+        map_id = request.META.get("map_id")
+        user_id = request.META.get("user_id")
         onboarded_by_id = request.META.get("onboarded_by")
         queryset = SupportTicketV2.objects.filter(user_map__organization_id=org_id).order_by("-created_at")
         roles_under_me = []
@@ -1761,23 +1765,32 @@ class SupportTicketV2ModelViewSet(GenericViewSet):
             # 1. raise by co-stewards
             # 2. raised by participants under the steward.
             roles_under_me = [3, 6]
-            queryset = queryset.filter(user_map_id=map_id, user_map__user__on_boarded_by_id=None)
+            queryset = queryset.filter(user_map__user__on_boarded_by_id=None)
 
         if str(role_id) == "6":
             # the person is co-steward
             # 1. raised by himself
             # 2. raised by participants under himself.
+            queryset_for_self = queryset
+            queryset_for_underme = queryset
             roles_under_me = [3, 6]
-            queryset = queryset.filter(
-                user_map__user__on_boarded_by_id=onboarded_by_id
+
+            queryset1 = queryset_for_underme.filter(
+                user_map__user__on_boarded_by_id=user_id
+            )
+            queryset2 = queryset_for_self.filter(
+                user_map_id=map_id
             )
 
+            queryset = queryset1.union(queryset2)
+        print("SFDSFS")
+        print(onboarded_by_id)
         if str(role_id) == "3":
             # participant
             # can only see his tickets
             roles_under_me = [3]
             queryset = queryset.filter(
-                user_map__user__on_boarded_by_id=onboarded_by_id
+                user_map_id=map_id,
             )
         page = self.paginate_queryset(queryset)
         support_tickets_serializer = SupportTicketV2Serializer(page, many=True)
@@ -1835,6 +1848,7 @@ class SupportTicketV2ModelViewSet(GenericViewSet):
     def filter_support_tickets(self, request, *args, **kwargs):
         org_id = request.META.get("org_id")
         map_id = request.META.get("map_id")
+        user_id = request.META.get("user_id")
         tickets = SupportTicketInternalServices.filter_support_ticket_service(
             map_id=map_id,
             org_id=org_id,
@@ -1844,7 +1858,8 @@ class SupportTicketV2ModelViewSet(GenericViewSet):
             category=request.GET.dict().get("category", None),
             start_date=request.GET.dict().get("start_date", None),
             end_date=request.GET.dict().get("end_date", None),
-            results_for=request.GET.dict().get("results_for")
+            results_for=request.GET.dict().get("results_for"),
+            user_id=user_id
         )
 
         page = self.paginate_queryset(tickets)

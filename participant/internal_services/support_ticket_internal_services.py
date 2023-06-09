@@ -6,7 +6,7 @@ from participant.models import SupportTicketV2, STATUS, CATEGORY
 
 class SupportTicketInternalServices:
     @classmethod
-    def filter_support_ticket_service(cls, map_id: str, role_id: str, onboarded_by_id: str, org_id: str, status: STATUS,
+    def filter_support_ticket_service(cls,user_id:str, map_id: str, role_id: str, onboarded_by_id: str, org_id: str, status: STATUS,
                                       category: CATEGORY, start_date: str, end_date: str,
                                       results_for: FilterAPIConstants.ticket_visibility):
         queryset = SupportTicketV2.objects.filter(user_map__organization_id=org_id).order_by("-created_at")
@@ -20,23 +20,31 @@ class SupportTicketInternalServices:
             # 1. raise by co-stewards
             # 2. raised by participants under the steward.
             roles_under_me = [3, 6]
-            queryset = queryset.filter(user_map_id=map_id, user_map__user__on_boarded_by_id=None)
+            queryset = queryset.filter(user_map__user__on_boarded_by_id=None)
 
         if str(role_id) == "6":
             # the person is co-steward
             # 1. raised by himself
             # 2. raised by participants under himself.
+            queryset_for_self = queryset
+            queryset_for_underme = queryset
             roles_under_me = [3, 6]
-            queryset = queryset.filter(
-                user_map__user__on_boarded_by_id=onboarded_by_id
+
+            queryset1 = queryset_for_underme.filter(
+                user_map__user__on_boarded_by_id=user_id
             )
+            queryset2 = queryset_for_self.filter(
+                user_map_id=map_id
+            )
+
+            queryset = queryset1.union(queryset2)
 
         if str(role_id) == "3":
             # participant
             # can only see his tickets
             roles_under_me = [3]
             queryset = queryset.filter(
-                user_map__user__on_boarded_by_id=onboarded_by_id
+                user_map_id=map_id,
             )
 
         if status:
@@ -49,9 +57,9 @@ class SupportTicketInternalServices:
             print("comes here")
             queryset = queryset.filter(created_at__range=(start_date, end_date))
 
-        if results_for == "myself":
+        if results_for == "role_6":
             queryset = queryset
-        elif results_for == "underme":
+        elif results_for == "role_3":
             print(roles_under_me)
             queryset = queryset.filter(
                 user_map__user__role_id__in=roles_under_me
