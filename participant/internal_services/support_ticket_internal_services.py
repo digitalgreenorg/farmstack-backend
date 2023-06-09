@@ -10,6 +10,8 @@ class SupportTicketInternalServices:
                                       category: CATEGORY, start_date: str, end_date: str,
                                       results_for: FilterAPIConstants.ticket_visibility):
         queryset = SupportTicketV2.objects.filter(user_map__organization_id=org_id).order_by("-created_at")
+        print("AWEQWE")
+        print(queryset)
         roles_under_me = []
         print("SDFASDF")
         print(results_for)
@@ -54,9 +56,6 @@ class SupportTicketInternalServices:
             queryset = queryset.filter(
                 user_map__user__role_id__in=roles_under_me
             )
-        else:
-            return Response({
-                "message": "Invalid Param"
-            })
+
 
         return queryset
