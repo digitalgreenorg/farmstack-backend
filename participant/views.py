@@ -57,7 +57,7 @@ from participant.models import (
     Department,
     Project,
     SupportTicket,
-    SupportTicketV2,
+    SupportTicketV2, Resolution,
 )
 from participant.serializers import (
     ConnectorListSerializer,
@@ -84,9 +84,10 @@ from participant.serializers import (
     ProjectDepartmentSerializer,
     ProjectSerializer,
     SupportTicketV2Serializer,
-    TicketSupportSerializer,
+    TicketSupportSerializer, CreateSupportTicketResolutionsSerializer, SupportTicketResolutionsSerializer,
 )
 from utils import string_functions
+from utils.authorization_services import support_ticket_role_authorization
 from utils.connector_utils import run_containers, stop_containers
 from utils.jwt_services import http_request_mutation
 
@@ -98,7 +99,6 @@ from django.http import HttpResponse, JsonResponse
 from rest_framework import status
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
-
 from utils import file_operations as file_ops
 
 
@@ -1446,7 +1446,7 @@ class DataBaseViewSet(GenericViewSet):
                     )
                 elif err.errno == mysql.connector.errorcode.ER_NO_SUCH_TABLE:
                     return Response({"table": ["Table does not exist"]},
-                                     status=status.HTTP_400_BAD_REQUEST)
+                                    status=status.HTTP_400_BAD_REQUEST)
                 elif err.errno == mysql.connector.errorcode.ER_BAD_DB_ERROR:
                     # Port is incorrect
                     return Response({
@@ -1488,11 +1488,11 @@ class DataBaseViewSet(GenericViewSet):
                 elif "could not translate host name" in str(err):
                     # Database does not exist
                     return Response({"Host": ["Invalid Host address"]}, status=status.HTTP_400_BAD_REQUEST)
-                
+
                 elif "Operation timed out" in str(err):
                     # Server is not available
                     return Response({"port": ["Invalid port or DB Server is down"]}, status=status.HTTP_400_BAD_REQUEST)
-                
+
                 # Return an error message if the connection fails
                 return Response({"error": [str(err)]}, status=status.HTTP_400_BAD_REQUEST)
 
@@ -1742,9 +1742,75 @@ class SupportTicketV2ModelViewSet(GenericViewSet):
     def list(self, request):
         queryset = self.get_queryset()
         map_id = request.META.get('map_id')
-        queryset = queryset.filter(user_map=map_id)
+        queryset = queryset.filter(user_map=map_id).order_by("created_at")
         page = self.paginate_queryset(queryset)
         support_tickets_serializer = SupportTicketV2Serializer(page, many=True)
+        return self.get_paginated_response(support_tickets_serializer.data)
+
+    # API to retrieve a single object by its ID
+
+    @http_request_mutation
+    def retrieve(self, request, pk=None):
+        queryset = self.get_queryset()
+        print(request.META.get("map_id"))
+        object = get_object_or_404(queryset, pk=pk,user_map_id=request.META.get("map_id"))
+        serializer = self.get_serializer(object)
+        return Response(serializer.data)
+
+    # API to create a new object
+    @http_request_mutation
+    def create(self, request):
+        serializer = CreateSupportTicketV2Serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        object = serializer.save()
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+    @support_ticket_role_authorization
+    def update(self, request, pk=None):
+        queryset = self.get_queryset()
+        object = get_object_or_404(queryset, pk=pk)
+        serializer = self.get_serializer(object, data=request.data)
+        serializer.is_valid(raise_exception=True)
+        object = serializer.save()
+        return Response(serializer.data)
+
+    # API to delete an existing object by its ID
+    @support_ticket_role_authorization
+    def destroy(self, request, pk=None):
+        queryset = self.get_queryset()
+        object = get_object_or_404(queryset, pk=pk)
+        object.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+    # @http_request_mutation
+    # @action(detail=False, methods=["get"])
+    # def filter_support_tickets(self, request, *args, **kwargs):
+    #     map_id = request.META.get("map_id")
+    #     tickets = SupportTicketInternalServices.filter_support_ticket_service(
+    #         user_map_id=map_id,
+    #         status=request.GET.dict().get("status",None),
+    #         category=request.GET.dict().get("category",None),
+    #         start_date=request.GET.dict().get("start_date",None),
+    #         end_date=request.GET.dict().get("end_date",None),
+    #     )
+    #
+    #     page = self.paginate_queryset(tickets)
+    #     support_tickets_serializer = SupportTicketV2Serializer(page, many=True)
+    #     return self.get_paginated_response(support_tickets_serializer.data)
+
+
+class SupportTicketResolutionsViewset(GenericViewSet):
+    parser_class = JSONParser
+    queryset = Resolution.objects.all()
+    serializer_class = SupportTicketResolutionsSerializer
+    pagination_class = CustomPagination
+
+    def list(self, request):
+        queryset = self.get_queryset()
+        map_id = request.META.get('map_id')
+        queryset = queryset.filter(user_map=map_id).order_by("created_at")
+        page = self.paginate_queryset(queryset)
+        support_tickets_serializer = SupportTicketResolutionsSerializer(page, many=True)
         return self.get_paginated_response(support_tickets_serializer.data)
 
     # API to retrieve a single object by its ID
@@ -1755,8 +1821,15 @@ class SupportTicketV2ModelViewSet(GenericViewSet):
         return Response(serializer.data)
 
     # API to create a new object
+
+    @http_request_mutation
     def create(self, request):
-        serializer = CreateSupportTicketV2Serializer(data=request.data)
+        # set map in in request object
+        request_data = request.data.copy()
+        request_data["user_map"] = request.META.get("map_id")
+
+        print(request.data)
+        serializer = CreateSupportTicketResolutionsSerializer(data=request_data)
         serializer.is_valid(raise_exception=True)
         object = serializer.save()
         return Response(serializer.data, status=status.HTTP_201_CREATED)
@@ -1776,15 +1849,3 @@ class SupportTicketV2ModelViewSet(GenericViewSet):
         object = get_object_or_404(queryset, pk=pk)
         object.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
-
-    # @http_request_mutation
-    # @action(detail=False, methods=["get"])
-    #
-    # def filter_support_tickets(self,request,*args,**kwargs):
-    #   for i in range(0,40):
-    #       SupportTicketV2.objects.create(
-    #           ticket_title=f'some_ticket_title{i}',
-    #           description=f'some_ticket_desc{i}',
-    #           category="datasets",
-    #           user_map_id='65ffcfd2-acb6-431d-8969-dc53ecfd8723'
-    #       )

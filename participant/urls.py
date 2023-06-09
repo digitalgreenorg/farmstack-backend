@@ -10,7 +10,9 @@ from participant.views import (
     ParticipantProjectViewSet,
     ParticipantSupportViewSet,
     DataBaseViewSet,
-    SupportTicketV2ModelViewSet
+    SupportTicketV2ModelViewSet,
+    SupportTicketResolutionsViewset
+
 )
 
 router = DefaultRouter()
@@ -22,6 +24,7 @@ router.register(r"department", ParticipantDepatrmentViewSet, basename="participa
 router.register(r"project", ParticipantProjectViewSet, basename="participant_project")
 router.register(r"database", DataBaseViewSet,basename="database")
 router.register(r"support_ticket", SupportTicketV2ModelViewSet,basename="support_tickets")
+router.register(r"ticket_resolution", SupportTicketResolutionsViewset,basename="support_tickets_resolutions")
 
 
 urlpatterns = [
