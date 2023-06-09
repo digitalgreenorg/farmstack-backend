@@ -9,7 +9,7 @@ class SupportTicketInternalServices:
     def filter_support_ticket_service(cls,user_id:str, map_id: str, role_id: str, onboarded_by_id: str, org_id: str, status: STATUS,
                                       category: CATEGORY, start_date: str, end_date: str,
                                       results_for: FilterAPIConstants.ticket_visibility):
-        queryset = SupportTicketV2.objects.filter(user_map__organization_id=org_id).order_by("-created_at")
+        queryset = SupportTicketV2.objects.all().order_by("-created_at")
         print("AWEQWE")
         print(queryset)
         roles_under_me = []
