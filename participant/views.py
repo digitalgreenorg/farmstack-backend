@@ -1616,7 +1616,7 @@ class DataBaseViewSet(GenericViewSet):
                 mycursor = mydb.cursor()
                 db_name = config["database"]
                 mycursor.execute("use " + db_name + ";")
-                query = "select " + col_names + " from " + t_name + " ;"
+                query = "select " + col_names + " from public." + t_name + " ;"
                 mycursor.execute(query)
                 result = mycursor.fetchall()
 
@@ -1662,7 +1662,7 @@ class DataBaseViewSet(GenericViewSet):
             try:
                 with closing(psycopg2.connect(**config)) as conn:
                     try:
-                        sql_query = "SELECT {0} FROM {1};".format(col_names, t_name)
+                        sql_query = "SELECT {0} FROM public.{1};".format(col_names, t_name)
                         df = pd.read_sql(sql_query, conn)
                         df = df.astype(str)
                     except pd.errors.DatabaseError as error:
