@@ -1616,7 +1616,7 @@ class DataBaseViewSet(GenericViewSet):
                 mycursor = mydb.cursor()
                 db_name = config["database"]
                 mycursor.execute("use " + db_name + ";")
-                query = "select " + col_names + " from public." + t_name + " ;"
+                query = "select " + col_names + " from " + t_name + " ;"
                 mycursor.execute(query)
                 result = mycursor.fetchall()
 
