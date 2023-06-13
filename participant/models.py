@@ -137,7 +137,7 @@ class SupportTicketV2(TimeStampMixin):
         blank=True,
         validators=[validate_file_size],
     )
-    status = models.CharField(max_length=255, null=False, default="closed", choices=STATUS)
+    status = models.CharField(max_length=255, null=False, default="open", choices=STATUS)
 
     class Meta:
         db_table = "support_ticket_v2"
