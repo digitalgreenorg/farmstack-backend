@@ -1746,51 +1746,42 @@ class SupportTicketV2ModelViewSet(GenericViewSet):
     serializer_class = SupportTicketV2Serializer
     pagination_class = CustomPagination
 
+    @action(detail=False, methods=["post"])
     @http_request_mutation
-    def list(self, request):
-        queryset = self.get_queryset()
-        print("This is R$EQue")
-
+    def list_tickets(self, request, *args, **kwargs):
+        data = request.data
+        others = bool(data.pop("others", False))
+        print(others)
+        print(type(others))
+        filters_data = data
         role_id = request.META.get("role_id")
-        # role_id = "6"
-        org_id = request.META.get("org_id")
         map_id = request.META.get("map_id")
         user_id = request.META.get("user_id")
-        onboarded_by_id = request.META.get("onboarded_by")
-        queryset = SupportTicketV2.objects.all().order_by("-created_at")
-        roles_under_me = []
-
+        queryset = SupportTicketV2.objects.select_related(
+            "user_map__organization", "user_map__user", "user_map__user__role","user_map"
+        ).order_by("-updated_at").all()
+        # print(filters_data)
+        # import pdb; pdb.set_trace()
         if str(role_id) == "1":
             # the person is an admin/steward so he should be able to view tickets:
             # 1. raise by co-stewards
             # 2. raised by participants under the steward.
-            roles_under_me = [3, 6]
-            queryset = queryset.filter(user_map__user__on_boarded_by_id=None)
+            filter = {"user_map__user__role_id": 3} if others else {"user_map__user__role_id": 6}
+            queryset = queryset.filter(user_map__user__on_boarded_by_id=None).filter(**filter, **filters_data)
 
-        if str(role_id) == "6":
+        elif str(role_id) == "6":
             # the person is co-steward
             # 1. raised by himself
             # 2. raised by participants under himself.
-            queryset_for_self = queryset
-            queryset_for_underme = queryset
-            roles_under_me = [3, 6]
+            filter = {"user_map__user__on_boarded_by_id": user_id} if others else {"user_map_id": map_id}
+            queryset = queryset.filter(**filter, **filters_data)
 
-            queryset1 = queryset_for_underme.filter(
-                user_map__user__on_boarded_by_id=user_id
-            )
-            queryset2 = queryset_for_self.filter(
-                user_map_id=map_id
-            )
-
-            queryset = queryset1.union(queryset2)
-        print("SFDSFS")
-        print(onboarded_by_id)
-        if str(role_id) == "3":
+        elif str(role_id) == "3":
+            print(filters_data)
             # participant
             # can only see his tickets
-            roles_under_me = [3]
             queryset = queryset.filter(
-                user_map_id=map_id,
+                user_map_id=map_id, **filters_data
             )
         page = self.paginate_queryset(queryset)
         support_tickets_serializer = SupportTicketV2Serializer(page, many=True)
@@ -1828,7 +1819,7 @@ class SupportTicketV2ModelViewSet(GenericViewSet):
 
     @support_ticket_role_authorization(model_name="SupportTicketV2")
     def update(self, request, pk=None):
-        queryset = self.get_queryset()
+        queryset = self.get_queryset().select_related("user_map__organization","user_map__user","user_map__user__role","user_map")
         object = get_object_or_404(queryset, pk=pk)
         serializer = self.get_serializer(object, data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
@@ -1843,28 +1834,28 @@ class SupportTicketV2ModelViewSet(GenericViewSet):
         object.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
 
-    @http_request_mutation
-    @action(detail=False, methods=["get"])
-    def filter_support_tickets(self, request, *args, **kwargs):
-        org_id = request.META.get("org_id")
-        map_id = request.META.get("map_id")
-        user_id = request.META.get("user_id")
-        tickets = SupportTicketInternalServices.filter_support_ticket_service(
-            map_id=map_id,
-            org_id=org_id,
-            role_id=request.META.get("role_id"),
-            onboarded_by_id=request.META.get("onboarded_by"),
-            status=request.GET.dict().get("status", None),
-            category=request.GET.dict().get("category", None),
-            start_date=request.GET.dict().get("start_date", None),
-            end_date=request.GET.dict().get("end_date", None),
-            results_for=request.GET.dict().get("results_for"),
-            user_id=user_id
-        )
-
-        page = self.paginate_queryset(tickets)
-        support_tickets_serializer = SupportTicketV2Serializer(page, many=True)
-        return self.get_paginated_response(support_tickets_serializer.data)
+    # @http_request_mutation
+    # @action(detail=False, methods=["get"])
+    # def filter_support_tickets(self, request, *args, **kwargs):
+    #     org_id = request.META.get("org_id")
+    #     map_id = request.META.get("map_id")
+    #     user_id = request.META.get("user_id")
+    #     tickets = SupportTicketInternalServices.filter_support_ticket_service(
+    #         map_id=map_id,
+    #         org_id=org_id,
+    #         role_id=request.META.get("role_id"),
+    #         onboarded_by_id=request.META.get("onboarded_by"),
+    #         status=request.GET.dict().get("status", None),
+    #         category=request.GET.dict().get("category", None),
+    #         start_date=request.GET.dict().get("start_date", None),
+    #         end_date=request.GET.dict().get("end_date", None),
+    #         results_for=request.GET.dict().get("results_for"),
+    #         user_id=user_id
+    #     )
+    #
+    #     page = self.paginate_queryset(tickets)
+    #     support_tickets_serializer = SupportTicketV2Serializer(page, many=True)
+    #     return self.get_paginated_response(support_tickets_serializer.data)
 
     @http_request_mutation
     @action(detail=False, methods=["post"])
