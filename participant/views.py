@@ -1751,6 +1751,7 @@ class SupportTicketV2ModelViewSet(GenericViewSet):
     def list_tickets(self, request, *args, **kwargs):
         data = request.data
         others = bool(data.pop("others", False))
+        name__icontains = data.pop("name__icontains",None)
         print(others)
         print(type(others))
         filters_data = data
@@ -1762,12 +1763,18 @@ class SupportTicketV2ModelViewSet(GenericViewSet):
         ).order_by("-updated_at").all()
         # print(filters_data)
         # import pdb; pdb.set_trace()
+        print(role_id)
+
         if str(role_id) == "1":
             # the person is an admin/steward so he should be able to view tickets:
             # 1. raise by co-stewards
             # 2. raised by participants under the steward.
             filter = {"user_map__user__role_id": 3} if others else {"user_map__user__role_id": 6}
             queryset = queryset.filter(user_map__user__on_boarded_by_id=None).filter(**filter, **filters_data)
+            if name__icontains is not None:
+                print(name__icontains)
+                print("ASD")
+                queryset = queryset.filter(ticket_title__icontains=name__icontains)
 
         elif str(role_id) == "6":
             # the person is co-steward
@@ -1775,6 +1782,10 @@ class SupportTicketV2ModelViewSet(GenericViewSet):
             # 2. raised by participants under himself.
             filter = {"user_map__user__on_boarded_by_id": user_id} if others else {"user_map_id": map_id}
             queryset = queryset.filter(**filter, **filters_data)
+            if name__icontains is not None:
+                print(name__icontains)
+                print("ASD")
+                queryset = queryset.filter(ticket_title__icontains=name__icontains)
 
         elif str(role_id) == "3":
             print(filters_data)
@@ -1783,6 +1794,13 @@ class SupportTicketV2ModelViewSet(GenericViewSet):
             queryset = queryset.filter(
                 user_map_id=map_id, **filters_data
             )
+            if name__icontains is not None:
+                print(name__icontains)
+                print("ASD")
+                queryset = queryset.filter(ticket_title__icontains=name__icontains)
+
+
+
         page = self.paginate_queryset(queryset)
         support_tickets_serializer = SupportTicketV2Serializer(page, many=True)
         return self.get_paginated_response(support_tickets_serializer.data)
@@ -1833,45 +1851,6 @@ class SupportTicketV2ModelViewSet(GenericViewSet):
         object = get_object_or_404(queryset, pk=pk)
         object.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
-
-    # @http_request_mutation
-    # @action(detail=False, methods=["get"])
-    # def filter_support_tickets(self, request, *args, **kwargs):
-    #     org_id = request.META.get("org_id")
-    #     map_id = request.META.get("map_id")
-    #     user_id = request.META.get("user_id")
-    #     tickets = SupportTicketInternalServices.filter_support_ticket_service(
-    #         map_id=map_id,
-    #         org_id=org_id,
-    #         role_id=request.META.get("role_id"),
-    #         onboarded_by_id=request.META.get("onboarded_by"),
-    #         status=request.GET.dict().get("status", None),
-    #         category=request.GET.dict().get("category", None),
-    #         start_date=request.GET.dict().get("start_date", None),
-    #         end_date=request.GET.dict().get("end_date", None),
-    #         results_for=request.GET.dict().get("results_for"),
-    #         user_id=user_id
-    #     )
-    #
-    #     page = self.paginate_queryset(tickets)
-    #     support_tickets_serializer = SupportTicketV2Serializer(page, many=True)
-    #     return self.get_paginated_response(support_tickets_serializer.data)
-
-    @http_request_mutation
-    @action(detail=False, methods=["post"])
-    def search_support_tickets(self, request, *args, **kwargs):
-        data = request.data
-        others = bool(data.pop("others", False))
-        tickets = SupportTicketInternalServices.search_tickets(
-            search_text=data.get("name__icontains"),
-            user_id=request.META.get("user_id"),
-            others=others,
-            map_id=request.META.get("map_id")
-        )
-
-        page = self.paginate_queryset(tickets)
-        support_tickets_serializer = SupportTicketV2Serializer(page, many=True)
-        return self.get_paginated_response(support_tickets_serializer.data)
 
 
 class SupportTicketResolutionsViewset(GenericViewSet):
