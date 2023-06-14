@@ -1861,7 +1861,8 @@ class SupportTicketV2ModelViewSet(GenericViewSet):
     @action(detail=False, methods=["post"])
     def search_support_tickets(self, request, *args, **kwargs):
         tickets = SupportTicketInternalServices.search_tickets(
-            search_text=request.data.get("name__icontains")
+            search_text=request.data.get("name__icontains"),
+            user_id=request.META.get("user_id")
         )
 
         page = self.paginate_queryset(tickets)

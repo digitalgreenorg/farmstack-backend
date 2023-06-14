@@ -69,9 +69,9 @@ class SupportTicketInternalServices:
     #     return queryset
 
     @classmethod
-    def search_tickets(cls, search_text: str):
+    def search_tickets(cls, user_id:str, search_text: str):
         ticket = SupportTicketV2.objects.filter(
-            ticket_title__icontains=search_text
+            ticket_title__icontains=search_text,user_map__user__on_boarded_by_id=user_id,
         ).select_related("user_map__organization","user_map__user","user_map__user__role","user_map").order_by("-created_at")
 
         return ticket
