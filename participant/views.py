@@ -1860,9 +1860,13 @@ class SupportTicketV2ModelViewSet(GenericViewSet):
     @http_request_mutation
     @action(detail=False, methods=["post"])
     def search_support_tickets(self, request, *args, **kwargs):
+        data = request.data
+        others = bool(data.pop("others", False))
         tickets = SupportTicketInternalServices.search_tickets(
-            search_text=request.data.get("name__icontains"),
-            user_id=request.META.get("user_id")
+            search_text=data.get("name__icontains"),
+            user_id=request.META.get("user_id"),
+            others=others,
+            map_id=request.META.get("map_id")
         )
 
         page = self.paginate_queryset(tickets)
