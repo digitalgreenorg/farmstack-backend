@@ -1890,9 +1890,10 @@ class SupportTicketResolutionsViewset(GenericViewSet):
     # API to update an existing object by its ID
     @support_ticket_role_authorization(model_name="Resolution")
     def update(self, request, pk=None):
+        print("Comes here")
         queryset = self.get_queryset()
         object = get_object_or_404(queryset, pk=pk)
-        serializer = self.get_serializer(object, data=request.data)
+        serializer = self.get_serializer(object, data=request.data,partial=True)
         serializer.is_valid(raise_exception=True)
         object = serializer.save()
         return Response(serializer.data)
