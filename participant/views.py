@@ -1813,8 +1813,8 @@ class SupportTicketV2ModelViewSet(GenericViewSet):
             'ticket': ticket_serializer.data,
             'resolutions': resolution_serializer.data,
             "logged_in_organization":{
-                "org_logo":str(current_user.organization.logo),
-                "org_id" : str(f"/media/{current_user.organization.id}")
+                "org_id":str(current_user.organization.id),
+                "org_logo" : str(f"/media/{current_user.organization.logo}")
             }
         }
 
