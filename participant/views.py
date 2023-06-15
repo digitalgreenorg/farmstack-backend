@@ -1815,14 +1815,25 @@ class SupportTicketV2ModelViewSet(GenericViewSet):
             return Response({
                 "message": "No ticket found for this id.",
             }, status=status.HTTP_404_NOT_FOUND)
-
+        try:
+            current_user = UserOrganizationMap.objects.select_related("organization").get(id=request.META.get("map_id"))
+        except UserOrganizationMap.DoesNotExist:
+            return Response(
+                {
+                    "message" : "No user found for the map id."
+                },status=status.HTTP_400_BAD_REQUEST
+            )
         ticket_serializer = SupportTicketV2Serializer(ticket_instance)
         resolution_serializer = SupportTicketResolutionsSerializerMinimised(ticket_instance.resolution_set,
                                                                             many=True)
-
+        print(resolution_serializer.data)
         data = {
             'ticket': ticket_serializer.data,
-            'resolutions': resolution_serializer.data
+            'resolutions': resolution_serializer.data,
+            "logged_in_organization":{
+                "org_id":str(current_user.organization.id),
+                "org_logo" : str(f"/media/{current_user.organization.logo}")
+            }
         }
 
         return Response(data)
@@ -1873,9 +1884,10 @@ class SupportTicketResolutionsViewset(GenericViewSet):
     # API to update an existing object by its ID
     @support_ticket_role_authorization(model_name="Resolution")
     def update(self, request, pk=None):
+        print("Comes here")
         queryset = self.get_queryset()
         object = get_object_or_404(queryset, pk=pk)
-        serializer = self.get_serializer(object, data=request.data)
+        serializer = self.get_serializer(object, data=request.data,partial=True)
         serializer.is_valid(raise_exception=True)
         object = serializer.save()
         return Response(serializer.data)
