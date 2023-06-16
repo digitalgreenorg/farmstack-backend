@@ -92,7 +92,7 @@ def validate_role_modify( user_id: str, role_id: str, map_id: str,
         return True
     else:
         try:
-            ticket = SupportTicketV2.objects.get(id=pk, user_map_id=map_id)
+            ticket = SupportTicketV2.objects.get(id=pk)
             return True if ticket else False
         except SupportTicketV2.DoesNotExist:
             return False
