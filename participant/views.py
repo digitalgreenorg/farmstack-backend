@@ -17,6 +17,21 @@ import pandas as pd
 import psycopg2
 import requests
 import xlwt
+from django.conf import settings
+from django.core.exceptions import ValidationError
+from django.db.models import Q
+from django.db.models.functions import Lower
+from django.shortcuts import render
+from psycopg2 import errorcodes
+from rest_framework import pagination, status
+from rest_framework.decorators import action, permission_classes
+from rest_framework.generics import get_object_or_404
+from rest_framework.parsers import JSONParser
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
+from rest_framework.viewsets import GenericViewSet, ViewSet
+from uritemplate import partial
+
 from accounts.models import User
 from core.constants import Constants
 from core.utils import (
@@ -36,27 +51,17 @@ from datahub.models import (
     UserOrganizationMap,
 )
 from datahub.serializers import DatasetFileV2NewSerializer
-from django.conf import settings
-from django.core.exceptions import ValidationError
-from django.db.models import Q
-from django.db.models.functions import Lower
-from django.shortcuts import render
-from rest_framework import pagination, status
-from rest_framework.decorators import action, permission_classes
-from rest_framework.parsers import JSONParser
-from rest_framework.permissions import IsAuthenticated
-from rest_framework.response import Response
-from rest_framework.viewsets import GenericViewSet, ViewSet
-from uritemplate import partial
-from utils import string_functions
-from utils.connector_utils import run_containers, stop_containers
-
+from participant.internal_services.support_ticket_internal_services import (
+    SupportTicketInternalServices,
+)
 from participant.models import (
     Connectors,
     ConnectorsMap,
     Department,
     Project,
+    Resolution,
     SupportTicket,
+    SupportTicketV2,
 )
 from participant.serializers import (
     ConnectorListSerializer,
@@ -69,6 +74,8 @@ from participant.serializers import (
     ConnectorsRetriveSerializer,
     ConnectorsSerializer,
     ConnectorsSerializerForEmail,
+    CreateSupportTicketResolutionsSerializer,
+    CreateSupportTicketV2Serializer,
     DatabaseColumnRetrieveSerializer,
     DatabaseConfigSerializer,
     DatabaseDataExportSerializer,
@@ -81,8 +88,14 @@ from participant.serializers import (
     ParticipantSupportTicketSerializer,
     ProjectDepartmentSerializer,
     ProjectSerializer,
+    SupportTicketResolutionsSerializer,
+    SupportTicketResolutionsSerializerMinimised,
+    SupportTicketV2Serializer,
     TicketSupportSerializer,
 )
+from utils import string_functions
+from utils.authorization_services import support_ticket_role_authorization
+from utils.connector_utils import run_containers, stop_containers
 from utils.jwt_services import http_request_mutation
 
 LOGGER = logging.getLogger(__name__)
@@ -93,6 +106,7 @@ from django.http import HttpResponse, JsonResponse
 from rest_framework import status
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
+
 from utils import file_operations as file_ops
 
 
@@ -826,7 +840,6 @@ class ParticipantConnectorsViewSet(GenericViewSet):
             status=400,
         )
 
-
     @action(detail=False, methods=["post"])
     @http_request_mutation
     def connectors_filters(self, request, *args, **kwargs):
@@ -1411,7 +1424,6 @@ class DataBaseViewSet(GenericViewSet):
         cookie_data = serializer.data
         config = serializer.validated_data
         config.pop("database_type")  # remove database_type before passing it to db conn
-
         if database_type == Constants.SOURCE_MYSQL_FILE_TYPE:
             """Create a MySQL connection object on valid database credentials and return tables"""
             LOGGER.info(f"Connecting to {database_type}")
@@ -1441,9 +1453,15 @@ class DataBaseViewSet(GenericViewSet):
                         status=status.HTTP_400_BAD_REQUEST,
                     )
                 elif err.errno == mysql.connector.errorcode.ER_NO_SUCH_TABLE:
-                    return Response({"table": ["Table does not exist"]}, status=status.HTTP_400_BAD_REQUEST)
+                    return Response({"table": ["Table does not exist"]},
+                                    status=status.HTTP_400_BAD_REQUEST)
+                elif err.errno == mysql.connector.errorcode.ER_BAD_DB_ERROR:
+                    # Port is incorrect
+                    return Response({
+                        "dbname": ["Invalid database name. Connection Failed."]}
+                        , status=status.HTTP_400_BAD_REQUEST)
                 # Return an error message if the connection fails
-                return Response({"error": [str(err)]}, status=status.HTTP_400_BAD_REQUEST)
+                return Response({"host": ["Invalid host . Connection Failed."]}, status=status.HTTP_400_BAD_REQUEST)
             except Exception as e:
                 return Response(str(e), status=status.HTTP_400_BAD_REQUEST)
 
@@ -1456,31 +1474,35 @@ class DataBaseViewSet(GenericViewSet):
                     with closing(conn.cursor()) as cursor:
                         cursor.execute("SELECT table_name FROM information_schema.tables WHERE table_schema='public';")
                         table_list = cursor.fetchall()
-
                 # send the tables as a list in response body & set cookies
                 tables = [table for inner_list in table_list for table in inner_list]
                 response = HttpResponse(json.dumps(tables), status=status.HTTP_200_OK)
                 response = update_cookies("conn_details", cookie_data, response)
                 return response
-            except Exception as error:
-                LOGGER.error(error, exc_info=True)
-                if str(error).__contains__("password authentication failed for user"):
-                    return Response(
-                        {"user": ["Invalid username or password"], "password": ["Invalid username or password."]},
-                        status=status.HTTP_400_BAD_REQUEST,
-                    )
-                elif str(error).__contains__("does not exist"):
-                    return Response(
-                        {"dbname": ["Invalid database name. Connection Failed."]}, status=status.HTTP_400_BAD_REQUEST
-                    )
-                else:
+            except psycopg2.Error as err:
+                print(err)
+                if "password authentication failed for user" in str(err) or "role" in str(err):
+                    # Incorrect username or password
                     return Response(
                         {
-                            "host": ["Invalid host or port. Connection Failed."],
-                            "port": ["Invalid host or port. Connection Failed."],
+                            "username": ["Incorrect username or password"],
+                            "password": ["Incorrect username or password"],
                         },
                         status=status.HTTP_400_BAD_REQUEST,
                     )
+                elif "database" in str(err):
+                    # Database does not exist
+                    return Response({"dbname": ["Database does not exist"]}, status=status.HTTP_400_BAD_REQUEST)
+                elif "could not translate host name" in str(err):
+                    # Database does not exist
+                    return Response({"host": ["Invalid Host address"]}, status=status.HTTP_400_BAD_REQUEST)
+
+                elif "Operation timed out" in str(err):
+                    # Server is not available
+                    return Response({"port": ["Invalid port or DB Server is down"]}, status=status.HTTP_400_BAD_REQUEST)
+
+                # Return an error message if the connection fails
+                return Response({"error": [str(err)]}, status=status.HTTP_400_BAD_REQUEST)
 
     @action(detail=False, methods=["post"])
     def database_col_names(self, request):
@@ -1640,7 +1662,7 @@ class DataBaseViewSet(GenericViewSet):
             try:
                 with closing(psycopg2.connect(**config)) as conn:
                     try:
-                        sql_query = "SELECT {0} FROM {1};".format(col_names, t_name)
+                        sql_query = "SELECT {0} FROM public.{1};".format(col_names, t_name)
                         df = pd.read_sql(sql_query, conn)
                         df = df.astype(str)
                     except pd.errors.DatabaseError as error:
@@ -1716,3 +1738,181 @@ class DataBaseViewSet(GenericViewSet):
         except Exception as e:
             LOGGER.error(f"Failed to fetch data from api ERROR: {e} and input fields: {request.data}")
             return Response({"message": f"API Response: {e}"}, status=status.HTTP_400_BAD_REQUEST)
+
+
+class SupportTicketV2ModelViewSet(GenericViewSet):
+    parser_class = JSONParser
+    queryset = SupportTicketV2.objects.all()
+    serializer_class = SupportTicketV2Serializer
+    pagination_class = CustomPagination
+
+    @action(detail=False, methods=["post"])
+    @http_request_mutation
+    def list_tickets(self, request, *args, **kwargs):
+        data = request.data
+        others = bool(data.pop("others", False))
+        print(others)
+        print(type(others))
+        filters_data = data
+        role_id = request.META.get("role_id")
+        map_id = request.META.get("map_id")
+        user_id = request.META.get("user_id")
+        queryset = SupportTicketV2.objects.select_related(
+            "user_map__organization", "user_map__user", "user_map__user__role","user_map"
+        ).order_by("-updated_at").all()
+        # print(filters_data)
+        # import pdb; pdb.set_trace()
+        if str(role_id) == "1":
+            # the person is an admin/steward so he should be able to view tickets:
+            # 1. raise by co-stewards
+            # 2. raised by participants under the steward.
+            filter = {"user_map__user__role_id": 3} if others else {"user_map__user__role_id": 6}
+            queryset = queryset.filter(user_map__user__on_boarded_by_id=None).filter(**filter, **filters_data)
+
+        elif str(role_id) == "6":
+            # the person is co-steward
+            # 1. raised by himself
+            # 2. raised by participants under himself.
+            filter = {"user_map__user__on_boarded_by_id": user_id} if others else {"user_map_id": map_id}
+            queryset = queryset.filter(**filter, **filters_data)
+
+        elif str(role_id) == "3":
+            print(filters_data)
+            # participant
+            # can only see his tickets
+            queryset = queryset.filter(
+                user_map_id=map_id, **filters_data
+            )
+        page = self.paginate_queryset(queryset)
+        support_tickets_serializer = SupportTicketV2Serializer(page, many=True)
+        return self.get_paginated_response(support_tickets_serializer.data)
+
+    # API to retrieve a single object by its ID
+
+    @http_request_mutation
+    def retrieve(self, request, pk):
+        try:
+            ticket_instance = SupportTicketV2.objects.prefetch_related('resolution_set').get(id=pk)
+        except SupportTicketV2.DoesNotExist:
+            return Response({
+                "message": "No ticket found for this id.",
+            }, status=status.HTTP_404_NOT_FOUND)
+        try:
+            current_user = UserOrganizationMap.objects.select_related("organization").get(id=request.META.get("map_id"))
+        except UserOrganizationMap.DoesNotExist:
+            return Response(
+                {
+                    "message" : "No user found for the map id."
+                },status=status.HTTP_400_BAD_REQUEST
+            )
+        ticket_serializer = SupportTicketV2Serializer(ticket_instance)
+        resolution_serializer = SupportTicketResolutionsSerializerMinimised(ticket_instance.resolution_set,
+                                                                            many=True)
+        print(resolution_serializer.data)
+        data = {
+            'ticket': ticket_serializer.data,
+            'resolutions': resolution_serializer.data,
+            "logged_in_organization":{
+                "org_id":str(current_user.organization.id),
+                "org_logo" : str(f"/media/{current_user.organization.logo}")
+            }
+        }
+
+        return Response(data)
+
+    # API to create a new object
+    @http_request_mutation
+    def create(self, request):
+        serializer = CreateSupportTicketV2Serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        object = serializer.save()
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+    @support_ticket_role_authorization(model_name="SupportTicketV2")
+    def update(self, request, pk=None):
+        queryset = self.get_queryset().select_related("user_map__organization","user_map__user","user_map__user__role","user_map")
+        object = get_object_or_404(queryset, pk=pk)
+        serializer = self.get_serializer(object, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        object = serializer.save()
+        return Response(serializer.data)
+
+    # API to delete an existing object by its ID
+    @support_ticket_role_authorization(model_name="SupportTicketV2")
+    def destroy(self, request, pk=None):
+        queryset = self.get_queryset()
+        object = get_object_or_404(queryset, pk=pk)
+        object.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+    # @http_request_mutation
+    # @action(detail=False, methods=["get"])
+    # def filter_support_tickets(self, request, *args, **kwargs):
+    #     org_id = request.META.get("org_id")
+    #     map_id = request.META.get("map_id")
+    #     user_id = request.META.get("user_id")
+    #     tickets = SupportTicketInternalServices.filter_support_ticket_service(
+    #         map_id=map_id,
+    #         org_id=org_id,
+    #         role_id=request.META.get("role_id"),
+    #         onboarded_by_id=request.META.get("onboarded_by"),
+    #         status=request.GET.dict().get("status", None),
+    #         category=request.GET.dict().get("category", None),
+    #         start_date=request.GET.dict().get("start_date", None),
+    #         end_date=request.GET.dict().get("end_date", None),
+    #         results_for=request.GET.dict().get("results_for"),
+    #         user_id=user_id
+    #     )
+    #
+    #     page = self.paginate_queryset(tickets)
+    #     support_tickets_serializer = SupportTicketV2Serializer(page, many=True)
+    #     return self.get_paginated_response(support_tickets_serializer.data)
+
+    @http_request_mutation
+    @action(detail=False, methods=["post"])
+    def search_support_tickets(self, request, *args, **kwargs):
+        tickets = SupportTicketInternalServices.search_tickets(
+            search_text=request.data.get("name__icontains"),
+            user_id=request.META.get("user_id")
+        )
+
+        page = self.paginate_queryset(tickets)
+        support_tickets_serializer = SupportTicketV2Serializer(page, many=True)
+        return self.get_paginated_response(support_tickets_serializer.data)
+
+
+class SupportTicketResolutionsViewset(GenericViewSet):
+    parser_class = JSONParser
+    queryset = Resolution.objects.all()
+    serializer_class = SupportTicketResolutionsSerializer
+    pagination_class = CustomPagination
+
+    @support_ticket_role_authorization(model_name="Resolution")
+    def create(self, request):
+        # set map in in request object
+        request_data = request.data.copy()
+        request_data["user_map"] = request.META.get("map_id")
+
+        serializer = CreateSupportTicketResolutionsSerializer(data=request_data)
+        serializer.is_valid(raise_exception=True)
+        object = serializer.save()
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+    # API to update an existing object by its ID
+    @support_ticket_role_authorization(model_name="Resolution")
+    def update(self, request, pk=None):
+        print("Comes here")
+        queryset = self.get_queryset()
+        object = get_object_or_404(queryset, pk=pk)
+        serializer = self.get_serializer(object, data=request.data,partial=True)
+        serializer.is_valid(raise_exception=True)
+        object = serializer.save()
+        return Response(serializer.data)
+
+    # API to delete an existing object by its ID
+    @support_ticket_role_authorization(model_name="Resolution")
+    def destroy(self, request, pk=None):
+        queryset = self.get_queryset()
+        object = get_object_or_404(queryset, pk=pk)
+        object.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)

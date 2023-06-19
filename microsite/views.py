@@ -49,8 +49,8 @@ from microsite.serializers import (
     LegalDocumentSerializer,
     OrganizationMicrositeSerializer,
     PolicySerializer,
+    UserDataMicrositeSerializer,
     UserSerializer,
-    UserDataMicrositeSerializer
 )
 from utils import custom_exceptions, file_operations
 from utils.jwt_services import http_request_mutation
@@ -184,6 +184,7 @@ class DatasetsMicrositeViewSet(GenericViewSet):
             file_path["id"] = file.id if file.accessibility == Constants.PUBLIC else None
             file_path["file"] = path_.split("/")[-1]
             file_path["source"] = file.source
+            file_path["file_size"] = file.file_size
             file_path["accessibility"] = file.accessibility
             file_path["standardised_file"] = (
                 os.path.join(settings.DATASET_FILES_URL,
