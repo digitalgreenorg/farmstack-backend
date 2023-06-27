@@ -71,7 +71,7 @@ class OrganizationSerializer(serializers.ModelSerializer):
         try:
             validator(website)
         except ValidationError:
-            raise serializers.ValidationError({"error": "Invalid website URL"})
+            raise serializers.ValidationError({"website": "Invalid website URL"})
 
         return attrs
     class Meta:
