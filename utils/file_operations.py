@@ -210,3 +210,11 @@ def get_css_attributes(css_path: str, css_attribute: str):
         return css_attribute_value
     except Exception as error:
         LOGGER.error(error, exc_info=True)
+
+
+def check_file_name_length(incoming_file_name:str, accepted_file_name_size:int):
+    valid = True
+
+    if len(str(incoming_file_name)) > accepted_file_name_size:
+        valid = False
+    return valid

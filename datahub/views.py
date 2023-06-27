@@ -56,7 +56,7 @@ from accounts.serializers import (
 )
 from connectors.models import Connectors
 from connectors.serializers import ConnectorsListSerializer
-from core.constants import Constants
+from core.constants import Constants, NumericalConstants
 from core.settings import BASE_DIR
 from core.utils import (
     CustomPagination,
@@ -109,6 +109,7 @@ from participant.serializers import (
 )
 from utils import custom_exceptions, file_operations, string_functions, validators
 from utils.authentication_services import authenticate_user
+from utils.file_operations import check_file_name_length
 from utils.jwt_services import http_request_mutation
 
 from .models import Policy, UsagePolicy
@@ -406,7 +407,7 @@ class ParticipantViewSet(GenericViewSet):
                 to_email=request.data.get("email"),
                 content=mail_body,
                 subject=Constants.PARTICIPANT_ORG_ADDITION_SUBJECT
-                + os.environ.get(Constants.DATAHUB_NAME, Constants.datahub_name),
+                        + os.environ.get(Constants.DATAHUB_NAME, Constants.datahub_name),
             )
         except Exception as error:
             LOGGER.error(error, exc_info=True)
@@ -506,7 +507,7 @@ class ParticipantViewSet(GenericViewSet):
                 to_email=participant.email,
                 content=mail_body,
                 subject=Constants.PARTICIPANT_ORG_UPDATION_SUBJECT
-                + os.environ.get(Constants.DATAHUB_NAME, Constants.datahub_name),
+                        + os.environ.get(Constants.DATAHUB_NAME, Constants.datahub_name),
             )
 
             data = {
@@ -556,7 +557,7 @@ class ParticipantViewSet(GenericViewSet):
                     to_email=participant.email,
                     content=mail_body,
                     subject=Constants.PARTICIPANT_ORG_DELETION_SUBJECT
-                    + os.environ.get(Constants.DATAHUB_NAME, Constants.datahub_name),
+                            + os.environ.get(Constants.DATAHUB_NAME, Constants.datahub_name),
                 )
 
                 # Set the on_boarded_by_id to null if co_steward is deleted
@@ -638,7 +639,7 @@ class MailInvitationViewSet(GenericViewSet):
                         to_email=[email],
                         content=mail_body,
                         subject=os.environ.get("DATAHUB_NAME", "datahub_name")
-                        + Constants.PARTICIPANT_INVITATION_SUBJECT,
+                                + Constants.PARTICIPANT_INVITATION_SUBJECT,
                     )
                 except Exception as e:
                     emails_not_found.append()
@@ -1169,7 +1170,7 @@ class DatahubDatasetsViewSet(GenericViewSet):
 
         # reset the approval status b/c the user modified the dataset after an approval
         if getattr(instance, Constants.APPROVAL_STATUS) == Constants.APPROVED and (
-            user_obj.role_id == 3 or user_obj.role_id == 4
+                user_obj.role_id == 3 or user_obj.role_id == 4
         ):
             data[Constants.APPROVAL_STATUS] = Constants.AWAITING_REVIEW
 
@@ -2386,6 +2387,14 @@ class DatasetFileV2View(GenericViewSet):
     serializer_class = DatasetFileV2NewSerializer
 
     def create(self, request, *args, **kwargs):
+        validity = check_file_name_length(incoming_file_name=request.data.get("file"),
+                                          accepted_file_name_size=NumericalConstants.FILE_NAME_LENGTH)
+        if not validity:
+            return Response(
+                {"message": f"File name should not be more than {NumericalConstants.FILE_NAME_LENGTH} characters."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
         serializer = self.get_serializer(data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
         serializer.save()
@@ -2582,36 +2591,36 @@ class DatahubNewDashboard(GenericViewSet):
         user_id = data.get("user_id")
         user_org_map = data.get("map_id")
         my_dataset_used_in_connectors = (
-            dataset_query.prefetch_related("datasets__right_dataset_file")
-            .values("datasets__right_dataset_file")
-            .filter(user_map_id=user_org_map)
-            .distinct()
-            .count()
-            + dataset_query.prefetch_related("datasets__left_dataset_file")
-            .values("datasets__left_dataset_file")
-            .filter(user_map_id=user_org_map)
-            .distinct()
-            .count()
+                dataset_query.prefetch_related("datasets__right_dataset_file")
+                .values("datasets__right_dataset_file")
+                .filter(user_map_id=user_org_map)
+                .distinct()
+                .count()
+                + dataset_query.prefetch_related("datasets__left_dataset_file")
+                .values("datasets__left_dataset_file")
+                .filter(user_map_id=user_org_map)
+                .distinct()
+                .count()
         )
         connectors_query = Connectors.objects.filter(user_id=user_id).all()
 
         other_datasets_used_in_my_connectors = (
-            dataset_query.prefetch_related("datasets__right_dataset_file")
-            .select_related("datasets__right_dataset_file__connectors")
-            .filter(datasets__right_dataset_file__connectors__user_id=user_id)
-            .values("datasets__right_dataset_file")
-            .exclude(user_map_id=user_org_map)
-            .distinct()
-            .count()
-        ) + (
-            dataset_query.prefetch_related("datasets__left_dataset_file")
-            .select_related("datasets__left_dataset_file__connectors")
-            .filter(datasets__left_dataset_file__connectors__user_id=user_id)
-            .values("datasets__left_dataset_file")
-            .exclude(user_map_id=user_org_map)
-            .distinct()
-            .count()
-        )
+                                                   dataset_query.prefetch_related("datasets__right_dataset_file")
+                                                   .select_related("datasets__right_dataset_file__connectors")
+                                                   .filter(datasets__right_dataset_file__connectors__user_id=user_id)
+                                                   .values("datasets__right_dataset_file")
+                                                   .exclude(user_map_id=user_org_map)
+                                                   .distinct()
+                                                   .count()
+                                               ) + (
+                                                   dataset_query.prefetch_related("datasets__left_dataset_file")
+                                                   .select_related("datasets__left_dataset_file__connectors")
+                                                   .filter(datasets__left_dataset_file__connectors__user_id=user_id)
+                                                   .values("datasets__left_dataset_file")
+                                                   .exclude(user_map_id=user_org_map)
+                                                   .distinct()
+                                                   .count()
+                                               )
         return {
             "total_connectors_count": connectors_query.count(),
             "other_datasets_used_in_my_connectors": other_datasets_used_in_my_connectors,
