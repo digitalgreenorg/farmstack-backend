@@ -171,3 +171,7 @@ class Constants:
     AUTHORIZATION = 'Authorization'
     ORGANIZATION_NAME_ICONTAINS = 'organization__name__icontains'
     DASHBOARD = 'dashboard'
+
+
+class NumericalConstants:
+    FILE_NAME_LENGTH = 85
