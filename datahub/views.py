@@ -1732,7 +1732,6 @@ class DatasetV2ViewSet(GenericViewSet):
                 raise exceptions.InternalServerError("Internal Server Error")
 
     def create(self, request, *args, **kwargs):
-        print("TJIS APIS")
         """
         ``POST`` method Endpoint: create action to save the Dataset's Meta data
             with datasets sent through POST request. [see here][ref].
@@ -1856,8 +1855,6 @@ class DatasetV2ViewSet(GenericViewSet):
 
     @action(detail=False, methods=["post"])
     def dataset_filters(self, request, *args, **kwargs):
-        print("zgafdhjkbgkjdhfiuodxfgo")
-        print("fdsklfnsekldfnlksdjnfgopidklsfnlkdsvnbljkdfsgbn")
         """This function get the filter args in body. based on the filter args orm filters the data."""
         data = request.data
         org_id = data.pop(Constants.ORG_ID, "")
