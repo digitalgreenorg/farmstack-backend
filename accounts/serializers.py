@@ -19,7 +19,7 @@ class UserCreateSerializer(serializers.ModelSerializer):
     """UserCreateSerializer"""
 
     parser_classes = MultiPartParser
-
+    email = serializers.EmailField()
     role = serializers.PrimaryKeyRelatedField(
         queryset=UserRole.objects.all(),
         required=True,
