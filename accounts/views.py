@@ -119,8 +119,10 @@ class RegisterViewset(GenericViewSet):
         return Response(serializer.data, status=status.HTTP_200_OK)
 
     def update(self, request, *args, **kwargs):
+        # print("this is the aoi")
         """PUT method: update or send a PUT request on an object of the Product model"""
         instance = self.get_object()
+        # print(self.get_serializer())
         serializer = self.get_serializer(instance, data=request.data, partial=True)
         # serializer = UserUpdateSerializer(instance, data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
