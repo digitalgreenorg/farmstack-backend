@@ -361,10 +361,12 @@ class ContactFormViewSet(GenericViewSet):
 
     def create(self, request):
         """POST method to create a query and mail it to the datahub admin"""
+        datahub_admin = User.objects.filter(role_id=1).first()
+        serializer = self.get_serializer(data=request.data)
+        print(serializer)
+        serializer.is_valid(raise_exception=True)
         try:
-            datahub_admin = User.objects.filter(role_id=1).first()
-            serializer = self.get_serializer(data=request.data)
-            serializer.is_valid(raise_exception=True)
+
             date = datetime.datetime.now().strftime("%d-%m-%Y")
             data = serializer.data
             data.update({"date": date})
