@@ -7,6 +7,8 @@ import pytest
 from django.shortcuts import render
 from _pytest.monkeypatch import MonkeyPatch
 from django.db import models
+from rest_framework_simplejwt.tokens import RefreshToken
+
 from accounts.models import User, UserManager, UserRole
 from datahub.models import Datasets, Organization, UserOrganizationMap, Policy
 from datahub.views import ParticipantViewSet
@@ -868,7 +870,7 @@ class PoliciesTestCaseView(TestCase):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
-        cls.client = Client()
+        # cls.client = Client()
         policies_url = reverse("policy")
 
         user_role = UserRole.objects.create(
@@ -908,13 +910,33 @@ class PoliciesTestCaseView(TestCase):
             file=None,
         )
 
-        def test_admin_create_policy(self):
-            # response = self.client.post(self.policies_url, ticket_invalid_data, secure=True)
-            # assert response.status_code == 400
-            # assert response.json().get("user_map") == ["“4” is not a valid UUID."]
-            # assert response.json() == {
-            #     "category": ["This field is required."],
-            #     "subject": ["This field is required."],
-            #     "status": ["This field is required."],
-            #     "user_map": ["“4” is not a valid UUID."],
-            pass
+        refresh = RefreshToken.for_user(user)
+        refresh["org_id"] = str(user_map.organization_id) if user_map else None
+        refresh["map_id"] = str(user_map.id) if user_map else None
+        refresh["role"] = str(user.role_id)
+        refresh["onboarded_by"] = str(user.on_boarded_by_id)
+
+        refresh.access_token["org_id"] = str(user_map.organization_id) if user_map else None
+        refresh.access_token["map_id"] = str(user_map.id) if user_map else None
+        refresh.access_token["role"] = str(user.role_id)
+        refresh.access_token["onboarded_by"] = str(user.on_boarded_by_id)
+        auth["token"] = refresh.access_token
+
+        self.client = Client()
+        headers = {
+            'Content-Type': 'application/json',
+            'Authorization': f'Bearer {auth["token"]}'
+        }
+        self.client.defaults['HTTP_AUTHORIZATION'] = headers['Authorization']
+        self.client.defaults['CONTENT_TYPE'] = headers['Content-Type']
+
+    def test_admin_create_policy(self):
+        # response = self.client.post(self.policies_url, ticket_invalid_data, secure=True)
+        # assert response.status_code == 400
+        # assert response.json().get("user_map") == ["“4” is not a valid UUID."]
+        # assert response.json() == {
+        #     "category": ["This field is required."],
+        #     "subject": ["This field is required."],
+        #     "status": ["This field is required."],
+        #     "user_map": ["“4” is not a valid UUID."],
+        pass
