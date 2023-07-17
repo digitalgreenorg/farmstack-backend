@@ -1,3 +1,4 @@
+from uuid import uuid4
 from rest_framework.reverse import reverse
 from django.test import Client, TestCase
 from rest_framework import status
@@ -6,6 +7,21 @@ from datahub.models import  Organization, UserOrganizationMap
 from accounts.models import User, UserRole
 
 organisation_InvalidData = {
+    "user_id": "None",
+    "org_email": "asdfbg@sdfgh.com",
+    "name": "dnjsnjdnksanmckadmcnkdmndnjsnjdnksanmckadmcnkdmnckmnckdmclakdscamdnjsnjdnksanmckadmcnkdmnckmnckdmclakdscamdnjsnjdnksanmckadmcnkdmnckmnckdmclakdscamdnjsnjdnksanmckadmcnkdmnckmnckdmclakdscamdnjsnjdnksanmckadmcnkdmnckmnckdmclakdscamdnjsnjdnksanmckadmcnkdmnckmnckdmclakdscamdnjsnjdnksanmckadmcnkdmnckmnckdmclakdscamdnjsnjdnksanmckadmcnkdmnckmnckdmclakdscamdnjsnjdnksanmckadmcnkdmnckmnckdmclakdscamckmnckdmclakdscamdnjsnjdnksanmckadmcnkdmndnjsnjdnksanmckadmcnkdmnckmnckdmclakdscamdnjsnjdnksanmckadmcnkdmnckmnckdmclakdscamdnjsnjdnksanmckadmcnkdmnckmnckdmclakdscamdnjsnjdnksanmckadmcnkdmnckmnckdmclakdscamdnjsnjdnksanmckadmcnkdmnckmnckdmclakdscamdnjsnjdnksanmckadmcnkdmnckmnckdmclakdscamckmnckdmclakdscamdnjsnjdnksanmckadmcnkdmndnjsnjdnksanmckadmcnkdmnckmnckdmclakdscamdnjsnjdnksanmckadmcnkdmnckmnckdmclakdscamdnjsnjdnksanmckadmcnkdmnckmnckdmclakdscamckmnckdmclakdscam",
+    "website": "https://datahubethdev.farmstack.co/datahub/settings/1",
+    "address": {
+        "country": "Andorra",
+        "pincode": "2345675432",
+        "address": "asdfghn",
+        "city": ""
+    },
+    "phone_number": "+91 12345-65432",
+    "org_description": "fc"
+}
+
+organisation_InvalidData_without_user_id = {
     "user_id": "None",
     "org_email": "asdfbg@sdfgh.com",
     "name": "dnjsnjdnksanmckadmcnkdmndnjsnjdnksanmckadmcnkdmnckmnckdmclakdscamdnjsnjdnksanmckadmcnkdmnckmnckdmclakdscamdnjsnjdnksanmckadmcnkdmnckmnckdmclakdscamdnjsnjdnksanmckadmcnkdmnckmnckdmclakdscamdnjsnjdnksanmckadmcnkdmnckmnckdmclakdscamdnjsnjdnksanmckadmcnkdmnckmnckdmclakdscamdnjsnjdnksanmckadmcnkdmnckmnckdmclakdscamdnjsnjdnksanmckadmcnkdmnckmnckdmclakdscamdnjsnjdnksanmckadmcnkdmnckmnckdmclakdscamckmnckdmclakdscamdnjsnjdnksanmckadmcnkdmndnjsnjdnksanmckadmcnkdmnckmnckdmclakdscamdnjsnjdnksanmckadmcnkdmnckmnckdmclakdscamdnjsnjdnksanmckadmcnkdmnckmnckdmclakdscamdnjsnjdnksanmckadmcnkdmnckmnckdmclakdscamdnjsnjdnksanmckadmcnkdmnckmnckdmclakdscamdnjsnjdnksanmckadmcnkdmnckmnckdmclakdscamckmnckdmclakdscamdnjsnjdnksanmckadmcnkdmndnjsnjdnksanmckadmcnkdmnckmnckdmclakdscamdnjsnjdnksanmckadmcnkdmnckmnckdmclakdscamdnjsnjdnksanmckadmcnkdmnckmnckdmclakdscamckmnckdmclakdscam",
@@ -39,6 +55,8 @@ updated_org_data = {
     "org_description": "org org org org"
 }
 
+
+
 class OrganizationTestCaseForViews(TestCase):
 
     def setUp(self) -> None:
@@ -52,6 +70,16 @@ class OrganizationTestCaseForViews(TestCase):
             email="dummy@gmail.com",
             role_id=self.user_role.id,
         )
+        self.user_with_no_org = User.objects.create(
+            email="notorg@gmail.com",
+            role_id=self.user_role.id,
+        )
+
+        self.deleted_user = User.objects.create(
+            email="dummy1@gmail.com",
+            role_id=self.user_role.id,
+            status=False
+        )
         self.address = {"street": "4th Main", "city": "Bengaluru", "country": "India", "pincode": "53789"}
 
         self.creating_org = Organization.objects.create(
@@ -61,9 +89,39 @@ class OrganizationTestCaseForViews(TestCase):
             website="htttps://google.com",
             address=json.dumps({"city": "Banglore"}),
         )
-
+ 
         UserOrganizationMap.objects.create(user_id=self.user.id, organization_id=self.creating_org.id)
         organisation_validData["user_id"] = str(self.user.id)
+
+
+    def test_create_org_user(self):
+        other_user = User.objects.create(
+            email="user@gmail.com",
+            role_id=self.user_role.id,
+        )
+        org_to_create = {
+            "org_email": "akshata_company@email.com",
+            "name": "Creating User Akshata",
+            "website": "https://datahubethdev.farmstack.co/datahub/settings/1",
+            "address": "{}",
+            "phone_number": "+91 65432-12345",
+            "org_description": "description about org "
+        }
+        org_to_create.update({'user_id': str(other_user.id)})
+        response = self.client.post(self.organization_url, org_to_create)
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+
+    def test_no_user_org_get(self):
+        response = self.client.get(self.organization_url+f"{str(self.user_with_no_org.id)}/")
+        assert response.status_code == 200
+
+    def test_no_user_org_update(self):
+        org_data = {
+            "name": "updated name",
+            "org_description": "Organization description ....",
+        }
+        response = self.client.put(self.organization_url+f"{str(self.user_with_no_org.id)}/", org_data,content_type="application/json")
+        assert response.status_code == 404
 
     # Testing Organization POST Method with Invalid Data
     def test_org_post_method_with_invalid_data(self):
@@ -73,9 +131,9 @@ class OrganizationTestCaseForViews(TestCase):
     # Testing Organization POST Method with valid Data
     def test_org_post_method_with_valid_data(self):
         response = self.client.post(self.organization_url, organisation_validData)
-        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
-        assert response.json().get("organization").get("name") == organisation_validData.get("name")
-        assert response.json().get("organization").get("phone_number") == organisation_validData.get("phone_number")
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        assert response.json() == {'message': ['User is already associated with an organization']}
+        response = self.client.post(self.organization_url, organisation_validData)
 
     # Testing Organization List (GET)
     def test_org_get_data(self):

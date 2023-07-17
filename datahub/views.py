@@ -11,7 +11,7 @@ from calendar import c
 from functools import reduce
 from pickle import TRUE
 from urllib.parse import unquote
-
+import json
 import django
 import pandas as pd
 from django.conf import settings
@@ -207,24 +207,13 @@ class OrganizationViewSet(GenericViewSet):
         """POST method: create action to save an organization object using User ID (IMPORTANT: Using USER ID instead of Organization ID)"""
         try:
             user_obj = User.objects.get(id=request.data.get(Constants.USER_ID))
-            org_queryset = Organization.objects.filter(org_email=request.data.get(Constants.ORG_EMAIL), status=True)
-            user_org_queryset = (
-                UserOrganizationMap.objects.filter(organization_id=org_queryset.first().id) if org_queryset else None
-            )
-
-            if not user_obj:
-                return Response(
-                    {"message": ["User is not available"]},
-                    status=status.HTTP_400_BAD_REQUEST,
-                )
-
+            user_org_queryset = UserOrganizationMap.objects.filter(user_id=request.data.get(Constants.USER_ID)).first()
             if user_org_queryset:
                 return Response(
                     {"message": ["User is already associated with an organization"]},
                     status=status.HTTP_400_BAD_REQUEST,
                 )
-
-            elif not org_queryset and not user_org_queryset:
+            else:
                 with transaction.atomic():
                     # create organization and userorganizationmap object
                     print("Creating org & user_org_map")
@@ -236,7 +225,7 @@ class OrganizationViewSet(GenericViewSet):
                         data={
                             Constants.USER: user_obj.id,
                             Constants.ORGANIZATION: org_queryset.id,
-                        }
+                        } # type: ignore
                     )
                     user_org_serializer.is_valid(raise_exception=True)
                     self.perform_create(user_org_serializer)
@@ -247,23 +236,6 @@ class OrganizationViewSet(GenericViewSet):
                     }
                     return Response(data, status=status.HTTP_201_CREATED)
 
-            elif org_queryset and not user_org_queryset:
-                with transaction.atomic():
-                    # map user to org by creating userorganizationmap object
-                    print("creating only user_org_map")
-                    user_org_serializer = UserOrganizationMapSerializer(
-                        data={
-                            Constants.USER: user_obj.id,
-                            Constants.ORGANIZATION: org_queryset.first().id,
-                        }
-                    )
-                    user_org_serializer.is_valid(raise_exception=True)
-                    self.perform_create(user_org_serializer)
-                    data = {
-                        "user_map": user_org_serializer.data.get("id"),
-                        "org_id": org_queryset.first().id,
-                    }
-                    return Response(data, status=status.HTTP_201_CREATED)
 
         except Exception as error:
             LOGGER.error(error, exc_info=True)
@@ -287,7 +259,7 @@ class OrganizationViewSet(GenericViewSet):
             Constants.USER, Constants.ORGANIZATION
         ).filter(organization__status=True, user=pk)
 
-        if not user_org_queryset:
+        if not user_org_queryset: 
             data = {Constants.USER: {"id": user_obj.id}, Constants.ORGANIZATION: "null"}
             return Response(data, status=status.HTTP_200_OK)
 
@@ -306,8 +278,8 @@ class OrganizationViewSet(GenericViewSet):
             UserOrganizationMap.objects.prefetch_related(Constants.USER, Constants.ORGANIZATION).filter(user=pk).all()
         )
 
-        if not user_org_queryset:
-            return Response({}, status=status.HTTP_404_NOT_FOUND)
+        if not user_org_queryset:  
+            return Response({}, status=status.HTTP_404_NOT_FOUND) # 310-360 not covered 4
 
         organization_serializer = OrganizationSerializer(
             Organization.objects.get(id=user_org_queryset.first().organization_id),
