@@ -455,45 +455,49 @@ class ParticipantMicrositeViewSet(GenericViewSet):
         approval_status = request.GET.get(Constants.APPROVAL_STATUS, True)
         name = request.GET.get(Constants.NAME, "")
         filter = {Constants.ORGANIZATION_NAME_ICONTAINS: name} if name else {}
-        if on_boarded_by:
-            roles = (
-                UserOrganizationMap.objects.select_related(
-                    Constants.USER, Constants.ORGANIZATION)
-                .filter(
-                    user__status=True,
-                    user__on_boarded_by=on_boarded_by,
-                    user__role=3,
-                    user__approval_status=approval_status,
-                    **filter,
+        try:
+            if on_boarded_by:
+                roles = (
+                    UserOrganizationMap.objects.select_related(
+                        Constants.USER, Constants.ORGANIZATION)
+                    .filter(
+                        user__status=True,
+                        user__on_boarded_by=on_boarded_by,
+                        user__role=3,
+                        user__approval_status=approval_status,
+                        **filter,
+                    )
+                    .order_by("-user__updated_at")
+                    .all()
                 )
-                .order_by("-user__updated_at")
-                .all()
-            )
-        elif co_steward:
-            roles = (
-                UserOrganizationMap.objects.select_related(
-                    Constants.USER, Constants.ORGANIZATION)
-                .filter(user__status=True, user__role=6, **filter)
-                .order_by("-user__updated_at")
-                .all()
-            )
-        else:
-            roles = (
-                UserOrganizationMap.objects.select_related(
-                    Constants.USER, Constants.ORGANIZATION)
-                .filter(
-                    user__status=True,
-                    user__role=3,
-                    user__on_boarded_by=None,
-                    user__approval_status=approval_status,
-                    **filter,
+            elif co_steward:
+                roles = (
+                    UserOrganizationMap.objects.select_related(
+                        Constants.USER, Constants.ORGANIZATION)
+                    .filter(user__status=True, user__role=6, **filter)
+                    .order_by("-user__updated_at")
+                    .all()
                 )
-                .order_by("-user__updated_at")
-                .all()
-            )
-        page = self.paginate_queryset(roles)
-        participant_serializer = ParticipantSerializer(page, many=True)
-        return self.get_paginated_response(participant_serializer.data)
+            else:
+                roles = (
+                    UserOrganizationMap.objects.select_related(
+                        Constants.USER, Constants.ORGANIZATION)
+                    .filter(
+                        user__status=True,
+                        user__role=3,
+                        user__on_boarded_by=None,
+                        user__approval_status=approval_status,
+                        **filter,
+                    )
+                    .order_by("-user__updated_at")
+                    .all()
+                )
+            page = self.paginate_queryset(roles)
+            participant_serializer = ParticipantSerializer(page, many=True)
+            return self.get_paginated_response(participant_serializer.data)
+        except Exception as error:
+            LOGGER.error(error, exc_info=True)
+            return Response(str(error.__context__), status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     def retrieve(self, request, pk):
         """GET method: retrieve an object or instance of the Product model"""
