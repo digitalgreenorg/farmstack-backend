@@ -9,7 +9,7 @@ from accounts.models import User, UserRole
 organisation_InvalidData = {
     "user_id": "None",
     "org_email": "asdfbg@sdfgh.com",
-    "name": "dnjsnjdnksanmckadmcnkdmndnjsnjdnksanmckadmcnkdmnckmnckdmclakdscamdnjsnjdnksanmckadmcnkdmnckmnckdmclakdscamdnjsnjdnksanmckadmcnkdmnckmnckdmclakdscamdnjsnjdnksanmckadmcnkdmnckmnckdmclakdscamdnjsnjdnksanmckadmcnkdmnckmnckdmclakdscamdnjsnjdnksanmckadmcnkdmnckmnckdmclakdscamdnjsnjdnksanmckadmcnkdmnckmnckdmclakdscamdnjsnjdnksanmckadmcnkdmnckmnckdmclakdscamdnjsnjdnksanmckadmcnkdmnckmnckdmclakdscamckmnckdmclakdscamdnjsnjdnksanmckadmcnkdmndnjsnjdnksanmckadmcnkdmnckmnckdmclakdscamdnjsnjdnksanmckadmcnkdmnckmnckdmclakdscamdnjsnjdnksanmckadmcnkdmnckmnckdmclakdscamdnjsnjdnksanmckadmcnkdmnckmnckdmclakdscamdnjsnjdnksanmckadmcnkdmnckmnckdmclakdscamdnjsnjdnksanmckadmcnkdmnckmnckdmclakdscamckmnckdmclakdscamdnjsnjdnksanmckadmcnkdmndnjsnjdnksanmckadmcnkdmnckmnckdmclakdscamdnjsnjdnksanmckadmcnkdmnckmnckdmclakdscamdnjsnjdnksanmckadmcnkdmnckmnckdmclakdscamckmnckdmclakdscam",
+    "name": "dnjsnjdnksanmckadmcnkdmndnjsnjdnksanmckadmcnkdmnckmnckdmclakdscamdnjsnjdnksanmckadmcnkdmnckmnckdmclakdscamdnjsnjdnksanmckadmcnkdmnckmnckdmclakdscamdnjsnjdnksanmckadmcnkdmnckmnckdmclakdscamdnjsnjdnksanmckadmcnkdmnckmnckdmclakdscamdnjsnjdnksanmckadmcnkdmnckmnckdmghhjhjjhnjnn",
     "website": "https://datahubethdev.farmstack.co/datahub/settings/1",
     "address": {
         "country": "Andorra",
@@ -24,7 +24,7 @@ organisation_InvalidData = {
 organisation_InvalidData_without_user_id = {
     "user_id": "None",
     "org_email": "asdfbg@sdfgh.com",
-    "name": "dnjsnjdnksanmckadmcnkdmndnjsnjdnksanmckadmcnkdmnckmnckdmclakdscamdnjsnjdnksanmckadmcnkdmnckmnckdmclakdscamdnjsnjdnksanmckadmcnkdmnckmnckdmclakdscamdnjsnjdnksanmckadmcnkdmnckmnckdmclakdscamdnjsnjdnksanmckadmcnkdmnckmnckdmclakdscamdnjsnjdnksanmckadmcnkdmnckmnckdmclakdscamdnjsnjdnksanmckadmcnkdmnckmnckdmclakdscamdnjsnjdnksanmckadmcnkdmnckmnckdmclakdscamdnjsnjdnksanmckadmcnkdmnckmnckdmclakdscamckmnckdmclakdscamdnjsnjdnksanmckadmcnkdmndnjsnjdnksanmckadmcnkdmnckmnckdmclakdscamdnjsnjdnksanmckadmcnkdmnckmnckdmclakdscamdnjsnjdnksanmckadmcnkdmnckmnckdmclakdscamdnjsnjdnksanmckadmcnkdmnckmnckdmclakdscamdnjsnjdnksanmckadmcnkdmnckmnckdmclakdscamdnjsnjdnksanmckadmcnkdmnckmnckdmclakdscamckmnckdmclakdscamdnjsnjdnksanmckadmcnkdmndnjsnjdnksanmckadmcnkdmnckmnckdmclakdscamdnjsnjdnksanmckadmcnkdmnckmnckdmclakdscamdnjsnjdnksanmckadmcnkdmnckmnckdmclakdscamckmnckdmclakdscam",
+    "name": "dnjsnjdnksanmckadmcnkdmndnjsnjdnksanmckadmcnkdmnckmnckdmclakdscamdnjsnjdnksanmckadmcnkdmnckmnckdmclakdscamdnjsnjdnksanmckadmcnkdmnckmnckdmclakdscamdnjsnjdnksanmckadmcnkdmnckmnckdmclakdscamdnjsnjdnksanmckadmcnkdmnckmnckdmclakdscamdnjsnjdnksanmckadmcnkdmnckmnckdmghhjhjjhnjnn",
     "website": "https://datahubethdev.farmstack.co/datahub/settings/1",
     "address": {
         "country": "Andorra",
@@ -110,6 +110,7 @@ class OrganizationTestCaseForViews(TestCase):
         org_to_create.update({'user_id': str(other_user.id)})
         response = self.client.post(self.organization_url, org_to_create)
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        assert response.json().get("organization").get("name")==org_to_create["name"]
 
     def test_no_user_org_get(self):
         response = self.client.get(self.organization_url+f"{str(self.user_with_no_org.id)}/")
@@ -122,23 +123,25 @@ class OrganizationTestCaseForViews(TestCase):
         }
         response = self.client.put(self.organization_url+f"{str(self.user_with_no_org.id)}/", org_data,content_type="application/json")
         assert response.status_code == 404
+        assert response.json()=={}
 
     # Testing Organization POST Method with Invalid Data
     def test_org_post_method_with_invalid_data(self):
         response = self.client.post(self.organization_url, organisation_InvalidData)
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        assert response.json()=={}
 
     # Testing Organization POST Method with valid Data
     def test_org_post_method_with_valid_data(self):
         response = self.client.post(self.organization_url, organisation_validData)
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         assert response.json() == {'message': ['User is already associated with an organization']}
-        response = self.client.post(self.organization_url, organisation_validData)
 
     # Testing Organization List (GET)
     def test_org_get_data(self):
         response = self.client.get(self.organization_url)
         assert response.status_code == 200
+        assert response.json()['results'][0]['organization']['org_email']==self.creating_org.org_email
 
     # Testing Organization Update data (PUT) with valid data
     def test_org_update_with_valid_data(self):
