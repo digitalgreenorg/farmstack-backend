@@ -129,7 +129,7 @@ class OrganizationTestCaseForViews(TestCase):
     def test_org_post_method_with_invalid_data(self):
         response = self.client.post(self.organization_url, organisation_InvalidData)
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-        assert response.json()=={}
+        assert response.json()=="['“None” is not a valid UUID.']"
 
     # Testing Organization POST Method with valid Data
     def test_org_post_method_with_valid_data(self):
@@ -202,3 +202,30 @@ class OrganizationTestCaseForViews(TestCase):
         response = self.client.get(self.organization_url + f"{str(self.user.id)}/")
         assert response.status_code == 200
         assert response.json().get("organization").get("name") == "digitalgreen"
+
+    # Test cases with invalid id 
+    def test_update_data_with_no_org(self):
+        organisation_validData = {
+            "user_id": "None",
+            "org_email": "we@gmail.com",
+            "name": "update User Akshata",
+            "website": "https://datahubethdev.farmstack.co/datahub/settings/1",
+            "address": "{}",
+            "phone_number": "+91 12345-65432",
+            "org_description": "description about org "
+            }
+        response = self.client.put(self.organization_url +f"{str(self.user_with_no_org.id)}/", organisation_validData,
+                                          content_type="application/json")
+        assert response.status_code == 404
+        assert response.json()=={}
+
+
+    def test_delete_org_with_invalid_id(self):
+        response = self.client.delete(self.organization_url + f"{str(self.creating_org.id)}/")
+        assert response.status_code == 500
+        assert response.json() == 'User matching query does not exist.'
+
+    def test_get_data_with_invalid_id(self):
+        response = self.client.get(self.organization_url+f"{str(self.creating_org.id)}/")
+        assert response.status_code == 500
+        assert response.json() == 'User matching query does not exist.'

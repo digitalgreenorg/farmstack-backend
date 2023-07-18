@@ -239,37 +239,46 @@ class OrganizationViewSet(GenericViewSet):
 
         except Exception as error:
             LOGGER.error(error, exc_info=True)
-            return Response({}, status=status.HTTP_400_BAD_REQUEST)
+            return Response(str(error), status=status.HTTP_400_BAD_REQUEST)
 
     def list(self, request, *args, **kwargs):
         """GET method: query the list of Organization objects"""
-        user_org_queryset = (
-            UserOrganizationMap.objects.select_related(Constants.USER, Constants.ORGANIZATION)
-            .filter(organization__status=True)
-            .all()
-        )
-        page = self.paginate_queryset(user_org_queryset)
-        user_organization_serializer = ParticipantSerializer(page, many=True)
-        return self.get_paginated_response(user_organization_serializer.data)
+        try:
+            user_org_queryset = (
+                UserOrganizationMap.objects.select_related(Constants.USER, Constants.ORGANIZATION)
+                .filter(organization__status=True)
+                .all()
+            )
+            page = self.paginate_queryset(user_org_queryset)
+            user_organization_serializer = ParticipantSerializer(page, many=True)
+            return self.get_paginated_response(user_organization_serializer.data)
+        except Exception as error:
+            LOGGER.error(error, exc_info=True)
+            return Response(str(error), status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     def retrieve(self, request, pk):
         """GET method: retrieve an object of Organization using User ID of the User (IMPORTANT: Using USER ID instead of Organization ID)"""
-        user_obj = User.objects.get(id=pk, status=True)
-        user_org_queryset = UserOrganizationMap.objects.prefetch_related(
-            Constants.USER, Constants.ORGANIZATION
-        ).filter(organization__status=True, user=pk)
+        try:
+            user_obj = User.objects.get(id=pk, status=True)
+            user_org_queryset = UserOrganizationMap.objects.prefetch_related(
+                Constants.USER, Constants.ORGANIZATION
+            ).filter(organization__status=True, user=pk)
 
-        if not user_org_queryset: 
-            data = {Constants.USER: {"id": user_obj.id}, Constants.ORGANIZATION: "null"}
+
+            if not user_org_queryset: 
+                data = {Constants.USER: {"id": user_obj.id}, Constants.ORGANIZATION: "null"}
+                return Response(data, status=status.HTTP_200_OK)
+
+            org_obj = Organization.objects.get(id=user_org_queryset.first().organization_id)
+            user_org_serializer = OrganizationSerializer(org_obj)
+            data = {
+                Constants.USER: {"id": user_obj.id},
+                Constants.ORGANIZATION: user_org_serializer.data,
+            }
             return Response(data, status=status.HTTP_200_OK)
-
-        org_obj = Organization.objects.get(id=user_org_queryset.first().organization_id)
-        user_org_serializer = OrganizationSerializer(org_obj)
-        data = {
-            Constants.USER: {"id": user_obj.id},
-            Constants.ORGANIZATION: user_org_serializer.data,
-        }
-        return Response(data, status=status.HTTP_200_OK)
+        except Exception as error:
+            LOGGER.error(error, exc_info=True)
+            return Response(str(error), status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     def update(self, request, pk):
         """PUT method: update or PUT request for Organization using User ID of the User (IMPORTANT: Using USER ID instead of Organization ID)"""
@@ -302,12 +311,16 @@ class OrganizationViewSet(GenericViewSet):
 
     def destroy(self, request, pk):
         """DELETE method: delete an object"""
-        user_obj = User.objects.get(id=pk, status=True)
-        user_org_queryset = UserOrganizationMap.objects.select_related(Constants.ORGANIZATION).get(user_id=pk)
-        org_queryset = Organization.objects.get(id=user_org_queryset.organization_id)
-        org_queryset.status = False
-        self.perform_create(org_queryset)
-        return Response(status=status.HTTP_204_NO_CONTENT)
+        try:
+            user_obj = User.objects.get(id=pk, status=True)
+            user_org_queryset = UserOrganizationMap.objects.select_related(Constants.ORGANIZATION).get(user_id=pk)
+            org_queryset = Organization.objects.get(id=user_org_queryset.organization_id)
+            org_queryset.status = False
+            self.perform_create(org_queryset)
+            return Response(status=status.HTTP_204_NO_CONTENT)
+        except Exception as error:
+            LOGGER.error(error, exc_info=True)
+            return Response(str(error), status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 class ParticipantViewSet(GenericViewSet):
