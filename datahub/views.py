@@ -30,7 +30,6 @@ from django.db.models import (
     Sum,
     Value,
 )
-
 from django.db.models.functions import Concat
 
 # from django.db.models.functions import Index, Substr
@@ -2547,9 +2546,6 @@ class DatahubNewDashboard(GenericViewSet):
             logging.info("Participants Metrics completed")
             return result
         except Exception as error:  # type: ignore
-            import pdb
-
-            pdb.set_trace()
             logging.error(
                 "Error while filtering the participants. ERROR: %s",
                 error,
@@ -2593,12 +2589,12 @@ class DatahubNewDashboard(GenericViewSet):
         my_dataset_used_in_connectors = (
                 dataset_query.prefetch_related("datasets__right_dataset_file")
                 .values("datasets__right_dataset_file")
-                .filter(user_map_id=user_org_map)
+                .filter(datasets__right_dataset_file__connectors__user_id=user_id)
                 .distinct()
                 .count()
                 + dataset_query.prefetch_related("datasets__left_dataset_file")
                 .values("datasets__left_dataset_file")
-                .filter(user_map_id=user_org_map)
+                .filter(datasets__left_dataset_file__connectors__user_id=user_id)
                 .distinct()
                 .count()
         )

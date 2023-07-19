@@ -1,6 +1,7 @@
 from core.constants import Constants
 from django.conf import settings
 from django.core.exceptions import ValidationError
+import phonenumbers
 
 
 def validate_file_size(value):
@@ -14,6 +15,7 @@ def validate_file_size(value):
     else:
         return value
 
+
 def validate_25MB_file_size(value):
     """
     Validator function to check the file size limit.
@@ -24,6 +26,7 @@ def validate_25MB_file_size(value):
         raise ValidationError("You cannot upload file more than 25Mb")
     else:
         return value
+
 
 def validate_image_type(file):
     """
@@ -70,3 +73,25 @@ def validate_dataset_size(file, size):
     if file.size > size * 1024 * 1024:
         return False
     return True
+
+
+def validate_phone_number(phone_number: str):
+    valid = False
+
+    try:
+        code, number = phone_number.replace("-", "").split(" ")
+        region = phonenumbers.region_code_for_country_code(int(code.replace("+", "")))
+        parsed_number = phonenumbers.parse(number=number, region=region)
+
+        is_valid_number = phonenumbers.is_valid_number(parsed_number)
+        is_valid_country_number = phonenumbers.is_possible_number(parsed_number)
+
+        if is_valid_number and is_valid_country_number:
+            valid = True
+        else:
+            valid = False
+
+    except Exception as e:
+        valid = False
+
+    return valid
