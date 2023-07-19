@@ -415,6 +415,7 @@ class ParticipantViewSet(GenericViewSet):
         return Response(user_org_serializer.data, status=status.HTTP_201_CREATED)
 
     def list(self, request, *args, **kwargs):
+        print("this is the api")
         """GET method: query all the list of objects from the Product model"""
         on_boarded_by = request.GET.get("on_boarded_by", None)
         co_steward = request.GET.get("co_steward", False)
