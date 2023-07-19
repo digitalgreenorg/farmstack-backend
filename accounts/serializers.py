@@ -29,14 +29,15 @@ class UserCreateSerializer(serializers.ModelSerializer):
 
     def validate(self, attrs):
         phone_number = attrs.get('phone_number')
-        try:
-            valid = validate_phone_number(phone_number=phone_number)
-            if valid:
-                pass
-            if not valid:
+        if phone_number:
+            try:
+                valid = validate_phone_number(phone_number=phone_number)
+                if valid:
+                    pass
+                if not valid:
+                    raise serializers.ValidationError({"phone_number": "Invalid phone number format."})
+            except Exception:
                 raise serializers.ValidationError({"phone_number": "Invalid phone number format."})
-        except Exception:
-            raise serializers.ValidationError({"phone_number": "Invalid phone number format."})
         return attrs
     class Meta:
         model = User
@@ -88,14 +89,15 @@ class UserUpdateSerializer(serializers.ModelSerializer):
 
     def validate(self, attrs):
         phone_number = attrs.get('phone_number')
-        try:
-            valid = validate_phone_number(phone_number=phone_number)
-            if valid:
-                pass
-            if not valid:
+        if phone_number:
+            try:
+                valid = validate_phone_number(phone_number=phone_number)
+                if valid:
+                    pass
+                if not valid:
+                    raise serializers.ValidationError({"phone_number": "Invalid phone number format."})
+            except Exception:
                 raise serializers.ValidationError({"phone_number": "Invalid phone number format."})
-        except Exception:
-            raise serializers.ValidationError({"phone_number": "Invalid phone number format."})
         return attrs
 
     class Meta:
