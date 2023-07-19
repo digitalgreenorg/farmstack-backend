@@ -1,11 +1,10 @@
 import json
 from turtle import st
+import uuid
 from django.urls import reverse
 from datahub.models import StandardisationTemplate
 from rest_framework.test import APIClient, APITestCase
 from rest_framework import status
-
-
 
 class TestViews(APITestCase):
     
@@ -22,7 +21,11 @@ class TestViews(APITestCase):
             datapoint_description= "farmer details is here",
             datapoint_attributes= datapoint_attributes_data
             )
-        # print("***set up****", StandardisationTemplate.objects.get(datapoint_category="farmers info").id)
+        StandardisationTemplate.objects.create(
+            datapoint_category= "farmers 2",
+            datapoint_description= "farmer 2 details is here",
+            datapoint_attributes= []
+            )
     
     #test case for create method(valid case)        
     def test_stardardise_create_valid(self):
@@ -56,6 +59,20 @@ class TestViews(APITestCase):
         assert response.status_code == 400
         assert data[0]['datapoint_category'] == ['Ensure this field has no more than 50 characters.']
         
+    #test case for create method(invalid case)        
+    def test_stardardise_create_invalid_unique_category(self):
+        datapoint_category_invalid_data = [{
+            "datapoint_category": "farmers info",
+            "datapoint_description":"farmer details is here",
+            "datapoint_attributes":[]
+            }]
+        response = self.client.post(self.datahub_stardardise_url, json.dumps(datapoint_category_invalid_data), content_type="application/json", secure=True)
+        data = response.json()
+        # print("***test_stardardise_create_invalid***", data)
+        # print("***test_stardardise_create_invalid***", response.status_code)
+        assert response.status_code == 400
+        assert data[0]['datapoint_category'] == ['standardisation template with this datapoint category already exists.']
+        
     #test case for create method(invalid case)  
     def test_stardardise_create_invalid_length_description(self):
         datapoint_attributes_data = {
@@ -82,29 +99,73 @@ class TestViews(APITestCase):
         # print("***test_stardardise_retrieve_valid status_code***", response.status_code)
         assert response.status_code == 200
         assert data[0]['datapoint_category'] == 'farmers info'
-
         
-    # def test_stardardise_update_valid(self):
-    #     user_update_data = {'first_name': 'kanhaiya updated'}
-    #     response = self.client.get(self.datahub_stardardise_url)
-    #     data = response.json()
-        # print("***test_user_update_valid***", data)
-        # print("***test_user_update_valid***", response.status_code)
-        # assert response.status_code == 201
-        # assert data['response']['first_name'] == "kanhaiya updated"
-        # assert data['message'] == "updated user details"
+    #test case for update method(valid case) 
+    def test_stardardise_update_category_valid(self):
+        category_id = StandardisationTemplate.objects.get(datapoint_category="farmers 2").id
+        category_update_data = [{
+            "id": str(category_id),
+            "datapoint_category": "farmers 2 updated",
+            "datapoint_description": "farmer 2 details is here",
+            "datapoint_attributes": []
+            }]
         
-    # def test_user_update_invalid(self):
-    #     user_update_invalid_data = {
-    #         'email': 'kanhaiya_updated_invalid@digitalgreen.org'
-    #     }
-    #     user_id = User.objects.get(email="kanhaiyaaa@digitalgreen.org").id
-    #     response = self.client.put(self.account_register_url+f"{user_id}/", user_update_invalid_data, secure=True)
-    #     data = response.json()
-    #     # print("***test_user_update_valid***", data)
-    #     # print("***test_user_update_valid***", response.status_code)
-    #     assert response.status_code == 201
-    #     assert data['response'].get("email", '') == ''
+        response = self.client.put(self.datahub_stardardise_url+f"update_standardisation_template/", json.dumps(category_update_data), content_type="application/json", secure=True)
+        # print("***test_stardardise_update_category_valid***", response.status_code)
+        assert response.status_code == 201
+        # print("***my_updated category***", StandardisationTemplate.objects.get(id=category_id))
+    
+    #test case for update method(invalid case) 
+    def test_stardardise_update_category_invalid(self):
+        # category_id = StandardisationTemplate.objects.get(datapoint_category="farmers 2").id
+        random_uuid = uuid.uuid4()
+        category_update_data = [{
+            "id": str(random_uuid),
+            "datapoint_category": "farmers 2 updated",
+            "datapoint_description": "farmer 2 details is here",
+            "datapoint_attributes": []
+            }]
+        
+        response = self.client.put(self.datahub_stardardise_url+f"update_standardisation_template/", json.dumps(category_update_data), content_type="application/json", secure=True)
+        # print("***test_stardardise_update_category_invalid***", response.status_code)
+        # print("***test_stardardise_update_category_invalid***", response.json())
+        self.assertEqual(response.status_code, status.HTTP_500_INTERNAL_SERVER_ERROR)
+        
+    #test case for update method(valid case) 
+    def test_stardardise_update_datapoint_add_valid(self):
+        category_id = StandardisationTemplate.objects.get(datapoint_category="farmers 2").id
+        datapoint_update_data = [{
+            "id": str(category_id),
+            "datapoint_category": "farmers 2",
+            "datapoint_description": "farmer 2 details is here",
+            "datapoint_attributes": [{
+                "data_attribute3": ""
+                }]
+            }]
+        
+        response = self.client.put(self.datahub_stardardise_url+f"update_standardisation_template/", json.dumps(datapoint_update_data), content_type="application/json", secure=True)
+        # print("***test_stardardise_update_datapoint_add_valid***", response.status_code)
+        assert response.status_code == 201
+        response = self.client.get(self.datahub_stardardise_url)
+        # print("***my_updated datapoint***", StandardisationTemplate.objects.get(id=category_id))
+    
+    #test case for update method(valid case) 
+    def test_stardardise_update_datapoint_deleting_valid(self):
+        category_id = StandardisationTemplate.objects.get(datapoint_category="farmers info").id
+        datapoint_update_data = [{
+            "id": str(category_id),
+            "datapoint_category": "farmers info",
+            "datapoint_description": "farmer details is here",
+            "datapoint_attributes": [{
+                "data_attribute1": ""
+                }]
+            }]
+        
+        response = self.client.put(self.datahub_stardardise_url+f"update_standardisation_template/", json.dumps(datapoint_update_data), content_type="application/json", secure=True)
+        # print("***test_stardardise_update_datapoint_deleting_valid***", response.status_code)
+        assert response.status_code == 201
+        response = self.client.get(self.datahub_stardardise_url)
+        # print("***my_updated datapoint***", StandardisationTemplate.objects.get(id=category_id))
         
     #test case for destroy method(valid case) 
     def test_stardardise_delete_valid_category(self):
@@ -113,13 +174,11 @@ class TestViews(APITestCase):
         # print("***test_stardardise_delete_valid_category***", response)
         self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
         
-        
-    # def test_user_delete_invalid(self):
-    #     random_uuid = uuid.uuid4()
-    #     response = self.client.delete(self.account_register_url+f"{random_uuid}/")
-    #     data = response.json()
-    #     # print("***test_user_delete_invalid***", data)
-    #     assert response.status_code == 404
-    #     assert data == {'detail': 'Not found.'}
+    #test case for destroy method(invalid case) 
+    def test_stardardise_delete_invalid_category(self):
+        random_uuid = uuid.uuid4()
+        response = self.client.delete(self.datahub_stardardise_url+f"{random_uuid}/")
+        # print("***test_stardardise_delete_invalid_category***", response)
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
         
     
