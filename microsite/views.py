@@ -156,10 +156,14 @@ class DatasetsMicrositeViewSet(GenericViewSet):
         # serializer = self.get_serializer(queryset, many=True)
         # return Response(serializer.data, status=status.HTTP_200_OK)
         page = self.paginate_queryset(queryset)
-        if page is not None:
-            serializer = self.get_serializer(page, many=True)
-            return self.get_paginated_response(serializer.data)
-        return Response([], status=status.HTTP_404_NOT_FOUND)
+        try:
+            if page is not None:
+                serializer = self.get_serializer(page, many=True)
+                return self.get_paginated_response(serializer.data)
+            return Response([], status=status.HTTP_404_NOT_FOUND)
+        except Exception as error:
+            LOGGER.error(error, exc_info=True)
+            return Response(str(error), status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     def retrieve(self, request, pk=None, *args, **kwargs):
         """
@@ -455,45 +459,49 @@ class ParticipantMicrositeViewSet(GenericViewSet):
         approval_status = request.GET.get(Constants.APPROVAL_STATUS, True)
         name = request.GET.get(Constants.NAME, "")
         filter = {Constants.ORGANIZATION_NAME_ICONTAINS: name} if name else {}
-        if on_boarded_by:
-            roles = (
-                UserOrganizationMap.objects.select_related(
-                    Constants.USER, Constants.ORGANIZATION)
-                .filter(
-                    user__status=True,
-                    user__on_boarded_by=on_boarded_by,
-                    user__role=3,
-                    user__approval_status=approval_status,
-                    **filter,
+        try:
+            if on_boarded_by:
+                roles = (
+                    UserOrganizationMap.objects.select_related(
+                        Constants.USER, Constants.ORGANIZATION)
+                    .filter(
+                        user__status=True,
+                        user__on_boarded_by=on_boarded_by,
+                        user__role=3,
+                        user__approval_status=approval_status,
+                        **filter,
+                    )
+                    .order_by("-user__updated_at")
+                    .all()
                 )
-                .order_by("-user__updated_at")
-                .all()
-            )
-        elif co_steward:
-            roles = (
-                UserOrganizationMap.objects.select_related(
-                    Constants.USER, Constants.ORGANIZATION)
-                .filter(user__status=True, user__role=6, **filter)
-                .order_by("-user__updated_at")
-                .all()
-            )
-        else:
-            roles = (
-                UserOrganizationMap.objects.select_related(
-                    Constants.USER, Constants.ORGANIZATION)
-                .filter(
-                    user__status=True,
-                    user__role=3,
-                    user__on_boarded_by=None,
-                    user__approval_status=approval_status,
-                    **filter,
+            elif co_steward:
+                roles = (
+                    UserOrganizationMap.objects.select_related(
+                        Constants.USER, Constants.ORGANIZATION)
+                    .filter(user__status=True, user__role=6, **filter)
+                    .order_by("-user__updated_at")
+                    .all()
                 )
-                .order_by("-user__updated_at")
-                .all()
-            )
-        page = self.paginate_queryset(roles)
-        participant_serializer = ParticipantSerializer(page, many=True)
-        return self.get_paginated_response(participant_serializer.data)
+            else:
+                roles = (
+                    UserOrganizationMap.objects.select_related(
+                        Constants.USER, Constants.ORGANIZATION)
+                    .filter(
+                        user__status=True,
+                        user__role=3,
+                        user__on_boarded_by=None,
+                        user__approval_status=approval_status,
+                        **filter,
+                    )
+                    .order_by("-user__updated_at")
+                    .all()
+                )
+            page = self.paginate_queryset(roles)
+            participant_serializer = ParticipantSerializer(page, many=True)
+            return self.get_paginated_response(participant_serializer.data)
+        except Exception as error:
+            LOGGER.error(error, exc_info=True)
+            return Response(str(error.__context__), status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     def retrieve(self, request, pk):
         """GET method: retrieve an object or instance of the Product model"""
@@ -504,32 +512,40 @@ class ParticipantMicrositeViewSet(GenericViewSet):
             .all()
         )
         participant_serializer = ParticipantSerializer(roles, many=True)
-        if participant_serializer.data:
-            return Response(participant_serializer.data[0], status=status.HTTP_200_OK)
-        return Response([], status=status.HTTP_200_OK)
+        try:
+            if participant_serializer.data:
+                return Response(participant_serializer.data[0], status=status.HTTP_200_OK)
+            return Response([], status=status.HTTP_200_OK)
+        except Exception as error:
+            LOGGER.error(error, exc_info=True)
+            return Response(str(error), status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     @action(detail=False, methods=["get"])
     def organizations(self, request, *args, **kwargs):
         """GET method: query the list of Organization objects"""
         co_steward = request.GET.get("co_steward", False)
-        if co_steward:
-            roles = (
-                UserOrganizationMap.objects.select_related(
-                    Constants.ORGANIZATION)
-                .filter(user__status=True, user__role=6)
-                .all()
-            )
-        else:
-            roles = (
-                UserOrganizationMap.objects.select_related(
-                    Constants.USER, Constants.ORGANIZATION)
-                .filter((Q(user__role=3) | Q(user__role=1)), user__status=True)
-                .all()
-            )
-        page = self.paginate_queryset(roles)
-        participant_serializer = micrositeOrganizationSerializer(
-            page, many=True)
-        return self.get_paginated_response(participant_serializer.data)
+        try:
+            if co_steward:
+                roles = (
+                    UserOrganizationMap.objects.select_related(
+                        Constants.ORGANIZATION)
+                    .filter(user__status=True, user__role=6)
+                    .all()
+                )
+            else:
+                roles = (
+                    UserOrganizationMap.objects.select_related(
+                        Constants.USER, Constants.ORGANIZATION)
+                    .filter((Q(user__role=3) | Q(user__role=1)), user__status=True)
+                    .all()
+                )
+            page = self.paginate_queryset(roles)
+            participant_serializer = micrositeOrganizationSerializer(
+                page, many=True)
+            return self.get_paginated_response(participant_serializer.data)
+        except Exception as error:
+            LOGGER.error(error, exc_info=True)
+            return Response(str(error), status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 class PolicyAPIView(GenericViewSet):
@@ -541,12 +557,16 @@ class PolicyAPIView(GenericViewSet):
         queryset = self.filter_queryset(self.get_queryset())
 
         page = self.paginate_queryset(queryset)
-        if page is not None:
-            serializer = self.get_serializer(page, many=True)
-            return self.get_paginated_response(serializer.data)
+        try:
+            if page is not None:
+                serializer = self.get_serializer(page, many=True)
+                return self.get_paginated_response(serializer.data)
 
-        serializer = self.get_serializer(queryset, many=True)
-        return Response(serializer.data)
+            serializer = self.get_serializer(queryset, many=True)
+            return Response(serializer.data)
+        except Exception as error:
+            LOGGER.error(error, exc_info=True)
+            return Response(str(error), status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     def retrieve(self, request, *args, **kwargs):
         instance = self.get_object()
@@ -583,14 +603,17 @@ class UserDataMicrositeViewSet(GenericViewSet):
 def microsite_media_view(request):
     file = get_object_or_404(DatasetV2File, id=request.GET.get("id"))
     file_path = ''
+    try:
+        if file.accessibility == Constants.PUBLIC:
+            file_path = str(file.file)
+            file_path = os.path.join(settings.DATASET_FILES_URL, file_path)
+            if not os.path.exists(file_path):
+                return HttpResponseNotFound('File not found', 404)
+            response = FileResponse(open(file_path, 'rb'))
+        else:
+            return HttpResponse(f"You don't have access to download this private file, Your request status is", status=403)
 
-    if file.accessibility == Constants.PUBLIC:
-        file_path = str(file.file)
-        file_path = os.path.join(settings.DATASET_FILES_URL, file_path)
-        if not os.path.exists(file_path):
-            return HttpResponseNotFound('File not found', 404)
-        response = FileResponse(open(file_path, 'rb'))
-    else:
-        return HttpResponse(f"You don't have access to download this private file, Your request status is", status=403)
-
-    return response
+        return response
+    except Exception as error:
+        LOGGER.error(error, exc_info=True)
+        return Response({str(error)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
