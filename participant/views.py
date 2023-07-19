@@ -1824,7 +1824,6 @@ class SupportTicketV2ModelViewSet(GenericViewSet):
     # API to create a new object
     @http_request_mutation
     def create(self, request):
-        print("This is api")
 
         if request.data.get("ticket_attachment"):
             validity = check_file_name_length(incoming_file_name=request.data.get("ticket_attachment"),
