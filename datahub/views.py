@@ -2069,11 +2069,9 @@ class DatasetV2ViewSetOps(GenericViewSet):
                     .filter(dataset_id__in=dataset_ids)
                     .filter(Q(file__endswith=".xls") | Q(file__endswith=".xlsx") | Q(file__endswith=".csv"))
                     .filter(
-                        Q(accessibility__in=["public", "registered"])
-                        | Q(
-                            dataset_v2_file__user_organization_map=user_map,
-                            dataset_v2_file__approval_status="approved",
-                        )
+                        Q(accessibility__in=["public", "registered"]) | 
+                        Q(dataset__user_map_id=user_map) |
+                        Q(dataset_v2_file__approval_status="approved")
                     )
                     .values(
                         "id",
