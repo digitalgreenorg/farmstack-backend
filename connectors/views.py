@@ -134,8 +134,10 @@ class ConnectorsViewSet(GenericViewSet):
             df = df[request.data.get("config").get("selected")]
             df.rename(columns=request.data.get("config").get("renames", {}), inplace=True)
             # Save the updated DataFrame to the same CSV file
-            df.to_csv(file_path, index=False)
-            return Response({"message": "File Updated Sucessfully"}, status=200)
+            edited_file_path = file_path.replace(".csv", "_edited.csv")
+            df.to_csv(edited_file_path, index=False)
+            return Response({"message": "File Updated Sucessfully",
+                             "file_path":edited_file_path}, status=200)
         except ObjectDoesNotExist as e:
             logging.error(str(e), exc_info=True)
             return Response({"message":"connector details not found"}, 400)
