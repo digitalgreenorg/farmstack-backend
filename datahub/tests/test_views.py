@@ -242,7 +242,7 @@ class ParticipantTestViews(TestCase):
 ticket_valid_data = {
     "subject": "Not Able to Install",
     "issue_message": "Issue description",
-    # "issue_attachments": open("datahub/tests/test_data/pro.png", "rb"),
+    "issue_attachments": open("datahub/tests/test_data/pro.png", "rb"),
     "status": "open",
     "category": "connectors",
 }
@@ -254,7 +254,7 @@ ticket_dump_data = {
 }
 ticket_invalid_data = {
     "issue_message": "Issue description",
-    # "issue_attachments": open("datahub/tests/test_data/pro.png", "rb"),
+    "issue_attachments": open("datahub/tests/test_data/pro.png", "rb"),
 }
 ticket_update_data = {
     "subject": "Not Able to Install",
