@@ -28,6 +28,7 @@ class Connectors(TimeStampMixin):
     description = models.TextField(max_length=512)
     integrated_file = models.FileField(max_length=255, upload_to=settings.CONNECTOR_FILES_URL, null=True, blank=True)
     status = models.BooleanField(default=True)
+    config = models.JSONField(default=dict)
 
 
 @auto_str
