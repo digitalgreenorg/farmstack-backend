@@ -33,7 +33,7 @@ from rest_framework.viewsets import GenericViewSet, ViewSet
 from uritemplate import partial
 
 from accounts.models import User
-from core.constants import Constants
+from core.constants import Constants, NumericalConstants
 from core.utils import (
     CustomPagination,
     DefaultPagination,
@@ -96,6 +96,7 @@ from participant.serializers import (
 from utils import string_functions
 from utils.authorization_services import support_ticket_role_authorization
 from utils.connector_utils import run_containers, stop_containers
+from utils.file_operations import check_file_name_length
 from utils.jwt_services import http_request_mutation
 
 LOGGER = logging.getLogger(__name__)
@@ -1758,7 +1759,7 @@ class SupportTicketV2ModelViewSet(GenericViewSet):
         map_id = request.META.get("map_id")
         user_id = request.META.get("user_id")
         queryset = SupportTicketV2.objects.select_related(
-            "user_map__organization", "user_map__user", "user_map__user__role","user_map"
+            "user_map__organization", "user_map__user", "user_map__user__role", "user_map"
         ).order_by("-updated_at").all()
         # print(filters_data)
         # import pdb; pdb.set_trace()
@@ -1802,8 +1803,8 @@ class SupportTicketV2ModelViewSet(GenericViewSet):
         except UserOrganizationMap.DoesNotExist:
             return Response(
                 {
-                    "message" : "No user found for the map id."
-                },status=status.HTTP_400_BAD_REQUEST
+                    "message": "No user found for the map id."
+                }, status=status.HTTP_400_BAD_REQUEST
             )
         ticket_serializer = SupportTicketV2Serializer(ticket_instance)
         resolution_serializer = SupportTicketResolutionsSerializerMinimised(ticket_instance.resolution_set,
@@ -1812,9 +1813,9 @@ class SupportTicketV2ModelViewSet(GenericViewSet):
         data = {
             'ticket': ticket_serializer.data,
             'resolutions': resolution_serializer.data,
-            "logged_in_organization":{
-                "org_id":str(current_user.organization.id),
-                "org_logo" : str(f"/media/{current_user.organization.logo}")
+            "logged_in_organization": {
+                "org_id": str(current_user.organization.id),
+                "org_logo": str(f"/media/{current_user.organization.logo}")
             }
         }
 
@@ -1823,6 +1824,16 @@ class SupportTicketV2ModelViewSet(GenericViewSet):
     # API to create a new object
     @http_request_mutation
     def create(self, request):
+
+        if request.data.get("ticket_attachment"):
+            validity = check_file_name_length(incoming_file_name=request.data.get("ticket_attachment"),
+                                              accepted_file_name_size=NumericalConstants.FILE_NAME_LENGTH)
+            if not validity:
+                file_length = len(str(request.data.get("ticket_attachment")))
+                return Response(
+                    {"ticket_attachment": [f"Ensure this filename has at most 100 characters ( it has {file_length} )."]},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
         serializer = CreateSupportTicketV2Serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         object = serializer.save()
@@ -1830,7 +1841,8 @@ class SupportTicketV2ModelViewSet(GenericViewSet):
 
     @support_ticket_role_authorization(model_name="SupportTicketV2")
     def update(self, request, pk=None):
-        queryset = self.get_queryset().select_related("user_map__organization","user_map__user","user_map__user__role","user_map")
+        queryset = self.get_queryset().select_related("user_map__organization", "user_map__user",
+                                                      "user_map__user__role", "user_map")
         object = get_object_or_404(queryset, pk=pk)
         serializer = self.get_serializer(object, data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
@@ -1904,7 +1916,7 @@ class SupportTicketResolutionsViewset(GenericViewSet):
         print("Comes here")
         queryset = self.get_queryset()
         object = get_object_or_404(queryset, pk=pk)
-        serializer = self.get_serializer(object, data=request.data,partial=True)
+        serializer = self.get_serializer(object, data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
         object = serializer.save()
         return Response(serializer.data)

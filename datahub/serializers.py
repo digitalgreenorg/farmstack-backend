@@ -67,11 +67,12 @@ class OrganizationSerializer(serializers.ModelSerializer):
     def validate(self, attrs):
         # Use URLValidator to validate the website field
         website = attrs.get('website')
-        validator = URLValidator(schemes=["https"])
-        try:
-            validator(website)
-        except ValidationError:
-            raise serializers.ValidationError({"website": "Invalid website URL"})
+        if website:       
+            validator = URLValidator(schemes=["https"])
+            try:
+                validator(website)
+            except ValidationError:
+                raise serializers.ValidationError({"website": "Invalid website URL"})
 
         return attrs
     class Meta:
