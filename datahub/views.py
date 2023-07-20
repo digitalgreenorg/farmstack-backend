@@ -400,7 +400,6 @@ class ParticipantViewSet(GenericViewSet):
         return Response(user_org_serializer.data, status=status.HTTP_201_CREATED)
 
     def list(self, request, *args, **kwargs):
-        # print("this is the api")
         """GET method: query all the list of objects from the Product model"""
         on_boarded_by = request.GET.get("on_boarded_by", None)
         co_steward = request.GET.get("co_steward", False)
@@ -408,7 +407,6 @@ class ParticipantViewSet(GenericViewSet):
         name = request.GET.get(Constants.NAME, "")
         filter = {Constants.ORGANIZATION_NAME_ICONTAINS: name} if name else {}
         if on_boarded_by:
-            print("jklhlksdjlskgd")
             roles = (
                 UserOrganizationMap.objects.select_related(Constants.USER, Constants.ORGANIZATION)
                 .filter(
@@ -421,9 +419,7 @@ class ParticipantViewSet(GenericViewSet):
                 .order_by("-user__updated_at")
                 .all()
             )
-            print(roles.count())
         elif co_steward:
-            print("90232112")
             roles = (
                 UserOrganizationMap.objects.select_related(Constants.USER, Constants.ORGANIZATION)
                 .filter(user__status=True, user__role=6, **filter)
@@ -431,7 +427,6 @@ class ParticipantViewSet(GenericViewSet):
                 .all()
             )
         else:
-            print("21323")
             roles = (
                 UserOrganizationMap.objects.select_related(Constants.USER, Constants.ORGANIZATION)
                 .filter(
@@ -445,25 +440,19 @@ class ParticipantViewSet(GenericViewSet):
                 .all()
 
             )
-        print("Xopme xoucn")
-        print(roles.count())
-        print(type(roles))
+
         page = self.paginate_queryset(roles)
         participant_serializer = ParticipantSerializer(page, many=True)
         return self.get_paginated_response(participant_serializer.data)
 
     def retrieve(self, request, pk):
         """GET method: retrieve an object or instance of the Product model"""
-        # print("should come here")
         roles = (
             UserOrganizationMap.objects.prefetch_related(Constants.USER, Constants.ORGANIZATION)
             .filter(user__status=True, user=pk)
             .first()
         )
 
-        # print("roles")
-        # print(roles)
-        # print("roles")
         participant_serializer = ParticipantSerializer(roles, many=False)
         if participant_serializer.data:
             return Response(participant_serializer.data, status=status.HTTP_200_OK)
