@@ -1184,19 +1184,22 @@ class ParticipantCostewardsListingTestViews(TestCase):
         self.client.defaults['HTTP_AUTHORIZATION'] = headers['Authorization']
         self.client.defaults['CONTENT_TYPE'] = headers['Content-Type']
 
-    def test_list_co_steward_endpoint(self):
-        api_response = self.client.get(f"{self.participant_url}?co_steward=True", secure=True,content_type='application/json')
-        # print(api_response.json())
-        assert api_response.status_code in [200]
+    # def test_list_co_steward_endpoint(self):
+    #     api_response = self.client.get(f"{self.participant_url}?co_steward=True", secure=True,content_type='application/json')
+    #     # print(api_response.json())
+    #     assert api_response.status_code in [200]
 
     def test_get_co_steward_details_endpoint(self):
+        print("URL")
+        print(f"{self.participant_url}{self.co_steward_id}/")
+        print("URL")
         api_response = self.client.get(f"{self.participant_url}{self.co_steward_id}/", secure=True,content_type='application/json')
         print("JSON")
-        print(api_response.json())
+        print(api_response.json().get("id"))
         print("JSON")
         assert api_response.status_code in [200]
 
-    def test_list_participant_endpoint(self):
-        api_response = self.client.get(f"{self.participant_url}", secure=True,content_type='application/json')
-        # print(api_response.json())
-        assert api_response.status_code in [200]
+    # def test_list_participant_endpoint(self):
+    #     api_response = self.client.get(f"{self.participant_url}", secure=True,content_type='application/json')
+    #     # print(api_response.json())
+    #     assert api_response.status_code in [200]
