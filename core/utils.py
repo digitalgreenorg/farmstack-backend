@@ -70,9 +70,6 @@ def replace_query_param(url, key, val, req):
     """
     (scheme, netloc, path, query, fragment) = parse.urlsplit(str(url))
     netloc = req.META.get("HTTP_HOST")
-    print("this is netloc")
-    print(netloc)
-    print("this is netloc")
     scheme = "http" if "localhost" in netloc or "127.0.0.1" in netloc else "https"  # type: ignore
     path = path if "localhost" in netloc or "127.0.0.1" in netloc else "/be" + path  # type: ignore
     query_dict = parse.parse_qs(query, keep_blank_values=True)
