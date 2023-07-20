@@ -1831,7 +1831,7 @@ class SupportTicketV2ModelViewSet(GenericViewSet):
             if not validity:
                 file_length = len(str(request.data.get("ticket_attachment")))
                 return Response(
-                    {"message": f"Ensure this filename has at most 100 characters ( it has {file_length} )."},
+                    {"ticket_attachment": [f"Ensure this filename has at most 100 characters ( it has {file_length} )."]},
                     status=status.HTTP_400_BAD_REQUEST,
                 )
         serializer = CreateSupportTicketV2Serializer(data=request.data)
