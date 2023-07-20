@@ -5,6 +5,7 @@ import shutil
 from urllib.parse import unquote
 
 import pandas as pd
+from django.core.exceptions import ObjectDoesNotExist
 from django.db import transaction
 from django.shortcuts import render
 from rest_framework import status
@@ -111,6 +112,39 @@ class ConnectorsViewSet(GenericViewSet):
             connector = self.get_object()
             connector.delete()
             return Response(status=status.HTTP_204_NO_CONTENT)
+    
+    @transaction.atomic
+    @action(detail=False, methods=["post"])
+    def patch_config(self, request):
+        try:
+            temp_file_path = f"{settings.TEMP_CONNECTOR_URL}{request.data.get(Constants.NAME)}.csv"
+            permanent_path = f"{settings.CONNECTOR_FILES_URL}{request.data.get(Constants.NAME)}.csv"
+            file_path = ''
+            if os.path.exists(temp_file_path):
+                file_path = temp_file_path
+            elif os.path.exists(permanent_path):
+                connector = Connectors.objects.get(name=request.data.get("name"))
+                serializer = ConnectorsCreateSerializer(connector, data=request.data, partial=True)
+                serializer.is_valid(raise_exception=True)
+                serializer.save()
+                file_path = permanent_path
+            integrated_file = str(file_path).replace("media/", "").replace("%20", " ")
+            df = pd.read_csv(os.path.join(settings.MEDIA_ROOT, integrated_file), 
+                ) if integrated_file else pd.DataFrame([])
+            df = df[request.data.get("config").get("selected")]
+            df.rename(columns=request.data.get("config").get("renames", {}), inplace=True)
+            # Save the updated DataFrame to the same CSV file
+            edited_file_path = file_path.replace(".csv", "_edited.csv")
+            df.to_csv(edited_file_path, index=False)
+            return Response({"message": "File Updated Sucessfully",
+                             "file_path":edited_file_path}, status=200)
+        except ObjectDoesNotExist as e:
+            logging.error(str(e), exc_info=True)
+            return Response({"message":"connector details not found"}, 400)
+        except Exception as e:
+            logging.error(str(e), exc_info=True)
+            return Response({"message": str(e)}, status=400)
+
 
     @action(detail=False, methods=["post"])
     def integration(self, request, *args, **kwargs):
