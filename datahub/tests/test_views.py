@@ -1130,30 +1130,73 @@ class ParticipantCostewardsListingTestViews(TestCase):
             role_name="datahub_co_steward"
         )
 
-        system_admin = User.objects.create(
+        user = User.objects.create(
             first_name="SYSTEM",
             last_name="ADMIN",
             email="admin@gmail.com",
             role_id=user_role_admin.id,
         )
 
-        costewards = 5
+        organization = Organization.objects.create(
+                    name="Some Organization",
+                    org_email="org@gmail.com",
+                    address="{}",
+                )
 
-        for item in range(0,costewards):
-            print("Ruuning")
-            co_steward = User.objects.create(
-                first_name="Costeward",
-                last_name=f"Number{item}",
-                email=f"csteward{item}@gmail.com",
-                role_id=user_role_co_steward.id,
-            )
-            print(co_steward.id)
+        user_map = UserOrganizationMap.objects.create(
+            user_id=user.id,
+            organization_id=organization.id
+        )
+
+        costewards = 5
+        co_steward = None
+        # for item in range(0,costewards):
+            # print("Ruuning")
+        co_steward = User.objects.create(
+            first_name="Costeward",
+            last_name=f"Number",
+            email=f"csteward@gmail.com",
+            role_id=user_role_co_steward.id,
+            on_boarded_by_id=user.id
+        )
+        print("CS")
+        print(co_steward)
+        print("CS")
+            # print(co_steward.id)
+        self.co_steward_id = co_steward.id
+
+        refresh = RefreshToken.for_user(user)
+        refresh["org_id"] = str(user_map.organization_id) if user_map else None
+        refresh["map_id"] = str(user_map.id) if user_map else None
+        refresh["role"] = str(user.role_id)
+        refresh["onboarded_by"] = str(user.on_boarded_by_id)
+
+        refresh.access_token["org_id"] = str(user_map.organization_id) if user_map else None
+        refresh.access_token["map_id"] = str(user_map.id) if user_map else None
+        refresh.access_token["role"] = str(user.role_id)
+        refresh.access_token["onboarded_by"] = str(user.on_boarded_by_id)
+        auth["token"] = refresh.access_token
+
+        headers = {
+                    'Content-Type': 'application/json',
+                    'Authorization': f'Bearer {auth["token"]}'
+                }
+        self.client.defaults['HTTP_AUTHORIZATION'] = headers['Authorization']
+        self.client.defaults['CONTENT_TYPE'] = headers['Content-Type']
 
     def test_list_co_steward_endpoint(self):
-        pass
-    def test_serivce_run(self):
-        api_response = 201
+        api_response = self.client.get(f"{self.participant_url}?co_steward=True", secure=True,content_type='application/json')
+        # print(api_response.json())
+        assert api_response.status_code in [200]
 
-        assert api_response in [201]
+    def test_get_co_steward_details_endpoint(self):
+        api_response = self.client.get(f"{self.participant_url}{self.co_steward_id}/", secure=True,content_type='application/json')
+        print("JSON")
+        print(api_response.json())
+        print("JSON")
+        assert api_response.status_code in [200]
 
-
+    def test_list_participant_endpoint(self):
+        api_response = self.client.get(f"{self.participant_url}", secure=True,content_type='application/json')
+        # print(api_response.json())
+        assert api_response.status_code in [200]
