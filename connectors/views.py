@@ -188,8 +188,9 @@ class ConnectorsViewSet(GenericViewSet):
                 how=condition.get(Constants.HOW, Constants.LEFT),
                 left_on=condition.get(Constants.LEFT_ON),
                 right_on=condition.get(Constants.RIGHT_ON),
-                suffixes=("_df1", "_df2")
+                suffixes=("", "_df1")
             )
+            print(result)
             for i in range(1, len(maps)):
                 integrate = maps[i]
                 right_dataset_file_path = unquote(integrate.get(Constants.RIGHT_DATASET_FILE_PATH)
@@ -206,6 +207,7 @@ class ConnectorsViewSet(GenericViewSet):
                         usecols=condition.get(Constants.RIGHT_SELECTED)
                     )
                 # Join the dataframes
+                print(f"_df{i+2}")
 
                 result = pd.merge(
                     result,
@@ -213,8 +215,9 @@ class ConnectorsViewSet(GenericViewSet):
                     how=condition.get(Constants.HOW, Constants.LEFT),
                     left_on=condition.get(Constants.LEFT_ON),
                     right_on=condition.get(Constants.RIGHT_ON),
-                    suffixes=("", f"_df{i+2}")
+                    suffixes=(f"", f"_df{i+1}")
                 )
+                print(result)
             name = data.get(Constants.NAME, Constants.CONNECTORS)
             file_path = f"{settings.TEMP_CONNECTOR_URL}{name}.csv"
             result.to_csv(file_path, index=False)
