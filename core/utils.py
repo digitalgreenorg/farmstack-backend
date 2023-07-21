@@ -50,7 +50,8 @@ class Utils:
                 error.body,
                 exc_info=True,
             )
-            return Response({"Error": "Failed to send email "}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)  # type: ignore
+            return Response({"Error": "Failed to send email "},
+                            status=status.HTTP_500_INTERNAL_SERVER_ERROR)  # type: ignore
         except urllib.error.URLError as error:  # type: ignore
             LOGGER.error(
                 "Failed to send email Subject: %s with ERROR: %s",
@@ -58,7 +59,8 @@ class Utils:
                 error,
                 exc_info=True,
             )
-            return Response({"Error": "Failed to send email "}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)  # type: ignore
+            return Response({"Error": "Failed to send email "},
+                            status=status.HTTP_500_INTERNAL_SERVER_ERROR)  # type: ignore
 
         return Response({"Message": "Email successfully sent!"}, status=status.HTTP_200_OK)
 
@@ -69,9 +71,13 @@ def replace_query_param(url, key, val, req):
     parameters of the URL, and return the new URL.
     """
     (scheme, netloc, path, query, fragment) = parse.urlsplit(str(url))
-    netloc = req.META.get("HTTP_HOST")
-    scheme = "http" if "localhost" in netloc or "127.0.0.1" in netloc else "https"  # type: ignore
-    path = path if "localhost" in netloc or "127.0.0.1" in netloc else "/be" + path  # type: ignore
+    import pdb
+    pdb.set_trace()
+    netloc = req.META.get("HTTP_HOST", "testserver")
+    if netloc != "testserver":
+        scheme = "http" if "localhost" in netloc or "127.0.0.1" in netloc else "https"  # type: ignore
+        path = path if "localhost" in netloc or "127.0.0.1" in netloc else "/be" + path  # type: ignore
+
     query_dict = parse.parse_qs(query, keep_blank_values=True)
     query_dict[str(key)] = [str(val)]
     query = parse.urlencode(sorted(list(query_dict.items())), doseq=True)

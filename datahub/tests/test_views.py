@@ -24,6 +24,7 @@ from rest_framework.response import Response
 from rest_framework.test import APIClient, APITestCase, APIRequestFactory
 from rest_framework.reverse import reverse
 
+
 valid_data = {
     "email": "ugeshbasa4ss5@digitalgreen.org",
     "org_email": "bglordg1@digitalgreen.org",
@@ -874,6 +875,8 @@ auth = {
     "token": "null"
 }
 
+
+
 policy_valid_data = {
     "name": "Some Policy Name",
     "description": "Some Policy Description"
@@ -1202,14 +1205,12 @@ class ParticipantCostewardsListingTestViews(TestCase):
         assert api_response.json().get("count") == self.costewards
 
     def test_get_co_steward_details_endpoint(self):
-        print(self.co_steward.id)
         api_response = self.client.get(f"{self.participant_url}{self.co_steward.id}/", secure=True,
                                        content_type='application/json')
         assert api_response.status_code in [200]
         assert str(api_response.json().get("user_id")) == str(self.co_steward.id)
 
     def test_get_co_steward_details_not_found_endpoint(self):
-        print(self.co_steward.id)
         api_response = self.client.get(f"{self.participant_url}/582bc65d-4034-4f2d-a19f-4c14d5d69521", secure=True,
                                        content_type='application/json')
         assert api_response.status_code in [404]
@@ -1220,14 +1221,28 @@ class ParticipantCostewardsListingTestViews(TestCase):
     #     print("URL")
     #     api_response = self.client.get(self.participant_url, secure=True, content_type='application/json')
     #     # print(api_response.json())
-    #     assert api_response.status_code in [200]
+    #     # assert api_response.status_code in [200]
     #     print("nswer")
     #     print(api_response.json())
+    #     next = api_response.json().get("next")
+    #     print("NEXT")
+    #     print(next)
+    #     print("NEXT")
     #     print("nswer")
     #     assert api_response.json().get("count") == self.participants
+    #     next = "https://testserver/datahub/participant/?page=2"
+    #     api2_response = self.client.get(f"{self.participant_url}?page=2", secure=True, content_type='application/json')
+    #     print("AOI PRE")
+    #     print(api2_response.json())
+    #     print("AOI PRE")
 
     def test_get_participant_details_endpoint(self):
         api_response = self.client.get(f"{self.participant_url}{self.participant.id}/", secure=True,
                                        content_type='application/json')
         assert api_response.status_code in [200]
         assert str(api_response.json().get("user_id")) == str(self.participant.id)
+
+    def test_get_participant_details_not_found_endpoint(self):
+        api_response = self.client.get(f"{self.participant_url}{self.participant.id}/", secure=True,
+                                       content_type='application/json')
+        assert api_response.status_code in [404]
