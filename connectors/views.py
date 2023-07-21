@@ -207,16 +207,16 @@ class ConnectorsViewSet(GenericViewSet):
                         usecols=condition.get(Constants.RIGHT_SELECTED)
                     )
                 # Join the dataframes
-                new_suffix = initial+f"_df{i+2}"
+
                 result = pd.merge(
                     result,
                     right_dataset,
                     how=condition.get(Constants.HOW, Constants.LEFT),
                     left_on=condition.get(Constants.LEFT_ON),
                     right_on=condition.get(Constants.RIGHT_ON),
-                    suffixes=(new_suffix, f"_df{i+3}")
+                    suffixes=(initial, f"_df{i+2}")
                 )
-                initial = new_suffix
+                initial = initial+f"_df{i+2}"
             name = data.get(Constants.NAME, Constants.CONNECTORS)
             file_path = f"{settings.TEMP_CONNECTOR_URL}{name}.csv"
             result.to_csv(file_path, index=False)
