@@ -1191,6 +1191,7 @@ class ParticipantCostewardsListingTestViews(TestCase):
             'Content-Type': 'application/json',
             'Authorization': f'Bearer {auth["token"]}'
         }
+
         self.client.defaults['HTTP_AUTHORIZATION'] = headers['Authorization']
         self.client.defaults['CONTENT_TYPE'] = headers['Content-Type']
 
@@ -1201,10 +1202,17 @@ class ParticipantCostewardsListingTestViews(TestCase):
         assert api_response.json().get("count") == self.costewards
 
     def test_get_co_steward_details_endpoint(self):
+        print(self.co_steward.id)
         api_response = self.client.get(f"{self.participant_url}{self.co_steward.id}/", secure=True,
                                        content_type='application/json')
         assert api_response.status_code in [200]
         assert str(api_response.json().get("user_id")) == str(self.co_steward.id)
+
+    def test_get_co_steward_details_not_found_endpoint(self):
+        print(self.co_steward.id)
+        api_response = self.client.get(f"{self.participant_url}/582bc65d-4034-4f2d-a19f-4c14d5d69521", secure=True,
+                                       content_type='application/json')
+        assert api_response.status_code in [404]
 
     # def test_list_participant_endpoint(self):
     #     print("URL")
