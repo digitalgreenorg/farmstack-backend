@@ -214,7 +214,7 @@ class ConnectorsViewSet(GenericViewSet):
                     how=condition.get(Constants.HOW, Constants.LEFT),
                     left_on=condition.get(Constants.LEFT_ON),
                     right_on=condition.get(Constants.RIGHT_ON),
-                    suffixes=("", f"_df{i+2}")
+                    suffixes=("", f"_df{i+1}")
                 )
                 initial = initial+f"_df{i+2}"
             name = data.get(Constants.NAME, Constants.CONNECTORS)
