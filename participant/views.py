@@ -97,6 +97,7 @@ from utils import string_functions
 from utils.authorization_services import support_ticket_role_authorization
 from utils.connector_utils import run_containers, stop_containers
 from utils.jwt_services import http_request_mutation
+from rest_framework.exceptions import ValidationError
 
 LOGGER = logging.getLogger(__name__)
 import json
@@ -1823,10 +1824,19 @@ class SupportTicketV2ModelViewSet(GenericViewSet):
     # API to create a new object
     @http_request_mutation
     def create(self, request):
-        serializer = CreateSupportTicketV2Serializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        object = serializer.save()
-        return Response(serializer.data, status=status.HTTP_201_CREATED)
+        try:
+            serializer = CreateSupportTicketV2Serializer(data=request.data)
+            serializer.is_valid(raise_exception=True)
+            object = serializer.save()
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        
+        except ValidationError as e:
+            return Response({str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+        except Exception as e:
+            LOGGER.error(e)
+            return Response(str(e), status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
 
     @support_ticket_role_authorization(model_name="SupportTicketV2")
     def update(self, request, pk=None):

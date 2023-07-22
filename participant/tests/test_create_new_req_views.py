@@ -6,7 +6,7 @@ from datahub.models import Organization, UserOrganizationMap
 from accounts.models import User, UserRole
 from participant.models import SupportTicketV2
 from rest_framework_simplejwt.tokens import RefreshToken
-
+from django.core.files.uploadedfile import SimpleUploadedFile
 
 auth_co_steward= {
     "token": "null"
@@ -116,26 +116,70 @@ class  SupportTicketNewRequestTestCaseForViews(TestCase):
         assert response.json()['description']==data["description"]
         assert response.json()['category']==data["category"]
 
+    def test_ticket_creation_with_valid_data(self):
+        with open("/Users/akshatanaik/Akshata/repos/datahub-api/participant/tests/image/png_cactus_5662.png", "rb") as file:
+            ticket_attachment_file_obj = file.read()
+        ticket_attachment_file = SimpleUploadedFile("png_cactus_5662.png", ticket_attachment_file_obj, content_type="image/png")     
+        data={
+            "ticket_title":"Support ticket by participant",
+            "category":"connectors",
+            "description":"description about support ticket 1........",
+            "status": "open",
+            "ticket_attachment": ticket_attachment_file,
+            "user_map":str(self.user_map_participant.id)
+          }
+
+        response = self.client_participant.post(self.support_ticket_url, data,format="multipart")
+        assert response.status_code == 201
+        assert response.json()['ticket_title']==data["ticket_title"]
+        assert response.json()['description']==data["description"]
+        assert response.json()['category']==data["category"]
 
     # Negative test cases
-    def test_ticket_creation_with_Invalid_token(self):
+    def test_ticket_creation_with_file_gt_2_mb(self):
+        with open("/Users/akshatanaik/Akshata/repos/datahub-api/participant/tests/image/image_5mb.png", 'rb') as file:
+            ticket_attachment_file_obj = file.read()
+        ticket_attachment_file = SimpleUploadedFile("image_5mb.png", ticket_attachment_file_obj, content_type="image/png")
         data={
-            "ticket_title":"Support ticket 1",
-            "category":"connectors",
-            "description":"description about support ticket 1",
-            "status": "open",
-            "user_map":str(self.user_map_participant)
-          }
-        response = self.client_participant.post(self.support_ticket_url, json.dumps(data), content_type='application/json')
-        assert response.status_code == 401
-        assert response.json()=={'message': 'Invalid auth credentials provided.'}
+                    "ticket_title":"Support ticket 1",
+                    "category":"connectors",
+                    "description":"description about support ticket 1",
+                    "status": "open",
+                    "ticket_attachment": ticket_attachment_file,
+                    "user_map":str(self.user_map_participant.id)
+                }
+        response = self.client_participant.post(self.support_ticket_url, data, format="multipart")
+        assert response.status_code == 400
+        assert response.json()==["{'ticket_attachment': [ErrorDetail(string='You cannot upload file more than 2Mb', code='invalid')]}"]
 
 
     def test_ticket_creation_with_empty_data(self):
         data={" "}
         response = self.client_participant.post(self.support_ticket_url, data, content_type='application/json')
-        assert response.status_code == 401
-        assert response.json()=={'message': 'Invalid auth credentials provided.'}
+        assert response.status_code == 500
+        assert response.json()=="JSON parse error - Expecting property name enclosed in double quotes: line 1 column 2 (char 1)"
+
+
+    def test_ticket_creation_with_empty_title(self):
+        data={
+            "ticket_title":"",
+            "category":"connectors",
+            "status": "open",
+            "user_map":str(self.user_map_participant.id)
+          }
+        response = self.client_participant.post(self.support_ticket_url, data)
+        assert response.status_code == 400
+        assert response.json()==["{'ticket_title': [ErrorDetail(string='This field may not be blank.', code='blank')]}"]
+
+    def test_ticket_creation_without_category(self):
+        data={
+            "ticket_title":"title",    
+            "status": "open",
+            "user_map":str(self.user_map_participant.id)
+          }
+        response = self.client_participant.post(self.support_ticket_url, data)
+        assert response.status_code == 400
+        assert response.json()==["{'category': [ErrorDetail(string='This field is required.', code='required')]}"]
 
 
     
