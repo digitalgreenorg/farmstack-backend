@@ -1831,7 +1831,7 @@ class SupportTicketV2ModelViewSet(GenericViewSet):
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         
         except ValidationError as e:
-            return Response({str(e)}, status=status.HTTP_400_BAD_REQUEST)
+            return Response(e.detail, status=status.HTTP_400_BAD_REQUEST)
 
         except Exception as e:
             LOGGER.error(e)

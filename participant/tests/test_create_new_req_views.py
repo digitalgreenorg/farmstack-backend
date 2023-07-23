@@ -150,7 +150,7 @@ class  SupportTicketNewRequestTestCaseForViews(TestCase):
                 }
         response = self.client_participant.post(self.support_ticket_url, data, format="multipart")
         assert response.status_code == 400
-        assert response.json()==["{'ticket_attachment': [ErrorDetail(string='You cannot upload file more than 2Mb', code='invalid')]}"]
+        assert response.json()=={'ticket_attachment': ['You cannot upload file more than 2Mb']}
 
 
     def test_ticket_creation_with_empty_data(self):
@@ -169,7 +169,7 @@ class  SupportTicketNewRequestTestCaseForViews(TestCase):
           }
         response = self.client_participant.post(self.support_ticket_url, data)
         assert response.status_code == 400
-        assert response.json()==["{'ticket_title': [ErrorDetail(string='This field may not be blank.', code='blank')]}"]
+        assert response.json()=={'ticket_title': ['This field may not be blank.']}
 
     def test_ticket_creation_without_category(self):
         data={
@@ -179,7 +179,7 @@ class  SupportTicketNewRequestTestCaseForViews(TestCase):
           }
         response = self.client_participant.post(self.support_ticket_url, data)
         assert response.status_code == 400
-        assert response.json()==["{'category': [ErrorDetail(string='This field is required.', code='required')]}"]
+        assert response.json()=={'category': ['This field is required.']}
 
 
     
