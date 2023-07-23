@@ -1,4 +1,5 @@
 import ast
+from bdb import set_trace
 import datetime
 import json
 import logging
@@ -23,7 +24,9 @@ from django.db.models import Q
 from django.db.models.functions import Lower
 from django.shortcuts import render
 from psycopg2 import errorcodes
+from rest_framework import pagination, status, serializers
 from rest_framework import pagination, status
+from rest_framework import pagination, status, serializers
 from rest_framework.decorators import action, permission_classes
 from rest_framework.generics import get_object_or_404
 from rest_framework.parsers import JSONParser
@@ -92,6 +95,8 @@ from participant.serializers import (
     SupportTicketResolutionsSerializerMinimised,
     SupportTicketV2Serializer,
     TicketSupportSerializer,
+    UpdateSupportTicketV2Serializer,
+    UpdateSupportTicketV2Serializer,
 )
 from utils import string_functions
 from utils.authorization_services import support_ticket_role_authorization
@@ -1743,9 +1748,14 @@ class DataBaseViewSet(GenericViewSet):
 class SupportTicketV2ModelViewSet(GenericViewSet):
     parser_class = JSONParser
     queryset = SupportTicketV2.objects.all()
-    serializer_class = SupportTicketV2Serializer
+    # serializer_class = SupportTicketV2Serializer
     pagination_class = CustomPagination
-
+    def get_serializer_class(self):
+        if self.request.method == "PUT":
+            return UpdateSupportTicketV2Serializer
+        return SupportTicketV2Serializer
+    
+    
     @action(detail=False, methods=["post"])
     @http_request_mutation
     def list_tickets(self, request, *args, **kwargs):
@@ -1836,7 +1846,7 @@ class SupportTicketV2ModelViewSet(GenericViewSet):
         serializer.is_valid(raise_exception=True)
         object = serializer.save()
         return Response(serializer.data)
-
+  
     # API to delete an existing object by its ID
     @support_ticket_role_authorization(model_name="SupportTicketV2")
     def destroy(self, request, pk=None):
@@ -1892,7 +1902,6 @@ class SupportTicketResolutionsViewset(GenericViewSet):
         # set map in in request object
         request_data = request.data.copy()
         request_data["user_map"] = request.META.get("map_id")
-
         serializer = CreateSupportTicketResolutionsSerializer(data=request_data)
         serializer.is_valid(raise_exception=True)
         object = serializer.save()
