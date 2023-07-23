@@ -6,6 +6,7 @@ from datahub.models import Organization, UserOrganizationMap
 from accounts.models import User, UserRole
 from participant.models import SupportTicketV2
 from rest_framework_simplejwt.tokens import RefreshToken
+from test_util import TestUtils
 
 auth = {
     "token": "null"
@@ -18,21 +19,6 @@ auth_co_steward = {
 auth_participant= {
     "token": "null"
 }
-
-
-# Generic method to create access token(admin/participant/co-steward)
-def create_token_for_user(user, user_map):
-    refresh_token = RefreshToken.for_user(user)
-    refresh_token["org_id"] = str(user_map.organization_id) if user_map else None
-    refresh_token["map_id"] = str(user_map.id) if user_map else None
-    refresh_token["role"] = str(user.role_id)
-    refresh_token["onboarded_by"] = str(user.on_boarded_by_id)
-    refresh_token.access_token["org_id"] = str(user_map.organization_id) if user_map else None
-    refresh_token.access_token["map_id"] = str(user_map.id) if user_map else None
-    refresh_token.access_token["role"] = str(user.role_id)
-    refresh_token.access_token["onboarded_by"] = str(user.on_boarded_by_id)
-
-    return refresh_token.access_token
 
 
 class  SupportTicketTestCaseForViews(TestCase):
@@ -116,21 +102,21 @@ class  SupportTicketTestCaseForViews(TestCase):
         )
 
         # Admin token
-        auth["token"] = create_token_for_user(self.user, self.user_admin_map)
+        auth["token"] = TestUtils.create_token_for_user(self.user, self.user_admin_map)
         admin_header=self.set_auth_headers()
         self.client_admin.defaults['HTTP_AUTHORIZATION'] = admin_header[0]
         self.client_admin.defaults['CONTENT_TYPE'] = admin_header[1]
 
 
         # Participant Token
-        auth_participant["token"] = create_token_for_user(self.user_participant, self.user_map)
+        auth_participant["token"] = TestUtils.create_token_for_user(self.user_participant, self.user_map)
         participant_header=self.set_auth_headers(participant=True)
         self.client_participant.defaults['HTTP_AUTHORIZATION'] = participant_header[0]
         self.client_participant.defaults['CONTENT_TYPE'] = participant_header[1]
 
 
         #Co-steward Token   
-        auth_co_steward["token"] = create_token_for_user(self.user_co_steward, self.user_map_for_costeward)
+        auth_co_steward["token"] = TestUtils.create_token_for_user(self.user_co_steward, self.user_map_for_costeward)
         co_steward_header=self.set_auth_headers(co_steward=True)
         self.client_co_steward.defaults['HTTP_AUTHORIZATION'] = co_steward_header[0]
         self.client_co_steward.defaults['CONTENT_TYPE'] = co_steward_header[1]
