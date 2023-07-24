@@ -39,7 +39,7 @@ from rest_framework.viewsets import GenericViewSet, ViewSet
 from uritemplate import partial
 
 from accounts.models import User
-from core.constants import Constants
+from core.constants import Constants, NumericalConstants
 from core.utils import (
     CustomPagination,
     DefaultPagination,
@@ -104,6 +104,7 @@ from participant.serializers import (
 from utils import string_functions
 from utils.authorization_services import support_ticket_role_authorization
 from utils.connector_utils import run_containers, stop_containers
+from utils.file_operations import check_file_name_length
 from utils.jwt_services import http_request_mutation
 
 LOGGER = logging.getLogger(__name__)
@@ -1928,9 +1929,7 @@ class SupportTicketV2ModelViewSet(GenericViewSet):
                     "org_logo": str(f"/media/{current_user.organization.logo}")
                 }
             }
-
             return Response(data)
-
         except Exception as e:
             LOGGER.error(e, exc_info=True)
             return Response(str(e), status=status.HTTP_500_INTERNAL_SERVER_ERROR)
@@ -1939,6 +1938,16 @@ class SupportTicketV2ModelViewSet(GenericViewSet):
 
     @http_request_mutation
     def create(self, request):
+
+        if request.data.get("ticket_attachment"):
+            validity = check_file_name_length(incoming_file_name=request.data.get("ticket_attachment"),
+                                              accepted_file_name_size=NumericalConstants.FILE_NAME_LENGTH)
+            if not validity:
+                file_length = len(str(request.data.get("ticket_attachment")))
+                return Response(
+                    {"ticket_attachment": [f"Ensure this filename has at most 100 characters ( it has {file_length} )."]},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
         serializer = CreateSupportTicketV2Serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         object = serializer.save()
