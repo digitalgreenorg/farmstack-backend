@@ -1,17 +1,18 @@
+import io
+import json
 import uuid
-from participant.models import Resolution
-from rest_framework.reverse import reverse
+
+# from django.utils.datastructures import MultiValueDict
+from django.core.files.uploadedfile import InMemoryUploadedFile, SimpleUploadedFile
 from django.test import Client, RequestFactory, TestCase
 from rest_framework import status
-import json
-from datahub.models import Organization, UserOrganizationMap
-from accounts.models import User, UserRole
-from participant.models import SupportTicketV2
+from rest_framework.reverse import reverse
 from rest_framework_simplejwt.tokens import RefreshToken
-from django.core.files.uploadedfile import SimpleUploadedFile
-# from django.utils.datastructures import MultiValueDict
-from django.core.files.uploadedfile import InMemoryUploadedFile
-import io
+
+from accounts.models import User, UserRole
+from datahub.models import Organization, UserOrganizationMap
+from participant.models import Resolution, SupportTicketV2
+
 
 class PicklableFile(io.BytesIO):
     def __reduce__(self):
@@ -167,32 +168,25 @@ class  SupportTicketTestCaseForViews(TestCase):
     
     def test_suppport_resolution_create_invalid_with_file(self):
         support_id = self.create_support_ticket_one.id
-        with open("/Users/admin/Desktop/digitalgreenorg-fs-project/datahub-api/participant/tests/test_data/image_5mb.png", "rb") as file:
+        with open("participant/tests/test_data/image_5mb.png", "rb") as file:
             file_content = file.read()
-            
-        # file = InMemoryUploadedFile(
-        #     io.BytesIO(file_content),  # File content as an io.BytesIO object
-        #     None,  # Field name (use None to make it a complete file)
-        #     "image_5mb.png",  # File name
-        #     "image/png",  # Content type
-        #     len(file_content),  # File size
-        #     None,  # Content type extra headers (optional)
-        # )
+        
+        uploaded_file = SimpleUploadedFile("image_5mb.png", file_content, content_type="image/png")
 
         resolution_invalid_data = {
             "ticket": str(support_id),
             "user_map": str(self.user_map),
             "resolution_text": "this is resolution",
-            "solution_attachments": open("/Users/admin/Desktop/digitalgreenorg-fs-project/datahub-api/participant/tests/test_data/image_5mb.png", "rb"),
-        }
-        # files = {"solution_attachments": [file]}
+            "solution_attachments": open("participant/tests/test_data/image_5mb.png", "rb"),
 
+        }
             
-        response = self.client.post(self.support_resolution_url, data =resolution_invalid_data, content_type="multipart/form-data", secure=True) # type: ignore
+        response = self.client.post(self.support_resolution_url, data =resolution_invalid_data, secure=True) # type: ignore
         # data = response.json()
         print("***test_suppport_resolution_create_invalid_with_file data***", response.json())
         print("***test_suppport_resolution_create_invalid_with_file status_code***", response.status_code)
-        # assert response.status_code == 201
+        assert response.status_code == 400
+        assert response.json() == {'solution_attachments': ['You cannot upload file more than 2Mb']}
         
     #test case for create method(valid case)
     def test_suppport_resolution_create_valid(self):
@@ -223,7 +217,7 @@ class  SupportTicketTestCaseForViews(TestCase):
             "ticket": str(support_id),
             "user_map": str(self.user_map),
             "resolution_text": "this is resolution",
-            "solution_attachments": open("/Users/admin/Desktop/digitalgreenorg-fs-project/datahub-api/participant/tests/test_data/sample.pdf", "rb"),
+            "solution_attachments": open("participant/tests/test_data/sample.pdf", "rb"),
         }
         response = self.client.post(self.support_resolution_url, resolution_valid_data, secure=True)
         data = response.json()

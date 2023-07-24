@@ -1,5 +1,4 @@
 import ast
-from bdb import set_trace
 import datetime
 import json
 import logging
@@ -8,6 +7,7 @@ import os
 import re
 import subprocess
 import time
+from bdb import set_trace
 from contextlib import closing
 from functools import reduce
 from sre_compile import isstring
@@ -24,9 +24,7 @@ from django.db.models import Q
 from django.db.models.functions import Lower
 from django.shortcuts import render
 from psycopg2 import errorcodes
-from rest_framework import pagination, status, serializers
-from rest_framework import pagination, status
-from rest_framework import pagination, status, serializers
+from rest_framework import pagination, serializers, status
 from rest_framework.decorators import action, permission_classes
 from rest_framework.generics import get_object_or_404
 from rest_framework.parsers import JSONParser
@@ -95,7 +93,6 @@ from participant.serializers import (
     SupportTicketResolutionsSerializerMinimised,
     SupportTicketV2Serializer,
     TicketSupportSerializer,
-    UpdateSupportTicketV2Serializer,
     UpdateSupportTicketV2Serializer,
 )
 from utils import string_functions
@@ -1900,7 +1897,8 @@ class SupportTicketResolutionsViewset(GenericViewSet):
     @support_ticket_role_authorization(model_name="Resolution")
     def create(self, request):
         # set map in in request object
-        request_data = request.data.copy()
+        setattr(request.data, "_mutable", True)
+        request_data = request.data
         request_data["user_map"] = request.META.get("map_id")
         serializer = CreateSupportTicketResolutionsSerializer(data=request_data)
         serializer.is_valid(raise_exception=True)
