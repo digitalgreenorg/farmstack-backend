@@ -575,6 +575,12 @@ class SupportTicketV2Serializer(serializers.ModelSerializer):
     class Meta:
         model = SupportTicketV2
         fields = '__all__'
+        
+class UpdateSupportTicketV2Serializer(serializers.ModelSerializer):
+    
+    class Meta:
+        model = SupportTicketV2
+        fields = ('status',)
 
 class CreateSupportTicketV2Serializer(serializers.ModelSerializer):
     class Meta:
