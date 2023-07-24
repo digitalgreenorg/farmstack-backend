@@ -877,6 +877,8 @@ auth = {
 
 
 
+
+
 policy_valid_data = {
     "name": "Some Policy Name",
     "description": "Some Policy Description"
@@ -1148,7 +1150,7 @@ class ParticipantCostewardsListingTestViews(TestCase):
             organization_id=organization.id
         )
 
-        self.costewards = 5
+        self.costewards = 10
         for item in range(0, self.costewards):
             self.co_steward = User.objects.create(
                 first_name="Costeward",
@@ -1163,7 +1165,7 @@ class ParticipantCostewardsListingTestViews(TestCase):
                 organization_id=organization.id
             )
 
-        self.participants = 6
+        self.participants = 10
         for item in range(0, self.participants):
             self.participant = User.objects.create(
                 first_name="Participant",
@@ -1215,26 +1217,9 @@ class ParticipantCostewardsListingTestViews(TestCase):
                                        content_type='application/json')
         assert api_response.status_code in [404]
 
-    # def test_list_participant_endpoint(self):
-    #     print("URL")
-    #     print(self.participant_url)
-    #     print("URL")
-    #     api_response = self.client.get(self.participant_url, secure=True, content_type='application/json')
-    #     # print(api_response.json())
-    #     # assert api_response.status_code in [200]
-    #     print("nswer")
-    #     print(api_response.json())
-    #     next = api_response.json().get("next")
-    #     print("NEXT")
-    #     print(next)
-    #     print("NEXT")
-    #     print("nswer")
-    #     assert api_response.json().get("count") == self.participants
-    #     next = "https://testserver/datahub/participant/?page=2"
-    #     api2_response = self.client.get(f"{self.participant_url}?page=2", secure=True, content_type='application/json')
-    #     print("AOI PRE")
-    #     print(api2_response.json())
-    #     print("AOI PRE")
+    def test_list_participant_endpoint(self):
+        api_response = self.client.get(self.participant_url, secure =True, content_type='application/json')
+        assert api_response.json().get("count") == self.participants
 
     def test_get_participant_details_endpoint(self):
         api_response = self.client.get(f"{self.participant_url}{self.participant.id}/", secure=True,
@@ -1242,7 +1227,8 @@ class ParticipantCostewardsListingTestViews(TestCase):
         assert api_response.status_code in [200]
         assert str(api_response.json().get("user_id")) == str(self.participant.id)
 
+    #
     def test_get_participant_details_not_found_endpoint(self):
-        api_response = self.client.get(f"{self.participant_url}{self.participant.id}/", secure=True,
+        api_response = self.client.get(f"{self.participant_url}/582bc65d-4034-4f2d-a19f-4c14d5d69521/", secure=True,
                                        content_type='application/json')
         assert api_response.status_code in [404]

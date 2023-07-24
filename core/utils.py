@@ -71,8 +71,6 @@ def replace_query_param(url, key, val, req):
     parameters of the URL, and return the new URL.
     """
     (scheme, netloc, path, query, fragment) = parse.urlsplit(str(url))
-    import pdb
-    pdb.set_trace()
     netloc = req.META.get("HTTP_HOST", "testserver")
     if netloc != "testserver":
         scheme = "http" if "localhost" in netloc or "127.0.0.1" in netloc else "https"  # type: ignore
@@ -90,10 +88,11 @@ def remove_query_param(url, key, req):
     parameters of the URL, and return the new URL.
     """
     (scheme, netloc, path, query, fragment) = parse.urlsplit(str(url))
-    netloc = req.META.get("HTTP_HOST")
-    scheme = "http" if "localhost" in netloc or "127.0.0.1" in netloc else "https"  # type: ignore
-    path = path if "localhost" in netloc or "127.0.0.1" in netloc else "/be" + path  # type: ignore
-    # netloc = "datahubtest.farmstack.co"
+    netloc = req.META.get("HTTP_HOST", "testserver")
+    if netloc != "testserver":
+        scheme = "http" if "localhost" in netloc or "127.0.0.1" in netloc else "https"  # type: ignore
+        path = path if "localhost" in netloc or "127.0.0.1" in netloc else "/be" + path  # type: ignore
+
     query_dict = parse.parse_qs(query, keep_blank_values=True)
     query_dict.pop(key, None)
     query = parse.urlencode(sorted(list(query_dict.items())), doseq=True)
