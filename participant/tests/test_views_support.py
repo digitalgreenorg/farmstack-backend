@@ -3,9 +3,8 @@ import json
 import uuid
 
 # from django.utils.datastructures import MultiValueDict
-from django.core.files.uploadedfile import InMemoryUploadedFile, SimpleUploadedFile
-from django.test import Client, RequestFactory, TestCase
-from rest_framework import status
+from django.core.files.uploadedfile import SimpleUploadedFile
+from django.test import Client, TestCase
 from rest_framework.reverse import reverse
 from rest_framework_simplejwt.tokens import RefreshToken
 
@@ -178,16 +177,11 @@ class SupportTicketTestCaseForViews(TestCase):
         assert response.status_code == 200
         assert response.get("description", "") == ""
 
-    """Support Resolution test cases"""
-
     # test case for create method(invalid case)
-    def test_suppport_resolution_create_invalid_with_file(self):
-        support_id = self.create_support_ticket_one.id
-        with open("participant/tests/test_data/image_5mb.png", "rb") as file:
-            file_content = file.read()
 
-        uploaded_file = SimpleUploadedFile(
-            "image_5mb.png", file_content, content_type="image/png")
+    def test_suppport_resolution_create_invalid_with_file(self):
+        """Support Resolution test cases"""
+        support_id = self.create_support_ticket_one.id
 
         resolution_invalid_data = {
             "ticket": str(support_id),
