@@ -107,7 +107,7 @@ class  SupportTicketNewRequestTestCaseForViews(TestCase):
         assert response.json()['category']==data["category"]
 
     def test_ticket_creation_with_valid_data(self):
-        with open("/Users/akshatanaik/Akshata/repos/datahub-api/participant/tests/image/png_cactus_5662.png", "rb") as file:
+        with open("participant/tests/image/png_cactus_5662.png", "rb") as file:
             ticket_attachment_file_obj = file.read()
         ticket_attachment_file = SimpleUploadedFile("png_cactus_5662.png", ticket_attachment_file_obj, content_type="image/png")     
         data={
@@ -127,7 +127,7 @@ class  SupportTicketNewRequestTestCaseForViews(TestCase):
 
     # Negative test cases
     def test_ticket_creation_with_file_gt_2_mb(self):
-        with open("/Users/akshatanaik/Akshata/repos/datahub-api/participant/tests/image/image_5mb.png", 'rb') as file:
+        with open("participant/tests/image/image_5mb.png", 'rb') as file:
             ticket_attachment_file_obj = file.read()
         ticket_attachment_file = SimpleUploadedFile("image_5mb.png", ticket_attachment_file_obj, content_type="image/png")
         data={
