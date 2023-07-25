@@ -142,21 +142,25 @@ class ParticipantSupportViewSet(GenericViewSet):
     @http_request_mutation
     def list(self, request, *args, **kwargs):
         """GET method: query all the list of objects from the Product model"""
-        user_id = request.META.get(Constants.USER_ID)
-        data = (
-            SupportTicket.objects.select_related(
-                Constants.USER_MAP,
-                Constants.USER_MAP_USER,
-                Constants.USER_MAP_ORGANIZATION,
+        try:
+            user_id = request.META.get(Constants.USER_ID)
+            data = (
+                SupportTicket.objects.select_related(
+                    Constants.USER_MAP,
+                    Constants.USER_MAP_USER,
+                    Constants.USER_MAP_ORGANIZATION,
+                )
+                .filter(user_map__user__status=True, user_map__user=user_id)
+                .order_by(Constants.UPDATED_AT)
+                .reverse()
+                .all()
             )
-            .filter(user_map__user__status=True, user_map__user=user_id)
-            .order_by(Constants.UPDATED_AT)
-            .reverse()
-            .all()
-        )
-        page = self.paginate_queryset(data)
-        participant_serializer = ParticipantSupportTicketSerializer(page, many=True)
-        return self.get_paginated_response(participant_serializer.data)
+            page = self.paginate_queryset(data)
+            participant_serializer = ParticipantSupportTicketSerializer(page, many=True)
+            return self.get_paginated_response(participant_serializer.data)
+        except Exception as error:
+            LOGGER.error(error, exc_info=True)
+            return Response(str(error), status=status.HTTP_400_BAD_REQUEST)
 
     def retrieve(self, request, pk):
         """GET method: retrieve an object or instance of the Product model"""
@@ -267,53 +271,62 @@ class ParticipantDatasetsViewSet(GenericViewSet):
     @http_request_mutation
     def list(self, request, *args, **kwargs):
         """GET method: query all the list of objects from the Product model"""
-        data = []
-        user_id = request.META.get(Constants.USER_ID, "")
-        org_id = request.META.get(Constants.ORG_ID)
-        exclude = {Constants.USER_MAP_USER: user_id} if org_id else {}
-        filters = {Constants.USER_MAP_ORGANIZATION: org_id} if org_id else {Constants.USER_MAP_USER: user_id}
-        if filters:
-            data = (
-                Datasets.objects.select_related(
-                    Constants.USER_MAP,
-                    Constants.USER_MAP_USER,
-                    Constants.USER_MAP_ORGANIZATION,
+        try:
+            data = []
+            user_id = request.META.get(Constants.USER_ID, "")
+            org_id = request.META.get(Constants.ORG_ID)
+            exclude = {Constants.USER_MAP_USER: user_id} if org_id else {}
+            filters = {Constants.USER_MAP_ORGANIZATION: org_id} if org_id else {Constants.USER_MAP_USER: user_id}
+            if filters:
+                data = (
+                    Datasets.objects.select_related(
+                        Constants.USER_MAP,
+                        Constants.USER_MAP_USER,
+                        Constants.USER_MAP_ORGANIZATION,
+                    )
+                    .filter(user_map__user__status=True, status=True, **filters)
+                    .exclude(**exclude)
+                    .order_by(Constants.UPDATED_AT)
+                    .reverse()
+                    .all()
                 )
-                .filter(user_map__user__status=True, status=True, **filters)
-                .exclude(**exclude)
-                .order_by(Constants.UPDATED_AT)
-                .reverse()
-                .all()
-            )
-        page = self.paginate_queryset(data)
-        participant_serializer = ParticipantDatasetsSerializer(page, many=True)
-        return self.get_paginated_response(participant_serializer.data)
+            page = self.paginate_queryset(data)
+            participant_serializer = ParticipantDatasetsSerializer(page, many=True)
+            return self.get_paginated_response(participant_serializer.data)
+        except Exception as error:
+            LOGGER.error(error, exc_info=True)
+            return Response(str(error), status=status.HTTP_400_BAD_REQUEST)
 
     @action(detail=False, methods=["get"])
     @http_request_mutation
     def list_of_datasets(self, request, *args, **kwargs):
         """GET method: query all the list of objects from the Product model"""
         data = []
-        user_id = request.META.get(Constants.USER_ID, "")
-        filters = {Constants.USER_MAP_USER: user_id} if user_id else {}
-        data = (
-            Datasets.objects.select_related(
-                Constants.USER_MAP,
-                Constants.USER_MAP_USER,
-                Constants.USER_MAP_ORGANIZATION,
+        try:
+
+            user_id = request.META.get(Constants.USER_ID, "")
+            filters = {Constants.USER_MAP_USER: user_id} if user_id else {}
+            data = (
+                Datasets.objects.select_related(
+                    Constants.USER_MAP,
+                    Constants.USER_MAP_USER,
+                    Constants.USER_MAP_ORGANIZATION,
+                )
+                .filter(
+                    user_map__user__status=True,
+                    status=True,
+                    approval_status="approved",
+                    **filters,
+                )
+                .order_by(Constants.UPDATED_AT)
+                .reverse()
+                .all()
             )
-            .filter(
-                user_map__user__status=True,
-                status=True,
-                approval_status="approved",
-                **filters,
-            )
-            .order_by(Constants.UPDATED_AT)
-            .reverse()
-            .all()
-        )
-        participant_serializer = ParticipantDatasetsDropDownSerializer(data, many=True)
-        return Response(participant_serializer.data, status=status.HTTP_200_OK)
+            participant_serializer = ParticipantDatasetsDropDownSerializer(data, many=True)
+            return Response(participant_serializer.data, status=status.HTTP_200_OK)
+        except Exception as error:
+            LOGGER.error(error, exc_info=True)
+            return Response(str(error), status=status.HTTP_400_BAD_REQUEST)
 
     def retrieve(self, request, pk):
         """GET method: retrieve an object or instance of the Product model"""
@@ -1253,35 +1266,43 @@ class ParticipantDepatrmentViewSet(GenericViewSet):
     @http_request_mutation
     def department_list(self, request, *args, **kwargs):
         """GET method: query all the list of objects from the Product model"""
-        data = []
-        org_id = request.META.get(Constants.ORG_ID)
-        filters = {Constants.ORGANIZATION: org_id} if org_id else {}
-        data = (
-            # Department.objects.filter(Q(status=True, **filters) | Q(department_name=Constants.DEFAULT))
-            Department.objects.filter(status=True, **filters)
-            .exclude(department_name=Constants.DEFAULT)
-            .order_by(Constants.UPDATED_AT)
-            .reverse()
-            .all()
-        )
-        page = self.paginate_queryset(data)
-        department_serializer = DepartmentSerializer(page, many=True)
-        return self.get_paginated_response(department_serializer.data)
+        try:
+            data = []
+            org_id = request.META.get(Constants.ORG_ID)
+            filters = {Constants.ORGANIZATION: org_id} if org_id else {}
+            data = (
+                # Department.objects.filter(Q(status=True, **filters) | Q(department_name=Constants.DEFAULT))
+                Department.objects.filter(status=True, **filters)
+                .exclude(department_name=Constants.DEFAULT)
+                .order_by(Constants.UPDATED_AT)
+                .reverse()
+                .all()
+            )
+            page = self.paginate_queryset(data)
+            department_serializer = DepartmentSerializer(page, many=True)
+            return self.get_paginated_response(department_serializer.data)
+        except Exception as error:
+            LOGGER.error(error, exc_info=True)
+            return Response(str(error), status=status.HTTP_400_BAD_REQUEST)
 
     @http_request_mutation
     def list(self, request, *args, **kwargs):
         """GET method: query all the list of objects from the Product model"""
-        data = []
-        org_id = request.META.get(Constants.ORG_ID)
-        filters = {Constants.ORGANIZATION: org_id} if org_id else {}
-        data = (
-            Department.objects.filter(Q(status=True, **filters) | Q(department_name=Constants.DEFAULT))
-            .order_by(Constants.UPDATED_AT)
-            .reverse()
-            .all()
-        )
-        department_serializer = DepartmentSerializer(data, many=True)
-        return Response(department_serializer.data)
+        try:
+            data = []
+            org_id = request.META.get(Constants.ORG_ID)
+            filters = {Constants.ORGANIZATION: org_id} if org_id else {}
+            data = (
+                Department.objects.filter(Q(status=True, **filters) | Q(department_name=Constants.DEFAULT))
+                .order_by(Constants.UPDATED_AT)
+                .reverse()
+                .all()
+            )
+            department_serializer = DepartmentSerializer(data, many=True)
+            return Response(department_serializer.data)
+        except Exception as error:
+            LOGGER.error(error, exc_info=True)
+            return Response(str(error), status=status.HTTP_400_BAD_REQUEST)
 
     def destroy(self, request, pk):
         """DELETE method: delete an object"""
@@ -1344,21 +1365,25 @@ class ParticipantProjectViewSet(GenericViewSet):
     @http_request_mutation
     def project_list(self, request, *args, **kwargs):
         """GET method: query all the list of objects from the Product model"""
-        data = []
-        org_id = request.META.get(Constants.ORG_ID)
-        filters = {Constants.ORGANIZATION: org_id} if org_id else {}
-        data = (
-            Project.objects.select_related(Constants.DEPARTMENT_ORGANIZATION)
-            # .filter(Q(status=True, **filters) | Q(project_name=Constants.DEFAULT))
-            .filter(status=True, **filters)
-            .exclude(project_name=Constants.DEFAULT)
-            .order_by(Constants.UPDATED_AT)
-            .reverse()
-            .all()
-        )
-        page = self.paginate_queryset(data)
-        project_serializer = ProjectDepartmentSerializer(page, many=True)
-        return self.get_paginated_response(project_serializer.data)
+        try:
+            data = []
+            org_id = request.META.get(Constants.ORG_ID)
+            filters = {Constants.ORGANIZATION: org_id} if org_id else {}
+            data = (
+                Project.objects.select_related(Constants.DEPARTMENT_ORGANIZATION)
+                # .filter(Q(status=True, **filters) | Q(project_name=Constants.DEFAULT))
+                .filter(status=True, **filters)
+                .exclude(project_name=Constants.DEFAULT)
+                .order_by(Constants.UPDATED_AT)
+                .reverse()
+                .all()
+            )
+            page = self.paginate_queryset(data)
+            project_serializer = ProjectDepartmentSerializer(page, many=True)
+            return self.get_paginated_response(project_serializer.data)
+        except Exception as error:
+            LOGGER.error(error, exc_info=True)
+            return Response(str(error), status=status.HTTP_400_BAD_REQUEST)
 
     def list(self, request, *args, **kwargs):
         """GET method: query all the list of objects from the Product model"""
@@ -1750,43 +1775,47 @@ class SupportTicketV2ModelViewSet(GenericViewSet):
     @action(detail=False, methods=["post"])
     @http_request_mutation
     def list_tickets(self, request, *args, **kwargs):
-        data = request.data
-        others = bool(data.pop("others", False))
-        print(others)
-        print(type(others))
-        filters_data = data
-        role_id = request.META.get("role_id")
-        map_id = request.META.get("map_id")
-        user_id = request.META.get("user_id")
-        queryset = SupportTicketV2.objects.select_related(
-            "user_map__organization", "user_map__user", "user_map__user__role", "user_map"
-        ).order_by("-updated_at").all()
-        # print(filters_data)
-        # import pdb; pdb.set_trace()
-        if str(role_id) == "1":
-            # the person is an admin/steward so he should be able to view tickets:
-            # 1. raise by co-stewards
-            # 2. raised by participants under the steward.
-            filter = {"user_map__user__role_id": 3} if others else {"user_map__user__role_id": 6}
-            queryset = queryset.filter(user_map__user__on_boarded_by_id=None).filter(**filter, **filters_data)
+        try:
+            data = request.data
+            others = bool(data.pop("others", False))
+            print(others)
+            print(type(others))
+            filters_data = data
+            role_id = request.META.get("role_id")
+            map_id = request.META.get("map_id")
+            user_id = request.META.get("user_id")
+            queryset = SupportTicketV2.objects.select_related(
+                "user_map__organization", "user_map__user", "user_map__user__role", "user_map"
+            ).order_by("-updated_at").all()
+            # print(filters_data)
+            # import pdb; pdb.set_trace()
+            if str(role_id) == "1":
+                # the person is an admin/steward so he should be able to view tickets:
+                # 1. raise by co-stewards
+                # 2. raised by participants under the steward.
+                filter = {"user_map__user__role_id": 3} if others else {"user_map__user__role_id": 6}
+                queryset = queryset.filter(user_map__user__on_boarded_by_id=None).filter(**filter, **filters_data)
 
-        elif str(role_id) == "6":
-            # the person is co-steward
-            # 1. raised by himself
-            # 2. raised by participants under himself.
-            filter = {"user_map__user__on_boarded_by_id": user_id} if others else {"user_map_id": map_id}
-            queryset = queryset.filter(**filter, **filters_data)
+            elif str(role_id) == "6":
+                # the person is co-steward
+                # 1. raised by himself
+                # 2. raised by participants under himself.
+                filter = {"user_map__user__on_boarded_by_id": user_id} if others else {"user_map_id": map_id}
+                queryset = queryset.filter(**filter, **filters_data)
 
-        elif str(role_id) == "3":
-            print(filters_data)
-            # participant
-            # can only see his tickets
-            queryset = queryset.filter(
-                user_map_id=map_id, **filters_data
-            )
-        page = self.paginate_queryset(queryset)
-        support_tickets_serializer = SupportTicketV2Serializer(page, many=True)
-        return self.get_paginated_response(support_tickets_serializer.data)
+            elif str(role_id) == "3":
+                print(filters_data)
+                # participant
+                # can only see his tickets
+                queryset = queryset.filter(
+                    user_map_id=map_id, **filters_data
+                )
+            page = self.paginate_queryset(queryset)
+            support_tickets_serializer = SupportTicketV2Serializer(page, many=True)
+            return self.get_paginated_response(support_tickets_serializer.data)
+        except Exception as error:
+            LOGGER.error(error, exc_info=True)
+            return Response(str(error), status=status.HTTP_400_BAD_REQUEST)
 
     # API to retrieve a single object by its ID
 
@@ -1824,20 +1853,23 @@ class SupportTicketV2ModelViewSet(GenericViewSet):
     # API to create a new object
     @http_request_mutation
     def create(self, request):
-
-        if request.data.get("ticket_attachment"):
-            validity = check_file_name_length(incoming_file_name=request.data.get("ticket_attachment"),
-                                              accepted_file_name_size=NumericalConstants.FILE_NAME_LENGTH)
-            if not validity:
-                file_length = len(str(request.data.get("ticket_attachment")))
-                return Response(
-                    {"ticket_attachment": [f"Ensure this filename has at most 100 characters ( it has {file_length} )."]},
-                    status=status.HTTP_400_BAD_REQUEST,
-                )
-        serializer = CreateSupportTicketV2Serializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        object = serializer.save()
-        return Response(serializer.data, status=status.HTTP_201_CREATED)
+        try:
+            if request.data.get("ticket_attachment"):
+                validity = check_file_name_length(incoming_file_name=request.data.get("ticket_attachment"),
+                                                  accepted_file_name_size=NumericalConstants.FILE_NAME_LENGTH)
+                if not validity:
+                    file_length = len(str(request.data.get("ticket_attachment")))
+                    return Response(
+                        {"ticket_attachment": [f"Ensure this filename has at most 100 characters ( it has {file_length} )."]},
+                        status=status.HTTP_400_BAD_REQUEST,
+                    )
+            serializer = CreateSupportTicketV2Serializer(data=request.data)
+            serializer.is_valid(raise_exception=True)
+            object = serializer.save()
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        except Exception as error:
+            LOGGER.error(error, exc_info=True)
+            return Response(str(error), status=status.HTTP_400_BAD_REQUEST)
 
     @support_ticket_role_authorization(model_name="SupportTicketV2")
     def update(self, request, pk=None):
@@ -1883,14 +1915,18 @@ class SupportTicketV2ModelViewSet(GenericViewSet):
     @http_request_mutation
     @action(detail=False, methods=["post"])
     def search_support_tickets(self, request, *args, **kwargs):
-        tickets = SupportTicketInternalServices.search_tickets(
-            search_text=request.data.get("name__icontains"),
-            user_id=request.META.get("user_id")
-        )
+        try:
+            tickets = SupportTicketInternalServices.search_tickets(
+                search_text=request.data.get("name__icontains"),
+                user_id=request.META.get("user_id")
+            )
 
-        page = self.paginate_queryset(tickets)
-        support_tickets_serializer = SupportTicketV2Serializer(page, many=True)
-        return self.get_paginated_response(support_tickets_serializer.data)
+            page = self.paginate_queryset(tickets)
+            support_tickets_serializer = SupportTicketV2Serializer(page, many=True)
+            return self.get_paginated_response(support_tickets_serializer.data)
+        except Exception as error:
+            LOGGER.error(error, exc_info=True)
+            return Response(str(error), status=status.HTTP_400_BAD_REQUEST)
 
 
 class SupportTicketResolutionsViewset(GenericViewSet):

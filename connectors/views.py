@@ -63,18 +63,24 @@ class ConnectorsViewSet(GenericViewSet):
     
     @http_request_mutation
     def list(self, request, *args, **kwargs):
-        data = Connectors.objects.all().filter(user_id=request.META.get("user_id"), user__status=True).order_by(
-            Constants.UPDATED_AT).reverse()
-        page = self.paginate_queryset(data)
-        connectors_data = ConnectorsListSerializer(page, many=True)
-        return self.get_paginated_response(connectors_data.data)
+        try:
+            data = Connectors.objects.all().filter(user_id=request.META.get("user_id"), user__status=True).order_by(
+                Constants.UPDATED_AT).reverse()
+            page = self.paginate_queryset(data)
+            connectors_data = ConnectorsListSerializer(page, many=True)
+            return self.get_paginated_response(connectors_data.data)
+        except Exception as error:
+            return Response(str(error), status=status.HTTP_400_BAD_REQUEST)
 
     @http_request_mutation
     def retrieve(self, request, pk):
         """GET method: retrieve an object or instance of the Product model"""
-        instance = self.get_object()
-        serializer = ConnectorsRetriveSerializer(instance=instance)
-        return Response(serializer.data, status=status.HTTP_200_OK)
+        try:
+            instance = self.get_object()
+            serializer = ConnectorsRetriveSerializer(instance=instance)
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        except Exception as error:
+            return Response(str(error), status=status.HTTP_400_BAD_REQUEST)
 
     @transaction.atomic
     def update(self, request, pk):
