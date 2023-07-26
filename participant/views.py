@@ -106,6 +106,7 @@ from utils.authorization_services import support_ticket_role_authorization
 from utils.connector_utils import run_containers, stop_containers
 from utils.file_operations import check_file_name_length
 from utils.jwt_services import http_request_mutation
+from rest_framework.exceptions import ValidationError
 
 LOGGER = logging.getLogger(__name__)
 
@@ -133,56 +134,86 @@ class ParticipantSupportViewSet(GenericViewSet):
 
     def create(self, request, *args, **kwargs):
         """POST method: create action to save an object by sending a POST request"""
-        serializer = self.get_serializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        self.perform_create(serializer)
-        return Response(serializer.data, status=status.HTTP_201_CREATED)
+        try:
+            serializer = self.get_serializer(data=request.data)
+            serializer.is_valid(raise_exception=True)
+            self.perform_create(serializer)
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        except ValidationError as e:
+            LOGGER.error(e,exc_info=True )
+            return Response(e.detail, status=status.HTTP_400_BAD_REQUEST)
+
+        except Exception as e:
+            LOGGER.error(e,exc_info=True )
+            return Response(str(e), status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     @http_request_mutation
     def list(self, request, *args, **kwargs):
         """GET method: query all the list of objects from the Product model"""
-        user_id = request.META.get(Constants.USER_ID)
-        data = (
-            SupportTicket.objects.select_related(
-                Constants.USER_MAP,
-                Constants.USER_MAP_USER,
-                Constants.USER_MAP_ORGANIZATION,
+        try:
+            user_id = request.META.get(Constants.USER_ID)
+            data = (
+                SupportTicket.objects.select_related(
+                    Constants.USER_MAP,
+                    Constants.USER_MAP_USER,
+                    Constants.USER_MAP_ORGANIZATION,
+                )
+                .filter(user_map__user__status=True, user_map__user=user_id)
+                .order_by(Constants.UPDATED_AT)
+                .reverse()
+                .all()
             )
-            .filter(user_map__user__status=True, user_map__user=user_id)
-            .order_by(Constants.UPDATED_AT)
-            .reverse()
-            .all()
-        )
-        page = self.paginate_queryset(data)
-        participant_serializer = ParticipantSupportTicketSerializer(
-            page, many=True)
-        return self.get_paginated_response(participant_serializer.data)
+            page = self.paginate_queryset(data)
+            participant_serializer = ParticipantSupportTicketSerializer(page, many=True)
+            return self.get_paginated_response(participant_serializer.data)
+        except ValidationError as e:
+            LOGGER.error(e,exc_info=True )
+            return Response(e.detail, status=status.HTTP_400_BAD_REQUEST)
+
+        except Exception as e:
+            LOGGER.error(e,exc_info=True )
+            return Response(str(e), status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     def retrieve(self, request, pk):
         """GET method: retrieve an object or instance of the Product model"""
-        data = (
-            SupportTicket.objects.select_related(
-                Constants.USER_MAP,
-                Constants.USER_MAP_USER,
-                Constants.USER_MAP_ORGANIZATION,
+        try:
+            data = (
+                SupportTicket.objects.select_related(
+                    Constants.USER_MAP,
+                    Constants.USER_MAP_USER,
+                    Constants.USER_MAP_ORGANIZATION,
+                )
+                .filter(user_map__user__status=True, id=pk)
+                .all()
             )
-            .filter(user_map__user__status=True, id=pk)
-            .all()
-        )
-        participant_serializer = ParticipantSupportTicketSerializer(
-            data, many=True)
-        if participant_serializer.data:
-            return Response(participant_serializer.data[0], status=status.HTTP_200_OK)
-        return Response([], status=status.HTTP_200_OK)
+            participant_serializer = ParticipantSupportTicketSerializer(data, many=True)
+            if participant_serializer.data:
+                return Response(participant_serializer.data[0], status=status.HTTP_200_OK)
+            return Response([], status=status.HTTP_200_OK)
+        except ValidationError as e:
+            LOGGER.error(e,exc_info=True )
+            return Response(e.detail, status=status.HTTP_400_BAD_REQUEST)
+
+        except Exception as e:
+            LOGGER.error(e,exc_info=True )
+            return Response(str(e), status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     def update(self, request, *args, **kwargs):
         """PUT method: update or send a PUT request on an object of the Product model"""
-        instance = self.get_object()
-        serializer = self.get_serializer(
-            instance, data=request.data, partial=None)
-        serializer.is_valid(raise_exception=True)
-        self.perform_create(serializer)
-        return Response(serializer.data, status=status.HTTP_201_CREATED)
+        try:
+            instance = self.get_object()
+            serializer = self.get_serializer(instance, data=request.data, partial=None)
+            serializer.is_valid(raise_exception=True)
+            self.perform_create(serializer)
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        except ValidationError as e:
+            LOGGER.error(e,exc_info=True )
+            return Response(e.detail, status=status.HTTP_400_BAD_REQUEST)
+
+        except Exception as e:
+            LOGGER.error(e,exc_info=True )
+            return Response(str(e), status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
 
 
 class ParticipantDatasetsViewSet(GenericViewSet):
@@ -274,77 +305,96 @@ class ParticipantDatasetsViewSet(GenericViewSet):
     @http_request_mutation
     def list(self, request, *args, **kwargs):
         """GET method: query all the list of objects from the Product model"""
-        data = []
-        user_id = request.META.get(Constants.USER_ID, "")
-        org_id = request.META.get(Constants.ORG_ID)
-        exclude = {Constants.USER_MAP_USER: user_id} if org_id else {}
-        filters = {Constants.USER_MAP_ORGANIZATION: org_id} if org_id else {
-            Constants.USER_MAP_USER: user_id}
-        if filters:
+        try:
+            data = []
+            user_id = request.META.get(Constants.USER_ID, "")
+            org_id = request.META.get(Constants.ORG_ID)
+            exclude = {Constants.USER_MAP_USER: user_id} if org_id else {}
+            filters = {Constants.USER_MAP_ORGANIZATION: org_id} if org_id else {Constants.USER_MAP_USER: user_id}
+            if filters:
+                data = (
+                    Datasets.objects.select_related(
+                        Constants.USER_MAP,
+                        Constants.USER_MAP_USER,
+                        Constants.USER_MAP_ORGANIZATION,
+                    )
+                    .filter(user_map__user__status=True, status=True, **filters)
+                    .exclude(**exclude)
+                    .order_by(Constants.UPDATED_AT)
+                    .reverse()
+                    .all()
+                )
+            page = self.paginate_queryset(data)
+            participant_serializer = ParticipantDatasetsSerializer(page, many=True)
+            return self.get_paginated_response(participant_serializer.data)
+        except ValidationError as e:
+            LOGGER.error(e,exc_info=True )
+            return Response(e.detail, status=status.HTTP_400_BAD_REQUEST)
+
+        except Exception as e:
+            LOGGER.error(e,exc_info=True )
+            return Response(str(e), status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    @action(detail=False, methods=["get"])
+    @http_request_mutation
+    def list_of_datasets(self, request, *args, **kwargs):
+        """GET method: query all the list of objects from the Product model"""
+        try:
+            data = []
+            user_id = request.META.get(Constants.USER_ID, "")
+            filters = {Constants.USER_MAP_USER: user_id} if user_id else {}
             data = (
                 Datasets.objects.select_related(
                     Constants.USER_MAP,
                     Constants.USER_MAP_USER,
                     Constants.USER_MAP_ORGANIZATION,
                 )
-                .filter(user_map__user__status=True, status=True, **filters)
-                .exclude(**exclude)
+                .filter(
+                    user_map__user__status=True,
+                    status=True,
+                    approval_status="approved",
+                    **filters,
+                )
                 .order_by(Constants.UPDATED_AT)
                 .reverse()
                 .all()
             )
-        page = self.paginate_queryset(data)
-        participant_serializer = ParticipantDatasetsSerializer(page, many=True)
-        return self.get_paginated_response(participant_serializer.data)
+            participant_serializer = ParticipantDatasetsDropDownSerializer(data, many=True)
+            return Response(participant_serializer.data, status=status.HTTP_200_OK)
+        except ValidationError as e:
+            LOGGER.error(e,exc_info=True )
+            return Response(e.detail, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            LOGGER.error(e,exc_info=True )
+            return Response(str(e), status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-    @action(detail=False, methods=["get"])
-    @http_request_mutation
-    def list_of_datasets(self, request, *args, **kwargs):
-        """GET method: query all the list of objects from the Product model"""
-        data = []
-        user_id = request.META.get(Constants.USER_ID, "")
-        filters = {Constants.USER_MAP_USER: user_id} if user_id else {}
-        data = (
-            Datasets.objects.select_related(
-                Constants.USER_MAP,
-                Constants.USER_MAP_USER,
-                Constants.USER_MAP_ORGANIZATION,
-            )
-            .filter(
-                user_map__user__status=True,
-                status=True,
-                approval_status="approved",
-                **filters,
-            )
-            .order_by(Constants.UPDATED_AT)
-            .reverse()
-            .all()
-        )
-        participant_serializer = ParticipantDatasetsDropDownSerializer(
-            data, many=True)
-        return Response(participant_serializer.data, status=status.HTTP_200_OK)
 
     def retrieve(self, request, pk):
         """GET method: retrieve an object or instance of the Product model"""
-        data = (
-            Datasets.objects.select_related(
-                Constants.USER_MAP,
-                Constants.USER_MAP_USER,
-                Constants.USER_MAP_ORGANIZATION,
+        try:
+            data = (
+                Datasets.objects.select_related(
+                    Constants.USER_MAP,
+                    Constants.USER_MAP_USER,
+                    Constants.USER_MAP_ORGANIZATION,
+                )
+                .filter(user_map__user__status=True, status=True, id=pk)
+                .all()
             )
-            .filter(user_map__user__status=True, status=True, id=pk)
-            .all()
-        )
-        participant_serializer = ParticipantDatasetsDetailSerializer(
-            data, many=True)
-        if participant_serializer.data:
-            data = participant_serializer.data[0]
-            if not data.get("is_public"):
-                data[Constants.CONTENT] = read_contents_from_csv_or_xlsx_file(
-                    data.get(Constants.SAMPLE_DATASET))
+            participant_serializer = ParticipantDatasetsDetailSerializer(data, many=True)
+            if participant_serializer.data:
+                data = participant_serializer.data[0]
+                if not data.get("is_public"):
+                    data[Constants.CONTENT] = read_contents_from_csv_or_xlsx_file(data.get(Constants.SAMPLE_DATASET))
 
-            return Response(data, status=status.HTTP_200_OK)
-        return Response({}, status=status.HTTP_200_OK)
+                return Response(data, status=status.HTTP_200_OK)
+            return Response({}, status=status.HTTP_200_OK)
+        except ValidationError as e:
+            LOGGER.error(e,exc_info=True )
+            return Response(e.detail, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            LOGGER.error(e,exc_info=True )
+            return Response(str(e), status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     def update(self, request, *args, **kwargs):
         """PUT method: update or send a PUT request on an object of the Product model"""
@@ -429,10 +479,18 @@ class ParticipantDatasetsViewSet(GenericViewSet):
 
     def destroy(self, request, pk):
         """DELETE method: delete an object"""
-        product = self.get_object()
-        product.status = False
-        self.perform_create(product)
-        return Response(status=status.HTTP_204_NO_CONTENT)
+        try:
+            product = self.get_object()
+            product.status = False
+            self.perform_create(product)
+            return Response(status=status.HTTP_204_NO_CONTENT)
+        except ValidationError as e:
+            LOGGER.error(e,exc_info=True )
+            return Response(e.detail, status=status.HTTP_400_BAD_REQUEST)
+
+        except Exception as e:
+            LOGGER.error(e,exc_info=True )
+            return Response(str(e), status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     @action(detail=False, methods=["post"])
     @http_request_mutation
@@ -722,93 +780,108 @@ class ParticipantConnectorsViewSet(GenericViewSet):
 
     def list(self, request, *args, **kwargs):
         """GET method: query all the list of objects from the Product model"""
-        data = []
-        user_id = request.query_params.get(Constants.USER_ID, "")
-        filters = {Constants.USER_MAP_USER: user_id} if user_id else {}
-        if filters:
+        try:
+            data = []
+            user_id = request.query_params.get(Constants.USER_ID, "")
+            filters = {Constants.USER_MAP_USER: user_id} if user_id else {}
+            if filters:
+                data = (
+                    Connectors.objects.select_related(
+                        Constants.DATASET,
+                        Constants.USER_MAP,
+                        Constants.PROJECT,
+                        Constants.PROJECT_DEPARTMENT,
+                    )
+                    .filter(
+                        user_map__user__status=True,
+                        dataset__status=True,
+                        status=True,
+                        **filters,
+                    )
+                    .order_by(Constants.UPDATED_AT)
+                    .reverse()
+                    .all()
+                )
+            page = self.paginate_queryset(data)
+            participant_serializer = ConnectorsListSerializer(page, many=True)
+            return self.get_paginated_response(participant_serializer.data)
+        except ValidationError as e:
+            LOGGER.error(e,exc_info=True )
+            return Response(e.detail, status=status.HTTP_400_BAD_REQUEST)
+
+        except Exception as e:
+            LOGGER.error(e,exc_info=True )
+            return Response(str(e), status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    def retrieve(self, request, pk):
+        """GET method: retrieve an object or instance of the Product model"""
+        try:
             data = (
                 Connectors.objects.select_related(
                     Constants.DATASET,
                     Constants.USER_MAP,
-                    Constants.PROJECT,
-                    Constants.PROJECT_DEPARTMENT,
+                    Constants.USER_MAP_USER,
+                    Constants.USER_MAP_ORGANIZATION,
                 )
-                .filter(
-                    user_map__user__status=True,
-                    dataset__status=True,
-                    status=True,
-                    **filters,
-                )
-                .order_by(Constants.UPDATED_AT)
-                .reverse()
+                .filter(user_map__user__status=True, dataset__status=True, status=True, id=pk)
                 .all()
             )
-        page = self.paginate_queryset(data)
-        participant_serializer = ConnectorsListSerializer(page, many=True)
-        return self.get_paginated_response(participant_serializer.data)
+            participant_serializer = ConnectorsRetriveSerializer(data, many=True)
+            if participant_serializer.data:
+                data = participant_serializer.data[0]
+                if data.get(Constants.CONNECTOR_TYPE) == "Provider":
+                    relation = (
+                        ConnectorsMap.objects.select_related(
+                            Constants.CONSUMER,
+                            Constants.CONSUMER_DATASET,
+                            Constants.CONSUMER_PROJECT,
+                            Constants.CONSUMER_PROJECT_DEPARTMENT,
+                            Constants.CONSUMER_USER_MAP_ORGANIZATION,
+                        )
+                        .filter(
+                            status=True,
+                            provider=pk,
+                            consumer__status=True,
+                            connector_pair_status__in=[
+                                Constants.PAIRED,
+                                Constants.AWAITING_FOR_APPROVAL,
+                            ],
+                        )
+                        .all()
 
-    def retrieve(self, request, pk):
-        """GET method: retrieve an object or instance of the Product model"""
-        data = (
-            Connectors.objects.select_related(
-                Constants.DATASET,
-                Constants.USER_MAP,
-                Constants.USER_MAP_USER,
-                Constants.USER_MAP_ORGANIZATION,
-            )
-            .filter(user_map__user__status=True, dataset__status=True, status=True, id=pk)
-            .all()
-        )
-        participant_serializer = ConnectorsRetriveSerializer(data, many=True)
-        if participant_serializer.data:
-            data = participant_serializer.data[0]
-            if data.get(Constants.CONNECTOR_TYPE) == "Provider":
-                relation = (
-                    ConnectorsMap.objects.select_related(
-                        Constants.CONSUMER,
-                        Constants.CONSUMER_DATASET,
-                        Constants.CONSUMER_PROJECT,
-                        Constants.CONSUMER_PROJECT_DEPARTMENT,
-                        Constants.CONSUMER_USER_MAP_ORGANIZATION,
                     )
-                    .filter(
-                        status=True,
-                        provider=pk,
-                        consumer__status=True,
-                        connector_pair_status__in=[
-                            Constants.PAIRED,
-                            Constants.AWAITING_FOR_APPROVAL,
-                        ],
+                    relation_serializer = ConnectorsMapConsumerRetriveSerializer(relation, many=True)
+                else:
+                    relation = (
+                        ConnectorsMap.objects.select_related(
+                            Constants.PROVIDER,
+                            Constants.PROVIDER_DATASET,
+                            Constants.PROVIDER_PROJECT,
+                            Constants.PROVIDER_PROJECT_DEPARTMENT,
+                            Constants.PROVIDER_USER_MAP_ORGANIZATION,
+                        )
+                        .filter(
+                            status=True,
+                            consumer=pk,
+                            provider__status=True,
+                            connector_pair_status__in=[
+                                Constants.PAIRED,
+                                Constants.AWAITING_FOR_APPROVAL,
+                            ],
+                        )
+                        .all()
                     )
-                    .all()
-                )
-                relation_serializer = ConnectorsMapConsumerRetriveSerializer(
-                    relation, many=True)
-            else:
-                relation = (
-                    ConnectorsMap.objects.select_related(
-                        Constants.PROVIDER,
-                        Constants.PROVIDER_DATASET,
-                        Constants.PROVIDER_PROJECT,
-                        Constants.PROVIDER_PROJECT_DEPARTMENT,
-                        Constants.PROVIDER_USER_MAP_ORGANIZATION,
-                    )
-                    .filter(
-                        status=True,
-                        consumer=pk,
-                        provider__status=True,
-                        connector_pair_status__in=[
-                            Constants.PAIRED,
-                            Constants.AWAITING_FOR_APPROVAL,
-                        ],
-                    )
-                    .all()
-                )
-                relation_serializer = ConnectorsMapProviderRetriveSerializer(
-                    relation, many=True)
-            data[Constants.RELATION] = relation_serializer.data
-            return Response(data, status=status.HTTP_200_OK)
-        return Response({}, status=status.HTTP_200_OK)
+                    relation_serializer = ConnectorsMapProviderRetriveSerializer(relation, many=True)
+                data[Constants.RELATION] = relation_serializer.data
+                return Response(data, status=status.HTTP_200_OK)
+            return Response({}, status=status.HTTP_200_OK)
+        except ValidationError as e:
+            LOGGER.error(e,exc_info=True )
+            return Response(e.detail, status=status.HTTP_400_BAD_REQUEST)
+
+        except Exception as e:
+            LOGGER.error(e,exc_info=True )
+            return Response(str(e), status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     def update(self, request, *args, **kwargs):
         """PUT method: update or send a PUT request on an object of the Product model"""
@@ -860,10 +933,11 @@ class ParticipantConnectorsViewSet(GenericViewSet):
 
     def destroy(self, request, pk):
         """DELETE method: delete an object"""
-        connector = self.get_object()
-        if connector.connector_status in [Constants.UNPAIRED, Constants.REJECTED]:
-            connector.status = False
-            self.perform_create(connector)
+        try:
+            connector = self.get_object()
+            if connector.connector_status in [Constants.UNPAIRED, Constants.REJECTED]:
+                connector.status = False
+                self.perform_create(connector)
 
             user_org_map = UserOrganizationMap.objects.select_related(Constants.ORGANIZATION).get(
                 id=connector.user_map_id
@@ -879,11 +953,19 @@ class ParticipantConnectorsViewSet(GenericViewSet):
                 dataset,
             )
 
-            return Response(status=status.HTTP_204_NO_CONTENT)
-        return Response(
-            ["Connector status should be either unpaired or rejected to delete"],
-            status=400,
-        )
+                return Response(status=status.HTTP_204_NO_CONTENT)
+            return Response(
+                ["Connector status should be either unpaired or rejected to delete"],
+                status=400,
+            )
+        
+        except ValidationError as e:
+            LOGGER.error(e,exc_info=True )
+            return Response(e.detail, status=status.HTTP_400_BAD_REQUEST)
+        
+        except Exception as e:
+            LOGGER.error(e,exc_info=True )
+            return Response(str(e), status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     @action(detail=False, methods=["post"])
     @http_request_mutation
@@ -967,18 +1049,29 @@ class ParticipantConnectorsViewSet(GenericViewSet):
 
     @action(detail=False, methods=["get"])
     def get_connectors(self, request, *args, **kwargs):
-        dataset_id = request.query_params.get(Constants.DATASET_ID, "")
-        data = Connectors.objects.all().filter(
-            dataset=dataset_id,
-            status=True,
-            connector_status__in=[
-                Constants.UNPAIRED,
-                Constants.PAIRING_REQUEST_RECIEVED,
-            ],
-            connector_type="Provider",
-        )
-        connector_serializer = ConnectorListSerializer(data, many=True)
-        return Response(connector_serializer.data, status=200)
+            try:
+                dataset_id = request.query_params.get(Constants.DATASET_ID, "")
+                data = Connectors.objects.all().filter(
+                    dataset=dataset_id,
+                    status=True,
+                    connector_status__in=[
+                        Constants.UNPAIRED,
+                        Constants.PAIRING_REQUEST_RECIEVED,
+                    ],
+                    connector_type="Provider",
+                )
+                connector_serializer = ConnectorListSerializer(data, many=True)
+                return Response(connector_serializer.data, status=200)
+            
+            except ValidationError as e:
+                LOGGER.error(e,exc_info=True )
+                return Response(e.detail, status=status.HTTP_400_BAD_REQUEST)
+
+
+            except Exception as e:
+                LOGGER.error(e,exc_info=True )
+                return Response(str(e), status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
 
     @action(detail=False, methods=["get"])
     def show_data(self, request, *args, **kwargs):
@@ -1085,10 +1178,19 @@ class ParticipantConnectorsMapViewSet(GenericViewSet):
 
     @action(detail=False, methods=["get"])
     def data_size(self, request, *args, **kwargs):
-        size = request.query_params.get("size", "")
-        print("**********SIZE OF DATA************************")
-        print(size)
-        return Response([], status=200)
+        try:
+            size = request.query_params.get("size", "")
+            print("**********SIZE OF DATA************************")
+            print(size)
+            return Response([], status=200)
+        
+        except ValidationError as e:
+            LOGGER.error(e,exc_info=True )
+            return Response(e.detail, status=status.HTTP_400_BAD_REQUEST)
+
+        except Exception as e:
+            LOGGER.error(e,exc_info=True )
+            return Response(str(e), status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     def create(self, request, *args, **kwargs):
         """POST method: create action to save an object by sending a POST request"""
@@ -1257,18 +1359,36 @@ class ParticipantConnectorsMapViewSet(GenericViewSet):
 
     def retrieve(self, request, pk):
         """GET method: retrieve an object or instance of the Product model"""
-        data = ConnectorsMap.objects.filter(id=pk).all()
-        participant_serializer = ConnectorsMapSerializer(data, many=True)
-        if participant_serializer.data:
-            return Response(participant_serializer.data[0], status=status.HTTP_200_OK)
-        return Response([], status=status.HTTP_200_OK)
+        try:
+            data = ConnectorsMap.objects.filter(id=pk).all()
+            participant_serializer = ConnectorsMapSerializer(data, many=True)
+            if participant_serializer.data:
+                return Response(participant_serializer.data[0], status=status.HTTP_200_OK)
+            return Response([], status=status.HTTP_200_OK)
+        
+        except ValidationError as e:
+            LOGGER.error(e,exc_info=True )
+            return Response(e.detail, status=status.HTTP_400_BAD_REQUEST)
+
+        except Exception as e:
+            LOGGER.error(e,exc_info=True )
+            return Response(str(e), status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     def destroy(self, request, pk):
         """DELETE method: delete an object"""
-        connector = self.get_object()
-        connector.status = False
-        self.perform_create(connector)
-        return Response(status=status.HTTP_204_NO_CONTENT)
+        try:
+            connector = self.get_object()
+            connector.status = False
+            self.perform_create(connector)
+            return Response(status=status.HTTP_204_NO_CONTENT)
+    
+        except ValidationError as e:
+            LOGGER.error(e,exc_info=True )
+            return Response(e.detail, status=status.HTTP_400_BAD_REQUEST)
+
+        except Exception as e:
+            LOGGER.error(e,exc_info=True )
+            return Response(str(e), status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 class ParticipantDepatrmentViewSet(GenericViewSet):
@@ -1294,28 +1414,54 @@ class ParticipantDepatrmentViewSet(GenericViewSet):
 
     def create(self, request, *args, **kwargs):
         """POST method: create action to save an object by sending a POST request"""
-        serializer = self.get_serializer(data=request.data, partial=True)
-        serializer.is_valid(raise_exception=True)
-        self.perform_create(serializer)
-        return Response(serializer.data, status=status.HTTP_201_CREATED)
+        try:
+            serializer = self.get_serializer(data=request.data, partial=True)
+            serializer.is_valid(raise_exception=True)
+            self.perform_create(serializer)
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+    
+        except ValidationError as e:
+            LOGGER.error(e,exc_info=True )
+            return Response(e.detail, status=status.HTTP_400_BAD_REQUEST)
+
+        except Exception as e:
+            LOGGER.error(e,exc_info=True )
+            return Response(str(e), status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     def update(self, request, *args, **kwargs):
         """PUT method: update or send a PUT request on an object of the Product model"""
-        instance = self.get_object()
-        serializer = self.get_serializer(
-            instance, data=request.data, partial=True)
-        serializer.is_valid(raise_exception=True)
-        self.perform_create(serializer)
-        return Response(serializer.data, status=status.HTTP_201_CREATED)
+        try:
+            instance = self.get_object()
+            serializer = self.get_serializer(instance, data=request.data, partial=True)
+            serializer.is_valid(raise_exception=True)
+            self.perform_create(serializer)
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        
+        except ValidationError as e:
+            LOGGER.error(e,exc_info=True )
+            return Response(e.detail, status=status.HTTP_400_BAD_REQUEST)
+        
+        except Exception as e:
+            LOGGER.error(e,exc_info=True )
+            return Response(str(e), status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     def retrieve(self, request, pk):
         """GET method: retrieve an object or instance of the Product model"""
-        queryset = Department.objects.filter(
-            Q(status=True, id=pk) | Q(department_name=Constants.DEFAULT, id=pk))
-        serializer = self.serializer_class(queryset, many=True)
-        if serializer.data:
-            return Response(serializer.data, status=status.HTTP_200_OK)
-        return Response([], status=status.HTTP_200_OK)
+        try:
+            queryset = Department.objects.filter(Q(status=True, id=pk) | Q(department_name=Constants.DEFAULT, id=pk))
+            serializer = self.serializer_class(queryset, many=True)
+            if serializer.data:
+                return Response(serializer.data, status=status.HTTP_200_OK)
+            return Response([], status=status.HTTP_200_OK)
+        
+        except ValidationError as e:
+            LOGGER.error(e,exc_info=True )
+            return Response(e.detail, status=status.HTTP_400_BAD_REQUEST)
+
+        except Exception as e:
+            LOGGER.error(e,exc_info=True )
+            return Response(str(e), status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
 
     @action(detail=False, methods=["get"])
     @http_request_mutation
@@ -1354,12 +1500,21 @@ class ParticipantDepatrmentViewSet(GenericViewSet):
 
     def destroy(self, request, pk):
         """DELETE method: delete an object"""
-        Connectors.objects.filter(department=pk).update(
-            department="e459f452-2b4b-4129-ba8b-1e1180c87888")
-        product = self.get_object()
-        product.status = False
-        self.perform_create(product)
-        return Response(status=status.HTTP_204_NO_CONTENT)
+        try:
+            Connectors.objects.filter(department=pk).update(department="e459f452-2b4b-4129-ba8b-1e1180c87888")
+            product = self.get_object()
+            product.status = False
+            self.perform_create(product)
+            return Response(status=status.HTTP_204_NO_CONTENT)
+        
+        except ValidationError as e:
+            LOGGER.error(e,exc_info=True )
+            return Response(e.detail, status=status.HTTP_400_BAD_REQUEST)
+        
+        except Exception as e:
+            LOGGER.error(e,exc_info=True )
+            return Response(str(e), status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
 
 
 class ParticipantProjectViewSet(GenericViewSet):
@@ -1385,19 +1540,37 @@ class ParticipantProjectViewSet(GenericViewSet):
 
     def create(self, request, *args, **kwargs):
         """POST method: create action to save an object by sending a POST request"""
-        serializer = self.get_serializer(data=request.data, partial=True)
-        serializer.is_valid(raise_exception=True)
-        self.perform_create(serializer)
-        return Response(serializer.data, status=status.HTTP_201_CREATED)
+        try:
+            serializer = self.get_serializer(data=request.data, partial=True)
+            serializer.is_valid(raise_exception=True)
+            self.perform_create(serializer)
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        
+        except ValidationError as e:
+            LOGGER.error(e,exc_info=True )
+            return Response(e.detail, status=status.HTTP_400_BAD_REQUEST)
+  
+        except Exception as e:
+            LOGGER.error(e,exc_info=True )
+            return Response(str(e), status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     def update(self, request, pk):
         """PUT method: update or send a PUT request on an object of the Product model"""
-        instance = self.get_object()
-        serializer = self.get_serializer(
-            instance, data=request.data, partial=True)
-        serializer.is_valid(raise_exception=True)
-        self.perform_create(serializer)
-        return Response(serializer.data, status=status.HTTP_201_CREATED)
+        try:
+            instance = self.get_object()
+            serializer = self.get_serializer(instance, data=request.data, partial=True)
+            serializer.is_valid(raise_exception=True)
+            self.perform_create(serializer)
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        
+        except ValidationError as e:
+            LOGGER.error(e,exc_info=True )
+            return Response(e.detail, status=status.HTTP_400_BAD_REQUEST)
+      
+        except Exception as e:
+            LOGGER.error(e,exc_info=True )
+            return Response(str(e), status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
 
     def retrieve(self, request, pk):
         """GET method: retrieve an object or instance of the Product model"""
@@ -1434,49 +1607,75 @@ class ParticipantProjectViewSet(GenericViewSet):
 
     def list(self, request, *args, **kwargs):
         """GET method: query all the list of objects from the Product model"""
-        data = []
-        department = request.query_params.get(Constants.DEPARTMENT)
-        org_id = request.query_params.get(Constants.ORG_ID)
-        # filters = {Constants.DEPARTMENT: department} if department else {}
-        filters = {Constants.DEPARTMENT: department,
-                   Constants.ORGANIZATION: org_id} if department or org_id else {}
-        data = (
-            Project.objects.select_related(Constants.DEPARTMENT_ORGANIZATION)
-            .filter(Q(status=True, **filters) | Q(project_name=Constants.DEFAULT))
-            # .filter(status=True, **filters)
-            # .exclude(project_name=Constants.DEFAULT)
-            .order_by(Constants.UPDATED_AT)
-            .reverse()
-            .all()
-        )
-        project_serializer = ProjectDepartmentSerializer(data, many=True)
-        return Response(project_serializer.data)
+        try:
+            data = []
+            department = request.query_params.get(Constants.DEPARTMENT)
+            org_id = request.query_params.get(Constants.ORG_ID)
+            # filters = {Constants.DEPARTMENT: department} if department else {}
+            filters = {Constants.DEPARTMENT: department, Constants.ORGANIZATION: org_id} if department or org_id else {}
+            data = (
+                Project.objects.select_related(Constants.DEPARTMENT_ORGANIZATION)
+                .filter(Q(status=True, **filters) | Q(project_name=Constants.DEFAULT))
+                # .filter(status=True, **filters)
+                # .exclude(project_name=Constants.DEFAULT)
+                .order_by(Constants.UPDATED_AT)
+                .reverse()
+                .all()
+            )
+            project_serializer = ProjectDepartmentSerializer(data, many=True)
+            return Response(project_serializer.data)
+        
+        except ValidationError as e:
+            LOGGER.error(e,exc_info=True )
+            return Response(e.detail, status=status.HTTP_400_BAD_REQUEST)
+
+        except Exception as e:
+            LOGGER.error(e,exc_info=True )
+            return Response(str(e), status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     def destroy(self, request, pk):
         """DELETE method: delete an object"""
-        Connectors.objects.filter(project=pk).update(
-            project="3526bd39-4514-43fe-bbc4-ee0980bde252")
-        project = self.get_object()
-        project.status = False
-        self.perform_create(project)
-        return Response(status=status.HTTP_204_NO_CONTENT)
+        try:
+            Connectors.objects.filter(project=pk).update(project="3526bd39-4514-43fe-bbc4-ee0980bde252")
+            project = self.get_object()
+            project.status = False
+            self.perform_create(project)
+            return Response(status=status.HTTP_204_NO_CONTENT)
+        
+        except ValidationError as e:
+            LOGGER.error(e,exc_info=True )
+            return Response(e.detail, status=status.HTTP_400_BAD_REQUEST)
+
+        except Exception as e:
+            LOGGER.error(e,exc_info=True )
+            return Response(str(e), status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
 
 
 def update_cookies(key, value, response):
-    max_age = 1 * 24 * 60 * 60
-    expires = datetime.datetime.strftime(
-        datetime.datetime.utcnow() + datetime.timedelta(seconds=max_age),
-        "%a, %d-%b-%Y %H:%M:%S GMT",
-    )
-    response.set_cookie(
-        key,
-        value,
-        max_age=max_age,
-        expires=expires,
-        domain=os.environ.get("PUBLIC_DOMAIN"),
-        secure=False,
-    )
-    return response
+    try:
+        max_age = 1 * 24 * 60 * 60
+        expires = datetime.datetime.strftime(
+            datetime.datetime.utcnow() + datetime.timedelta(seconds=max_age),
+            "%a, %d-%b-%Y %H:%M:%S GMT",
+        )
+        response.set_cookie(
+            key,
+            value,
+            max_age=max_age,
+            expires=expires,
+            domain=os.environ.get("PUBLIC_DOMAIN"),
+            secure=False,
+        )
+        return response
+    
+    except ValidationError as e:
+            LOGGER.error(e,exc_info=True )
+            return Response(e.detail, status=status.HTTP_400_BAD_REQUEST)
+
+    except Exception as e:
+        LOGGER.error(e,exc_info=True )
+        return Response(str(e), status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 class DataBaseViewSet(GenericViewSet):
@@ -1857,8 +2056,6 @@ class SupportTicketV2ModelViewSet(GenericViewSet):
     def list_tickets(self, request, *args, **kwargs):
         data = request.data
         others = bool(data.pop("others", False))
-        print(others)
-        print(type(others))
         filters_data = data
         role_id = request.META.get("role_id")
         map_id = request.META.get("map_id")
@@ -1868,33 +2065,40 @@ class SupportTicketV2ModelViewSet(GenericViewSet):
         ).order_by("-updated_at").all()
         # print(filters_data)
         # import pdb; pdb.set_trace()
-        if str(role_id) == "1":
-            # the person is an admin/steward so he should be able to view tickets:
-            # 1. raise by co-stewards
-            # 2. raised by participants under the steward.
-            filter = {"user_map__user__role_id": 3} if others else {
-                "user_map__user__role_id": 6}
-            queryset = queryset.filter(user_map__user__on_boarded_by_id=None).filter(
-                **filter, **filters_data)
+        try:
+            if str(role_id) == "1":
+                # the person is an admin/steward so he should be able to view tickets:
+                # 1. raise by co-stewards
+                # 2. raised by participants under the steward.
+                filter = {"user_map__user__role_id": 3} if others else {"user_map__user__role_id": 6}
+                queryset = queryset.filter(user_map__user__on_boarded_by_id=None).filter(**filter, **filters_data)
 
-        elif str(role_id) == "6":
-            # the person is co-steward
-            # 1. raised by himself
-            # 2. raised by participants under himself.
-            filter = {"user_map__user__on_boarded_by_id": user_id} if others else {
-                "user_map_id": map_id}
-            queryset = queryset.filter(**filter, **filters_data)
+            elif str(role_id) == "6":
+                # the person is co-steward
+                # 1. raised by himself
+                # 2. raised by participants under himself.
+                filter = {"user_map__user__on_boarded_by_id": user_id} if others else {"user_map_id": map_id}
+                queryset = queryset.filter(**filter, **filters_data)
 
-        elif str(role_id) == "3":
-            print(filters_data)
-            # participant
-            # can only see his tickets
-            queryset = queryset.filter(
-                user_map_id=map_id, **filters_data
-            )
-        page = self.paginate_queryset(queryset)
-        support_tickets_serializer = SupportTicketV2Serializer(page, many=True)
-        return self.get_paginated_response(support_tickets_serializer.data)
+            elif str(role_id) == "3":
+                print(filters_data)
+                # participant
+                # can only see his tickets
+                queryset = queryset.filter(
+                    user_map_id=map_id, **filters_data
+                )
+            page = self.paginate_queryset(queryset)
+            support_tickets_serializer = SupportTicketV2Serializer(page, many=True)
+            return self.get_paginated_response(support_tickets_serializer.data)
+        
+        except ValidationError as e:
+            LOGGER.error(e,exc_info=True )
+            return Response(e.detail, status=status.HTTP_400_BAD_REQUEST)
+        
+        except Exception as e:
+            LOGGER.error(e,exc_info=True )
+            return Response(str(e), status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
 
     # API to retrieve a single object by its ID
     @timer
@@ -1938,20 +2142,25 @@ class SupportTicketV2ModelViewSet(GenericViewSet):
 
     @http_request_mutation
     def create(self, request):
-
-        if request.data.get("ticket_attachment"):
-            validity = check_file_name_length(incoming_file_name=request.data.get("ticket_attachment"),
-                                              accepted_file_name_size=NumericalConstants.FILE_NAME_LENGTH)
-            if not validity:
-                file_length = len(str(request.data.get("ticket_attachment")))
-                return Response(
-                    {"ticket_attachment": [f"Ensure this filename has at most 100 characters ( it has {file_length} )."]},
-                    status=status.HTTP_400_BAD_REQUEST,
-                )
-        serializer = CreateSupportTicketV2Serializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        object = serializer.save()
-        return Response(serializer.data, status=status.HTTP_201_CREATED)
+        try:
+            if request.data.get("ticket_attachment"):
+                validity = check_file_name_length(incoming_file_name=request.data.get("ticket_attachment"),
+                                                  accepted_file_name_size=NumericalConstants.FILE_NAME_LENGTH)
+                if not validity:
+                    file_length = len(str(request.data.get("ticket_attachment")))
+                    return Response(
+                        {"ticket_attachment": [f"Ensure this filename has at most 100 characters ( it has {file_length} )."]},
+                        status=status.HTTP_400_BAD_REQUEST,
+                    )
+            serializer = CreateSupportTicketV2Serializer(data=request.data)
+            serializer.is_valid(raise_exception=True)
+            object = serializer.save()
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        except ValidationError as e:
+            return Response(e.detail, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            LOGGER.error(e)
+            return Response(str(e), status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     @timer
     @support_ticket_role_authorization(model_name="SupportTicketV2")
@@ -1978,10 +2187,19 @@ class SupportTicketV2ModelViewSet(GenericViewSet):
     @timer
     @support_ticket_role_authorization(model_name="SupportTicketV2")
     def destroy(self, request, pk=None):
-        queryset = self.get_queryset()
-        object = get_object_or_404(queryset, pk=pk)
-        object.delete()
-        return Response(status=status.HTTP_204_NO_CONTENT)
+        try:
+            queryset = self.get_queryset()
+            object = get_object_or_404(queryset, pk=pk)
+            object.delete()
+            return Response(status=status.HTTP_204_NO_CONTENT)
+        
+        except ValidationError as e:
+            LOGGER.error(e,exc_info=True )
+            return Response(e.detail, status=status.HTTP_400_BAD_REQUEST)
+        
+        except Exception as e:
+            LOGGER.error(e,exc_info=True )
+            return Response(str(e), status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     # @http_request_mutation
     # @action(detail=False, methods=["get"])
@@ -2010,14 +2228,23 @@ class SupportTicketV2ModelViewSet(GenericViewSet):
     @http_request_mutation
     @action(detail=False, methods=["post"])
     def search_support_tickets(self, request, *args, **kwargs):
-        tickets = SupportTicketInternalServices.search_tickets(
-            search_text=request.data.get("name__icontains"),
-            user_id=request.META.get("user_id")
-        )
+        try:
+            tickets = SupportTicketInternalServices.search_tickets(
+                search_text=request.data.get("name__icontains"),
+                user_id=request.META.get("user_id")
+            )
 
-        page = self.paginate_queryset(tickets)
-        support_tickets_serializer = SupportTicketV2Serializer(page, many=True)
-        return self.get_paginated_response(support_tickets_serializer.data)
+            page = self.paginate_queryset(tickets)
+            support_tickets_serializer = SupportTicketV2Serializer(page, many=True)
+            return self.get_paginated_response(support_tickets_serializer.data)
+        
+        except ValidationError as e:
+            LOGGER.error(e,exc_info=True )
+            return Response(e.detail, status=status.HTTP_400_BAD_REQUEST)
+
+        except Exception as e:
+            LOGGER.error(e,exc_info=True )
+            return Response(str(e), status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 class SupportTicketResolutionsViewset(GenericViewSet):
@@ -2069,7 +2296,15 @@ class SupportTicketResolutionsViewset(GenericViewSet):
     @timer
     @support_ticket_role_authorization(model_name="Resolution")
     def destroy(self, request, pk=None):
-        queryset = self.get_queryset()
-        object = get_object_or_404(queryset, pk=pk)
-        object.delete()
-        return Response(status=status.HTTP_204_NO_CONTENT)
+        try:
+            queryset = self.get_queryset()
+            object = get_object_or_404(queryset, pk=pk)
+            object.delete()
+            return Response(status=status.HTTP_204_NO_CONTENT)
+        except ValidationError as e:
+            LOGGER.error(e,exc_info=True )
+            return Response(e.detail, status=status.HTTP_400_BAD_REQUEST)
+
+        except Exception as e:
+            LOGGER.error(e,exc_info=True )
+            return Response(str(e), status=status.HTTP_500_INTERNAL_SERVER_ERROR)
