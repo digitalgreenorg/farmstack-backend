@@ -110,7 +110,6 @@ TEMPLATES = [
 
 WSGI_APPLICATION = "core.wsgi.application"
 
-
 # Database
 # https://docs.djangoproject.com/en/4.0/ref/settings/#databases
 
@@ -126,6 +125,7 @@ DATABASES = {
             "client_encoding": "UTF8",
         },
     },
+
     # "default": {
     #     "ENGINE": "django.db.backends.sqlite3",
     #     "NAME": BASE_DIR / "db.sqlite3",
@@ -156,7 +156,6 @@ AUTH_PASSWORD_VALIDATORS = [
     },
 ]
 
-
 # Internationalization
 # https://docs.djangoproject.com/en/4.0/topics/i18n/
 
@@ -167,7 +166,6 @@ TIME_ZONE = "UTC"
 USE_I18N = True
 
 USE_TZ = True
-
 
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/4.0/howto/static-files/
@@ -213,7 +211,7 @@ TEMP_STANDARDISED_DIR = "temp/standardised/"
 DATASET_FILES_URL = os.path.join(PROTECTED_MEDIA_URL, "datasets/")
 POLICY_FILES_URL = os.path.join(MEDIA_URL, "policy/")
 TEMP_CONNECTOR_URL = os.path.join(MEDIA_URL, "temp/connectors/")
-CONNECTOR_FILES_URL =  os.path.join(MEDIA_URL, "connectors/")
+CONNECTOR_FILES_URL = os.path.join(MEDIA_URL, "connectors/")
 STANDARDISED_FILES_URL = os.path.join(PROTECTED_MEDIA_URL, "standardised/")
 
 RESOLUTIONS_ATTACHMENT_URL = os.path.join(SUPPORT_RESOLUTIONS, "resolutions/")
@@ -230,7 +228,6 @@ if not os.path.exists(TEMP_CONNECTOR_URL):
     os.makedirs(TEMP_CONNECTOR_URL)
 if not os.path.exists(CONNECTOR_FILES_URL):
     os.makedirs(CONNECTOR_FILES_URL)
-
 
 # Template Files.
 SINGLE_PULL_PROVIDER_TEMPLATE_XML = os.path.join(
@@ -285,7 +282,6 @@ REST_FRAMEWORK = {
     "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
     "EXCEPTION_HANDLER": "rest_framework.views.exception_handler",
 
-
 }
 
 SIMPLE_JWT = {
@@ -308,7 +304,6 @@ USE_X_FORWARDED_HOST = True
 OTP_DURATION = 900
 OTP_LIMIT = 3
 USER_SUSPENSION_DURATION = 300
-
 
 # Store cache in file
 CACHES = {
@@ -387,7 +382,7 @@ CORS_ORIGIN_ALLOW_ALL = True
 # )
 CORS_ALLOW_CREDENTIALS = True
 # making sure CORS_ALLOW_HEADERS  is not "*"
-#making sure CORS_ALLOW_HEADERS  is not "*"
+# making sure CORS_ALLOW_HEADERS  is not "*"
 CORS_ALLOW_HEADERS = list(default_headers) + ['Set-Cookie']
 INTERNAL_IPS = [
     "127.0.0.1",

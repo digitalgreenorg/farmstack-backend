@@ -50,3 +50,21 @@ class TestUrls(SimpleTestCase):
         url = reverse("organization-list")
         print(resolve(url))
         self.assertNotEqual(resolve(url).func, "OrganizationViewSet")
+
+    def test_policy_urls_valid(self):
+        url = reverse("policy-list")
+
+        assert resolve(url)._func_path == "datahub.views.PolicyListAPIView"
+
+    def test_policy_urls_invalid(self):
+        url = reverse("policy-list")
+
+        assert resolve(url)._func_path != "PolicyListAPIView"
+
+    def test_category_urls_valid(self):
+        url = reverse("dataset/v2-list")
+        assert resolve(url)._func_path == "datahub.views.DatasetV2ViewSet"
+
+    def test_category_urls_invalid(self):
+        url = reverse("dataset/v2-list")
+        assert resolve(url)._func_path != "DatasetV2ViewSet"

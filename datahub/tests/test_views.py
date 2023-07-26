@@ -7,8 +7,10 @@ import pytest
 from django.shortcuts import render
 from _pytest.monkeypatch import MonkeyPatch
 from django.db import models
+from rest_framework_simplejwt.tokens import RefreshToken
+
 from accounts.models import User, UserManager, UserRole
-from datahub.models import Datasets, Organization, UserOrganizationMap
+from datahub.models import Datasets, Organization, UserOrganizationMap, Policy
 from datahub.views import ParticipantViewSet
 from django.test import Client, TestCase
 from django.test.client import encode_multipart
@@ -21,6 +23,7 @@ from rest_framework import serializers, status
 from rest_framework.response import Response
 from rest_framework.test import APIClient, APITestCase, APIRequestFactory
 from rest_framework.reverse import reverse
+
 
 valid_data = {
     "email": "ugeshbasa4ss5@digitalgreen.org",
@@ -861,3 +864,240 @@ class AdminDashboardTestView(TestCase):
     def test_dataset_categories_not_emtpy(self):
         dataset_categories = Datasets.objects.filter(status=True).values_list("category", flat=True).count()
         self.assertGreaterEqual(dataset_categories, 0)
+##############################################################################################################################################################################################################
+auth = {
+    "token": "null"
+}
+
+policy_valid_data = {
+    "name": "Some Policy Name",
+    "description": "Some Policy Description"
+}
+
+policy_incomplete_data_no_description = {
+    "name": "Some Policy Name",
+    # "description": "Some Policy Description"
+}
+
+policy_incomplete_data_no_name = {
+    # "name": "Some Policy Name",
+    "description": "Some Policy Description"
+}
+
+policy_update_valid_data_update_name_only = {
+    "name": "New Updated Policy Name",
+}
+
+policy_update_valid_data_update_description_only = {
+    "description": "Some New Policy Description"
+}
+
+class PoliciesTestCaseView(TestCase):
+    def setUp(self) -> None:
+        super().setUpClass()
+        # cls.client = Client()
+        self.policies_url = reverse("policy-list")
+
+        user_role = UserRole.objects.create(
+            id="1",
+            role_name="datahub_admin"
+        )
+
+        user_role_lower = UserRole.objects.create(
+            id="6",
+            role_name="datahub_co_steward"
+        )
+
+        user = User.objects.create(
+            email="chandani@gmail.com",
+            role_id=user_role.id,
+        )
+
+        unauthorized_user = User.objects.create(
+            email="chandan_invalid@gmail.com",
+            role_id=user_role_lower.id,
+        )
+
+        organization = Organization.objects.create(
+            name="Some Organization",
+            org_email="org@gmail.com",
+            address="{}",
+        )
+
+        user_map = UserOrganizationMap.objects.create(
+            user_id=user.id,
+            organization_id=organization.id
+        )
+
+        policy = Policy.objects.create(
+            name="Some Random Policy",
+            description="Some Random Description",
+            file=None,
+        )
+
+        refresh = RefreshToken.for_user(user)
+        refresh["org_id"] = str(user_map.organization_id) if user_map else None
+        refresh["map_id"] = str(user_map.id) if user_map else None
+        refresh["role"] = str(user.role_id)
+        refresh["onboarded_by"] = str(user.on_boarded_by_id)
+
+        refresh.access_token["org_id"] = str(user_map.organization_id) if user_map else None
+        refresh.access_token["map_id"] = str(user_map.id) if user_map else None
+        refresh.access_token["role"] = str(user.role_id)
+        refresh.access_token["onboarded_by"] = str(user.on_boarded_by_id)
+        auth["token"] = refresh.access_token
+
+        self.client = Client()
+        headers = {
+            'Content-Type': 'application/json',
+            'Authorization': f'Bearer {auth["token"]}'
+        }
+        self.client.defaults['HTTP_AUTHORIZATION'] = headers['Authorization']
+        self.client.defaults['CONTENT_TYPE'] = headers['Content-Type']
+        self.policy_id = policy.id
+
+    def test_admin_create_policy(self):
+        api_response = self.client.post(self.policies_url, policy_valid_data, secure=True,
+                                        content_type='application/json')
+        assert api_response.status_code in [201, 200]
+
+    def test_admin_create_incomplete_data_description(self):
+        api_response = self.client.post(self.policies_url, policy_incomplete_data_no_description, secure=True,
+                                        content_type='application/json')
+        assert api_response.status_code in [400]
+        if api_response.status_code == 400:
+            if api_response.json().get("description"):
+                assert api_response.json().get("description")[0] == 'This field is required.'
+
+    def test_admin_create_incomplete_data_name(self):
+        api_response = self.client.post(self.policies_url, policy_incomplete_data_no_name, secure=True,
+                                        content_type='application/json')
+        assert api_response.status_code in [400]
+        if api_response.status_code == 400:
+            if api_response.json().get("name"):
+                assert api_response.json().get("name")[0] == 'This field is required.'
+
+    def test_admin_update_policy_only_name(self):
+        put_url = f"{self.policies_url}{self.policy_id}/"
+        api_response = self.client.patch(put_url, policy_update_valid_data_update_name_only, secure=True,
+                                         content_type='application/json')
+        assert api_response.status_code in [201, 200]
+
+    def test_admin_update_policy_only_description(self):
+        put_url = f"{self.policies_url}{self.policy_id}/"
+        api_response = self.client.patch(put_url, policy_update_valid_data_update_description_only, secure=True,
+                                         content_type='application/json')
+        assert api_response.status_code in [201, 200]
+
+    def test_admin_update_policy_invalid_policy_id(self):
+        self.policy_id = "129a8c35-e31d-408f-8d0a-73f64a7af0f1"
+
+        delete_url = f"{self.policies_url}{self.policy_id}/"
+        api_response = self.client.patch(delete_url, secure=True,
+                                         content_type='application/json')
+
+        assert api_response.status_code in [404]
+        assert api_response.json().get("detail") == "Not found."
+
+    def test_admin_delete_policy_policy_id(self):
+        delete_url = f"{self.policies_url}{self.policy_id}/"
+        api_response = self.client.patch(delete_url, secure=True,
+                                         content_type='application/json')
+
+        assert api_response.status_code in [200]
+
+    def test_admin_delete_policy_invalid_policy_id(self):
+        self.policy_id = "129a8c35-e31d-408f-8d0a-73f64a7af0f1"
+
+        delete_url = f"{self.policies_url}{self.policy_id}/"
+        api_response = self.client.patch(delete_url, secure=True,
+                                         content_type='application/json')
+
+        assert api_response.status_code in [404]
+        assert api_response.json().get("detail") == "Not found."
+
+
+valid_data_for_categories = {
+    "some_key": "some_value",
+    "some_key_array": "[]"
+}
+
+
+class CategoriesTestCaseView(TestCase):
+    def setUp(self) -> None:
+        super().setUpClass()
+        # cls.client = Client()
+        self.categories_url = reverse("dataset/v2-list")
+        user_role = UserRole.objects.create(
+            id="1",
+            role_name="datahub_admin"
+        )
+
+        user_role_lower = UserRole.objects.create(
+            id="6",
+            role_name="datahub_co_steward"
+        )
+
+        user = User.objects.create(
+            email="chandani@gmail.com",
+            role_id=user_role.id,
+        )
+
+        unauthorized_user = User.objects.create(
+            email="chandan_invalid@gmail.com",
+            role_id=user_role_lower.id,
+        )
+
+        organization = Organization.objects.create(
+            name="Some Organization",
+            org_email="org@gmail.com",
+            address="{}",
+        )
+
+        user_map = UserOrganizationMap.objects.create(
+            user_id=user.id,
+            organization_id=organization.id
+        )
+
+        policy = Policy.objects.create(
+            name="Some Random Policy",
+            description="Some Random Description",
+            file=None,
+        )
+
+        refresh = RefreshToken.for_user(user)
+        refresh["org_id"] = str(user_map.organization_id) if user_map else None
+        refresh["map_id"] = str(user_map.id) if user_map else None
+        refresh["role"] = str(user.role_id)
+        refresh["onboarded_by"] = str(user.on_boarded_by_id)
+
+        refresh.access_token["org_id"] = str(user_map.organization_id) if user_map else None
+        refresh.access_token["map_id"] = str(user_map.id) if user_map else None
+        refresh.access_token["role"] = str(user.role_id)
+        refresh.access_token["onboarded_by"] = str(user.on_boarded_by_id)
+        auth["token"] = refresh.access_token
+
+        self.client = Client()
+        headers = {
+            'Content-Type': 'application/json',
+            'Authorization': f'Bearer {auth["token"]}'
+        }
+        self.client.defaults['HTTP_AUTHORIZATION'] = headers['Authorization']
+        self.client.defaults['CONTENT_TYPE'] = headers['Content-Type']
+        self.policy_id = policy.id
+
+    def test_get_categories_data(self):
+        api_response = self.client.get(f"{self.categories_url}category/", secure=True,
+                                       content_type='application/json')
+        if api_response.status_code in [404]:
+            assert api_response.json().get("detail") == 'Categories not found'
+        elif api_response.status_code in [200]:
+            assert type(api_response.json()) == dict
+            assert len(api_response.json()) > 0
+
+    def test_post_categories_data(self):
+        api_response = self.client.post(f"{self.categories_url}category/", valid_data_for_categories, secure=True,
+                                       content_type='application/json')
+
+
+        assert api_response.status_code in [201]
