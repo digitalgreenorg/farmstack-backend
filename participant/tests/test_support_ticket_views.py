@@ -38,13 +38,22 @@ class  SupportTicketTestCaseForViews(TestCase):
             email="akshata@digitaltyugreen.org",
             role_id=self.user_role.id,
         )
-        self.user_participant = User.objects.create(
-            email="akshata@digitalgreen.org",
-            role_id=self.user_role_participant.id,
-        )
+    
         self.user_co_steward = User.objects.create(
             email="costeward@digitalgreen.org",
             role_id=self.user_role_co_steward.id,
+            on_boarded_by=None
+        )
+        self.user_participant = User.objects.create(
+            email="akshata@digitalgreen.org",
+            role_id=self.user_role_participant.id,
+            on_boarded_by=self.user_co_steward
+        )
+        self.user_participant_two = User.objects.create(
+            email="shruthi@digitalgreen.org",
+            role_id=self.user_role_participant.id,
+            on_boarded_by=None
+
         )
         self.creating_org = Organization.objects.create(
             org_email="akshata@digitalfghjgreen.org",
@@ -69,6 +78,7 @@ class  SupportTicketTestCaseForViews(TestCase):
         )
         self.user_admin_map=UserOrganizationMap.objects.create(user_id=self.user.id, organization_id=self.creating_org.id)
         self.user_map=UserOrganizationMap.objects.create(user_id=self.user_participant.id, organization_id=self.creating_org_participant.id)
+        self.user_map_participant_two=UserOrganizationMap.objects.create(user_id=self.user_participant_two.id, organization_id=self.creating_org_participant.id)
         self.user_map_for_costeward=UserOrganizationMap.objects.create(user_id=self.user_co_steward.id, organization_id=self.creating_co_steward_participant_org.id)
         
         self.create_support_ticket_one=SupportTicketV2.objects.create(
@@ -97,8 +107,8 @@ class  SupportTicketTestCaseForViews(TestCase):
             ticket_title="Support ticket 3",
             category="certificate",
             description="description about support ticket 3",
-            status="closed",
-            user_map=self.user_admin_map
+            status="open",
+            user_map=self.user_map_participant_two
         )
 
         # Admin token
@@ -176,11 +186,19 @@ class  SupportTicketTestCaseForViews(TestCase):
         assert response.json()['results']==[]
 
 
-    def test_support_ticket_admin_filter_by_status_open(self):
+    # participant under co-steward
+    def test_support_ticket_under_co_steward(self):
+        data = {"others": True,"status":"open"}
+        response = self.client_co_steward.post(self.support_ticket_url+"list_tickets/", data=json.dumps(data), content_type='application/json')
+        assert response.status_code == 200
+        assert response.json()['count']==1
+
+    # participant under admin
+    def test_support_ticket_under_admin(self):
         data = {"others": True,"status":"open"}
         response = self.client_admin.post(self.support_ticket_url+"list_tickets/", data=json.dumps(data), content_type='application/json')
         assert response.status_code == 200
-        assert response.json()['count']==1
+        assert response.json()['results'][0]['description']==self.create_support_ticket_three.description
 
 
     def test_support_ticket_admin_filter_by_status(self):
