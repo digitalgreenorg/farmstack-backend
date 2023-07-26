@@ -35,7 +35,7 @@ valid_data = {
     "phone_number": "9985750356",
     "website": "website.com",
     "address": json.dumps({"city": "Banglore"}),
-    "profile_picture": open("datahub/tests/test_data/pro.png", "rb"),
+    # "profile_picture": open("datahub/tests/test_data/pro.png", "rb"),
     "subscription": "aaaa",
 }
 update_data = {
@@ -62,7 +62,7 @@ invalid_role_data = {
     "phone_number": "9985750356",
     "website": "website.com",
     "address": json.dumps({"address": "Banglore", "country": "India", "pincode": "501011"}),
-    "profile_picture": open("datahub/tests/test_data/pro.png", "rb"),
+    # "profile_picture": open("datahub/tests/test_data/pro.png", "rb"),
     "subscription": "aaaa",
 }
 
@@ -265,7 +265,6 @@ ticket_update_data = {
     "solution_message": "Issue description",
 }
 
-
 class SupportTestViews(TestCase):
     """_summary_
 
@@ -345,7 +344,6 @@ class SupportTestViews(TestCase):
         assert len(data.get("results")) == 1
 
     def test_participant_support_update_ticket_details(self):
-
         id = SupportTicket.objects.get(category="connectors").id
         ticket_update_data["user_map"] = self.user_map_id
         response = self.client.put(
@@ -444,7 +442,6 @@ datasets_update_data = {
     "age_of_date": "12",
     "dataset_size": "255k",
 }
-
 
 class TestDatahubDatasetsViews(TestCase):
     """_summary_
@@ -833,16 +830,23 @@ class AdminDashboardTestView(TestCase):
         UserRole.objects.create(id=3, role_name="datahub_participant_root")
         User.objects.create(email="test_participant@email.com", role_id=3)
 
-        org_obj = Organization.objects.create(org_email="test_org_email@email.com", address=json.dumps({"city": "Banglore"}))
+        org_obj = Organization.objects.create(org_email="test_org_email@email.com",
+                                              address=json.dumps({"city": "Banglore"}))
         user_map = UserOrganizationMap.objects.create(
             user=User.objects.get(email="test_participant@email.com"),
             organization=Organization.objects.get(org_email="test_org_email@email.com"),
         )
 
-        dataset_obj = Datasets.objects.create(user_map=UserOrganizationMap.objects.get(id=user_map.id), **datasets_dump_data)
-        dept_obj = Department.objects.create(organization=Organization.objects.get(id=org_obj.id), department_name="Dept Name", department_discription="Dept description ...")
+        dataset_obj = Datasets.objects.create(user_map=UserOrganizationMap.objects.get(id=user_map.id),
+                                              **datasets_dump_data)
+        dept_obj = Department.objects.create(organization=Organization.objects.get(id=org_obj.id),
+                                             department_name="Dept Name", department_discription="Dept description ...")
         proj_obj = Project.objects.create(department=Department.objects.get(id=dept_obj.id), project_name="Proj Name")
-        Connectors.objects.create(user_map=UserOrganizationMap.objects.get(id=user_map.id), dataset=Datasets.objects.get(id=dataset_obj.id), project=Project.objects.get(id=proj_obj.id), connector_name="Connector Name", connector_type="consumer", docker_image_url="farmstack/gen-z-consumer:latest", application_port=2700)
+        Connectors.objects.create(user_map=UserOrganizationMap.objects.get(id=user_map.id),
+                                  dataset=Datasets.objects.get(id=dataset_obj.id),
+                                  project=Project.objects.get(id=proj_obj.id), connector_name="Connector Name",
+                                  connector_type="consumer", docker_image_url="farmstack/gen-z-consumer:latest",
+                                  application_port=2700)
 
     def test_total_participants_greater_than_or_equal_zero(self):
         participant_count = User.objects.filter(role_id=3, status=True).count()
@@ -850,11 +854,11 @@ class AdminDashboardTestView(TestCase):
 
     def test_total_datasets_greater_than_or_equal_zero(self):
         datasets_count = (
-                Datasets.objects.select_related("user_map", "user_map__user", "user_map__organization")
-                .filter(user_map__user__status=True, status=True)
-                .order_by("updated_at")
-                .count()
-            )
+            Datasets.objects.select_related("user_map", "user_map__user", "user_map__organization")
+            .filter(user_map__user__status=True, status=True)
+            .order_by("updated_at")
+            .count()
+        )
         self.assertGreaterEqual(datasets_count, 0)
 
     def test_active_connectors_greater_than_or_equal_zero(self):
@@ -864,10 +868,16 @@ class AdminDashboardTestView(TestCase):
     def test_dataset_categories_not_emtpy(self):
         dataset_categories = Datasets.objects.filter(status=True).values_list("category", flat=True).count()
         self.assertGreaterEqual(dataset_categories, 0)
+
+
 ##############################################################################################################################################################################################################
 auth = {
     "token": "null"
 }
+
+
+
+
 
 policy_valid_data = {
     "name": "Some Policy Name",
@@ -1097,7 +1107,128 @@ class CategoriesTestCaseView(TestCase):
 
     def test_post_categories_data(self):
         api_response = self.client.post(f"{self.categories_url}category/", valid_data_for_categories, secure=True,
-                                       content_type='application/json')
-
+                                        content_type='application/json')
 
         assert api_response.status_code in [201]
+
+
+class ParticipantCostewardsListingTestViews(TestCase):
+    def setUp(self) -> None:
+        self.client = Client()
+        self.participant_url = reverse("participant-list")
+
+        user_role_admin = UserRole.objects.create(
+            id="1",
+            role_name="datahub_admin"
+        )
+
+        user_role_participant = UserRole.objects.create(
+            id="3",
+            role_name="datahub_participant_root"
+        )
+
+        user_role_co_steward = UserRole.objects.create(
+            id="6",
+            role_name="datahub_co_steward"
+        )
+
+        user = User.objects.create(
+            first_name="SYSTEM",
+            last_name="ADMIN",
+            email="admin@gmail.com",
+            role_id=user_role_admin.id,
+        )
+
+        organization = Organization.objects.create(
+            name="Some Organization",
+            org_email="org@gmail.com",
+            address="{}",
+        )
+
+        user_map = UserOrganizationMap.objects.create(
+            user_id=user.id,
+            organization_id=organization.id
+        )
+
+        self.costewards = 10
+        for item in range(0, self.costewards):
+            self.co_steward = User.objects.create(
+                first_name="Costeward",
+                last_name=f"Number{item}",
+                email=f"csteward{item}@gmail.com",
+                role_id=user_role_co_steward.id,
+                on_boarded_by_id=user.id
+            )
+
+            co_steward_user_map = UserOrganizationMap.objects.create(
+                user_id=self.co_steward.id,
+                organization_id=organization.id
+            )
+
+        self.participants = 10
+        for item in range(0, self.participants):
+            self.participant = User.objects.create(
+                first_name="Participant",
+                last_name=f"Number{item}",
+                email=f"Participant{item}@gmail.com",
+                role_id=user_role_participant.id,
+                # on_boarded_by_id=user.id
+            )
+
+            participant_user_map = UserOrganizationMap.objects.create(
+                user_id=self.participant.id,
+                organization_id=organization.id
+            )
+
+        refresh = RefreshToken.for_user(user)
+        refresh["org_id"] = str(user_map.organization_id) if user_map else None
+        refresh["map_id"] = str(user_map.id) if user_map else None
+        refresh["role"] = str(user.role_id)
+        refresh["onboarded_by"] = str(user.on_boarded_by_id)
+
+        refresh.access_token["org_id"] = str(user_map.organization_id) if user_map else None
+        refresh.access_token["map_id"] = str(user_map.id) if user_map else None
+        refresh.access_token["role"] = str(user.role_id)
+        refresh.access_token["onboarded_by"] = str(user.on_boarded_by_id)
+        auth["token"] = refresh.access_token
+
+        headers = {
+            'Content-Type': 'application/json',
+            'Authorization': f'Bearer {auth["token"]}'
+        }
+
+        self.client.defaults['HTTP_AUTHORIZATION'] = headers['Authorization']
+        self.client.defaults['CONTENT_TYPE'] = headers['Content-Type']
+
+    def test_list_co_steward_endpoint(self):
+        api_response = self.client.get(f"{self.participant_url}?co_steward=True", secure=True,
+                                       content_type='application/json')
+        assert api_response.status_code in [200]
+        assert api_response.json().get("count") == self.costewards
+
+    def test_get_co_steward_details_endpoint(self):
+        api_response = self.client.get(f"{self.participant_url}{self.co_steward.id}/", secure=True,
+                                       content_type='application/json')
+        assert api_response.status_code in [200]
+        assert str(api_response.json().get("user_id")) == str(self.co_steward.id)
+
+    def test_get_co_steward_details_not_found_endpoint(self):
+        api_response = self.client.get(f"{self.participant_url}/582bc65d-4034-4f2d-a19f-4c14d5d69521", secure=True,
+                                       content_type='application/json')
+        assert api_response.status_code in [404]
+
+    def test_list_participant_endpoint(self):
+        api_response = self.client.get(self.participant_url, secure =True, content_type='application/json')
+        assert api_response.json().get("count") == self.participants
+
+    def test_get_participant_details_endpoint(self):
+        api_response = self.client.get(f"{self.participant_url}{self.participant.id}/", secure=True,
+                                       content_type='application/json')
+        assert api_response.status_code in [200]
+        assert str(api_response.json().get("user_id")) == str(self.participant.id)
+
+    #
+    def test_get_participant_details_not_found_endpoint(self):
+        api_response = self.client.get(f"{self.participant_url}/582bc65d-4034-4f2d-a19f-4c14d5d69521/", secure=True,
+                                       content_type='application/json')
+        assert api_response.status_code in [404]
