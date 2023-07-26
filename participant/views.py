@@ -938,7 +938,11 @@ class ParticipantConnectorsViewSet(GenericViewSet):
             if connector.connector_status in [Constants.UNPAIRED, Constants.REJECTED]:
                 connector.status = False
                 self.perform_create(connector)
-
+            else:
+                return Response(
+                ["Connector status should be either unpaired or rejected to delete"],
+                status=400,
+            )
             user_org_map = UserOrganizationMap.objects.select_related(Constants.ORGANIZATION).get(
                 id=connector.user_map_id
             )
@@ -953,12 +957,7 @@ class ParticipantConnectorsViewSet(GenericViewSet):
                 dataset,
             )
 
-                return Response(status=status.HTTP_204_NO_CONTENT)
-            return Response(
-                ["Connector status should be either unpaired or rejected to delete"],
-                status=400,
-            )
-        
+            return Response(status=status.HTTP_204_NO_CONTENT)
         except ValidationError as e:
             LOGGER.error(e,exc_info=True )
             return Response(e.detail, status=status.HTTP_400_BAD_REQUEST)
