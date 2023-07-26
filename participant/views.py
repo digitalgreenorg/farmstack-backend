@@ -140,11 +140,11 @@ class ParticipantSupportViewSet(GenericViewSet):
             self.perform_create(serializer)
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         except ValidationError as e:
-            LOGGER.error(e, exc_info=True)
+            LOGGER.error(e,exc_info=True )
             return Response(e.detail, status=status.HTTP_400_BAD_REQUEST)
 
         except Exception as e:
-            LOGGER.error(e, exc_info=True)
+            LOGGER.error(e,exc_info=True )
             return Response(str(e), status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     @http_request_mutation
@@ -167,11 +167,11 @@ class ParticipantSupportViewSet(GenericViewSet):
             participant_serializer = ParticipantSupportTicketSerializer(page, many=True)
             return self.get_paginated_response(participant_serializer.data)
         except ValidationError as e:
-            LOGGER.error(e, exc_info=True)
+            LOGGER.error(e,exc_info=True )
             return Response(e.detail, status=status.HTTP_400_BAD_REQUEST)
 
         except Exception as e:
-            LOGGER.error(e, exc_info=True)
+            LOGGER.error(e,exc_info=True )
             return Response(str(e), status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     def retrieve(self, request, pk):
@@ -191,11 +191,11 @@ class ParticipantSupportViewSet(GenericViewSet):
                 return Response(participant_serializer.data[0], status=status.HTTP_200_OK)
             return Response([], status=status.HTTP_200_OK)
         except ValidationError as e:
-            LOGGER.error(e, exc_info=True)
+            LOGGER.error(e,exc_info=True )
             return Response(e.detail, status=status.HTTP_400_BAD_REQUEST)
 
         except Exception as e:
-            LOGGER.error(e, exc_info=True)
+            LOGGER.error(e,exc_info=True )
             return Response(str(e), status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     def update(self, request, *args, **kwargs):
@@ -207,12 +207,13 @@ class ParticipantSupportViewSet(GenericViewSet):
             self.perform_create(serializer)
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         except ValidationError as e:
-            LOGGER.error(e, exc_info=True)
+            LOGGER.error(e,exc_info=True )
             return Response(e.detail, status=status.HTTP_400_BAD_REQUEST)
 
         except Exception as e:
-            LOGGER.error(e, exc_info=True)
+            LOGGER.error(e,exc_info=True )
             return Response(str(e), status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
 
 
 class ParticipantDatasetsViewSet(GenericViewSet):
@@ -327,11 +328,11 @@ class ParticipantDatasetsViewSet(GenericViewSet):
             participant_serializer = ParticipantDatasetsSerializer(page, many=True)
             return self.get_paginated_response(participant_serializer.data)
         except ValidationError as e:
-            LOGGER.error(e, exc_info=True)
+            LOGGER.error(e,exc_info=True )
             return Response(e.detail, status=status.HTTP_400_BAD_REQUEST)
 
         except Exception as e:
-            LOGGER.error(e, exc_info=True)
+            LOGGER.error(e,exc_info=True )
             return Response(str(e), status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     @action(detail=False, methods=["get"])
@@ -361,11 +362,12 @@ class ParticipantDatasetsViewSet(GenericViewSet):
             participant_serializer = ParticipantDatasetsDropDownSerializer(data, many=True)
             return Response(participant_serializer.data, status=status.HTTP_200_OK)
         except ValidationError as e:
-            LOGGER.error(e, exc_info=True)
+            LOGGER.error(e,exc_info=True )
             return Response(e.detail, status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
-            LOGGER.error(e, exc_info=True)
+            LOGGER.error(e,exc_info=True )
             return Response(str(e), status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
 
     def retrieve(self, request, pk):
         """GET method: retrieve an object or instance of the Product model"""
@@ -388,10 +390,10 @@ class ParticipantDatasetsViewSet(GenericViewSet):
                 return Response(data, status=status.HTTP_200_OK)
             return Response({}, status=status.HTTP_200_OK)
         except ValidationError as e:
-            LOGGER.error(e, exc_info=True)
+            LOGGER.error(e,exc_info=True )
             return Response(e.detail, status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
-            LOGGER.error(e, exc_info=True)
+            LOGGER.error(e,exc_info=True )
             return Response(str(e), status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     def update(self, request, *args, **kwargs):
@@ -473,6 +475,8 @@ class ParticipantDatasetsViewSet(GenericViewSet):
             LOGGER.error(error, exc_info=True)
             return Response({"Error": ["Bad Request"]}, status=status.HTTP_400_BAD_REQUEST)
 
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+
     def destroy(self, request, pk):
         """DELETE method: delete an object"""
         try:
@@ -481,11 +485,11 @@ class ParticipantDatasetsViewSet(GenericViewSet):
             self.perform_create(product)
             return Response(status=status.HTTP_204_NO_CONTENT)
         except ValidationError as e:
-            LOGGER.error(e, exc_info=True)
+            LOGGER.error(e,exc_info=True )
             return Response(e.detail, status=status.HTTP_400_BAD_REQUEST)
 
         except Exception as e:
-            LOGGER.error(e, exc_info=True)
+            LOGGER.error(e,exc_info=True )
             return Response(str(e), status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     @action(detail=False, methods=["post"])
@@ -802,11 +806,11 @@ class ParticipantConnectorsViewSet(GenericViewSet):
             participant_serializer = ConnectorsListSerializer(page, many=True)
             return self.get_paginated_response(participant_serializer.data)
         except ValidationError as e:
-            LOGGER.error(e, exc_info=True)
+            LOGGER.error(e,exc_info=True )
             return Response(e.detail, status=status.HTTP_400_BAD_REQUEST)
 
         except Exception as e:
-            LOGGER.error(e, exc_info=True)
+            LOGGER.error(e,exc_info=True )
             return Response(str(e), status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     def retrieve(self, request, pk):
@@ -872,11 +876,11 @@ class ParticipantConnectorsViewSet(GenericViewSet):
                 return Response(data, status=status.HTTP_200_OK)
             return Response({}, status=status.HTTP_200_OK)
         except ValidationError as e:
-            LOGGER.error(e, exc_info=True)
+            LOGGER.error(e,exc_info=True )
             return Response(e.detail, status=status.HTTP_400_BAD_REQUEST)
 
         except Exception as e:
-            LOGGER.error(e, exc_info=True)
+            LOGGER.error(e,exc_info=True )
             return Response(str(e), status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     def update(self, request, *args, **kwargs):
@@ -913,9 +917,9 @@ class ParticipantConnectorsViewSet(GenericViewSet):
             dataset = Datasets.objects.get(
                 id=serializer.data.get(Constants.DATASET))
             subject = (
-                    "A certificate on " +
-                    os.environ.get("DATAHUB_NAME", "datahub_name") +
-                    " was successfully installed"
+                "A certificate on " +
+                os.environ.get("DATAHUB_NAME", "datahub_name") +
+                " was successfully installed"
             )
             self.trigger_email(
                 request,
@@ -934,30 +938,33 @@ class ParticipantConnectorsViewSet(GenericViewSet):
             if connector.connector_status in [Constants.UNPAIRED, Constants.REJECTED]:
                 connector.status = False
                 self.perform_create(connector)
+            else:
+                return Response(
+                ["Connector status should be either unpaired or rejected to delete"],
+                status=400,
+            )
+            user_org_map = UserOrganizationMap.objects.select_related(Constants.ORGANIZATION).get(
+                id=connector.user_map_id
+            )
+            dataset = Datasets.objects.get(id=connector.dataset_id)
+            self.trigger_email(
+                request,
+                "deleting_connector.html",
+                Constants.CONNECTOR_DELETION +
+                os.environ.get("DATAHUB_NAME", "datahub_name"),
+                user_org_map,
+                connector,
+                dataset,
+            )
 
-                user_org_map = UserOrganizationMap.objects.select_related(Constants.ORGANIZATION).get(
-                    id=connector.user_map_id
-                )
-                dataset = Datasets.objects.get(id=connector.dataset_id)
-                self.trigger_email(
-                    request,
-                    "deleting_connector.html",
-                    Constants.CONNECTOR_DELETION +
-                    os.environ.get("DATAHUB_NAME", "datahub_name"),
-                    user_org_map,
-                    connector,
-                    dataset,
-                )
-                return Response(status=status.HTTP_204_NO_CONTENT)
-            return Response(["Connector status should be either unpaired or rejected to delete"], status=400)
-
+            return Response(status=status.HTTP_204_NO_CONTENT)
         except ValidationError as e:
-            LOGGER.error(e, exc_info=True)
+            LOGGER.error(e,exc_info=True )
             return Response(e.detail, status=status.HTTP_400_BAD_REQUEST)
-
+        
         except Exception as e:
-            LOGGER.error(e, exc_info=True)
-            return Response(str(e), status.HTTP_500_INTERNAL_SERVER_ERROR)
+            LOGGER.error(e,exc_info=True )
+            return Response(str(e), status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     @action(detail=False, methods=["post"])
     @http_request_mutation
@@ -1041,28 +1048,29 @@ class ParticipantConnectorsViewSet(GenericViewSet):
 
     @action(detail=False, methods=["get"])
     def get_connectors(self, request, *args, **kwargs):
-        try:
-            dataset_id = request.query_params.get(Constants.DATASET_ID, "")
-            data = Connectors.objects.all().filter(
-                dataset=dataset_id,
-                status=True,
-                connector_status__in=[
-                    Constants.UNPAIRED,
-                    Constants.PAIRING_REQUEST_RECIEVED,
-                ],
-                connector_type="Provider",
-            )
-            connector_serializer = ConnectorListSerializer(data, many=True)
-            return Response(connector_serializer.data, status=200)
+            try:
+                dataset_id = request.query_params.get(Constants.DATASET_ID, "")
+                data = Connectors.objects.all().filter(
+                    dataset=dataset_id,
+                    status=True,
+                    connector_status__in=[
+                        Constants.UNPAIRED,
+                        Constants.PAIRING_REQUEST_RECIEVED,
+                    ],
+                    connector_type="Provider",
+                )
+                connector_serializer = ConnectorListSerializer(data, many=True)
+                return Response(connector_serializer.data, status=200)
+            
+            except ValidationError as e:
+                LOGGER.error(e,exc_info=True )
+                return Response(e.detail, status=status.HTTP_400_BAD_REQUEST)
 
-        except ValidationError as e:
-            LOGGER.error(e, exc_info=True)
-            return Response(e.detail, status=status.HTTP_400_BAD_REQUEST)
 
+            except Exception as e:
+                LOGGER.error(e,exc_info=True )
+                return Response(str(e), status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-        except Exception as e:
-            LOGGER.error(e, exc_info=True)
-            return Response(str(e), status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     @action(detail=False, methods=["get"])
     def show_data(self, request, *args, **kwargs):
@@ -1174,13 +1182,13 @@ class ParticipantConnectorsMapViewSet(GenericViewSet):
             print("**********SIZE OF DATA************************")
             print(size)
             return Response([], status=200)
-
+        
         except ValidationError as e:
-            LOGGER.error(e, exc_info=True)
+            LOGGER.error(e,exc_info=True )
             return Response(e.detail, status=status.HTTP_400_BAD_REQUEST)
 
         except Exception as e:
-            LOGGER.error(e, exc_info=True)
+            LOGGER.error(e,exc_info=True )
             return Response(str(e), status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     def create(self, request, *args, **kwargs):
@@ -1245,11 +1253,11 @@ class ParticipantConnectorsMapViewSet(GenericViewSet):
 
             if (
                     not ConnectorsMap.objects.all()
-                            .filter(
+                .filter(
                         provider=instance.provider.id,
                         connector_pair_status=Constants.AWAITING_FOR_APPROVAL,
-                    )
-                            .exclude(id=instance.id)
+                        )
+                .exclude(id=instance.id)
             ):
                 connectors = Connectors.objects.get(id=instance.provider.id)
                 connectors.connector_status = Constants.UNPAIRED
@@ -1356,13 +1364,13 @@ class ParticipantConnectorsMapViewSet(GenericViewSet):
             if participant_serializer.data:
                 return Response(participant_serializer.data[0], status=status.HTTP_200_OK)
             return Response([], status=status.HTTP_200_OK)
-
+        
         except ValidationError as e:
-            LOGGER.error(e, exc_info=True)
+            LOGGER.error(e,exc_info=True )
             return Response(e.detail, status=status.HTTP_400_BAD_REQUEST)
 
         except Exception as e:
-            LOGGER.error(e, exc_info=True)
+            LOGGER.error(e,exc_info=True )
             return Response(str(e), status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     def destroy(self, request, pk):
@@ -1372,13 +1380,13 @@ class ParticipantConnectorsMapViewSet(GenericViewSet):
             connector.status = False
             self.perform_create(connector)
             return Response(status=status.HTTP_204_NO_CONTENT)
-
+    
         except ValidationError as e:
-            LOGGER.error(e, exc_info=True)
+            LOGGER.error(e,exc_info=True )
             return Response(e.detail, status=status.HTTP_400_BAD_REQUEST)
 
         except Exception as e:
-            LOGGER.error(e, exc_info=True)
+            LOGGER.error(e,exc_info=True )
             return Response(str(e), status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
@@ -1410,13 +1418,13 @@ class ParticipantDepatrmentViewSet(GenericViewSet):
             serializer.is_valid(raise_exception=True)
             self.perform_create(serializer)
             return Response(serializer.data, status=status.HTTP_201_CREATED)
-
+    
         except ValidationError as e:
-            LOGGER.error(e, exc_info=True)
+            LOGGER.error(e,exc_info=True )
             return Response(e.detail, status=status.HTTP_400_BAD_REQUEST)
 
         except Exception as e:
-            LOGGER.error(e, exc_info=True)
+            LOGGER.error(e,exc_info=True )
             return Response(str(e), status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     def update(self, request, *args, **kwargs):
@@ -1427,13 +1435,13 @@ class ParticipantDepatrmentViewSet(GenericViewSet):
             serializer.is_valid(raise_exception=True)
             self.perform_create(serializer)
             return Response(serializer.data, status=status.HTTP_201_CREATED)
-
+        
         except ValidationError as e:
-            LOGGER.error(e, exc_info=True)
+            LOGGER.error(e,exc_info=True )
             return Response(e.detail, status=status.HTTP_400_BAD_REQUEST)
-
+        
         except Exception as e:
-            LOGGER.error(e, exc_info=True)
+            LOGGER.error(e,exc_info=True )
             return Response(str(e), status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     def retrieve(self, request, pk):
@@ -1444,56 +1452,50 @@ class ParticipantDepatrmentViewSet(GenericViewSet):
             if serializer.data:
                 return Response(serializer.data, status=status.HTTP_200_OK)
             return Response([], status=status.HTTP_200_OK)
-
+        
         except ValidationError as e:
-            LOGGER.error(e, exc_info=True)
+            LOGGER.error(e,exc_info=True )
             return Response(e.detail, status=status.HTTP_400_BAD_REQUEST)
 
         except Exception as e:
-            LOGGER.error(e, exc_info=True)
+            LOGGER.error(e,exc_info=True )
             return Response(str(e), status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
 
     @action(detail=False, methods=["get"])
     @http_request_mutation
     def department_list(self, request, *args, **kwargs):
         """GET method: query all the list of objects from the Product model"""
-        try:
-            data = []
-            org_id = request.META.get(Constants.ORG_ID)
-            filters = {Constants.ORGANIZATION: org_id} if org_id else {}
-            data = (
-                # Department.objects.filter(Q(status=True, **filters) | Q(department_name=Constants.DEFAULT))
-                Department.objects.filter(status=True, **filters)
-                .exclude(department_name=Constants.DEFAULT)
-                .order_by(Constants.UPDATED_AT)
-                .reverse()
-                .all()
-            )
-            page = self.paginate_queryset(data)
-            department_serializer = DepartmentSerializer(page, many=True)
-            return self.get_paginated_response(department_serializer.data)
-        except Exception as error:
-            LOGGER.error(error, exc_info=True)
-            return Response(str(error), status=status.HTTP_400_BAD_REQUEST)
+        data = []
+        org_id = request.META.get(Constants.ORG_ID)
+        filters = {Constants.ORGANIZATION: org_id} if org_id else {}
+        data = (
+            # Department.objects.filter(Q(status=True, **filters) | Q(department_name=Constants.DEFAULT))
+            Department.objects.filter(status=True, **filters)
+            .exclude(department_name=Constants.DEFAULT)
+            .order_by(Constants.UPDATED_AT)
+            .reverse()
+            .all()
+        )
+        page = self.paginate_queryset(data)
+        department_serializer = DepartmentSerializer(page, many=True)
+        return self.get_paginated_response(department_serializer.data)
 
     @http_request_mutation
     def list(self, request, *args, **kwargs):
         """GET method: query all the list of objects from the Product model"""
-        try:
-            data = []
-            org_id = request.META.get(Constants.ORG_ID)
-            filters = {Constants.ORGANIZATION: org_id} if org_id else {}
-            data = (
-                Department.objects.filter(Q(status=True, **filters) | Q(department_name=Constants.DEFAULT))
-                .order_by(Constants.UPDATED_AT)
-                .reverse()
-                .all()
-            )
-            department_serializer = DepartmentSerializer(data, many=True)
-            return Response(department_serializer.data)
-        except Exception as error:
-            LOGGER.error(error, exc_info=True)
-            return Response(str(error), status=status.HTTP_400_BAD_REQUEST)
+        data = []
+        org_id = request.META.get(Constants.ORG_ID)
+        filters = {Constants.ORGANIZATION: org_id} if org_id else {}
+        data = (
+            Department.objects.filter(
+                Q(status=True, **filters) | Q(department_name=Constants.DEFAULT))
+            .order_by(Constants.UPDATED_AT)
+            .reverse()
+            .all()
+        )
+        department_serializer = DepartmentSerializer(data, many=True)
+        return Response(department_serializer.data)
 
     def destroy(self, request, pk):
         """DELETE method: delete an object"""
@@ -1503,14 +1505,15 @@ class ParticipantDepatrmentViewSet(GenericViewSet):
             product.status = False
             self.perform_create(product)
             return Response(status=status.HTTP_204_NO_CONTENT)
-
+        
         except ValidationError as e:
-            LOGGER.error(e, exc_info=True)
+            LOGGER.error(e,exc_info=True )
             return Response(e.detail, status=status.HTTP_400_BAD_REQUEST)
-
+        
         except Exception as e:
-            LOGGER.error(e, exc_info=True)
+            LOGGER.error(e,exc_info=True )
             return Response(str(e), status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
 
 
 class ParticipantProjectViewSet(GenericViewSet):
@@ -1541,13 +1544,13 @@ class ParticipantProjectViewSet(GenericViewSet):
             serializer.is_valid(raise_exception=True)
             self.perform_create(serializer)
             return Response(serializer.data, status=status.HTTP_201_CREATED)
-
+        
         except ValidationError as e:
-            LOGGER.error(e, exc_info=True)
+            LOGGER.error(e,exc_info=True )
             return Response(e.detail, status=status.HTTP_400_BAD_REQUEST)
-
+  
         except Exception as e:
-            LOGGER.error(e, exc_info=True)
+            LOGGER.error(e,exc_info=True )
             return Response(str(e), status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     def update(self, request, pk):
@@ -1558,14 +1561,15 @@ class ParticipantProjectViewSet(GenericViewSet):
             serializer.is_valid(raise_exception=True)
             self.perform_create(serializer)
             return Response(serializer.data, status=status.HTTP_201_CREATED)
-
+        
         except ValidationError as e:
-            LOGGER.error(e, exc_info=True)
+            LOGGER.error(e,exc_info=True )
             return Response(e.detail, status=status.HTTP_400_BAD_REQUEST)
-
+      
         except Exception as e:
-            LOGGER.error(e, exc_info=True)
+            LOGGER.error(e,exc_info=True )
             return Response(str(e), status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
 
     def retrieve(self, request, pk):
         """GET method: retrieve an object or instance of the Product model"""
@@ -1584,25 +1588,21 @@ class ParticipantProjectViewSet(GenericViewSet):
     @http_request_mutation
     def project_list(self, request, *args, **kwargs):
         """GET method: query all the list of objects from the Product model"""
-        try:
-            data = []
-            org_id = request.META.get(Constants.ORG_ID)
-            filters = {Constants.ORGANIZATION: org_id} if org_id else {}
-            data = (
-                Project.objects.select_related(Constants.DEPARTMENT_ORGANIZATION)
-                # .filter(Q(status=True, **filters) | Q(project_name=Constants.DEFAULT))
-                .filter(status=True, **filters)
-                .exclude(project_name=Constants.DEFAULT)
-                .order_by(Constants.UPDATED_AT)
-                .reverse()
-                .all()
-            )
-            page = self.paginate_queryset(data)
-            project_serializer = ProjectDepartmentSerializer(page, many=True)
-            return self.get_paginated_response(project_serializer.data)
-        except Exception as error:
-            LOGGER.error(error, exc_info=True)
-            return Response(str(error), status=status.HTTP_400_BAD_REQUEST)
+        data = []
+        org_id = request.META.get(Constants.ORG_ID)
+        filters = {Constants.ORGANIZATION: org_id} if org_id else {}
+        data = (
+            Project.objects.select_related(Constants.DEPARTMENT_ORGANIZATION)
+            # .filter(Q(status=True, **filters) | Q(project_name=Constants.DEFAULT))
+            .filter(status=True, **filters)
+            .exclude(project_name=Constants.DEFAULT)
+            .order_by(Constants.UPDATED_AT)
+            .reverse()
+            .all()
+        )
+        page = self.paginate_queryset(data)
+        project_serializer = ProjectDepartmentSerializer(page, many=True)
+        return self.get_paginated_response(project_serializer.data)
 
     def list(self, request, *args, **kwargs):
         """GET method: query all the list of objects from the Product model"""
@@ -1623,13 +1623,13 @@ class ParticipantProjectViewSet(GenericViewSet):
             )
             project_serializer = ProjectDepartmentSerializer(data, many=True)
             return Response(project_serializer.data)
-
+        
         except ValidationError as e:
-            LOGGER.error(e, exc_info=True)
+            LOGGER.error(e,exc_info=True )
             return Response(e.detail, status=status.HTTP_400_BAD_REQUEST)
 
         except Exception as e:
-            LOGGER.error(e, exc_info=True)
+            LOGGER.error(e,exc_info=True )
             return Response(str(e), status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     def destroy(self, request, pk):
@@ -1640,14 +1640,15 @@ class ParticipantProjectViewSet(GenericViewSet):
             project.status = False
             self.perform_create(project)
             return Response(status=status.HTTP_204_NO_CONTENT)
-
+        
         except ValidationError as e:
-            LOGGER.error(e, exc_info=True)
+            LOGGER.error(e,exc_info=True )
             return Response(e.detail, status=status.HTTP_400_BAD_REQUEST)
 
         except Exception as e:
-            LOGGER.error(e, exc_info=True)
+            LOGGER.error(e,exc_info=True )
             return Response(str(e), status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
 
 
 def update_cookies(key, value, response):
@@ -1666,13 +1667,13 @@ def update_cookies(key, value, response):
             secure=False,
         )
         return response
-
+    
     except ValidationError as e:
-        LOGGER.error(e, exc_info=True)
-        return Response(e.detail, status=status.HTTP_400_BAD_REQUEST)
+            LOGGER.error(e,exc_info=True )
+            return Response(e.detail, status=status.HTTP_400_BAD_REQUEST)
 
     except Exception as e:
-        LOGGER.error(e, exc_info=True)
+        LOGGER.error(e,exc_info=True )
         return Response(str(e), status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
@@ -1692,7 +1693,7 @@ class DataBaseViewSet(GenericViewSet):
         """
         database_type = request.data.get("database_type")
         serializer = self.get_serializer(data=request.data, context={
-            "source": database_type})
+                                         "source": database_type})
         serializer.is_valid(raise_exception=True)
         cookie_data = serializer.data
         config = serializer.validated_data
@@ -1998,7 +1999,7 @@ class DataBaseViewSet(GenericViewSet):
                 response = requests.get(url, headers=headers)
             elif auth_type == 'BEARER':
                 headers = {"Authorization": "Bearer " +
-                                            request.data.get("token")}
+                           request.data.get("token")}
                 response = requests.get(url, headers=headers)
 
             # response = requests.get(url)
@@ -2088,17 +2089,18 @@ class SupportTicketV2ModelViewSet(GenericViewSet):
             page = self.paginate_queryset(queryset)
             support_tickets_serializer = SupportTicketV2Serializer(page, many=True)
             return self.get_paginated_response(support_tickets_serializer.data)
-
+        
         except ValidationError as e:
-            LOGGER.error(e, exc_info=True)
+            LOGGER.error(e,exc_info=True )
             return Response(e.detail, status=status.HTTP_400_BAD_REQUEST)
-
+        
         except Exception as e:
-            LOGGER.error(e, exc_info=True)
+            LOGGER.error(e,exc_info=True )
             return Response(str(e), status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-    # API to retrieve a single object by its ID
 
+    # API to retrieve a single object by its ID
+    @timer
     @http_request_mutation
     def retrieve(self, request, pk):
         try:
@@ -2120,9 +2122,8 @@ class SupportTicketV2ModelViewSet(GenericViewSet):
             )
         try:
             ticket_serializer = SupportTicketV2Serializer(ticket_instance)
-            resolution_serializer = SupportTicketResolutionsSerializerMinimised(
-                ticket_instance.resolution_set.order_by("created_at"),
-                many=True)
+            resolution_serializer = SupportTicketResolutionsSerializerMinimised(ticket_instance.resolution_set.order_by("created_at"),
+                                                                                many=True)
             data = {
                 'ticket': ticket_serializer.data,
                 'resolutions': resolution_serializer.data,
@@ -2147,8 +2148,7 @@ class SupportTicketV2ModelViewSet(GenericViewSet):
                 if not validity:
                     file_length = len(str(request.data.get("ticket_attachment")))
                     return Response(
-                        {"ticket_attachment": [
-                            f"Ensure this filename has at most 100 characters ( it has {file_length} )."]},
+                        {"ticket_attachment": [f"Ensure this filename has at most 100 characters ( it has {file_length} )."]},
                         status=status.HTTP_400_BAD_REQUEST,
                     )
             serializer = CreateSupportTicketV2Serializer(data=request.data)
@@ -2191,13 +2191,13 @@ class SupportTicketV2ModelViewSet(GenericViewSet):
             object = get_object_or_404(queryset, pk=pk)
             object.delete()
             return Response(status=status.HTTP_204_NO_CONTENT)
-
+        
         except ValidationError as e:
-            LOGGER.error(e, exc_info=True)
+            LOGGER.error(e,exc_info=True )
             return Response(e.detail, status=status.HTTP_400_BAD_REQUEST)
-
+        
         except Exception as e:
-            LOGGER.error(e, exc_info=True)
+            LOGGER.error(e,exc_info=True )
             return Response(str(e), status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     # @http_request_mutation
@@ -2236,13 +2236,13 @@ class SupportTicketV2ModelViewSet(GenericViewSet):
             page = self.paginate_queryset(tickets)
             support_tickets_serializer = SupportTicketV2Serializer(page, many=True)
             return self.get_paginated_response(support_tickets_serializer.data)
-
+        
         except ValidationError as e:
-            LOGGER.error(e, exc_info=True)
+            LOGGER.error(e,exc_info=True )
             return Response(e.detail, status=status.HTTP_400_BAD_REQUEST)
 
         except Exception as e:
-            LOGGER.error(e, exc_info=True)
+            LOGGER.error(e,exc_info=True )
             return Response(str(e), status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
@@ -2301,9 +2301,9 @@ class SupportTicketResolutionsViewset(GenericViewSet):
             object.delete()
             return Response(status=status.HTTP_204_NO_CONTENT)
         except ValidationError as e:
-            LOGGER.error(e, exc_info=True)
+            LOGGER.error(e,exc_info=True )
             return Response(e.detail, status=status.HTTP_400_BAD_REQUEST)
 
         except Exception as e:
-            LOGGER.error(e, exc_info=True)
+            LOGGER.error(e,exc_info=True )
             return Response(str(e), status=status.HTTP_500_INTERNAL_SERVER_ERROR)
