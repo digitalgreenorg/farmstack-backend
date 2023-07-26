@@ -2123,7 +2123,7 @@ class SupportTicketV2ModelViewSet(GenericViewSet):
             )
         try:
             ticket_serializer = SupportTicketV2Serializer(ticket_instance)
-            resolution_serializer = SupportTicketResolutionsSerializerMinimised(ticket_instance.resolution_set,
+            resolution_serializer = SupportTicketResolutionsSerializerMinimised(ticket_instance.resolution_set.order_by("created_at"),
                                                                                 many=True)
             data = {
                 'ticket': ticket_serializer.data,
