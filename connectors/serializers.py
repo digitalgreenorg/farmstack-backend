@@ -11,6 +11,7 @@ from core import settings
 from core.constants import Constants
 from datahub.models import DatasetV2, DatasetV2File, Organization, UserOrganizationMap
 from datahub.serializers import DatasetV2FileSerializer
+from django.db.models import Subquery, Min
 
 
 class OrganizationRetriveSerializer(serializers.ModelSerializer):
@@ -90,9 +91,19 @@ class ConnectorsListSerializer(serializers.ModelSerializer):
         return  count+1 if count else 0
     
     def get_providers_count(self, connectors):
-        query = ConnectorsMap.objects.select_related('left_dataset_file_id__dataset', 'right_dataset_file_id__dataset').filter(connectors=connectors.id).filter(connectors=connectors.id)
-        count = query.distinct("left_dataset_file_id__dataset__user_map", "right_dataset_file_id__dataset__user_map").count()
-        return count
+        if settings.DATABASES.get("default", {}).get("ENGINE","") == "django.db.backends.sqlite3":
+            subquery = ConnectorsMap.objects.filter(connectors=connectors.id).values(
+            "left_dataset_file_id__dataset__user_map", "right_dataset_file_id__dataset__user_map"
+            ).annotate(min_id=Min("id")).values("min_id")
+
+            query = ConnectorsMap.objects.filter(id__in=Subquery(subquery)).select_related(
+                "left_dataset_file_id__dataset", "right_dataset_file_id__dataset"
+            )
+            return query.count()
+        else:
+            query = ConnectorsMap.objects.select_related('left_dataset_file_id__dataset', 'right_dataset_file_id__dataset').filter(connectors=connectors.id).filter(connectors=connectors.id)
+            count = query.distinct("left_dataset_file_id__dataset__user_map", "right_dataset_file_id__dataset__user_map").count()
+            return count
 
 class ConnectorsRetriveSerializer(serializers.ModelSerializer):
     maps = ConnectorsMapSerializer(many=True, source='connectorsmap_set')
