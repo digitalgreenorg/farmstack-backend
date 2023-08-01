@@ -123,17 +123,12 @@ class ConnectorsViewSet(GenericViewSet):
     @action(detail=False, methods=["post"])
     def patch_config(self, request):
         try:
-            temp_file_path = f"{settings.TEMP_CONNECTOR_URL}{request.data.get(Constants.NAME)}.csv"
             permanent_path = f"{settings.CONNECTOR_FILES_URL}{request.data.get(Constants.NAME)}.csv"
-            file_path = ''
-            if os.path.exists(temp_file_path):
-                file_path = temp_file_path
-            elif os.path.exists(permanent_path):
-                connector = Connectors.objects.get(name=request.data.get("name"))
-                serializer = ConnectorsCreateSerializer(connector, data=request.data, partial=True)
-                serializer.is_valid(raise_exception=True)
-                serializer.save()
-                file_path = permanent_path
+            connector = Connectors.objects.get(name=request.data.get("name"))
+            serializer = ConnectorsCreateSerializer(connector, data=request.data, partial=True)
+            serializer.is_valid(raise_exception=True)
+            serializer.save()
+            file_path = permanent_path
             integrated_file = str(file_path).replace("media/", "").replace("%20", " ")
             df = pd.read_csv(os.path.join(settings.MEDIA_ROOT, integrated_file), 
                 ) if integrated_file else pd.DataFrame([])
