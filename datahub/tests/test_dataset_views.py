@@ -40,7 +40,7 @@ auth_participant= {
 }
 
 class TestCasesDatasets(TestCase):
-    """test cases for dataset details""" 
+    """test cases for dataset details and request for access of datasets""" 
     def setUp(self) -> None:
         self.user=Client()
         self.client_admin = Client()
@@ -151,6 +151,13 @@ class TestCasesDatasets(TestCase):
         assert response.status_code == 200
         assert data['name'] == first_datasets_dump_data['name']
         assert data['description'] == first_datasets_dump_data['description']
+        assert data['datasets'][0]['file'] == 'protected/datasets/dump_datasets 1/file/file.xls'
+        #asserting column for file
+        content_column = data['datasets'][0]['content'][0]
+        keys_to_check_left = list(content_column.keys())
+        keys_to_check_right = ['SR.', 'NAME', 'GENDER', 'AGE', 'DATE ', 'COUNTRY']
+        # Compare the keys
+        assert keys_to_check_left == keys_to_check_right
         
     #test case for get method w/o usage_policy(valid case)
     def test_dataset_retrieve_valid_other(self):
@@ -210,5 +217,4 @@ class TestCasesDatasets(TestCase):
         assert not data['datasets'][1]['usage_policy']['organization']['org_email'] == 'admin2_org@dg.org'
         assert data['datasets'][1]['usage_policy']['organization']['org_email'] == 'admin3_org@dg.org'
         assert data['datasets'][1]['usage_policy']['approval_status'] == 'requested'
-        
         
