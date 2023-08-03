@@ -28,7 +28,8 @@ from core.utils import CustomPagination
 from datahub.models import Datasets
 from utils.authentication_services import authenticate_user
 from utils.jwt_services import http_request_mutation
-
+from rest_framework.exceptions import ValidationError
+LOGGER = logging.getLogger(__name__)
 # Create your views here.
 
 
@@ -54,7 +55,9 @@ class ConnectorsViewSet(GenericViewSet):
         Connectors.objects.filter(id=serializer.data.get(Constants.ID)
                                   ).update(integrated_file=dest_path)
         connectors_data = serializer.data
-        for maps in request.data.get(Constants.MAPS, []):
+        for maps in json.loads(request.data.get(Constants.MAPS, [])
+                               ) if isinstance(request.data.get(Constants.MAPS, []), str
+                                               )  else request.data.get(Constants.MAPS, []):
             maps[Constants.CONNECTORS] = connectors_data.get(Constants.ID)
             serializer = ConnectorsMapCreateSerializer(data=maps)
             serializer.is_valid(raise_exception=True)
@@ -63,14 +66,11 @@ class ConnectorsViewSet(GenericViewSet):
     
     @http_request_mutation
     def list(self, request, *args, **kwargs):
-        try:
             data = Connectors.objects.all().filter(user_id=request.META.get("user_id"), user__status=True).order_by(
                 Constants.UPDATED_AT).reverse()
             page = self.paginate_queryset(data)
             connectors_data = ConnectorsListSerializer(page, many=True)
             return self.get_paginated_response(connectors_data.data)
-        except Exception as error:
-            return Response(str(error), status=status.HTTP_400_BAD_REQUEST)
 
     @http_request_mutation
     def retrieve(self, request, pk):
@@ -97,7 +97,9 @@ class ConnectorsViewSet(GenericViewSet):
         connector_serializer.save()
         Connectors.objects.filter(id=connector_serializer.data.get(Constants.ID)
                                   ).update(integrated_file=dest_path)
-        for maps in request.data.get(Constants.MAPS, []):
+        for maps in json.loads(request.data.get(Constants.MAPS, [])
+                               ) if isinstance(request.data.get(Constants.MAPS, []), str
+                                               )  else request.data.get(Constants.MAPS, []):
             maps[Constants.CONNECTORS] = pk
             if maps.get(Constants.ID):
                 instance = ConnectorsMap.objects.get(id=maps.get(Constants.ID))
@@ -165,7 +167,8 @@ class ConnectorsViewSet(GenericViewSet):
         if not request.GET.get(Constants.EDIT, False):
             serializer = ConnectorsCreateSerializer(data=data)
             serializer.is_valid(raise_exception=True)
-        if not maps:
+        maps=json.loads(maps) if isinstance(maps, str)  else maps
+        if not maps: 
             return Response({f"Minimum 2 datasets should select for integration"}, status=500)
         integrate = maps[0]
         try:
@@ -236,4 +239,4 @@ class ConnectorsViewSet(GenericViewSet):
                             status=status.HTTP_200_OK)
         except Exception as e:
             logging.error(str(e), exc_info=True)
-            return Response({"message": "To perform column joins in Dathub, Columns should have matching data types"}, status=400)
+            return Response({"message": f"{str(e)}"}, status=400)
