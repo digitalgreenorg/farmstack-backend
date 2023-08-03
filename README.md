@@ -1,4 +1,4 @@
-##Overview
+## Overview
 • The agricultural sector is a diverse ecosystem involving numerous organizations. • These organizations collaborate with farmers to implement a wide array of  projects. 
 • Key players include government and non-government entities, NGOs, not-for profit organizations, researchers, and for-profit companies. 
 • During project implementation, valuable data is collected that could improve  agricultural practices and outcomes for farmers. 
@@ -29,7 +29,31 @@ Farmstack enables you to solve the following:
 
 • **Improved categorization**: Farmstack aids in better organization and categorization  of data, enhancing its usability and value.
 
-• **Impactful use cases**: By harnessing the potential of collective data, Farmstack  facilitates the development of more effective use cases for farmers, ultimately  leading to improved agricultural practices and outcomes. 
+• **Impactful use cases**: By harnessing the potential of collective data, Farmstack  facilitates the development of more effective use cases for farmers, ultimately  leading to improved agricultural practices and outcomes.
+
+## Docker Build versions of Farmstack
+• **Frontend Image**: [Link](https://hub.docker.com/r/farmstack/fs_eth_prod-ui/tags)
+
+• **Backend Image**: [Link](https://hub.docker.com/r/farmstack/fs_eth_prod-be/tags)
+
+## Link to APIs
+
+• **Postman Collection**: [Link](https://farmstack.postman.co/workspace/Team-Workspace~969c8a4f-ed74-4a62-8242-136e8f19f004/collection/21462346-53d41ee4-4726-42fe-8b41-49b188d8ee1a?action=share&creator=25788189)
+
+
+## Documentation link
+
+You can find the documentaion of for installation of farmstack in the link given:
+
+[Documentation](https://github.com/digitalgreenorg/farmstack-backend/tree/main/accounts)
+
+In the above folder, we have documentations supporting the following:
+1. Installation Guide.
+2. System Requirement.
+3. Technical Documents.
+4. DataFlow documents.
+5. Miscellaneous.
+6. Troubleshooting Documents.
 
 ## Farmstack: Revolutionizing Data Exchange in  Agriculture
 
@@ -54,10 +78,11 @@ Stewards form the backbone of Farmstack, expertly managing the platform while  p
 
 • Supervising datasets with diligence and precision. 
 
-**Role of Steward**
+### Role of Steward
+
 Stewards can contribute to the valuable data pool by joining the network as data  providers and consumers. With the flexibility to include co-stewards and sub-stewards,  Farmstack allows organizations to create tailored networks that suit their unique needs. 
 
-###Participants: The Data Pioneers
+### Participants: The Data Pioneers
 
 As data providers, consumers, or both, participants drive data exchange within the  Farmstack ecosystem. They fulfill a wide range of responsibilities: 
 
@@ -71,7 +96,7 @@ As data providers, consumers, or both, participants drive data exchange within t
 
 • Publishing data with confidence after applying secure usage policies.
  
-##Data Integration Connectors: Unleashing the Power of Collective Data 
+## Data Integration Connectors: Unleashing the Power of Collective Data 
 
 By creating data integration connectors, participants can unlock a wealth of insights and  solutions. These robust connectors enable the seamless combination of datasets from  multiple organizations, paving the way for more valuable and comprehensive data. 
 
@@ -87,29 +112,34 @@ By leveraging data integration connectors, participants can:
 
 Farmstack is more than just a data exchange platform - it's a revolution in agricultural data  management. By uniting Stewards and Participants and harnessing the power of data  integration connectors, Farmstack paves the way for improved agricultural practices,  enhanced collaboration, and the creation of impactful use cases. Embrace the future of  agriculture with Farmstack.
 
-##Farmstack: Data for Good - Transforming Agriculture Together 
+## Farmstack: Data for Good - Transforming Agriculture Together 
 
 Farmstack brings a revolutionary approach to data exchange in agriculture, focusing on  the greater good. By fostering collaboration between organizations and harnessing the  power of collective data, Farmstack is creating a new era of agricultural innovation and  sustainability. 
 
 1. **Empowering Agricultural Communities** 
+
 Farmstack believes that data can be a powerful tool for the betterment of farming  communities. By enabling seamless data exchange between key players in the  agricultural sector, Farmstack paves the way for improved agricultural practices,  resource optimization, and sustainable growth. This data-driven approach ensures  that farmers have access to the best possible tools and knowledge to enhance  their livelihoods. 
 
 2. **Strengthening Collaboration** 
+
 Farmstack's "Data for Good" philosophy emphasizes the importance of collaboration and knowledge sharing among organizations. By breaking down  silos and fostering trust, Farmstack encourages organizations to work together and  leverage their collective data for more effective and innovative use cases that  benefit farmers worldwide. In doing so, Farmstack is creating a global network of  organizations united by their commitment to the greater good. 
 
 3. **Driving Sustainable Solutions**
+
 Farmstack recognizes that sustainable agriculture is crucial for the well-being of  both people and the planet. By facilitating the exchange of data and insights,  Farmstack enables the development of eco-friendly solutions and practices that  promote resource conservation, waste reduction, and overall environmental  stewardship.
 
 4. **Promoting Transparency and Trust** 
+
 Farmstack's commitment to "Data for Good" is grounded in the principles of  transparency and trust. By defining robust data exchange and usage policies,  Farmstack ensures that data is managed responsibly and ethically. This fosters an  environment where organizations can confidently share their data, knowing that it  will be used for the betterment of agriculture and farming communities.
 
 5. **Unleashing the Power of Data Integration Connectors** 
+
 Farmstack's data integration connectors are instrumental in driving the "Data for  Good" philosophy. These connectors empower participants to select and merge  datasets from various organizations, uncovering hidden insights and patterns that  lead to more impactful solutions. By facilitating collaboration and knowledge  sharing through data integration connectors, Farmstack is enabling the  development of innovative use cases that address real-world agricultural  challenges. 
 
 Farmstack is more than just a data exchange platform; it's a movement towards  harnessing the power of data for the greater good. By uniting Stewards, Participants, and  data integration connectors, Farmstack is championing a future of agriculture that is  rooted in collaboration, innovation, and sustainability. Join the Farmstack revolution and  embrace the "Data for Good" philosophy to transform agriculture together.
 
 
-##Farmstack: A Digital Public Good for Agriculture
+## Farmstack: A Digital Public Good for Agriculture
 
 Farmstack, a revolutionary data exchange platform for the agricultural sector, is proud to  be recognized by the Digital Public Goods Alliance. As a digital public good, Farmstack is  dedicated to creating a global impact by promoting collaboration, innovation, and  sustainability in agriculture.
 
@@ -152,7 +182,7 @@ At Farmstack, we believe in the power of data for good. By uniting Stewards, Par
 
 Join us in embracing the future of agriculture with Farmstack, a Digital Green initiative that  transforms the agricultural landscape for the betterment of all. 
 
-##Contact Us
+## Contact Us
 
 Get in Touch with Farmstack 
 We are eager to connect with organizations, researchers, and individuals who share our  passion for revolutionizing agriculture. If you have questions, suggestions or would like to  explore collaboration opportunities, please don't hesitate to get in touch with us.
@@ -166,11 +196,11 @@ You can also reach out to us through our social media channels:
 
 Together, we can create a brighter future for agriculture driven by collaboration,  innovation, and sustainability. We look forward to hearing from you and exploring the  possibilities that Farmstack can bring to your organization and the agricultural community  as a whole. 
 
-##Farmstack Features 
+## Farmstack Features 
 
 Discover the Power of Data with Farmstack
 
-###Dataset Discovery
+### Dataset Discovery
 
 Farmstack Dataset Discovery is designed to empower participants with seamless access to  a wealth of agricultural data, fuelling innovation and collaboration across the sector. With  an intuitive interface and robust features, Farmstack makes it easier than ever for users to  find, analyze, and leverage datasets for their specific needs. 
 
@@ -225,8 +255,9 @@ Admins can effortlessly create and configure categories and their respective  su
 • **Update Categories and Subcategories** 
 Admins have the flexibility to update existing categories and subcategories,  ensuring that the classification system remains current and adapts to the ever evolving needs of the agricultural sector. 
 • **Delete Categories and Subcategories** 
-Admins can easily delete specific categories and subcategories as needed,  maintaining a streamlined and efficient classification system for all Participants. 
-###Enhance Dataset Usability with Farmstack Data Standardization Templates
+Admins can easily delete specific categories and subcategories as needed,  maintaining a streamlined and efficient classification system for all Participants.
+
+### Enhance Dataset Usability with Farmstack Data Standardization Templates
 
 Farmstack Data Standardization Templates empower admins to create, update, and  delete templates that help Participants map non-standardized column names to  standardized ones. This feature ensures consistency across datasets and improves the  overall usability of the data. 
 
