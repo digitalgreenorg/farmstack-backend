@@ -46,6 +46,7 @@ class TestCasesDatasets(TestCase):
         self.client_admin = Client()
         self.dataset_url=reverse("dataset/v2-list")
         self.dataset_files_url=reverse("dataset_files-list")
+        self.dataset_request=reverse("datasets/v2-list")
         #create user role
         self.admin_role = UserRole.objects.create(
                         id= "1",
@@ -131,6 +132,13 @@ class TestCasesDatasets(TestCase):
             "accessibility": "private",
         }
         self.response2 = self.client_admin.post(self.dataset_files_url, file_data2)
+        file_data3 = {
+            "dataset": str(self.second_dataset.id),
+            "file" : open("datahub/tests/test_data/file.xls", "rb"),
+            "source": "file",
+            "accessibility": "private",
+        }
+        self.response3 = self.client_admin.post(self.dataset_files_url, file_data3)
         
     def set_auth_headers(self,participant=False, co_steward=False):  
         """ authorization """
@@ -218,3 +226,47 @@ class TestCasesDatasets(TestCase):
         assert data['datasets'][1]['usage_policy']['organization']['org_email'] == 'admin3_org@dg.org'
         assert data['datasets'][1]['usage_policy']['approval_status'] == 'requested'
         
+    #test case for request api(valid case)
+    def test_request_dataset_receive_send(self):
+        """ REQUEST API- requesting file access for both admin1 and admin2 """
+        #admin2 requesting for file2 access
+        file2_id= self.response2.json()['id']
+        UsagePolicy.objects.create(dataset_file_id= file2_id,
+                                    user_organization_map=self.admin_map2)
+        #admin1 requesting for file3 access
+        file3_id= self.response3.json()['id']
+        UsagePolicy.objects.create(dataset_file_id= file3_id,
+                                    user_organization_map=self.admin_map1)
+        #admin3 requesting for file2 access
+        UsagePolicy.objects.create(dataset_file_id= file2_id,
+                                    user_organization_map=self.admin_map3)
+        data_user = {
+            "user_map": self.admin_map1.id
+        }
+        response = self.client_admin.post(self.dataset_request+"requested_datasets/", data_user)
+        data = response.json()
+        # print("***test_request_dataset_receive_send***", response.status_code)
+        # print("***test_request_dataset_receive_send***", data)
+        assert response.status_code == 200
+        assert data['recieved'][0]['organization_email'] == 'admin3_org@dg.org'
+        assert data['recieved'][1]['organization_email'] == 'admin2_org@dg.org'
+        assert data['sent'][0]['organization_email'] == 'admin2_org@dg.org'
+    
+    #invalid case
+    def test_request_dataset_invalid(self):
+        """ invalid user map request-dataset """
+        file2_id= self.response2.json()['id']
+        UsagePolicy.objects.create(dataset_file_id= file2_id,
+                                    user_organization_map=self.admin_map2)
+        file3_id= self.response3.json()['id']
+        UsagePolicy.objects.create(dataset_file_id= file3_id,
+                                    user_organization_map=self.admin_map1)
+        data_user = {
+            "user_map": "123"
+        }
+        response = self.client_admin.post(self.dataset_request+"requested_datasets/", data_user)
+        data = response.json()
+        # print("***test_request_dataset_invalid***", response.status_code)
+        # print("***test_request_dataset_invalid***", data)
+        assert response.status_code == 500
+        assert data == f"Issue while Retrive requeted data ['“{data_user['user_map']}” is not a valid UUID.']"

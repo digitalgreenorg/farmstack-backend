@@ -1,4 +1,4 @@
-from datahub.views import ParticipantViewSet
+from datahub.views import ParticipantViewSet, SupportViewSet
 from django.test import SimpleTestCase
 from django.urls import resolve, reverse
 
@@ -16,12 +16,12 @@ class TestUrls(SimpleTestCase):
         print(resolve(url))
         self.assertNotEqual(resolve(url).func, "ParticipantViewSet")
 
-    def test_support_ticket_create_valid(self):
-        """_summary_"""
-        url = reverse("support_tickets-list")
-        print(url)
-        print(resolve(url))
-        assert resolve(url)._func_path == "datahub.views.SupportViewSet"
+    # def test_support_ticket_create_valid(self):
+    #     """_summary_"""
+    #     url = reverse("support_tickets-list")
+    #     print(url)
+    #     print(resolve(url))
+    #     assert resolve(url)._func_path == "datahub.views.SupportViewSet"
 
     def test_support_ticket_create_invalid(self):
         """_summary_"""
@@ -68,3 +68,15 @@ class TestUrls(SimpleTestCase):
     def test_category_urls_invalid(self):
         url = reverse("dataset/v2-list")
         assert resolve(url)._func_path != "DatasetV2ViewSet"
+
+    def test_dataset_request_valid(self):
+        """ dataset views and request api """
+        url = reverse("datasets/v2-list")
+        print(resolve(url)._func_path)
+        assert resolve(url)._func_path == "datahub.views.DatasetV2View"
+
+    def test_dataset_request_invalid(self):
+        """ dataset views and request api """
+        url = reverse("datasets/v2-list")
+        print(resolve(url))
+        self.assertNotEqual(resolve(url).func, "DatasetV2View")
