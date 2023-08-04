@@ -1,0 +1,11 @@
+version: '3.8'
+services:
+  postgres:
+    image: postgres:latest
+    container_name: postgres_container
+    environment:
+            POSTGRES_USER: mydatabaseuser                # Same as the 'USER' in DATABASES setting
+            POSTGRES_PASSWORD: mypassword                # Same as the 'PASSWORD' in DATABASES setting
+            POSTGRES_DB: mydatabase                                        # Same as the 'NAME' in DATABASES setting
+    ports:
+            - "5432:5432"         # Expose PostgreSQL port to host for testing
