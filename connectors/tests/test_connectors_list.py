@@ -126,7 +126,8 @@ class TestCasesConnectors(TestCase):
         super().setUpClass()
         self.user_co_steward=Client()
         self.client_admin = Client()
-        self.user_participant=Client()       
+        self.user_participant=Client()    
+        self.dummy=Client()    
         self.connectors_url=reverse("connectors-list")
 
         ################# create user roles #############
@@ -263,6 +264,11 @@ class TestCasesConnectors(TestCase):
         assert response.json()['results'][0]['description']==connectors_data['description']
         assert response.json()['results'][1]['name']==connectors_dump_data["name"]
         assert response.json()['results'][1]['description']==connectors_dump_data["description"]
+        assert response.json()['results'][0]['dataset_count']==2
+        assert response.json()['results'][0]['providers_count']==1
+        assert response.json()['results'][1]['dataset_count']==2
+        assert response.json()['results'][1]['providers_count']==1       
+
 
     #################### Retrive single connector #####################
     def test_retrieve_connector_single(self):
@@ -448,6 +454,15 @@ class TestCasesConnectors(TestCase):
         assert updated_response.status_code == 200
         assert updated_response.json()["description"]=="description updated"
 
+
+    #################### GET API CALL(LISTING) ###################
+        params=f'?user={self.participant.id}&co_steward=false'
+        response = self.user_participant.get(self.connectors_url+params)
+        assert response.status_code == 200 
+        assert response.json()["results"][0]['dataset_count']==5
+        assert response.json()["results"][0]['providers_count']==1
+
+
     ################ Negative test cases ######################
 
     def test_update_connector_description_exceeding_512_chars(self):   
@@ -500,4 +515,8 @@ class TestCasesConnectors(TestCase):
         created_data = response.json()
         assert response.status_code == 400
         assert created_data=={'name': ['connectors with this name already exists.'], 'user': ['This field is required.']}
-        
+ 
+    def test_get_list_of_invalid_user_id(self):
+        response = self.dummy.get(self.connectors_url)
+        assert response.status_code == 401
+        assert response.json()=={'message': 'Invalid auth credentials provided.'}
