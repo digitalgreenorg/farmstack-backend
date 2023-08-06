@@ -1,3 +1,4 @@
+import email
 from unicodedata import category
 from rest_framework.reverse import reverse
 from django.test import Client, TestCase
@@ -254,40 +255,39 @@ class TestCasesDatasets(TestCase):
         assert data['recieved'][1]['organization_email'] == 'admin2_org@dg.org'
         assert data['sent'][0]['organization_email'] == 'admin2_org@dg.org'
     
-    #invalid case
-    # def test_request_dataset_invalid(self):
-    #     """ invalid user map request-dataset """
-    #     file2_id= self.response2.json()['id']
-    #     UsagePolicy.objects.create(dataset_file_id= file2_id,
-    #                                 user_organization_map=self.admin_map2)
-    #     file3_id= self.response3.json()['id']
-    #     UsagePolicy.objects.create(dataset_file_id= file3_id,
-    #                                 user_organization_map=self.admin_map1)
-    #     data_user = {
-    #         "user_map": "123"
-    #     }
-    #     response = self.client_admin.post(self.dataset_request+"requested_datasets/", data_user)
-    #     data = response.json()
-    #     # print("***test_request_dataset_invalid***", response.status_code)
-    #     # print("***test_request_dataset_invalid***", data)
-    #     assert response.status_code == 500
-    #     assert data == f"Issue while Retrive requeted data ['“{data_user['user_map']}” is not a valid UUID.']"
-        
-        
-
+    # invalid case
+    def test_request_dataset_invalid(self):
+        """ invalid user map request-dataset """
+        file2_id= self.response2.json()['id']
+        UsagePolicy.objects.create(dataset_file_id= file2_id,
+                                    user_organization_map=self.admin_map2)
+        file3_id= self.response3.json()['id']
+        UsagePolicy.objects.create(dataset_file_id= file3_id,
+                                    user_organization_map=self.admin_map1)
+        data_user = {
+            "user_map": "123"
+        }
+        response = self.client_admin.post(self.dataset_request+"requested_datasets/", data_user)
+        data = response.json()
+        # print("***test_request_dataset_invalid***", response.status_code)
+        # print("***test_request_dataset_invalid***", data)
+        assert response.status_code == 500
+        assert data == f"Issue while Retrive requeted data ['“{data_user['user_map']}” is not a valid UUID.']"
         
 first_datasets = {
     "name": "dataset dash 1",
     "description": "dataset dash desc 1",
     "geography": "tpt 1",
     "constantly_update": False,
-    "category": ({"category dash": ["dashboard category"]})
+    "is_temp": False,
+    "category": ({"category dash": ["dashboard category"]}),
 }
 second_datasets = {
     "name": "dataset dash 2",
     "description": "dataset dash desc 2",
     "geography": "tpt 2",
     "constantly_update": False,
+    "is_temp": False,
 }
 third_datasets = {
     "name": "dataset dash 3",
@@ -295,19 +295,36 @@ third_datasets = {
     "geography": "tpt 3",
     "constantly_update": False,
 }
-connectors_info ={
-    'name':'connector hub',
-    "description":'vjskmjks',
+fourth_datasets = {
+    "name": "dataset dash 4",
+    "description": "dataset dash desc 4",
+    "geography": "tpt 3",
+    "constantly_update": False,
+    "is_temp": False,
+    "category": ({"category dash": ["dashboard category"]}),
 }
-# auth = {
-#     "token": "null"
-# }
-# auth_co_steward = {
-#     "token": "null"
-# }
-# auth_participant= {
-#     "token": "null"
-# }
+connectors_info1 ={
+    'name':'connector hub 1',
+    "description":'connector 1 desc',
+}
+connectors_info2 ={
+    'name':'connector hub 2',
+    "description":'connector 2 desc',
+}
+datasetOnepr = {
+     "name": "participant dataset 1",
+    "description": "part description 1",
+    "geography": "tpt",
+    "constantly_update": False,
+    "is_temp": False,
+    "category": ({"category dash": ["dashboard category"]}),
+}
+datasetTwopr = {
+     "name": "participant dataset 2",
+    "description": "part description 2",
+    "geography": "tpt",
+    "constantly_update": False,
+}
 
 class TestCasesDashboard(TestCase):
     """test cases for dashboard """ 
@@ -316,19 +333,41 @@ class TestCasesDashboard(TestCase):
         super().setUpClass()
         self.user=Client()
         self.client_admin = Client()
+        self.client_participant=Client()
         self.dataset_url=reverse("dataset/v2-list")
         self.dataset_files_url=reverse("dataset_files-list")
         self.dashboard_url = reverse("new_dashboard-dashboard")
-        # print("AAAAAAAAAAAAAAAAAAAAAAAAAAAAA")
-        # print(self.dashboard_url)
         self.admin_role = UserRole.objects.create(
                         id= "1",
                         role_name= "datahub_admin"
                         )
+        self.participant_role = UserRole.objects.create(
+                        id=3,
+                        role_name="datahub_participant_root")
+        self.admin_user2 = User.objects.create(
+                            email= "admin2@dgreen.org",
+                            role_id= self.admin_role.id,
+                            )
+        self.admin_org2 = Organization.objects.create(
+                        org_email= "admin2_org@dg.org",
+                        name= "admin org2",
+                        phone_number= "+91 99000-62188",
+                        website= "htttps://google.com",
+                        address= ({"city": "Banglore"}),
+                        )
+        self.admin_map2 = UserOrganizationMap.objects.create(
+                                        user_id= self.admin_user2.id,
+                                        organization_id= self.admin_org2.id,
+                                        )
         self.admin_user1 = User.objects.create(
                         email= "admin1@dgreen.org",
                         role_id= self.admin_role.id,
                         )
+        self.participant_user1 = User.objects.create(
+                                email= "participant@digitalgreen.org",
+                                role_id= self.participant_role.id,
+                                # on_boarded_by=self.co_steward      
+                                )
         self.admin_org1 = Organization.objects.create(
                         org_email= "admin1_org@dg.org",
                         name= "admin org1",
@@ -336,23 +375,64 @@ class TestCasesDashboard(TestCase):
                         website= "htttps://google.com",
                         address= ({"city": "Banglore"}),
                         )
+        self.participant_org = Organization.objects.create(
+                                org_email="part_org@dg.org",
+                                name="part org1",
+                                phone_number="5678909876",
+                                website="htttps://google.com",
+                                address=json.dumps({"city": "Banglore"}),
+                                ) 
         self.admin_map1 = UserOrganizationMap.objects.create(
                                         user_id= self.admin_user1.id,
                                         organization_id= self.admin_org1.id,
                                         )
+        self.participant_map = UserOrganizationMap.objects.create(
+                                user_id = self.participant_user1.id,
+                                organization_id = self.participant_org.id)
+        #admin auth
         auth["token"] = TestUtils.create_token_for_user(self.admin_user1, self.admin_map1)
+        # auth["token"] = TestUtils.create_token_for_user(self.admin_user2, self.admin_map2)
         admin_header= self.set_auth_headers(self=self)
         self.client_admin.defaults['HTTP_AUTHORIZATION'] = admin_header[0]
         self.client_admin.defaults['CONTENT_TYPE'] = admin_header[1]
+        #participant auth
+        auth_participant["token"] = TestUtils.create_token_for_user(
+                                    self.participant_user1, self.participant_map)
+        participant_header= self.set_auth_headers(self=self, participant=True)
+        self.client_participant.defaults['HTTP_AUTHORIZATION'] = participant_header[0]
+        self.client_participant.defaults['CONTENT_TYPE'] = participant_header[1]
+        #admin2
+        self.fourth_dataset = DatasetV2.objects.create( user_map=self.admin_map2,
+                                                       **fourth_datasets)
+        self.dataset_id4 = self.fourth_dataset.id
+        self.left_dataset_pr = DatasetV2.objects.create(
+                            user_map=self.participant_map, **datasetOnepr)
+        file_data3 = {
+            "dataset": str(self.fourth_dataset.id),
+            "file" : open("datahub/tests/test_data/file.xls", "rb"),
+            "source": "file",
+        }
+        self.response_file3 = self.client_admin.post(self.dataset_files_url, file_data3)
+        file_data4 = {
+            "dataset": str(self.fourth_dataset.id),
+            "file" : open("datahub/tests/test_data/file_example_XLS_10.xls", "rb"),
+            "source": "file",
+            "accessibility": "private",
+        }
+        self.response_file4 = self.client_admin.post(self.dataset_files_url, file_data4)
+        connector_cs2 = Connectors.objects.create(user_id=self.admin_user2.id,
+                                                 **connectors_info2)
+        connector_map_cs2 = ConnectorsMap.objects.create(connectors_id=connector_cs2.id,
+                            left_dataset_file_id = self.response_file3.json()['id'],
+                            right_dataset_file_id = self.response_file4.json()['id'])
+        #admin1
         self.first_dataset = DatasetV2.objects.create( user_map=self.admin_map1,
                                                 **first_datasets)
-        self.dataset_id1 = self.first_dataset.id
         self.second_dataset = DatasetV2.objects.create( user_map=self.admin_map1,
                                                 **second_datasets)
         self.dataset_id2 = self.second_dataset.id
         self.third_dataset = DatasetV2.objects.create( user_map=self.admin_map1,
                                                 **third_datasets)
-        self.dataset_id3 = self.third_dataset.id
         file_data1 = {
             "dataset": str(self.first_dataset.id),
             "file" : open("datahub/tests/test_data/file.xls", "rb"),
@@ -366,17 +446,13 @@ class TestCasesDashboard(TestCase):
             "accessibility": "private",
         }
         self.response_file2 = self.client_admin.post(self.dataset_files_url, file_data2)
-        # print("hi--->",self.response_file1)
-        # print("hifdfehfrfurfrjjg5rkj")
-        connector_cs = Connectors.objects.create(user_id=self.admin_user1.id,
-                                                 **connectors_info)
-        connector_map_cs = ConnectorsMap.objects.create(connectors_id=connector_cs.id,
+        connector_cs1 = Connectors.objects.create(user_id=self.admin_user1.id,
+                                                 **connectors_info1)
+        connector_map_cs1 = ConnectorsMap.objects.create(connectors_id=connector_cs1.id,
                             left_dataset_file_id = self.response_file1.json()['id'],
                             right_dataset_file_id = self.response_file2.json()['id'])
         
-        print("*** connector_map_cs ***", connector_map_cs.id)
      
-    # @classmethod
     def set_auth_headers(self, participant=False, co_steward=False):  
         """ authorization """
         auth_data = auth_participant if participant else (auth_co_steward if co_steward else auth)
@@ -386,22 +462,72 @@ class TestCasesDashboard(TestCase):
         }
         return headers['Authorization'],headers['Content-Type']
     
-    #test case for admin my_org for dashboard
-    def test_dashboard_admin_valid_(self):
-        """ retrieving self dataset details by admin1 user"""
-        # https://datahubethdev.farmstack.co/be/datahub/newdashboard/dashboard/?my_org=True
-        params= "?my_org=True/"
+    #test case for admin1 my_org for dashboard
+    def test_dashboard_admin_myorg_valid(self):
+        """ retrieving dashboard details by admin1 user for myorg """
         data = {
             "my_org": True
         }
-        response = self.client_admin.get(self.dashboard_url+params)
+        response = self.client_admin.get(self.dashboard_url, data)
         data = response.json()
-        print("***test_dashboard_admin_valid_***", data)
-        print("***test_dashboard_admin_valid_***", response.status_code)
-        # assert response.status_code == 200
-        # assert data['name'] == first_datasets_dump_data['name']
-        # assert data['description'] == first_datasets_dump_data['description']
-       
-    
-    
-    
+        user_data = data['user']
+        org_email = user_data['org_email']
+        # print("***test_dashboard_admin_myorg_valid***", data)
+        # print("***test_dashboard_admin_myorg_valid***", response.status_code)
+        assert response.status_code == 200
+        assert org_email == 'admin1_org@dg.org'
+        assert data['total_participants']['participants_count'] == 1
+        assert data['dataset_file_metrics'][0]['file_count'] == 2
+        assert data['total_dataset_count'] == 2
+        assert data['dataset_category_metrics']['category dash'] == 1
+        assert data['recent_datasets'][0]['id'] == str(self.dataset_id2)
+        assert data['total_connectors_count'] == 1
+        assert data['recent_connectors'][0]['providers_count'] == 1
+        assert data['recent_connectors'][0]['name'] == connectors_info1['name']
+        
+    #test case for admin1 for other org in dashboard
+    def test_dashboard_admin_other_valid(self):
+        """ retrieving dashboard details for admin1 user in other org """
+        response = self.client_admin.get(self.dashboard_url)
+        data = response.json()
+        user_data = data['user']
+        org_email = user_data['org_email']
+        # print("***test_dashboard_admin_other_valid***", data)
+        # print("***test_dashboard_admin_other_valid***", response.status_code)
+        assert response.status_code == 200
+        assert org_email == 'admin1_org@dg.org'
+        assert data['total_participants']['participants_count'] == 1
+        assert data['total_dataset_count'] == 4
+        assert data['dataset_file_metrics'][0]['file_count'] == 4
+        assert data['dataset_category_metrics']['category dash'] == 3
+        assert data['total_connectors_count'] == 1
+        
+    #test case for participant for dashboard
+    def test_dashboard_participant_valid(self):
+        """ retrieving dashboard details by participant"""
+        data = {
+            "my_org": True
+        }
+        response = self.client_participant.get(self.dashboard_url, data)
+        data = response.json()
+        user_data = data['user']
+        org_email = user_data['org_email']
+        # print("***test_dashboard_participant_valid***", data)
+        # print("***test_dashboard_participant_valid***", response.status_code)
+        assert response.status_code == 200
+        assert org_email == 'part_org@dg.org'
+        assert data['total_dataset_count'] == 1
+        assert data['dataset_category_metrics']['category dash'] == 1
+        assert data['total_connectors_count'] == 0
+        
+    #test case for participant other for dashboard
+    # def test_dashboard_participant_other_invalid(self):
+        # """ retrieving dashboard details by participant"""
+        # response = self.client_participant.get(self.dashboard_url)
+        # data = response.json()
+        # user_data = data['user']
+        # org_email = user_data['org_email']
+        # print("***test_dashboard_participant_other_invalid***", data)
+        # print("***test_dashboard_participant_other_invalid***", response.status_code)
+        #it's is giving response which it should not
+        
