@@ -1,6 +1,7 @@
-from datahub.views import ParticipantViewSet
 from django.test import SimpleTestCase
 from django.urls import resolve, reverse
+
+from datahub.views import ParticipantViewSet
 
 
 class TestUrls(SimpleTestCase):
@@ -25,7 +26,7 @@ class TestUrls(SimpleTestCase):
 
     def test_support_ticket_create_invalid(self):
         """_summary_"""
-        url = reverse("support_tickets-list")
+        url = reverse("support-list")
         print(resolve(url))
         self.assertNotEqual(resolve(url).func, "SupportViewSet")
 

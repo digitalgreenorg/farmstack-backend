@@ -1,15 +1,16 @@
 from posixpath import basename
 from sys import settrace
 
-from core import settings
-from core.constants import Constants
 from django.urls import include, path
 from rest_framework.routers import DefaultRouter
 
+from core import settings
+from core.constants import Constants
 from datahub import views
 from datahub.views import (
     DatahubDashboard,
     DatahubDatasetsViewSet,
+    DatahubNewDashboard,
     DatahubThemeView,
     DatasetFileV2View,
     DatasetV2View,
@@ -27,7 +28,6 @@ from datahub.views import (
     TeamMemberViewSet,
     UsagePolicyListCreateView,
     UsagePolicyRetrieveUpdateDestroyView,
-    DatahubNewDashboard
 )
 
 router = DefaultRouter()
