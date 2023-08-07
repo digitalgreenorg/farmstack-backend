@@ -32,7 +32,7 @@ Farmstack enables you to solve the following:
 • **Impactful use cases**: By harnessing the potential of collective data, Farmstack  facilitates the development of more effective use cases for farmers, ultimately  leading to improved agricultural practices and outcomes.
 
 ## Overview Architecture
-![Architecture][https://github.com/digitalgreenorg/farmstack-backend/tree/main/docs/FS DataHub Functional Diagram V0.2.png]
+![Architecture][https://github.com/digitalgreenorg/farmstack-backend/tree/main/docs/FS_DataHub_Functional_Diagram_V02.png]
 
 
 ## Docker Build versions of Farmstack
