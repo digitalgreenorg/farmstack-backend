@@ -1,10 +1,7 @@
-<<<<<<< HEAD
 import email
 from unicodedata import category
 from rest_framework.reverse import reverse
 from django.test import Client, TestCase
-=======
->>>>>>> bdf7ded (test container added)
 # from rest_framework import status
 import json
 from unicodedata import category
@@ -484,7 +481,6 @@ class TestCasesDashboard(TestCase):
         }
         response = self.client_admin.get(self.dashboard_url, data)
         data = response.json()
-<<<<<<< HEAD
         user_data = data['user']
         org_email = user_data['org_email']
         # print("***test_dashboard_admin_myorg_valid***", data)
@@ -535,26 +531,3 @@ class TestCasesDashboard(TestCase):
         assert data['dataset_category_metrics']['category dash'] == 1
         assert data['total_connectors_count'] == 0
         
-    #test case for participant other for dashboard
-    # def test_dashboard_participant_other_invalid(self):
-        # """ retrieving dashboard details by participant"""
-        # response = self.client_participant.get(self.dashboard_url)
-        # data = response.json()
-        # user_data = data['user']
-        # org_email = user_data['org_email']
-        # print("***test_dashboard_participant_other_invalid***", data)
-        # print("***test_dashboard_participant_other_invalid***", response.status_code)
-        #it's is giving response which it should not
-        
-=======
-        print("***test_dashboard_admin_valid_***", data)
-        print("***test_dashboard_admin_valid_***", response.status_code)
-        assert response.status_code == 200
-        print(data)
-        # assert data['user']['name'] == first_datasets_dump_data['name']
-        # assert data['description'] == first_datasets_dump_data['description']
-        # assert False
-    
-    
-    
->>>>>>> bdf7ded (test container added)
