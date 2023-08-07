@@ -4,7 +4,7 @@
 
 Clone the repository to your local machine: 
 ```
-bash : git clone https://github.com/digitalgreenorg/datahub-frontend 
+bash : git clone https://github.com/digitalgreenorg/farmstack-frontend 
 ```
 
 Navigate to the project directory:
@@ -67,6 +67,10 @@ git clone https://github.com/digitalgreenorg/farmstack-backend.git
 docker pull postgres
 
 docker run -p 5432:5432 postgres:latest
+
+(or)
+
+Install postgres in your local system.
 ```
 
 3. Create a user and database in the postgres database installed.
