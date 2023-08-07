@@ -1,11 +1,15 @@
-version: '3.8'
-services:
-  postgres:
-    image: postgres:latest
-    container_name: postgres_container
+db_test:
+    container_name: test_optimus_db
+    image: postgres:14.3-alpine
     environment:
-            POSTGRES_USER: mydatabaseuser                # Same as the 'USER' in DATABASES setting
-            POSTGRES_PASSWORD: mypassword                # Same as the 'PASSWORD' in DATABASES setting
-            POSTGRES_DB: mydatabase                                        # Same as the 'NAME' in DATABASES setting
-    ports:
-            - "5432:5432"         # Expose PostgreSQL port to host for testing
+      DATABASE_NAME: test_optimusdb
+      DATABASE_USER: test_optimus
+      DATABASE_PASSWORD: Qinsjhgvv45LJSD
+      DATABASE_HOST: test_optimus_db
+      DATABASE_PORT: 5432
+      POSTGRES_USER: test_optimus
+      POSTGRES_PASSWORD: Qinsjhgvv45LJSD
+      POSTGRES_DB: test_optimusdb
+    volumes:
+      - postgres_data_test:/var/lib/postgresql/data/
+      - ./db/db_test_init.sql:/docker-entrypoint-initdb.d/1-init.sql
