@@ -1,11 +1,13 @@
 import datetime
 import logging
 import os
+import time
 import urllib
 from inspect import formatannotationrelativeto
 from urllib import parse
 
 import pandas as pd
+import requests
 import sendgrid
 from django.conf import settings
 from django.db import models
@@ -50,7 +52,8 @@ class Utils:
                 error.body,
                 exc_info=True,
             )
-            return Response({"Error": "Failed to send email "}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)  # type: ignore
+            # type: ignore
+            return Response({"Error": "Failed to send email "}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         except urllib.error.URLError as error:  # type: ignore
             LOGGER.error(
                 "Failed to send email Subject: %s with ERROR: %s",
@@ -58,7 +61,8 @@ class Utils:
                 error,
                 exc_info=True,
             )
-            return Response({"Error": "Failed to send email "}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)  # type: ignore
+            # type: ignore
+            return Response({"Error": "Failed to send email "}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
         return Response({"Message": "Email successfully sent!"}, status=status.HTTP_200_OK)
 
@@ -68,10 +72,13 @@ def replace_query_param(url, key, val, req):
     Given a URL and a key/val pair, set or replace an item in the query
     parameters of the URL, and return the new URL.
     """
+
     (scheme, netloc, path, query, fragment) = parse.urlsplit(str(url))
-    netloc = req.META.get("HTTP_HOST")
-    scheme = "http" if "localhost" in netloc or "127.0.0.1" in netloc else "https"  # type: ignore
-    path = path if "localhost" in netloc or "127.0.0.1" in netloc else "/be" + path  # type: ignore
+    netloc = req.META.get("HTTP_HOST", "testserver")
+    if netloc != "testserver":
+        scheme = "http" if "localhost" in netloc or "127.0.0.1" in netloc else "https"  # type: ignore
+        path = path if "localhost" in netloc or "127.0.0.1" in netloc else "/be" + path  # type: ignore
+
     query_dict = parse.parse_qs(query, keep_blank_values=True)
     query_dict[str(key)] = [str(val)]
     query = parse.urlencode(sorted(list(query_dict.items())), doseq=True)
@@ -84,10 +91,11 @@ def remove_query_param(url, key, req):
     parameters of the URL, and return the new URL.
     """
     (scheme, netloc, path, query, fragment) = parse.urlsplit(str(url))
-    netloc = req.META.get("HTTP_HOST")
-    scheme = "http" if "localhost" in netloc or "127.0.0.1" in netloc else "https"  # type: ignore
-    path = path if "localhost" in netloc or "127.0.0.1" in netloc else "/be" + path  # type: ignore
-    # netloc = "datahubtest.farmstack.co"
+    netloc = req.META.get("HTTP_HOST", "testserver")
+    if netloc != "testserver":
+        scheme = "http" if "localhost" in netloc or "127.0.0.1" in netloc else "https"  # type: ignore
+        path = path if "localhost" in netloc or "127.0.0.1" in netloc else "/be" + path  # type: ignore
+
     query_dict = parse.parse_qs(query, keep_blank_values=True)
     query_dict.pop(key, None)
     query = parse.urlencode(sorted(list(query_dict.items())), doseq=True)
@@ -135,8 +143,10 @@ def date_formater(date_range: list):
     try:
         start = date_range[0].split("T")[0]
         end = date_range[1].split("T")[0]
-        start = (datetime.datetime.strptime(start, "%Y-%m-%d") + datetime.timedelta(1)).strftime("%Y-%m-%d")
-        end = (datetime.datetime.strptime(end, "%Y-%m-%d") + datetime.timedelta(2)).strftime("%Y-%m-%d")
+        start = (datetime.datetime.strptime(start, "%Y-%m-%d") +
+                 datetime.timedelta(1)).strftime("%Y-%m-%d")
+        end = (datetime.datetime.strptime(end, "%Y-%m-%d") +
+               datetime.timedelta(2)).strftime("%Y-%m-%d")
         return [start, end]
     except Exception as error:
         logging.error("Invalid time formate: %s", error)
@@ -152,8 +162,10 @@ def one_day_date_formater(date_range: list):
     try:
         start = date_range[0].split("T")[0]
         end = date_range[1].split("T")[0]
-        start = (datetime.datetime.strptime(start, "%Y-%m-%d") + datetime.timedelta(1)).strftime("%Y-%m-%d")
-        end = (datetime.datetime.strptime(end, "%Y-%m-%d") + datetime.timedelta(1)).strftime("%Y-%m-%d")
+        start = (datetime.datetime.strptime(start, "%Y-%m-%d") +
+                 datetime.timedelta(1)).strftime("%Y-%m-%d")
+        end = (datetime.datetime.strptime(end, "%Y-%m-%d") +
+               datetime.timedelta(1)).strftime("%Y-%m-%d")
         return [start, end]
     except Exception as error:
         logging.error("Invalid time formate: %s", error)
@@ -167,7 +179,8 @@ def csv_and_xlsx_file_validatation(file_obj):
         if name.endswith(".xlsx") or name.endswith(".xls"):
             df = pd.read_excel(file_obj, header=0, nrows=21)
         else:
-            df = pd.read_csv(file_obj, encoding="unicode_escape", header=0, nrows=21)
+            df = pd.read_csv(
+                file_obj, encoding="unicode_escape", header=0, nrows=21)
         if len(df) < 5:
             return False
     except Exception as error:
@@ -181,9 +194,11 @@ def read_contents_from_csv_or_xlsx_file(file_path):
     dataframe = pd.DataFrame([])
     try:
         if file_path.endswith(".xlsx") or file_path.endswith(".xls"):
-            content = pd.read_excel(file_path, index_col=None, nrows=21).head(2) if file_path else dataframe
+            content = pd.read_excel(file_path, index_col=None, nrows=21).head(
+                2) if file_path else dataframe
         else:
-            content = pd.read_csv(file_path, index_col=False, nrows=21).head(2) if file_path else dataframe
+            content = pd.read_csv(file_path, index_col=False, nrows=21).head(
+                2) if file_path else dataframe
         content = content.drop(content.filter(regex='Unnamed').columns, axis=1)
         content = content.fillna("")
     except Exception as error:
@@ -191,3 +206,21 @@ def read_contents_from_csv_or_xlsx_file(file_path):
         return []
     content.columns = content.columns.astype(str)
     return content.to_dict(orient=Constants.RECORDS)
+
+
+def timer(func):
+    def wrapper(*args, **kwargs):
+        # start the timer
+        start_time = time.time()
+        # call the decorated function
+        result = func(*args, **kwargs)
+        # remeasure the time
+        end_time = time.time()
+        # compute the elapsed time and print it
+        execution_time = end_time - start_time
+        LOGGER.info(
+            f"Execution time: {execution_time} seconds for the API:{func}")
+        # return the result of the decorated function execution
+        return result
+    # return reference to the wrapper function
+    return wrapper

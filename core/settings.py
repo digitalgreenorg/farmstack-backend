@@ -117,26 +117,15 @@ DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.postgresql",
         "NAME": "postgres",
-        "USER": os.environ.get("POSTGRES_USER" ),
-        "PASSWORD": os.environ.get("POSTGRES_PASSWORD"),
-        "HOST": "db",
-        "PORT": "5432",
+        "USER": os.environ.get("POSTGRES_USER", "test"),
+        "PASSWORD": os.environ.get("POSTGRES_PASSWORD", "test"),
+        "HOST": os.environ.get("POSTGRES_HOST", "db"),
+        "PORT": os.environ.get("POSTGRES_PORT", "5432"),
         "OPTIONS": {
             "client_encoding": "UTF8",
         },
     },
-
-    # "default": {
-    #     "ENGINE": "django.db.backends.sqlite3",
-    #     "NAME": BASE_DIR / "db.sqlite3",
-    # },
 }
-# "default": {
-#     "ENGINE": "django.db.backends.sqlite3",
-#     "NAME": BASE_DIR / "db.sqlite3",
-# },
-# }
-
 
 # Password validation
 # https://docs.djangoproject.com/en/4.0/ref/settings/#auth-password-validators
@@ -384,9 +373,7 @@ CORS_ALLOW_CREDENTIALS = True
 # making sure CORS_ALLOW_HEADERS  is not "*"
 # making sure CORS_ALLOW_HEADERS  is not "*"
 CORS_ALLOW_HEADERS = list(default_headers) + ['Set-Cookie']
-INTERNAL_IPS = [
-    "127.0.0.1",
-]
+INTERNAL_IPS = "*"
 
 # FILE HANDLING
 FILE_UPLOAD_MAX_SIZE = 2

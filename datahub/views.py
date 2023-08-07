@@ -438,6 +438,7 @@ class ParticipantViewSet(GenericViewSet):
                 )
                 .order_by("-user__updated_at")
                 .all()
+
             )
 
         page = self.paginate_queryset(roles)
@@ -451,6 +452,7 @@ class ParticipantViewSet(GenericViewSet):
             .filter(user__status=True, user=pk)
             .first()
         )
+
         participant_serializer = ParticipantSerializer(roles, many=False)
         if participant_serializer.data:
             return Response(participant_serializer.data, status=status.HTTP_200_OK)
@@ -460,15 +462,16 @@ class ParticipantViewSet(GenericViewSet):
     @transaction.atomic
     def update(self, request, *args, **kwargs):
         """PUT method: update or send a PUT request on an object of the Product model"""
-        participant = self.get_object()
-        user_serializer = self.get_serializer(participant, data=request.data, partial=True)
-        user_serializer.is_valid(raise_exception=True)
-        organization = Organization.objects.get(id=request.data.get(Constants.ID))
-        organization_serializer = OrganizationSerializer(organization, data=request.data, partial=True)
-        organization_serializer.is_valid(raise_exception=True)
-        user_data = self.perform_create(user_serializer)
-        self.perform_create(organization_serializer)
         try:
+            participant = self.get_object()
+            user_serializer = self.get_serializer(participant, data=request.data, partial=True)
+            user_serializer.is_valid(raise_exception=True)
+            organization = Organization.objects.get(id=request.data.get(Constants.ID))
+            organization_serializer = OrganizationSerializer(organization, data=request.data, partial=True)
+            organization_serializer.is_valid(raise_exception=True)
+            user_data = self.perform_create(user_serializer)
+            self.perform_create(organization_serializer)
+
             if user_data.on_boarded_by:
                 admin_full_name = string_functions.get_full_name(user_data.first_name, user_data.last_name)
             else:
@@ -1086,27 +1089,31 @@ class DatahubDatasetsViewSet(GenericViewSet):
     @http_request_mutation
     def list(self, request, *args, **kwargs):
         """GET method: query all the list of objects from the Product model"""
-        data = []
-        user_id = request.META.get(Constants.USER_ID)
-        others = request.data.get(Constants.OTHERS)
-        filters = {Constants.USER_MAP_USER: user_id} if user_id and not others else {}
-        exclude = {Constants.USER_MAP_USER: user_id} if others else {}
-        if exclude or filters:
-            data = (
-                Datasets.objects.select_related(
-                    Constants.USER_MAP,
-                    Constants.USER_MAP_USER,
-                    Constants.USER_MAP_ORGANIZATION,
+        try:
+            data = []
+            user_id = request.META.get(Constants.USER_ID)
+            others = request.data.get(Constants.OTHERS)
+            filters = {Constants.USER_MAP_USER: user_id} if user_id and not others else {}
+            exclude = {Constants.USER_MAP_USER: user_id} if others else {}
+            if exclude or filters:
+                data = (
+                    Datasets.objects.select_related(
+                        Constants.USER_MAP,
+                        Constants.USER_MAP_USER,
+                        Constants.USER_MAP_ORGANIZATION,
+                    )
+                    .filter(user_map__user__status=True, status=True, **filters)
+                    .exclude(**exclude)
+                    .order_by(Constants.UPDATED_AT)
+                    .reverse()
+                    .all()
                 )
-                .filter(user_map__user__status=True, status=True, **filters)
-                .exclude(**exclude)
-                .order_by(Constants.UPDATED_AT)
-                .reverse()
-                .all()
-            )
-        page = self.paginate_queryset(data)
-        participant_serializer = DatahubDatasetsSerializer(page, many=True)
-        return self.get_paginated_response(participant_serializer.data)
+            page = self.paginate_queryset(data)
+            participant_serializer = DatahubDatasetsSerializer(page, many=True)
+            return self.get_paginated_response(participant_serializer.data)
+        except Exception as error:
+            LOGGER.error(error, exc_info=True)
+            return Response(str(error), status=status.HTTP_400_BAD_REQUEST)
 
     def retrieve(self, request, pk):
         """GET method: retrieve an object or instance of the Product model"""
@@ -1277,60 +1284,64 @@ class DatahubDatasetsViewSet(GenericViewSet):
     @http_request_mutation
     def filters_data(self, request, *args, **kwargs):
         """This function provides the filters data"""
-        data = request.data
-        org_id = data.pop(Constants.ORG_ID, "")
-        others = data.pop(Constants.OTHERS, "")
-        user_id = data.pop(Constants.USER_ID, "")
-
-        ####
-
-        org_id = request.META.pop(Constants.ORG_ID, "")
-        others = request.META.pop(Constants.OTHERS, "")
-        user_id = request.META.pop(Constants.USER_ID, "")
-
-        exclude, filters = {}, {}
-        if others:
-            exclude = {Constants.USER_MAP_ORGANIZATION: org_id} if org_id else {}
-            filters = {Constants.APPROVAL_STATUS: Constants.APPROVED}
-        else:
-            filters = {Constants.USER_MAP_ORGANIZATION: org_id} if org_id else {}
         try:
-            geography = (
-                Datasets.objects.values_list(Constants.GEOGRAPHY, flat=True)
-                .filter(status=True, **filters)
-                .exclude(geography="null")
-                .exclude(geography__isnull=True)
-                .exclude(geography="")
-                .exclude(**exclude)
-                .all()
-                .distinct()
-            )
-            crop_detail = (
-                Datasets.objects.values_list(Constants.CROP_DETAIL, flat=True)
-                .filter(status=True, **filters)
-                .exclude(crop_detail="null")
-                .exclude(crop_detail__isnull=True)
-                .exclude(crop_detail="")
-                .exclude(**exclude)
-                .all()
-                .distinct()
-            )
-            if os.path.exists(Constants.CATEGORIES_FILE):
-                with open(Constants.CATEGORIES_FILE, "r") as json_obj:
-                    category_detail = json.loads(json_obj.read())
+            data = request.data
+            org_id = data.pop(Constants.ORG_ID, "")
+            others = data.pop(Constants.OTHERS, "")
+            user_id = data.pop(Constants.USER_ID, "")
+
+            ####
+
+            org_id = request.META.pop(Constants.ORG_ID, "")
+            others = request.META.pop(Constants.OTHERS, "")
+            user_id = request.META.pop(Constants.USER_ID, "")
+
+            exclude, filters = {}, {}
+            if others:
+                exclude = {Constants.USER_MAP_ORGANIZATION: org_id} if org_id else {}
+                filters = {Constants.APPROVAL_STATUS: Constants.APPROVED}
             else:
-                category_detail = []
-        except Exception as error:  # type: ignore
-            logging.error("Error while filtering the datasets. ERROR: %s", error)
-            return Response(f"Invalid filter fields: {list(request.data.keys())}", status=500)
-        return Response(
-            {
-                "geography": geography,
-                "crop_detail": crop_detail,
-                "category_detail": category_detail,
-            },
-            status=200,
-        )
+                filters = {Constants.USER_MAP_ORGANIZATION: org_id} if org_id else {}
+            try:
+                geography = (
+                    Datasets.objects.values_list(Constants.GEOGRAPHY, flat=True)
+                    .filter(status=True, **filters)
+                    .exclude(geography="null")
+                    .exclude(geography__isnull=True)
+                    .exclude(geography="")
+                    .exclude(**exclude)
+                    .all()
+                    .distinct()
+                )
+                crop_detail = (
+                    Datasets.objects.values_list(Constants.CROP_DETAIL, flat=True)
+                    .filter(status=True, **filters)
+                    .exclude(crop_detail="null")
+                    .exclude(crop_detail__isnull=True)
+                    .exclude(crop_detail="")
+                    .exclude(**exclude)
+                    .all()
+                    .distinct()
+                )
+                if os.path.exists(Constants.CATEGORIES_FILE):
+                    with open(Constants.CATEGORIES_FILE, "r") as json_obj:
+                        category_detail = json.loads(json_obj.read())
+                else:
+                    category_detail = []
+            except Exception as error:  # type: ignore
+                logging.error("Error while filtering the datasets. ERROR: %s", error)
+                return Response(f"Invalid filter fields: {list(request.data.keys())}", status=500)
+            return Response(
+                {
+                    "geography": geography,
+                    "crop_detail": crop_detail,
+                    "category_detail": category_detail,
+                },
+                status=200,
+            )
+        except Exception as error:
+            LOGGER.error(error, exc_info=True)
+            return Response(str(error), status=status.HTTP_400_BAD_REQUEST)
 
     @action(detail=False, methods=["post"])
     @http_request_mutation
@@ -1743,22 +1754,26 @@ class DatasetV2ViewSet(GenericViewSet):
         [ref]: /datahub/dataset/v2/<uuid>
         """
         # setattr(request.data, "_mutable", True)
-        data = request.data
-        to_delete = ast.literal_eval(data.get("deleted", "[]"))
-        self.dataset_files(data, to_delete)
-        datasetv2 = self.get_object()
-        serializer = self.get_serializer(
-            datasetv2,
-            data=data,
-            partial=True,
-            context={
-                "standardisation_template": request.data.get("standardisation_template"),
-                "standardisation_config": request.data.get("standardisation_config"),
-            },
-        )
-        serializer.is_valid(raise_exception=True)
-        serializer.save()
-        return Response(serializer.data, status=status.HTTP_201_CREATED)
+        try:
+            data = request.data
+            to_delete = ast.literal_eval(data.get("deleted", "[]"))
+            self.dataset_files(data, to_delete)
+            datasetv2 = self.get_object()
+            serializer = self.get_serializer(
+                datasetv2,
+                data=data,
+                partial=True,
+                context={
+                    "standardisation_template": request.data.get("standardisation_template"),
+                    "standardisation_config": request.data.get("standardisation_config"),
+                },
+            )
+            serializer.is_valid(raise_exception=True)
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        except Exception as error:
+            LOGGER.error(error, exc_info=True)
+            return Response(str(error), status=status.HTTP_400_BAD_REQUEST)
 
     # not being used
     @action(detail=False, methods=["delete"])
@@ -2005,20 +2020,24 @@ class DatasetV2ViewSet(GenericViewSet):
         **Endpoint**
         [ref]: /datahub/dataset/v2/
         """
-        dataset_obj = self.get_object()
-        if dataset_obj:
-            dataset_files = DatasetV2File.objects.filter(dataset_id=dataset_obj.id)
-            dataset_dir = os.path.join(settings.DATASET_FILES_URL, str(dataset_obj.name))
+        try:
+            dataset_obj = self.get_object()
+            if dataset_obj:
+                dataset_files = DatasetV2File.objects.filter(dataset_id=dataset_obj.id)
+                dataset_dir = os.path.join(settings.DATASET_FILES_URL, str(dataset_obj.name))
 
-            if os.path.exists(dataset_dir):
-                shutil.rmtree(dataset_dir)
-                LOGGER.info(f"Deleting file: {dataset_dir}")
+                if os.path.exists(dataset_dir):
+                    shutil.rmtree(dataset_dir)
+                    LOGGER.info(f"Deleting file: {dataset_dir}")
 
-            # delete DatasetV2File & DatasetV2 instances
-            LOGGER.info(f"Deleting dataset obj: {dataset_obj}")
-            dataset_files.delete()
-            dataset_obj.delete()
-            return Response(status=status.HTTP_204_NO_CONTENT)
+                # delete DatasetV2File & DatasetV2 instances
+                LOGGER.info(f"Deleting dataset obj: {dataset_obj}")
+                dataset_files.delete()
+                dataset_obj.delete()
+                return Response(status=status.HTTP_204_NO_CONTENT)
+        except Exception as error:
+            LOGGER.error(error, exc_info=True)
+            return Response(str(error), status=status.HTTP_400_BAD_REQUEST)
 
 
 class DatasetV2ViewSetOps(GenericViewSet):
@@ -2274,19 +2293,27 @@ class DatasetV2View(GenericViewSet):
     @authenticate_user(model=DatasetV2)
     def update(self, request, *args, **kwargs):
         # setattr(request.data, "_mutable", True)
-        instance = self.get_object()
-        data = request.data
-        data["is_temp"] = False
-        serializer = self.get_serializer(instance, data=data, partial=True)
-        serializer.is_valid(raise_exception=True)
-        serializer.save()
-        return Response(serializer.data, status=status.HTTP_200_OK)
+        try:
+            instance = self.get_object()
+            data = request.data
+            data["is_temp"] = False
+            serializer = self.get_serializer(instance, data=data, partial=True)
+            serializer.is_valid(raise_exception=True)
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        except Exception as error:
+            LOGGER.error(error, exc_info=True)
+            return Response(str(error), status=status.HTTP_400_BAD_REQUEST)
 
     @authenticate_user(model=DatasetV2)
     def destroy(self, request, *args, **kwargs):
-        instance = self.get_object()
-        instance.delete()
-        return Response(status=status.HTTP_204_NO_CONTENT)
+        try:
+            instance = self.get_object()
+            instance.delete()
+            return Response(status=status.HTTP_204_NO_CONTENT)
+        except Exception as error:
+            LOGGER.error(error, exc_info=True)
+            return Response(str(error), status=status.HTTP_400_BAD_REQUEST)
 
     @action(detail=False, methods=["post"])
     def requested_datasets(self, request, *args, **kwargs):
@@ -2392,60 +2419,63 @@ class DatasetFileV2View(GenericViewSet):
     @authenticate_user(model=DatasetV2File)
     def update(self, request, *args, **kwargs):
         # setattr(request.data, "_mutable", True)
+        try:
+            data = request.data
+            instance = self.get_object()
+            # Generate the file and write the path to standardised file.
+            standardised_configuration = request.data.get("standardised_configuration")
+            mask_columns = request.data.get(
+                "mask_columns",
+            )
+            config = request.data.get("config")
+            file_path = str(instance.file)
 
-        data = request.data
-        instance = self.get_object()
-        # Generate the file and write the path to standardised file.
-        standardised_configuration = request.data.get("standardised_configuration")
-        mask_columns = request.data.get(
-            "mask_columns",
-        )
-        config = request.data.get("config")
-        file_path = str(instance.file)
+            if file_path.endswith(".xlsx") or file_path.endswith(".xls"):
+                df = pd.read_excel(os.path.join(settings.DATASET_FILES_URL, file_path), index_col=None)
+            else:
+                df = pd.read_csv(os.path.join(settings.DATASET_FILES_URL, file_path), index_col=False)
 
-        if file_path.endswith(".xlsx") or file_path.endswith(".xls"):
-            df = pd.read_excel(os.path.join(settings.DATASET_FILES_URL, file_path), index_col=None)
-        else:
-            df = pd.read_csv(os.path.join(settings.DATASET_FILES_URL, file_path), index_col=False)
+            df[mask_columns] = "######"
 
-        df[mask_columns] = "######"
+            df.rename(columns=standardised_configuration, inplace=True)
+            df.columns = df.columns.astype(str)
+            df = df.drop(df.filter(regex="Unnamed").columns, axis=1)
 
-        df.rename(columns=standardised_configuration, inplace=True)
-        df.columns = df.columns.astype(str)
-        df = df.drop(df.filter(regex="Unnamed").columns, axis=1)
+            if not os.path.exists(os.path.join(settings.DATASET_FILES_URL, instance.dataset.name, instance.source)):
+                os.makedirs(os.path.join(settings.DATASET_FILES_URL, instance.dataset.name, instance.source))
 
-        if not os.path.exists(os.path.join(settings.DATASET_FILES_URL, instance.dataset.name, instance.source)):
-            os.makedirs(os.path.join(settings.DATASET_FILES_URL, instance.dataset.name, instance.source))
+            file_name = os.path.basename(file_path).replace(".", "_standerdise.")
+            if file_path.endswith(".csv"):
+                df.to_csv(
+                    os.path.join(
+                        settings.DATASET_FILES_URL,
+                        instance.dataset.name,
+                        instance.source,
+                        file_name,
+                    )
+                )  # type: ignore
+            else:
+                df.to_excel(
+                    os.path.join(
+                        settings.DATASET_FILES_URL,
+                        instance.dataset.name,
+                        instance.source,
+                        file_name,
+                    )
+                )  # type: ignore
 
-        file_name = os.path.basename(file_path).replace(".", "_standerdise.")
-        if file_path.endswith(".csv"):
-            df.to_csv(
-                os.path.join(
-                    settings.DATASET_FILES_URL,
-                    instance.dataset.name,
-                    instance.source,
-                    file_name,
-                )
-            )  # type: ignore
-        else:
-            df.to_excel(
-                os.path.join(
-                    settings.DATASET_FILES_URL,
-                    instance.dataset.name,
-                    instance.source,
-                    file_name,
-                )
-            )  # type: ignore
-
-        # data = request.data
-        standardised_file_path = os.path.join(instance.dataset.name, instance.source, file_name)
-        data["standardised_configuration"] = config
-        data["file_size"] = os.path.getsize(os.path.join(settings.DATASET_FILES_URL, str(standardised_file_path)))
-        serializer = self.get_serializer(instance, data=data, partial=True)
-        serializer.is_valid(raise_exception=True)
-        serializer.save()
-        DatasetV2File.objects.filter(id=serializer.data.get("id")).update(standardised_file=standardised_file_path)
-        return Response(serializer.data, status=status.HTTP_200_OK)
+            # data = request.data
+            standardised_file_path = os.path.join(instance.dataset.name, instance.source, file_name)
+            data["standardised_configuration"] = config
+            data["file_size"] = os.path.getsize(os.path.join(settings.DATASET_FILES_URL, str(standardised_file_path)))
+            serializer = self.get_serializer(instance, data=data, partial=True)
+            serializer.is_valid(raise_exception=True)
+            serializer.save()
+            DatasetV2File.objects.filter(id=serializer.data.get("id")).update(standardised_file=standardised_file_path)
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        except Exception as error:
+            LOGGER.error(error, exc_info=True)
+            return Response(str(error), status=status.HTTP_400_BAD_REQUEST)
 
     def list(self, request, *args, **kwargs):
         data = DatasetV2File.objects.filter(dataset=request.GET.get("dataset")).values("id", "file")
@@ -2453,18 +2483,25 @@ class DatasetFileV2View(GenericViewSet):
 
     @authenticate_user(model=DatasetV2File)
     def destroy(self, request, *args, **kwargs):
-        dataset_file = self.get_object()
-        dataset_file.delete()
-        return Response(status=status.HTTP_204_NO_CONTENT)
-
+        try:
+            dataset_file = self.get_object()
+            dataset_file.delete()
+            return Response(status=status.HTTP_204_NO_CONTENT)
+        except Exception as error:
+            LOGGER.error(error, exc_info=True)
+            return Response(str(error), status=status.HTTP_400_BAD_REQUEST)
     # @action(detail=False, methods=["put"])
     @authenticate_user(model=DatasetV2File)
     def patch(self, request, *args, **kwargs):
-        instance = self.get_object()
-        serializer = self.get_serializer(instance, data=request.data, partial=True)
-        serializer.is_valid(raise_exception=True)
-        serializer.save()
-        return Response(serializer.data, status=status.HTTP_200_OK)
+        try:
+            instance = self.get_object()
+            serializer = self.get_serializer(instance, data=request.data, partial=True)
+            serializer.is_valid(raise_exception=True)
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        except Exception as error:
+            LOGGER.error(error, exc_info=True)
+            return Response(str(error), status=status.HTTP_400_BAD_REQUEST)
 
 
 class UsagePolicyListCreateView(generics.ListCreateAPIView):
