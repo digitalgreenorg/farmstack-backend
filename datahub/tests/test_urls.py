@@ -80,6 +80,18 @@ class TestUrls(SimpleTestCase):
         url = reverse("datasets/v2-list")
         print(resolve(url))
         self.assertNotEqual(resolve(url).func, "DatasetV2View")
+        
+    def test_dashboard_valid(self):
+        """ dashboard """
+        url = reverse("new_dashboard-dashboard")
+        print(resolve(url)._func_path)
+        assert resolve(url)._func_path == "datahub.views.DatahubNewDashboard"
+
+    def test_dashboard_invalid(self):
+        """ dashboard """
+        url = reverse("new_dashboard-dashboard")
+        print(resolve(url))
+        self.assertNotEqual(resolve(url).func, "DatahubNewDashboard")
 
     def test_dataset_v2_endpoint(self):
         url = reverse("datasets/v2-list")
