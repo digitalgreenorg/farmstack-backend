@@ -1,4 +1,4 @@
-from datahub.views import ParticipantViewSet, SupportViewSet
+from datahub.views import ParticipantViewSet
 from django.test import SimpleTestCase
 from django.urls import resolve, reverse
 
@@ -80,3 +80,23 @@ class TestUrls(SimpleTestCase):
         url = reverse("datasets/v2-list")
         print(resolve(url))
         self.assertNotEqual(resolve(url).func, "DatasetV2View")
+
+    def test_dataset_v2_endpoint(self):
+        url = reverse("datasets/v2-list")
+
+        assert resolve(url)._func_path == "datahub.views.DatasetV2View"
+
+    def test_dataset_v2_endpoint_retrieve_only(self):
+        url = reverse("dataset/v2-list")
+
+        assert resolve(url)._func_path == "datahub.views.DatasetV2ViewSet"
+
+    def test_dataset_v2_upload_file_endpoint(self):
+        url = reverse("dataset_files-list")
+
+        assert resolve(url)._func_path == "datahub.views.DatasetFileV2View"
+
+    def test_dataset_v2_standardise_file_endpoint(self):
+        url = reverse("standardise-list")
+
+        assert resolve(url)._func_path == "datahub.views.StandardisationTemplateView"
