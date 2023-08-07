@@ -120,7 +120,7 @@ DATABASES = {
         "USER": os.environ.get("POSTGRES_USER", "test"),
         "PASSWORD": os.environ.get("POSTGRES_PASSWORD", "test"),
         "HOST": os.environ.get("POSTGRES_HOST", "db"),
-        "PORT": os.environ.get("POSTGRES_PORT", "7000"),
+        "PORT": os.environ.get("POSTGRES_PORT", "5432"),
         "OPTIONS": {
             "client_encoding": "UTF8",
         },
