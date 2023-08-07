@@ -12,7 +12,7 @@ Thank you for your interest in contributing to our project! We welcome contribut
 
 ## Code Contribution Guidelines
 
-1. Fork the repository and create a new branch for your contribution.
+1. Clone the repository and create a new branch for your contribution.
 
 2. Ensure that your code follows our coding style and conventions.
 
