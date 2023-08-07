@@ -119,8 +119,10 @@ class RegisterViewset(GenericViewSet):
         return Response(serializer.data, status=status.HTTP_200_OK)
 
     def update(self, request, *args, **kwargs):
+        # print("this is the aoi")
         """PUT method: update or send a PUT request on an object of the Product model"""
         instance = self.get_object()
+        # print(self.get_serializer())
         serializer = self.get_serializer(instance, data=request.data, partial=True)
         # serializer = UserUpdateSerializer(instance, data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
@@ -364,12 +366,12 @@ class VerifyLoginOTPViewset(GenericViewSet):
                         refresh["org_id"] = str(user_map.organization_id) if user_map else None
                         refresh["map_id"] = str(user_map.id) if user_map else None
                         refresh["role"] = str(user.role_id) 
-                        refresh["onboarded_by"] = str(user.on_boarded_by)
+                        refresh["onboarded_by"] = str(user.on_boarded_by_id)
 
                         refresh.access_token["org_id"] = str(user_map.organization_id) if user_map else None
                         refresh.access_token["map_id"] = str(user_map.id) if user_map else None 
                         refresh.access_token["role"] = str(user.role_id) 
-                        refresh.access_token["onboarded_by"] = str(user.on_boarded_by)
+                        refresh.access_token["onboarded_by"] = str(user.on_boarded_by_id)
 
 
                         return Response(

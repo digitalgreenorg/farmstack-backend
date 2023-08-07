@@ -40,7 +40,8 @@ from utils.validators import (
 )
 
 from .models import Policy, UsagePolicy
-
+from django.core.validators import URLValidator
+from django.core.exceptions import ValidationError
 LOGGER = logging.getLogger(__name__)
 
 
@@ -59,18 +60,25 @@ class OrganizationRetriveSerializer(serializers.ModelSerializer):
 
 
 class OrganizationSerializer(serializers.ModelSerializer):
-    """_summary_
 
-    Args:
-        serializers (_type_): _description_
-    """
+    org_email = serializers.EmailField()
+    website = serializers.CharField()
 
+    def validate(self, attrs):
+        # Use URLValidator to validate the website field
+        website = attrs.get('website')
+        if website:       
+            validator = URLValidator(schemes=["https"])
+            try:
+                validator(website)
+            except ValidationError:
+                raise serializers.ValidationError({"website": "Invalid website URL"})
+
+        return attrs
     class Meta:
-        """_summary_"""
-
         model = Organization
         exclude = Constants.EXCLUDE_DATES
-        # fields = Constants.ALL
+
 
 
 class UserOrganizationCreateSerializer(serializers.Serializer):

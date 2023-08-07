@@ -110,7 +110,6 @@ TEMPLATES = [
 
 WSGI_APPLICATION = "core.wsgi.application"
 
-
 # Database
 # https://docs.djangoproject.com/en/4.0/ref/settings/#databases
 
@@ -118,25 +117,15 @@ DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.postgresql",
         "NAME": "postgres",
-        "USER": os.environ.get("POSTGRES_USER" ),
-        "PASSWORD": os.environ.get("POSTGRES_PASSWORD"),
-        "HOST": "db",
-        "PORT": "5432",
+        "USER": os.environ.get("POSTGRES_USER", "test"),
+        "PASSWORD": os.environ.get("POSTGRES_PASSWORD", "test"),
+        "HOST": os.environ.get("POSTGRES_HOST", "db"),
+        "PORT": os.environ.get("POSTGRES_PORT", "5432"),
         "OPTIONS": {
             "client_encoding": "UTF8",
         },
     },
-    # "default": {
-    #     "ENGINE": "django.db.backends.sqlite3",
-    #     "NAME": BASE_DIR / "db.sqlite3",
-    # },
 }
-# "default": {
-#     "ENGINE": "django.db.backends.sqlite3",
-#     "NAME": BASE_DIR / "db.sqlite3",
-# },
-# }
-
 
 # Password validation
 # https://docs.djangoproject.com/en/4.0/ref/settings/#auth-password-validators
@@ -156,7 +145,6 @@ AUTH_PASSWORD_VALIDATORS = [
     },
 ]
 
-
 # Internationalization
 # https://docs.djangoproject.com/en/4.0/topics/i18n/
 
@@ -167,7 +155,6 @@ TIME_ZONE = "UTC"
 USE_I18N = True
 
 USE_TZ = True
-
 
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/4.0/howto/static-files/
@@ -180,6 +167,8 @@ MEDIA_URL = "media/"
 
 PROTECTED_MEDIA_ROOT = os.path.join(BASE_DIR, 'protected')
 PROTECTED_MEDIA_URL = "protected/"
+SUPPORT_TICKET_V2 = "support_ticket/"
+SUPPORT_RESOLUTIONS = "support_resolutions/"
 
 STATICFILES_DIRS = [
     os.path.join(BASE_DIR, "media/"),
@@ -211,8 +200,12 @@ TEMP_STANDARDISED_DIR = "temp/standardised/"
 DATASET_FILES_URL = os.path.join(PROTECTED_MEDIA_URL, "datasets/")
 POLICY_FILES_URL = os.path.join(MEDIA_URL, "policy/")
 TEMP_CONNECTOR_URL = os.path.join(MEDIA_URL, "temp/connectors/")
-CONNECTOR_FILES_URL =  os.path.join(MEDIA_URL, "connectors/")
+CONNECTOR_FILES_URL = os.path.join(MEDIA_URL, "connectors/")
 STANDARDISED_FILES_URL = os.path.join(PROTECTED_MEDIA_URL, "standardised/")
+
+RESOLUTIONS_ATTACHMENT_URL = os.path.join(SUPPORT_RESOLUTIONS, "resolutions/")
+SUPPORT_TICKET_FILES_URL = os.path.join(SUPPORT_TICKET_V2, "support/")
+
 # os.makedirs(CONNECTOR_FILES_URL)
 
 if not os.path.exists(TEMP_STANDARDISED_DIR):
@@ -224,7 +217,6 @@ if not os.path.exists(TEMP_CONNECTOR_URL):
     os.makedirs(TEMP_CONNECTOR_URL)
 if not os.path.exists(CONNECTOR_FILES_URL):
     os.makedirs(CONNECTOR_FILES_URL)
-
 
 # Template Files.
 SINGLE_PULL_PROVIDER_TEMPLATE_XML = os.path.join(
@@ -267,7 +259,7 @@ AUTH_USER_MODEL = "accounts.User"
 
 REST_FRAMEWORK = {
     "DEFAULT_FILTER_BACKENDS": ["django_filters.rest_framework.DjangoFilterBackend"],
-     "DEFAULT_AUTHENTICATION_CLASSES": ("rest_framework_simplejwt.authentication.JWTAuthentication",),
+    "DEFAULT_AUTHENTICATION_CLASSES": ("rest_framework_simplejwt.authentication.JWTAuthentication",),
     # "DEFAULT_PERMISSION_CLASSES": [
     #     "rest_framework.permissions.AllowAny"
     # ],
@@ -278,7 +270,7 @@ REST_FRAMEWORK = {
     #  # Un comment this to enable authentication
     "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
     "EXCEPTION_HANDLER": "rest_framework.views.exception_handler",
-    
+
 }
 
 SIMPLE_JWT = {
@@ -378,11 +370,10 @@ CORS_ORIGIN_ALLOW_ALL = True
 #   'https://127.0.0.1:8000'
 # )
 CORS_ALLOW_CREDENTIALS = True
-#making sure CORS_ALLOW_HEADERS  is not "*"
+# making sure CORS_ALLOW_HEADERS  is not "*"
+# making sure CORS_ALLOW_HEADERS  is not "*"
 CORS_ALLOW_HEADERS = list(default_headers) + ['Set-Cookie']
-INTERNAL_IPS = [
-    "127.0.0.1",
-]
+INTERNAL_IPS = "*"
 
 # FILE HANDLING
 FILE_UPLOAD_MAX_SIZE = 2
