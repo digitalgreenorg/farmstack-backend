@@ -46,7 +46,7 @@ router.register(r"new_dataset_v2", DatasetV2View, basename=Constants.DATASETS_V2
 router.register(r"dataset_files", DatasetFileV2View, basename=Constants.DATASET_FILES)
 router.register(r"dataset_ops",DatasetV2ViewSetOps,basename="")
 router.register(r"standardise", StandardisationTemplateView, basename=Constants.STANDARDISE)
-router.register(r"newdashboard", DatahubNewDashboard, basename=Constants.DASHBOARD)
+router.register(r"newdashboard", DatahubNewDashboard, basename=Constants.NEW_DASHBOARD)
 
 
  

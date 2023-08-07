@@ -1,10 +1,15 @@
 import json
-from turtle import st
 import uuid
+from turtle import st
+
 from django.urls import reverse
-from datahub.models import StandardisationTemplate
-from rest_framework.test import APIClient, APITestCase
 from rest_framework import status
+from rest_framework.test import APIClient, APITestCase
+from rest_framework_simplejwt.tokens import RefreshToken
+
+from accounts.models import User, UserRole
+from datahub.models import Organization, StandardisationTemplate, UserOrganizationMap
+
 
 class TestViews(APITestCase):
     
@@ -26,7 +31,59 @@ class TestViews(APITestCase):
             datapoint_description= "farmer 2 details is here",
             datapoint_attributes= []
             )
-    
+        user_role_admin = UserRole.objects.create(
+            id="1",
+            role_name="datahub_admin"
+        )
+
+        user_role_participant = UserRole.objects.create(
+            id="3",
+            role_name="datahub_participant_root"
+        )
+
+        user_role_co_steward = UserRole.objects.create(
+            id="6",
+            role_name="datahub_co_steward"
+        )
+
+        user = User.objects.create(
+            first_name="SYSTEM",
+            last_name="ADMIN",
+            email="admin@gmail.com",
+            role_id=user_role_admin.id,
+        )
+
+        organization = Organization.objects.create(
+            name="Some Organization",
+            org_email="org@gmail.com",
+            address="{}",
+        )
+
+        user_map = UserOrganizationMap.objects.create(
+            user_id=user.id,
+            organization_id=organization.id
+        )
+        auth = {}
+
+        refresh = RefreshToken.for_user(user)
+        refresh["org_id"] = str(user_map.organization_id) if user_map else None
+        refresh["map_id"] = str(user_map.id) if user_map else None
+        refresh["role"] = str(user.role_id)
+        refresh["onboarded_by"] = str(user.on_boarded_by_id)
+
+        refresh.access_token["org_id"] = str(user_map.organization_id) if user_map else None
+        refresh.access_token["map_id"] = str(user_map.id) if user_map else None
+        refresh.access_token["role"] = str(user.role_id)
+        refresh.access_token["onboarded_by"] = str(user.on_boarded_by_id)
+        auth["token"] = refresh.access_token
+
+        headers = {
+            'Content-Type': 'application/json',
+            'Authorization': f'Bearer {auth["token"]}'
+        }
+
+        self.client.defaults['HTTP_AUTHORIZATION'] = headers['Authorization']
+        self.client.defaults['CONTENT_TYPE'] = headers['Content-Type']
     #test case for create method(valid case)        
     def test_stardardise_create_valid(self):
         stardardise_valid_data = [

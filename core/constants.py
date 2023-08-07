@@ -171,6 +171,7 @@ class Constants:
     AUTHORIZATION = 'Authorization'
     ORGANIZATION_NAME_ICONTAINS = 'organization__name__icontains'
     DASHBOARD = 'dashboard'
+    NEW_DASHBOARD = 'new_dashboard'
 
 
 class NumericalConstants:
