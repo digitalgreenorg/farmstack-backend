@@ -117,7 +117,6 @@ from .serializers import (
     UsagePolicyDetailSerializer,
     UsagePolicySerializer,
 )
-from .services.datahub_services import DatahubService
 
 LOGGER = logging.getLogger(__name__)
 
@@ -2390,23 +2389,61 @@ class DatasetV2View(GenericViewSet):
     #     serializer = self.get_serializer(page, many=True).exclude(is_temp = True)
     #     return self.get_paginated_response(serializer.data)
 
-    @action(detail=False, methods=["get"])
-    def get_dashboard_chart_data(self, request, *args, **kwargs):
-        file_path = f"{BASE_DIR}/datahub/media/file.xlsx"
-        print("BASE_DIR")
-        print(file_path)
-        print("BASE_DIR")
-        df = pd.read_excel(file_path)
-        dashboard_data = DatahubService.create_dashboard_response(df=df)
+    @action(detail=True, methods=["get"])
+    def get_dashboard_chart_data(self, request, pk, *args, **kwargs):
+        try:
+            dataset_file = DatasetV2File.objects.get(id=pk)
+            df = pd.read_excel(dataset_file.standardised_file)
+            obj = {
+                "total_no_of_records": len(df),
+                "male_count": (df['Gender'] == 1).sum(),
+                "female_count": (df['Gender'] == 0).sum(),
+                "constituencies": (df['Constituency']).nunique(),
+                "counties": (df['County']).nunique(),
+                "sub_counties": (df['Sub County']).nunique(),
+                "farming_practices": {
+                    "crop_production": (df['Crop Production']).sum(),
+                    "livestock_production": (df['Livestock Production']).sum(),
+                },
+                "livestock_and_poultry_production": {
+                    "cows": (df[['Other Dual Cattle', 'Cross breed Cattle', 'Cattle boma']]).sum(axis=1).sum(),
+                    "goats": df[['Small East African Goats', 'Somali Goat', 'Other Goat']].sum(axis=1).sum(),
+                    "chickens": df[['Chicken -Indigenous', 'Chicken -Broilers', 'Chicken -Layers']].sum(axis=1).sum(),
+                    "ducks": df[['Ducks']].sum(axis=1).sum(),
+                    "sheep": df[['Other Sheep']].sum()
+                },
+                "financial_livelihood": {
+                    "lenders": (df['Moneylender']).sum(),
+                    "relatives": (df['Family']).sum(),
+                    "traders": 0,
+                    "agents": 0,
+                    "institutional": 0
+                },
+                "water_sources": {
+                    "borewell": 0,
+                    "irrigation": (df['Total Area Irrigation']).sum(),
+                    "rainwater": (df['Rain']).sum(),
 
-        print("json_data")
-        print(dashboard_data)
-        print("json_data")
+                },
+                "insurance_information": {
+                    "insured_crops": (df['Do you insure your crops?']).sum(),
+                    "insured_machinery": (df['Do you insure your farm buildings and other assets?']).sum(),
+                }
+            }
 
-        return Response(
-            dashboard_data,
-            status=status.HTTP_500_INTERNAL_SERVER_ERROR,
-        )
+            return Response(
+                obj,
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+
+        except DatasetV2File.DoesNotExist:
+            return Response(
+                "No dataset file for the provided id.",
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+
+
+
 
 
 class DatasetFileV2View(GenericViewSet):
