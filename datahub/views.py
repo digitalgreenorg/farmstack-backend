@@ -2226,6 +2226,7 @@ class StandardisationTemplateView(GenericViewSet):
     def update_standardisation_template(self, request, *args, **kwargs):
         update_list = list()
         create_list = list()
+        object_ids_in_request = set()
         try:
             for data in request.data:
                 if data.get(Constants.ID, None):
@@ -2235,6 +2236,7 @@ class StandardisationTemplateView(GenericViewSet):
                     serializer = StandardisationTemplateUpdateSerializer(instance, data=data, partial=True)
                     serializer.is_valid(raise_exception=True)
                     update_list.append(StandardisationTemplate(id=id, **data))
+                    object_ids_in_request.add(id)
                 else:
                     # Create
                     create_list.append(data)
@@ -2244,6 +2246,10 @@ class StandardisationTemplateView(GenericViewSet):
             StandardisationTemplate.objects.bulk_update(
                 update_list, fields=["datapoint_category", "datapoint_attributes"]
             )
+            objects_to_delete = StandardisationTemplate.objects.exclude(
+            id__in=object_ids_in_request
+            )
+            objects_to_delete.delete()
             create_serializer.save()
             return Response(status=status.HTTP_201_CREATED)
         except Exception as error:
@@ -2261,6 +2267,9 @@ class StandardisationTemplateView(GenericViewSet):
 
     def list(self, request, *args, **kwargs):
         serializer = self.get_serializer(self.get_queryset(), many=True)
+        response_data = serializer.data
+        response_json = json.dumps(response_data, indent=4)
+        LOGGER.info(response_json)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
 
