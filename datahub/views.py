@@ -117,6 +117,7 @@ from .serializers import (
     UsagePolicyDetailSerializer,
     UsagePolicySerializer,
 )
+from .services.datahub_services import DatahubService
 
 LOGGER = logging.getLogger(__name__)
 
@@ -225,7 +226,7 @@ class OrganizationViewSet(GenericViewSet):
                         data={
                             Constants.USER: user_obj.id,
                             Constants.ORGANIZATION: org_queryset.id,
-                        } # type: ignore
+                        }  # type: ignore
                     )
                     user_org_serializer.is_valid(raise_exception=True)
                     self.perform_create(user_org_serializer)
@@ -264,8 +265,7 @@ class OrganizationViewSet(GenericViewSet):
                 Constants.USER, Constants.ORGANIZATION
             ).filter(organization__status=True, user=pk)
 
-
-            if not user_org_queryset: 
+            if not user_org_queryset:
                 data = {Constants.USER: {"id": user_obj.id}, Constants.ORGANIZATION: "null"}
                 return Response(data, status=status.HTTP_200_OK)
 
@@ -287,8 +287,8 @@ class OrganizationViewSet(GenericViewSet):
             UserOrganizationMap.objects.prefetch_related(Constants.USER, Constants.ORGANIZATION).filter(user=pk).all()
         )
 
-        if not user_org_queryset:  
-            return Response({}, status=status.HTTP_404_NOT_FOUND) # 310-360 not covered 4
+        if not user_org_queryset:
+            return Response({}, status=status.HTTP_404_NOT_FOUND)  # 310-360 not covered 4
 
         organization_serializer = OrganizationSerializer(
             Organization.objects.get(id=user_org_queryset.first().organization_id),
@@ -2088,7 +2088,7 @@ class DatasetV2ViewSetOps(GenericViewSet):
                     .filter(dataset_id__in=dataset_ids)
                     .filter(Q(file__endswith=".xls") | Q(file__endswith=".xlsx") | Q(file__endswith=".csv"))
                     .filter(
-                        Q(accessibility__in=["public", "registered"]) | 
+                        Q(accessibility__in=["public", "registered"]) |
                         Q(dataset__user_map_id=user_map) |
                         Q(dataset_v2_file__approval_status="approved")
                     )
@@ -2390,6 +2390,24 @@ class DatasetV2View(GenericViewSet):
     #     serializer = self.get_serializer(page, many=True).exclude(is_temp = True)
     #     return self.get_paginated_response(serializer.data)
 
+    @action(detail=False, methods=["get"])
+    def get_dashboard_chart_data(self, request, *args, **kwargs):
+        file_path = f"{BASE_DIR}/datahub/media/file.xlsx"
+        print("BASE_DIR")
+        print(file_path)
+        print("BASE_DIR")
+        df = pd.read_excel(file_path)
+        dashboard_data = DatahubService.create_dashboard_response(df=df)
+
+        print("json_data")
+        print(dashboard_data)
+        print("json_data")
+
+        return Response(
+            dashboard_data,
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        )
+
 
 class DatasetFileV2View(GenericViewSet):
     queryset = DatasetV2File.objects.all()
@@ -2490,6 +2508,7 @@ class DatasetFileV2View(GenericViewSet):
         except Exception as error:
             LOGGER.error(error, exc_info=True)
             return Response(str(error), status=status.HTTP_400_BAD_REQUEST)
+
     # @action(detail=False, methods=["put"])
     @authenticate_user(model=DatasetV2File)
     def patch(self, request, *args, **kwargs):
