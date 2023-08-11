@@ -2392,54 +2392,72 @@ class DatasetV2View(GenericViewSet):
     @action(detail=True, methods=["get"])
     def get_dashboard_chart_data(self, request, pk, *args, **kwargs):
         try:
-            dataset_file = DatasetV2File.objects.get(id=pk)
-            df = pd.read_excel(dataset_file.standardised_file)
-            obj = {
-                "total_no_of_records": len(df),
-                "male_count": (df['Gender'] == 1).sum(),
-                "female_count": (df['Gender'] == 0).sum(),
-                "constituencies": (df['Constituency']).nunique(),
-                "counties": (df['County']).nunique(),
-                "sub_counties": (df['Sub County']).nunique(),
-                "farming_practices": {
-                    "crop_production": (df['Crop Production']).sum(),
-                    "livestock_production": (df['Livestock Production']).sum(),
-                },
-                "livestock_and_poultry_production": {
-                    "cows": (df[['Other Dual Cattle', 'Cross breed Cattle', 'Cattle boma']]).sum(axis=1).sum(),
-                    "goats": df[['Small East African Goats', 'Somali Goat', 'Other Goat']].sum(axis=1).sum(),
-                    "chickens": df[['Chicken -Indigenous', 'Chicken -Broilers', 'Chicken -Layers']].sum(axis=1).sum(),
-                    "ducks": df[['Ducks']].sum(axis=1).sum(),
-                    "sheep": df[['Other Sheep']].sum()
-                },
-                "financial_livelihood": {
-                    "lenders": (df['Moneylender']).sum(),
-                    "relatives": (df['Family']).sum(),
-                    "traders": 0,
-                    "agents": 0,
-                    "institutional": 0
-                },
-                "water_sources": {
-                    "borewell": 0,
-                    "irrigation": (df['Total Area Irrigation']).sum(),
-                    "rainwater": (df['Rain']).sum(),
+            dataset_file_object = DatasetV2File.objects.get(id=pk)
+            dataset_file = str(dataset_file_object.standardised_file)
+            try:
+                if dataset_file.endswith(".xlsx") or dataset_file.endswith(".xls"):
+                    df = pd.read_excel(os.path.join(settings.DATASET_FILES_URL, dataset_file))
+                elif dataset_file.endswith(".csv"):
+                    df = pd.read_csv(os.path.join(settings.DATASET_FILES_URL, dataset_file))
 
-                },
-                "insurance_information": {
-                    "insured_crops": (df['Do you insure your crops?']).sum(),
-                    "insured_machinery": (df['Do you insure your farm buildings and other assets?']).sum(),
+                else:
+                    return Response(
+                        "Unsupported file please use .xls or .csv.",
+                        status=status.HTTP_400_BAD_REQUEST,
+                    )
+                obj = {
+                    "total_no_of_records": len(df),
+                    "male_count": (df['Gender'] == 1).sum(),
+                    "female_count": (df['Gender'] == 0).sum(),
+                    "constituencies": (df['Constituency']).nunique(),
+                    "counties": (df['County']).nunique(),
+                    "sub_counties": (df['Sub County']).nunique(),
+                    "farming_practices": {
+                        "crop_production": (df['Crop Production']).sum(),
+                        "livestock_production": (df['Livestock Production']).sum(),
+                    },
+                    "livestock_and_poultry_production": {
+                        "cows": (df[['Other Dual Cattle', 'Cross breed Cattle', 'Cattle boma']]).sum(axis=1).sum(),
+                        "goats": df[['Small East African Goats', 'Somali Goat', 'Other Goat']].sum(axis=1).sum(),
+                        "chickens": df[['Chicken -Indigenous', 'Chicken -Broilers', 'Chicken -Layers']].sum(axis=1).sum(),
+                        "ducks": df[['Ducks']].sum(axis=1).sum(),
+                        "sheep": df[['Other Sheep']].sum()
+                    },
+                    "financial_livelihood": {
+                        "lenders": (df['Moneylender']).sum(),
+                        "relatives": (df['Family']).sum(),
+                        "traders": 0,
+                        "agents": 0,
+                        "institutional": 0
+                    },
+                    "water_sources": {
+                        "borewell": 0,
+                        "irrigation": (df['Total Area Irrigation']).sum(),
+                        "rainwater": (df['Rain']).sum(),
+
+                    },
+                    "insurance_information": {
+                        "insured_crops": (df['Do you insure your crops?']).sum(),
+                        "insured_machinery": (df['Do you insure your farm buildings and other assets?']).sum(),
+                    }
                 }
-            }
+            except Exception as e:
+                print(e)
+                return Response(
+
+                    "Something went wrong, please try again.",
+                    status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                )
 
             return Response(
                 obj,
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                status=status.HTTP_200_OK,
             )
 
         except DatasetV2File.DoesNotExist:
             return Response(
                 "No dataset file for the provided id.",
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                status=status.HTTP_404_NOT_FOUND,
             )
 
 
