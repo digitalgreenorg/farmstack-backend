@@ -531,3 +531,162 @@ class TestCasesDashboard(TestCase):
         assert data['dataset_category_metrics']['category dash'] == 1
         assert data['total_connectors_count'] == 0
         
+        
+        
+class TestCasesUsagePolicy(TestCase):
+    """test cases for usage policy """ 
+    @classmethod
+    def setUpClass(self) -> None:
+        super().setUpClass()
+        self.user=Client()
+        self.client_admin = Client()
+        # self.client_participant=Client()
+        self.dataset_url=reverse("dataset/v2-list")
+        self.dataset_files_url=reverse("dataset_files-list")
+        self.usage_policy_url=reverse("usage-policy-list-create")
+        # self.dashboard_url = reverse("new_dashboard-dashboard")
+        self.admin_role = UserRole.objects.create(
+                            id= "1",
+                            role_name= "datahub_admin"
+                            )
+        self.admin_user1 = User.objects.create(
+                            email= "admin1@dgreen.org",
+                            role_id= self.admin_role.id,
+                            )
+        self.admin_org1 = Organization.objects.create(
+                            org_email= "admin1_org@dg.org",
+                            name= "admin org1",
+                            phone_number= "+91 99876-62188",
+                            website= "htttps://google.com",
+                            address= ({"city": "Banglore"}),
+                            )
+        self.admin_map1 = UserOrganizationMap.objects.create(
+                                        user_id= self.admin_user1.id,
+                                        organization_id= self.admin_org1.id,
+                                        )
+        #admin auth
+        auth["token"] = TestUtils.create_token_for_user(self.admin_user1, self.admin_map1)
+        # auth["token"] = TestUtils.create_token_for_user(self.admin_user2, self.admin_map2)
+        admin_header= self.set_auth_headers(self=self)
+        self.client_admin.defaults['HTTP_AUTHORIZATION'] = admin_header[0]
+        self.client_admin.defaults['CONTENT_TYPE'] = admin_header[1]
+        #admin1
+        self.first_dataset = DatasetV2.objects.create( user_map=self.admin_map1,
+                                                **first_datasets)
+        file_data1 = {
+            "dataset": str(self.first_dataset.id),
+            "file" : open("datahub/tests/test_data/file.xls", "rb"),
+            "source": "file",
+        }
+        self.response_file1 = self.client_admin.post(self.dataset_files_url, file_data1)
+        
+    def set_auth_headers(self, participant=False, co_steward=False):  
+        """ authorization """
+        auth_data = auth_participant if participant else (auth_co_steward if co_steward else auth)
+        headers = {
+            'Content-Type': 'application/json',
+            'Authorization': f'Bearer {auth_data["token"]}'
+        }
+        return headers['Authorization'],headers['Content-Type']
+    
+    #valid test case
+    def test_usage_policy_valid(self):
+        """ valid usage policy creation for api access """
+        usage_policy_valid = {
+            "dataset_file": self.response_file1.json()['id'],
+            "user_organization_map": self.admin_map1.id,
+        }
+        response = self.client_admin.post(self.usage_policy_url, usage_policy_valid)
+        data = response.json()
+        # print("***test_usage_policy_valid***", response.status_code)
+        # print("***test_usage_policy_valid***", data)
+        assert response.status_code == 201
+        assert data['dataset_file'] == self.response_file1.json()['id']
+        assert data['user_organization_map'] == str(self.admin_map1.id)
+        assert data['api_key'] is None
+        assert data['type'] == 'dataset_file'
+        
+        #api-type
+        usage_policy_valid = {
+            "dataset_file": self.response_file1.json()['id'],
+            "user_organization_map": self.admin_map1.id,
+            "type": "api",
+        }
+        response = self.client_admin.post(self.usage_policy_url, usage_policy_valid)
+        data = response.json()
+        # print("***test_usage_policy_valid***", response.status_code)
+        # print("***test_usage_policy_valid***", data)
+        assert response.status_code == 201
+        assert data['dataset_file'] == self.response_file1.json()['id']
+        assert data['user_organization_map'] == str(self.admin_map1.id)
+        assert data['type'] == 'api'
+        
+    #invalid test case
+    def test_usage_policy_invalid(self):
+        """ invalid usage policy creation for api access """
+        #empty request
+        response = self.client_admin.post(self.usage_policy_url)
+        data = response.json()
+        # print("***test_usage_policy_invalid***", response.status_code)
+        # print("***test_usage_policy_invalid***", data)
+        assert response.status_code == 400
+        assert data['dataset_file'] == ['This field is required.']
+        assert data['user_organization_map'] == ['This field is required.']
+        
+        #invalid user_map
+        usage_policy_invalid = {
+            "dataset_file": self.response_file1.json()['id'],
+            "user_organization_map": "123",
+        }
+        
+        response = self.client_admin.post(self.usage_policy_url, usage_policy_invalid)
+        data = response.json()
+        # print("***test_usage_policy_invalid***", response.status_code)
+        # print("***test_usage_policy_invalid***", data)
+        assert response.status_code == 400
+        assert data['user_organization_map'] == ['“123” is not a valid UUID.']
+        
+        #invalid dataset_file
+        usage_policy_invalid = {
+            "dataset_file": "123",
+            "user_organization_map": self.admin_map1.id,
+        }
+        
+        response = self.client_admin.post(self.usage_policy_url, usage_policy_invalid)
+        data = response.json()
+        # print("***test_usage_policy_invalid***", response.status_code)
+        # print("***test_usage_policy_invalid***", data)
+        assert response.status_code == 400
+        assert data['dataset_file'] == ['“123” is not a valid UUID.']
+        
+        #invalid choice for type
+        usage_policy_invalid = {
+            "dataset_file": self.response_file1.json()['id'],
+            "user_organization_map": self.admin_map1.id,
+            "type": "hrjkfjrjhrfjkhrfkjf123",
+        }
+        
+        response = self.client_admin.post(self.usage_policy_url, usage_policy_invalid)
+        data = response.json()
+        # print("***test_usage_policy_invalid***", response.status_code)
+        # print("***test_usage_policy_invalid***", data)
+        assert response.status_code == 400
+        assert data['type'] == ['"hrjkfjrjhrfjkhrfkjf123" is not a valid choice.']
+        
+        #invalid length api_key
+        usage_policy_invalid = {
+            "dataset_file": self.response_file1.json()['id'],
+            "user_organization_map": self.admin_map1.id,
+            "api_key": "f150b6c-19a1-4bb8-8d2-9116f5172aa2",
+        }
+        
+        response = self.client_admin.post(self.usage_policy_url, usage_policy_invalid)
+        data = response.json()
+        # print("***test_usage_policy_invalid***", response.status_code)
+        # print("***test_usage_policy_invalid***", data)
+        assert response.status_code == 400
+        assert data['api_key'] == ['Ensure this field has no more than 32 characters.']
+        
+        
+        
+        
