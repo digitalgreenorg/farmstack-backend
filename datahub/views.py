@@ -116,8 +116,9 @@ from .serializers import (
     PolicySerializer,
     UsagePolicyDetailSerializer,
     UsagePolicySerializer,
+    APIBuilderSerializer
 )
-
+from core.utils import (generate_api_key)
 LOGGER = logging.getLogger(__name__)
 
 con = None
@@ -2512,7 +2513,23 @@ class UsagePolicyListCreateView(generics.ListCreateAPIView):
 class UsagePolicyRetrieveUpdateDestroyView(generics.RetrieveUpdateDestroyAPIView):
     queryset = UsagePolicy.objects.all()
     serializer_class = UsagePolicySerializer
-
+    api_builder_serializer_class=APIBuilderSerializer
+    def patch(self, request, *args, **kwargs):
+        instance = self.get_object()
+        approval_status = request.data.get('approval_status')
+        policy_type = request.data.get('type', None)
+        api_key = None
+        try:
+   
+            if policy_type == 'api':
+                if approval_status=='approved':
+                    instance.api_key = generate_api_key()
+            serializer = self.api_builder_serializer_class(instance,data=request.data,partial=True)
+            return Response(serializer.data, status=200) 
+        except Exception as error:
+            LOGGER.error(error, exc_info=True)
+            return Response(str(error), status=status.HTTP_400_BAD_REQUEST)
+    
 
 class DatahubNewDashboard(GenericViewSet):
     """Datahub Dashboard viewset"""
