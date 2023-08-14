@@ -226,7 +226,7 @@ class OrganizationViewSet(GenericViewSet):
                         data={
                             Constants.USER: user_obj.id,
                             Constants.ORGANIZATION: org_queryset.id,
-                        } # type: ignore
+                        }  # type: ignore
                     )
                     user_org_serializer.is_valid(raise_exception=True)
                     self.perform_create(user_org_serializer)
@@ -265,8 +265,7 @@ class OrganizationViewSet(GenericViewSet):
                 Constants.USER, Constants.ORGANIZATION
             ).filter(organization__status=True, user=pk)
 
-
-            if not user_org_queryset: 
+            if not user_org_queryset:
                 data = {Constants.USER: {"id": user_obj.id}, Constants.ORGANIZATION: "null"}
                 return Response(data, status=status.HTTP_200_OK)
 
@@ -288,8 +287,8 @@ class OrganizationViewSet(GenericViewSet):
             UserOrganizationMap.objects.prefetch_related(Constants.USER, Constants.ORGANIZATION).filter(user=pk).all()
         )
 
-        if not user_org_queryset:  
-            return Response({}, status=status.HTTP_404_NOT_FOUND) # 310-360 not covered 4
+        if not user_org_queryset:
+            return Response({}, status=status.HTTP_404_NOT_FOUND)  # 310-360 not covered 4
 
         organization_serializer = OrganizationSerializer(
             Organization.objects.get(id=user_org_queryset.first().organization_id),
@@ -2089,7 +2088,7 @@ class DatasetV2ViewSetOps(GenericViewSet):
                     .filter(dataset_id__in=dataset_ids)
                     .filter(Q(file__endswith=".xls") | Q(file__endswith=".xlsx") | Q(file__endswith=".csv"))
                     .filter(
-                        Q(accessibility__in=["public", "registered"]) | 
+                        Q(accessibility__in=["public", "registered"]) |
                         Q(dataset__user_map_id=user_map) |
                         Q(dataset_v2_file__approval_status="approved")
                     )
@@ -2391,6 +2390,80 @@ class DatasetV2View(GenericViewSet):
     #     serializer = self.get_serializer(page, many=True).exclude(is_temp = True)
     #     return self.get_paginated_response(serializer.data)
 
+    @action(detail=True, methods=["get"])
+    def get_dashboard_chart_data(self, request, pk, *args, **kwargs):
+        try:
+            dataset_file_object = DatasetV2File.objects.get(id=pk)
+            dataset_file = str(dataset_file_object.standardised_file)
+            try:
+                if dataset_file.endswith(".xlsx") or dataset_file.endswith(".xls"):
+                    df = pd.read_excel(os.path.join(settings.DATASET_FILES_URL, dataset_file))
+                elif dataset_file.endswith(".csv"):
+                    df = pd.read_csv(os.path.join(settings.DATASET_FILES_URL, dataset_file))
+
+                else:
+                    return Response(
+                        "Unsupported file please use .xls or .csv.",
+                        status=status.HTTP_400_BAD_REQUEST,
+                    )
+                obj = {
+                    "total_no_of_records": len(df),
+                    "male_count": (df['Gender'] == 1).sum(),
+                    "female_count": (df['Gender'] == 0).sum(),
+                    "constituencies": (df['Constituency']).nunique(),
+                    "counties": (df['County']).nunique(),
+                    "sub_counties": (df['Sub County']).nunique(),
+                    "farming_practices": {
+                        "crop_production": (df['Crop Production']).sum(),
+                        "livestock_production": (df['Livestock Production']).sum(),
+                    },
+                    "livestock_and_poultry_production": {
+                        "cows": (df[['Other Dual Cattle', 'Cross breed Cattle', 'Cattle boma']]).sum(axis=1).sum(),
+                        "goats": df[['Small East African Goats', 'Somali Goat', 'Other Goat']].sum(axis=1).sum(),
+                        "chickens": df[['Chicken -Indigenous', 'Chicken -Broilers', 'Chicken -Layers']].sum(axis=1).sum(),
+                        "ducks": df[['Ducks']].sum(axis=1).sum(),
+                        "sheep": df[['Other Sheep']].sum()
+                    },
+                    "financial_livelihood": {
+                        "lenders": (df['Moneylender']).sum(),
+                        "relatives": (df['Family']).sum(),
+                        "traders": 0,
+                        "agents": 0,
+                        "institutional": 0
+                    },
+                    "water_sources": {
+                        "borewell": 0,
+                        "irrigation": (df['Total Area Irrigation']).sum(),
+                        "rainwater": (df['Rain']).sum(),
+
+                    },
+                    "insurance_information": {
+                        "insured_crops": (df['Do you insure your crops?']).sum(),
+                        "insured_machinery": (df['Do you insure your farm buildings and other assets?']).sum(),
+                    }
+                }
+            except Exception as e:
+                print(e)
+                return Response(
+
+                    "Something went wrong, please try again.",
+                    status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                )
+
+            return Response(
+                obj,
+                status=status.HTTP_200_OK,
+            )
+
+        except DatasetV2File.DoesNotExist:
+            return Response(
+                "No dataset file for the provided id.",
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+
+
+
 
 class DatasetFileV2View(GenericViewSet):
     queryset = DatasetV2File.objects.all()
@@ -2491,6 +2564,7 @@ class DatasetFileV2View(GenericViewSet):
         except Exception as error:
             LOGGER.error(error, exc_info=True)
             return Response(str(error), status=status.HTTP_400_BAD_REQUEST)
+
     # @action(detail=False, methods=["put"])
     @authenticate_user(model=DatasetV2File)
     def patch(self, request, *args, **kwargs):
