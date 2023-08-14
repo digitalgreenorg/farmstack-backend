@@ -940,6 +940,11 @@ class UsagePolicySerializer(serializers.ModelSerializer):
         model = UsagePolicy
         fields = '__all__'
 
+class APIBuilderSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = UsagePolicy
+        fields = ['approval_status','api_key']
+
 class UsagePolicyDetailSerializer(serializers.ModelSerializer):
     organization = DatahubDatasetsSerializer.OrganizationDatsetsListRetriveSerializer(
         required=False, allow_null=True, read_only=True, source="user_organization_map.organization"
