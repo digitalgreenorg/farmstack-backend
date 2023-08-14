@@ -102,6 +102,10 @@ USAGE_POLICY_REQUEST_STATUS = (
     ("requested", "requested")
 
 )
+USAGE_POLICY_API_TYPE = (
+    ("dataset_file", "dataset_file"),
+    ("api", "api")
+)
 
 USAGE_POLICY_APPROVAL_STATUS = (
     ("public", "public"),
@@ -280,4 +284,6 @@ class UsagePolicy(TimeStampMixin):
     dataset_file = models.ForeignKey(DatasetV2File, on_delete=models.CASCADE, related_name="dataset_v2_file")
     approval_status = models.CharField(max_length=255, null=True, choices=USAGE_POLICY_REQUEST_STATUS, default="requested")
     accessibility_time = models.DateField(null=True)
+    type = models.CharField(max_length=20, null=True, choices=USAGE_POLICY_API_TYPE, default="dataset_file")
+    api_key = models.CharField(max_length=32, null=True, unique=True)
 
