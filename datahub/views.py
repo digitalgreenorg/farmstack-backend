@@ -2421,7 +2421,7 @@ class DatasetV2View(GenericViewSet):
                         "goats": df[['Small East African Goats', 'Somali Goat', 'Other Goat']].sum(axis=1).sum(),
                         "chickens": df[['Chicken -Indigenous', 'Chicken -Broilers', 'Chicken -Layers']].sum(axis=1).sum(),
                         "ducks": df[['Ducks']].sum(axis=1).sum(),
-                        "sheep": df[['Other Sheep']].sum()
+                        "sheep": df['Other Sheep'].sum()
                     },
                     "financial_livelihood": {
                         "lenders": (df['Moneylender']).sum(),
