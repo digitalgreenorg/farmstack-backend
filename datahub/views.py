@@ -2423,7 +2423,7 @@ class DatasetV2View(GenericViewSet):
                         "cows": (df[['Other Dual Cattle', 'Cross breed Cattle', 'Cattle boma']]).sum(axis=1).sum(),
                         "goats": df[['Small East African Goats', 'Somali Goat', 'Other Goat']].sum(axis=1).sum(),
                         "chickens": df[['Chicken -Indigenous', 'Chicken -Broilers', 'Chicken -Layers']].sum(axis=1).sum(),
-                        "ducks": df[['Ducks']].sum(axis=1).sum(),
+                        "ducks": df['Ducks'].sum(),
                         "sheep": df['Other Sheep'].sum()
                     },
                     "financial_livelihood": {
@@ -2442,6 +2442,14 @@ class DatasetV2View(GenericViewSet):
                     "insurance_information": {
                         "insured_crops": (df['Do you insure your crops?']).sum(),
                         "insured_machinery": (df['Do you insure your farm buildings and other assets?']).sum(),
+                    },
+                    "popular_fertilizer_user":{
+                        "dap" : (df['DAP']).sum(),
+                        "npk" : (df['NPK']).sum(),
+                        "ssp" : (df['Superphosphate']).sum(),
+                        "can" : (df['CAN']).sum(),
+                        "urea" : (df['Urea']).sum(),
+                        "Others" : (df['Others']).sum(),
                     }
                 }
             except Exception as e:
