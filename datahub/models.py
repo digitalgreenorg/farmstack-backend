@@ -285,5 +285,5 @@ class UsagePolicy(TimeStampMixin):
     approval_status = models.CharField(max_length=255, null=True, choices=USAGE_POLICY_REQUEST_STATUS, default="requested")
     accessibility_time = models.DateField(null=True)
     type = models.CharField(max_length=20, null=True, choices=USAGE_POLICY_API_TYPE, default="dataset_file")
-    api_key = models.CharField(max_length=32, null=True, unique=True)
+    api_key = models.CharField(max_length=64, null=True, unique=True)
 

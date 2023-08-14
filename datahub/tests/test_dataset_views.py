@@ -299,12 +299,15 @@ second_datasets = {
     "geography": "tpt 2",
     "constantly_update": False,
     "is_temp": False,
+    "category": ({"category dash": ["dashboard category"]}),
 }
 third_datasets = {
     "name": "dataset dash 3",
     "description": "dataset dash desc 3",
     "geography": "tpt 3",
     "constantly_update": False,
+    "is_temp": False,
+    "category": ({"category dash": ["dashboard category"]}),
 }
 fourth_datasets = {
     "name": "dataset dash 4",
@@ -444,6 +447,7 @@ class TestCasesDashboard(TestCase):
         self.dataset_id2 = self.second_dataset.id
         self.third_dataset = DatasetV2.objects.create( user_map=self.admin_map1,
                                                 **third_datasets)
+        self.dataset_id3 = self.third_dataset.id
         file_data1 = {
             "dataset": str(self.first_dataset.id),
             "file" : open("datahub/tests/test_data/file.xls", "rb"),
@@ -489,9 +493,9 @@ class TestCasesDashboard(TestCase):
         assert org_email == 'admin1_org@dg.org'
         assert data['total_participants']['participants_count'] == 1
         assert data['dataset_file_metrics'][0]['file_count'] == 2
-        assert data['total_dataset_count'] == 2
-        assert data['dataset_category_metrics']['category dash'] == 1
-        assert data['recent_datasets'][0]['id'] == str(self.dataset_id2)
+        assert data['total_dataset_count'] == 3
+        assert data['dataset_category_metrics']['category dash'] == 3
+        assert data['recent_datasets'][0]['id'] == str(self.dataset_id3)
         assert data['total_connectors_count'] == 1
         assert data['recent_connectors'][0]['providers_count'] == 1
         assert data['recent_connectors'][0]['name'] == connectors_info1['name']
@@ -508,9 +512,9 @@ class TestCasesDashboard(TestCase):
         assert response.status_code == 200
         assert org_email == 'admin1_org@dg.org'
         assert data['total_participants']['participants_count'] == 1
-        assert data['total_dataset_count'] == 4
+        assert data['total_dataset_count'] == 5
         assert data['dataset_file_metrics'][0]['file_count'] == 4
-        assert data['dataset_category_metrics']['category dash'] == 3
+        assert data['dataset_category_metrics']['category dash'] == 5
         assert data['total_connectors_count'] == 1
         
     #test case for participant for dashboard
@@ -544,11 +548,15 @@ class TestCasesUsagePolicy(TestCase):
         self.dataset_url=reverse("dataset/v2-list")
         self.dataset_files_url=reverse("dataset_files-list")
         self.usage_policy_url=reverse("usage-policy-list-create")
+        self.dataset_request=reverse("datasets/v2-list")
         # self.dashboard_url = reverse("new_dashboard-dashboard")
         self.admin_role = UserRole.objects.create(
                             id= "1",
                             role_name= "datahub_admin"
                             )
+        self.participant_role = UserRole.objects.create(
+                        id=3,
+                        role_name="datahub_participant_root")
         self.admin_user1 = User.objects.create(
                             email= "admin1@dgreen.org",
                             role_id= self.admin_role.id,
@@ -564,6 +572,36 @@ class TestCasesUsagePolicy(TestCase):
                                         user_id= self.admin_user1.id,
                                         organization_id= self.admin_org1.id,
                                         )
+        self.admin_user2 = User.objects.create(
+                            email= "admin2@dgreen.org",
+                            role_id= self.admin_role.id,
+                            )
+        self.admin_org2 = Organization.objects.create(
+                        org_email= "admin2_org@dg.org",
+                        name= "admin org2",
+                        phone_number= "+91 99000-62188",
+                        website= "htttps://google.com",
+                        address= ({"city": "Banglore"}),
+                        )
+        self.admin_map2 = UserOrganizationMap.objects.create(
+                                        user_id= self.admin_user2.id,
+                                        organization_id= self.admin_org2.id,
+                                        )
+        self.participant_user1 = User.objects.create(
+                                email= "participant@digitalgreen.org",
+                                role_id= self.participant_role.id,
+                                # on_boarded_by=self.co_steward      
+                                )
+        self.participant_org1 = Organization.objects.create(
+                                org_email="part_org@dg.org",
+                                name="part org1",
+                                phone_number="5678909876",
+                                website="htttps://google.com",
+                                address=json.dumps({"city": "Banglore"}),
+                                ) 
+        self.participant_map1 = UserOrganizationMap.objects.create(
+                                user_id = self.participant_user1.id,
+                                organization_id = self.participant_org1.id)
         #admin auth
         auth["token"] = TestUtils.create_token_for_user(self.admin_user1, self.admin_map1)
         # auth["token"] = TestUtils.create_token_for_user(self.admin_user2, self.admin_map2)
@@ -573,12 +611,30 @@ class TestCasesUsagePolicy(TestCase):
         #admin1
         self.first_dataset = DatasetV2.objects.create( user_map=self.admin_map1,
                                                 **first_datasets)
+        self.second_dataset = DatasetV2.objects.create( user_map=self.admin_map2,
+                                                **second_datasets)
+        self.third_dataset = DatasetV2.objects.create( user_map=self.participant_map1,
+                                                **third_datasets)
         file_data1 = {
             "dataset": str(self.first_dataset.id),
             "file" : open("datahub/tests/test_data/file.xls", "rb"),
             "source": "file",
         }
         self.response_file1 = self.client_admin.post(self.dataset_files_url, file_data1)
+        file_data2 = {
+            "dataset": str(self.second_dataset.id),
+            "file" : open("datahub/tests/test_data/file_example_XLS_10.xls", "rb"),
+            "source": "file",
+            "accessibility": "private",
+        }
+        self.response_file2 = self.client_admin.post(self.dataset_files_url, file_data2)
+        file_data3 = {
+            "dataset": str(self.third_dataset.id),
+            "file" : open("datahub/tests/test_data/file.xls", "rb"),
+            "source": "file",
+            "accessibility": "private",
+        }
+        self.response_file3 = self.client_admin.post(self.dataset_files_url, file_data3)
         
     def set_auth_headers(self, participant=False, co_steward=False):  
         """ authorization """
@@ -591,7 +647,7 @@ class TestCasesUsagePolicy(TestCase):
     
     #valid test case
     def test_usage_policy_valid(self):
-        """ valid usage policy creation for api access """
+        """ valid usage policy creation for api access where type is dataset_file """
         usage_policy_valid = {
             "dataset_file": self.response_file1.json()['id'],
             "user_organization_map": self.admin_map1.id,
@@ -606,20 +662,43 @@ class TestCasesUsagePolicy(TestCase):
         assert data['api_key'] is None
         assert data['type'] == 'dataset_file'
         
-        #api-type
+    def test_usage_policy_valid_api(self):
+        """ valid usage policy creation for api access where type is api """
         usage_policy_valid = {
             "dataset_file": self.response_file1.json()['id'],
-            "user_organization_map": self.admin_map1.id,
+            "user_organization_map": self.admin_map2.id,
             "type": "api",
         }
-        response = self.client_admin.post(self.usage_policy_url, usage_policy_valid)
-        data = response.json()
-        # print("***test_usage_policy_valid***", response.status_code)
-        # print("***test_usage_policy_valid***", data)
-        assert response.status_code == 201
-        assert data['dataset_file'] == self.response_file1.json()['id']
-        assert data['user_organization_map'] == str(self.admin_map1.id)
-        assert data['type'] == 'api'
+        response1 = self.client_admin.post(self.usage_policy_url, usage_policy_valid)
+        data1 = response1.json()
+        # print("***test_usage_policy_valid_api***", data1)
+        assert response1.status_code == 201
+        assert data1['dataset_file'] == self.response_file1.json()['id']
+        assert data1['user_organization_map'] == str(self.admin_map2.id)
+        assert data1['type'] == 'api'
+        
+        usage_policy_valid = {
+            "dataset_file": self.response_file1.json()['id'],
+            "user_organization_map": self.participant_map1.id,
+            "type": "api",
+        }
+        response2 = self.client_admin.post(self.usage_policy_url, usage_policy_valid)
+        data_user = {
+            "user_map": self.admin_map1.id,
+            "type": "api",
+            "dataset_file": self.response_file1.json()['id'],
+        }
+        
+        response3 = self.client_admin.post(self.dataset_request+"requested_datasets/", data_user)
+        data3 = response3.json()
+        # print("file_id", self.response_file1.json()['id'])
+        # print("***test_usage_policy_valid_api***", response3.status_code)
+        # print("***test_usage_policy_valid_api***", data3)
+        assert response3.status_code == 200
+        assert data3['recieved'][0]['file_name'] == 'file.xls'
+        assert data3['recieved'][0]['organization']['org_email'] == 'part_org@dg.org'
+        assert data3['recieved'][1]['organization']['org_email'] == 'admin2_org@dg.org'
+        # assert data3['sent'][0]['organization_email'] == 'admin2_org@dg.org'
         
     #invalid test case
     def test_usage_policy_invalid(self):
@@ -677,7 +756,7 @@ class TestCasesUsagePolicy(TestCase):
         usage_policy_invalid = {
             "dataset_file": self.response_file1.json()['id'],
             "user_organization_map": self.admin_map1.id,
-            "api_key": "f150b6c-19a1-4bb8-8d2-9116f5172aa2",
+            "api_key": "f150b6c-19a1-4bb8-8d2-9116f5172aa2-f150b6c-19a1-4bb8-8d2-9116f5172aa2",
         }
         
         response = self.client_admin.post(self.usage_policy_url, usage_policy_invalid)
@@ -685,8 +764,5 @@ class TestCasesUsagePolicy(TestCase):
         # print("***test_usage_policy_invalid***", response.status_code)
         # print("***test_usage_policy_invalid***", data)
         assert response.status_code == 400
-        assert data['api_key'] == ['Ensure this field has no more than 32 characters.']
-        
-        
-        
+        assert data['api_key'] == ['Ensure this field has no more than 64 characters.']
         

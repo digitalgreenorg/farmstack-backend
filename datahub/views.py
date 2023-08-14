@@ -2319,6 +2319,52 @@ class DatasetV2View(GenericViewSet):
     def requested_datasets(self, request, *args, **kwargs):
         try:
             user_map_id = request.data.get("user_map")
+            policy_type = request.data.get('type', None)
+            if policy_type == 'api':
+                dataset_file_id = request.data.get("dataset_file")
+                requested_recieved = (
+                UsagePolicy.objects.select_related(
+                    "dataset_file",
+                    "dataset_file__dataset",
+                    "user_organization_map__organization",
+                    )
+                    .filter(dataset_file__dataset__user_map_id=user_map_id, 
+                            dataset_file_id=dataset_file_id)
+                    .values(
+                        "id",
+                        "approval_status",
+                        "accessibility_time",
+                        "updated_at",
+                        "created_at",
+                        dataset_id=F("dataset_file__dataset_id"),
+                        dataset_name=F("dataset_file__dataset__name"),
+                        file_name=F("dataset_file__file"),
+                        organization_name=F("user_organization_map__organization__name"),
+                        organization_email=F("user_organization_map__organization__org_email"),
+                        organization_phone_number=F("user_organization_map__organization__phone_number"),
+                    )
+                    .order_by("-updated_at")
+                )
+                response_data = []
+                for values in requested_recieved:
+                    org = {
+                        "org_email": values["organization_email"],
+                        "name": values["organization_name"],
+                        "phone_number": values["organization_phone_number"],
+                    }
+                    values.pop("organization_email")
+                    values.pop("organization_name")
+                    values.pop("organization_phone_number")
+                    values["file_name"] = values.get("file_name", "").split("/")[-1]
+                    
+                    values["organization"] = org
+                    response_data.append(values)
+                return Response(
+                {
+                    "recieved": response_data,
+                    },
+                    200,
+                )
             requested_sent = (
                 UsagePolicy.objects.select_related(
                     "dataset_file",
