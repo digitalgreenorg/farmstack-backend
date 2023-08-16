@@ -307,6 +307,7 @@ class ResourceFile(TimeStampMixin):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     resource = models.ForeignKey(Resource, on_delete=models.CASCADE, related_name="resources")
     file = models.FileField(upload_to=settings.RESOURCES_URL)
+    file_size = models.PositiveIntegerField(null=True, blank=True)
 
     def __str__(self) -> str:
         return self.file.name
