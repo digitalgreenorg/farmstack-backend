@@ -4,7 +4,10 @@ import logging
 import operator
 import os
 from functools import reduce
-
+import pandas as pd
+from django.core.paginator import Paginator
+from rest_framework.exceptions import ValidationError
+import math
 from django.conf import settings
 from django.db.models import Q
 from django.http import FileResponse, HttpResponse, HttpResponseNotFound, JsonResponse
@@ -200,6 +203,37 @@ class DatasetsMicrositeViewSet(GenericViewSet):
 
         serializer["datasets"] = data
         return Response(serializer, status=status.HTTP_200_OK)
+    
+    @action(detail=False, methods=["post"])
+    def get_json_response(self, request, *args, **kwargs):
+        file_path = request.data.get('file_path')
+        page = request.GET.get('page', 1)
+        df = pd.read_excel(file_path)
+        
+        json_data = []
+        for index, row in df.iterrows():
+            json_data.append(row.to_dict())
+         
+        rows_per_page = 50        
+        total_rows = len(json_data)
+        total_pages = math.ceil(total_rows / rows_per_page)      
+        paginator = Paginator(json_data, rows_per_page)
+
+        try:
+            page_data = paginator.page(page)
+        except ValidationError as e:
+            LOGGER.error(e,exc_info=True )
+            return Response(e.detail, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as error:
+            LOGGER.error(error, exc_info=True)
+            return Response(str(error), status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        
+        data_list = list(page_data)  
+        return JsonResponse({
+        'total_pages': total_pages,
+        'data': data_list
+    }, safe=False,status=200)       
+        
 
     @action(detail=False, methods=["post"])
     def dataset_filters(self, request, *args, **kwargs):
