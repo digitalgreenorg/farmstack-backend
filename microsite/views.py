@@ -17,6 +17,7 @@ from rest_framework.viewsets import GenericViewSet
 
 from accounts.models import User, UserRole
 from accounts.serializers import UserCreateSerializer
+from connectors.models import Connectors
 from core.constants import Constants
 from core.utils import (
     CustomPagination,
@@ -44,6 +45,8 @@ from datahub.serializers import (
     micrositeOrganizationSerializer,
 )
 from microsite.serializers import (
+    ConnectorsListSerializer,
+    ConnectorsRetriveSerializer,
     ContactFormSerializer,
     DatasetsMicrositeSerializer,
     LegalDocumentSerializer,
@@ -607,3 +610,26 @@ def microsite_media_view(request):
     except Exception as error:
         LOGGER.error(error, exc_info=True)
         return Response({str(error)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+class ConnectorMicrositeViewSet(GenericViewSet):
+    """Viewset for Product model"""
+    permission_classes = []
+    queryset = Connectors.objects.all()
+    pagination_class = CustomPagination
+
+    def list(self, request, *args, **kwargs):
+        data = Connectors.objects.all().order_by(
+            Constants.UPDATED_AT).reverse()
+        page = self.paginate_queryset(data)
+        connectors_data = ConnectorsListSerializer(page, many=True)
+        return self.get_paginated_response(connectors_data.data)
+
+    def retrieve(self, request, pk):
+        """GET method: retrieve an object or instance of the Product model"""
+        try:
+            instance = self.get_object()
+            serializer = ConnectorsRetriveSerializer(instance=instance)
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        except Exception as error:
+            return Response(str(error), status=status.HTTP_400_BAD_REQUEST)
