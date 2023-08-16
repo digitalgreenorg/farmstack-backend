@@ -22,6 +22,7 @@ from datahub.views import (
     ParticipantViewSet,
     PolicyDetailAPIView,
     PolicyListAPIView,
+    ResourceFileManagementViewSet,
     StandardisationTemplateView,
     SupportViewSet,
     TeamMemberViewSet,
@@ -48,7 +49,8 @@ router.register(r"dataset_files", DatasetFileV2View, basename=Constants.DATASET_
 router.register(r"dataset_ops", DatasetV2ViewSetOps, basename="")
 router.register(r"standardise", StandardisationTemplateView, basename=Constants.STANDARDISE)
 router.register(r"newdashboard", DatahubNewDashboard, basename=Constants.NEW_DASHBOARD)
-router.register(r"resource_management", ResourceManagementViewSet, basename=Constants.RESOURCE_MANAGEMENT)
+router.register(r"resource_management", ResourceManagementViewSet, basename=Constants.RESOURCE_MANAGEMENT),
+router.register(r"resource_file", ResourceFileManagementViewSet, basename=Constants.RESOURCE_FILE_MANAGEMENT)
 
 urlpatterns = [
     path("", include(router.urls)),
