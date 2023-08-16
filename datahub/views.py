@@ -2511,7 +2511,6 @@ class DatasetFileV2View(GenericViewSet):
     serializer_class = DatasetFileV2NewSerializer
 
     def create(self, request, *args, **kwargs):
-        print("this is api")
         validity = check_file_name_length(incoming_file_name=request.data.get("file"),
                                           accepted_file_name_size=NumericalConstants.FILE_NAME_LENGTH)
         if not validity:
