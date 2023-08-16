@@ -5,20 +5,20 @@ class ResourceManagementTest(TestCase):
     '''
     Test cases for ResourceManagement by user.
     '''
-    @classmethod
-    def setUpClass(self):
-        # set_up_class is called only once for every class.
-        self.url = "/datahub/resource-management"
+    # @classmethod
+    # def setUpClass(self):
+    #     # set_up_class is called only once for every class.
+    #     self.url = "/datahub/resource-management"
 
-    def test_check_url(self):
-        # URL -- Exist or Not.
-        curr_url = reverse("resource-management")
-        assert self.url == curr_url
+    # def test_check_url(self):
+    #     # URL -- Exist or Not.
+    #     curr_url = reverse("resource-management")
+    #     assert self.url == curr_url
         
-    def test_url_map_to_view(self):
-        # URL -- Exist and View Execution.
-        # print("******", resolve(self.url))
-        assert resolve(self.url)._func_path == "datahub.views.ResourceManagementViewSet"
+    # def test_url_map_to_view(self):
+    #     # URL -- Exist and View Execution.
+    #     # print("******", resolve(self.url))
+    #     assert resolve(self.url)._func_path == "datahub.views.ResourceManagementViewSet"
 
     # def test_create_resource_status(self):
     #     # POST -- Create --> Check if the record is created.

@@ -1002,17 +1002,20 @@ class ResourceSerializer(serializers.ModelSerializer):
 
         # Handle existing files
         import pdb; pdb.set_trace()
+        existing_file_ids = []
         for file_data in uploaded_files_data:
-            file_id = file_data.get('id')
-            if file_id:  # Existing file
+            file_id = file_data.get('id', None)
+            if file_id and file_data.get('delete', None):  # Existing file
                 existing_file = ResourceFile.objects.get(id=file_id)
+                existing_file_ids.append(existing_file.id)
                 # Update file attributes if needed
             else:  # New file
                 ResourceFile.objects.create(resource=instance, file=file_data['file'])
 
         # Handle deletion of files not present in uploaded_files_data
-        existing_file_ids = [file['id'] for file in uploaded_files_data if file.get('id')]
-        ResourceFile.objects.filter(resource=instance).exclude(id__in=existing_file_ids).delete()
-
+        unwanted_files = ResourceFile.objects.filter(resource=instance).exclude(id__in=existing_file_ids)
+        unwanted_files.delete()
         return instance
+
+
     
