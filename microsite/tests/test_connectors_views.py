@@ -1,6 +1,9 @@
 import json
+import logging
 from unittest import TestCase
 
+from django.core.files.base import File
+from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import Client, TestCase
 from rest_framework.reverse import reverse
 
@@ -8,7 +11,6 @@ from accounts.models import User, UserRole
 from connectors.models import Connectors, ConnectorsMap
 from datahub.models import DatasetV2, DatasetV2File, Organization, UserOrganizationMap
 from participant.tests.test_util import TestUtils
-
 
 LOGGER = logging.getLogger(__name__)
 
@@ -34,7 +36,7 @@ datasetOne = {
 }
 
 datasetOnepr = {
-     "name": "participant data set",
+    "name": "participant data set",
     "description": "dataset description one",
     "geography": "tpt",
     "constantly_update": False,
@@ -91,13 +93,13 @@ connectors_info = {
 create_connector = {
     "name": "creating_connector",
     "description": "created agriculture database connectors",
-    "integrated_file": open("/Users/akshatanaik/Akshata/repos/datahub-api/connectors/tests/test_files/file_example_XLS_100.xls", "rb")
+    "integrated_file": open("connectors/tests/test_files/file_example_XLS_100.xls", "rb")
 }
 
 create_connector_two = {
     "name": "creating_connector_two",
     "description": ".........",
-    "integrated_file": open("/Users/akshatanaik/Akshata/repos/datahub-api/connectors/tests/test_files/file_example_XLS_100.xls", "rb")
+    "integrated_file": open("connectors/tests/test_files/file_example_XLS_100.xls", "rb")
 }
 
 create_connector_new = {
@@ -108,7 +110,7 @@ create_connector_new = {
 connector_details = {
     "name": "creating_connector_two",
     "description": ".........",
-    "integrated_file": open("/Users/akshatanaik/Akshata/repos/datahub-api/connectors/tests/test_files/file_example_XLS_100.xls", "rb")
+    "integrated_file": open("connectors/tests/test_files/file_example_XLS_100.xls", "rb")
 }
 class TestCasesConnectors(TestCase):
     @classmethod
@@ -118,7 +120,7 @@ class TestCasesConnectors(TestCase):
         self.client_admin = Client()
         self.user_participant=Client()    
         self.dummy=Client()    
-        self.connectors_url=reverse("connectors-list")
+        self.connectors_url=reverse("microsite_connectors-list")
 
         ################# create user roles #############
         self.admin_role = UserRole.objects.create(
@@ -174,31 +176,31 @@ class TestCasesConnectors(TestCase):
         self.co_steward_map=UserOrganizationMap.objects.create(user_id=self.co_steward.id, organization_id=self.co_steward_org.id)
         self.participant_map=UserOrganizationMap.objects.create(user_id=self.participant.id, organization_id=self.participant_org.id)
         ################ admin token ##################
-        auth["token"] = TestUtils.create_token_for_user(self.admin, self.admin_map)
-        admin_header=self.set_auth_headers(self=self) # type: ignore
-        self.client_admin.defaults['HTTP_AUTHORIZATION'] = admin_header[0]
-        self.client_admin.defaults['CONTENT_TYPE'] = admin_header[1]
+        # auth["token"] = TestUtils.create_token_for_user(self.admin, self.admin_map)
+        # admin_header=self.set_auth_headers(self=self) # type: ignore
+        # self.client_admin.defaults['HTTP_AUTHORIZATION'] = admin_header[0]
+        # self.client_admin.defaults['CONTENT_TYPE'] = admin_header[1]
 
-        auth_co_steward["token"] = TestUtils.create_token_for_user(self.co_steward, self.co_steward_map)
-        co_steward_header=self.set_auth_headers(self=self, co_steward=True)
-        self.user_co_steward.defaults['HTTP_AUTHORIZATION'] = co_steward_header[0]
-        self.user_co_steward.defaults['CONTENT_TYPE'] = co_steward_header[1]
+        # auth_co_steward["token"] = TestUtils.create_token_for_user(self.co_steward, self.co_steward_map)
+        # co_steward_header=self.set_auth_headers(self=self, co_steward=True)
+        # self.user_co_steward.defaults['HTTP_AUTHORIZATION'] = co_steward_header[0]
+        # self.user_co_steward.defaults['CONTENT_TYPE'] = co_steward_header[1]
 
-        auth_participant["token"] = TestUtils.create_token_for_user(self.participant, self.participant_map)
-        participant_header=self.set_auth_headers(self=self, participant=True)
-        self.user_participant.defaults['HTTP_AUTHORIZATION'] = participant_header[0]
-        self.user_participant.defaults['CONTENT_TYPE'] = participant_header[1]
+        # auth_participant["token"] = TestUtils.create_token_for_user(self.participant, self.participant_map)
+        # participant_header=self.set_auth_headers(self=self, participant=True)
+        # self.user_participant.defaults['HTTP_AUTHORIZATION'] = participant_header[0]
+        # self.user_participant.defaults['CONTENT_TYPE'] = participant_header[1]
 
         ########## data set ############
         self.left_dataset_pr = DatasetV2.objects.create(user_map=self.participant_map, **datasetOnepr)
         self.right_dataset_pr = DatasetV2.objects.create(user_map=self.participant_map, **datasetTwopr)
         self.right_dataset_pr_two = DatasetV2.objects.create(user_map=self.participant_map, **datasetThreepr)
-        with open('/Users/akshatanaik/Akshata/repos/datahub-api/connectors/tests/test_files/file_example_XLS_100.xls','rb') as file:
+        with open('connectors/tests/test_files/file_example_XLS_100.xls','rb') as file:
             file_obj = file.read()
         file = SimpleUploadedFile("file_example_XLS_100.xls", file_obj) 
         datasetv2_file_response=DatasetV2File.objects.create(dataset_id=self.left_dataset_pr.id ,file=file)
         self.datasetv2_file_pr1 = datasetv2_file_response
-        with open('/Users/akshatanaik/Akshata/repos/datahub-api/connectors/tests/test_files/file_example_XLS_50.xls','rb') as file:
+        with open('connectors/tests/test_files/file_example_XLS_50.xls','rb') as file:
             file_obj = file.read()
         file = SimpleUploadedFile("file_example_XLS_50.xls", file_obj) 
         self.datasetv2_file_pr2=DatasetV2File.objects.create(dataset_id=self.right_dataset_pr.id ,file=file)
@@ -235,19 +237,8 @@ class TestCasesConnectors(TestCase):
         self.connector_map_id=connector_map.id
         self.connector_id=connector.id
 
-    ######### Generic function to return headers #############
-    def set_auth_headers(self, participant=False, co_steward=False):  
-        auth_data = auth_participant if participant else (auth_co_steward if co_steward else auth)
-        headers = {
-            'Content-Type': 'application/json',
-            'Authorization': f'Bearer {auth_data["token"]}'
-        }
-        return headers['Authorization'],headers['Content-Type']
-
-    ##################### List of connectors #######################
     def test_get_list_of_valid_connectors(self):
-        params=f'?user={self.admin.id}&co_steward=false'
-        response = self.client_admin.get(self.connectors_url+params)
+        response = self.client_admin.get(self.connectors_url)
         assert response.status_code == 200
         assert response.json()['results'][0]['name']==connectors_data['name']
         assert response.json()['results'][0]['description']==connectors_data['description']
@@ -261,29 +252,23 @@ class TestCasesConnectors(TestCase):
 
     #################### Retrive single connector #####################
     def test_retrieve_connector_single(self):
-        params=f'{self.agri_connector_id}/?user={self.admin.id}&co_steward=false'
+        params=f'{self.agri_connector_id}/'
         response = self.client_admin.get(self.connectors_url+params)
         response_data = response.json()
+        logging.info(response.json())
         assert response.status_code == 200
         assert response_data['name']==connectors_data['name']
         assert response_data['description']==connectors_data['description']
-        left_dataset_name = response_data['maps'][0]['left_dataset_file']['dataset']['name']
-        left_dataset_description = response_data['maps'][0]['left_dataset_file']['dataset']['description']
-        assert left_dataset_name==left_datasets_dump_data['name']
-        assert left_dataset_description==left_datasets_dump_data['description']
-        right_dataset_name = response_data['maps'][0]['right_dataset_file']['dataset']['name']
-        right_dataset_description = response_data['maps'][0]['right_dataset_file']['dataset']['description']
-        assert right_dataset_name==right_datasets_dump_data['name']
-        assert right_dataset_description==right_datasets_dump_data["description"]
+        assert len(response_data['dataset_and_organizations'])== 2
+        assert len(response_data['dataset_and_organizations']['datasets'])== 2
+        assert len(response_data['dataset_and_organizations']['organizations'])== 1
+        assert response_data['dataset_and_organizations']['datasets'][0]["name"] == left_datasets_dump_data["name"]
+        assert response_data['dataset_and_organizations']['datasets'][1]["name"] == right_datasets_dump_data["name"]
+        assert response_data['dataset_and_organizations']['organizations'][0]["org_email"] == 'akshata@dg.org'
 
     def test_get_connector_invalid_id_handling(self):
-        params=f'{self.agri_connector_hub_map_id}/?user={self.admin.id}&co_steward=false'
+        params=f'{self.agri_connector_hub_map_id}/'
         response = self.client_admin.get(self.connectors_url+params)
         response_data = response.json()
         assert response.status_code == 400
         assert response_data=='No Connectors matches the given query.'
-
-    def test_get_list_of_invalid_user_id(self):
-        response = self.dummy.get(self.connectors_url)
-        assert response.status_code == 401
-        assert response.json()=={'message': 'Invalid auth credentials provided.'}
