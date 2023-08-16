@@ -27,7 +27,8 @@ from datahub.views import (
     TeamMemberViewSet,
     UsagePolicyListCreateView,
     UsagePolicyRetrieveUpdateDestroyView,
-    DatahubNewDashboard
+    DatahubNewDashboard,
+    ResourceManagementViewSet,
 )
 
 router = DefaultRouter()
@@ -44,12 +45,11 @@ router.register(r"", DatahubDashboard, basename="")
 router.register(r"dataset/v2", DatasetV2ViewSet, basename=Constants.DATASET_V2_URL)
 router.register(r"new_dataset_v2", DatasetV2View, basename=Constants.DATASETS_V2_URL)
 router.register(r"dataset_files", DatasetFileV2View, basename=Constants.DATASET_FILES)
-router.register(r"dataset_ops",DatasetV2ViewSetOps,basename="")
+router.register(r"dataset_ops", DatasetV2ViewSetOps, basename="")
 router.register(r"standardise", StandardisationTemplateView, basename=Constants.STANDARDISE)
 router.register(r"newdashboard", DatahubNewDashboard, basename=Constants.NEW_DASHBOARD)
+router.register(r"resource_management", ResourceManagementViewSet, basename=Constants.RESOURCE_MANAGEMENT)
 
-
- 
 urlpatterns = [
     path("", include(router.urls)),
     path('policy/', PolicyListAPIView.as_view(), name='policy-list'),

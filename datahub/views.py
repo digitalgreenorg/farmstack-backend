@@ -18,6 +18,7 @@ from django.conf import settings
 from django.contrib.admin.utils import get_model_from_relation
 from django.core.files.base import ContentFile
 from django.db import transaction
+# from django.http import HttpResponse
 from django.db.models import (
     DEFERRED,
     CharField,
@@ -31,7 +32,7 @@ from django.db.models import (
     Value,
 )
 from django.db.models.functions import Concat
-
+from rest_framework.exceptions import ValidationError
 # from django.db.models.functions import Index, Substr
 from django.http import JsonResponse
 from django.shortcuts import render
@@ -72,6 +73,7 @@ from datahub.models import (
     Organization,
     StandardisationTemplate,
     UserOrganizationMap,
+    Resource
 )
 from datahub.serializers import (
     DatahubDatasetsSerializer,
@@ -100,6 +102,7 @@ from datahub.serializers import (
     TeamMemberUpdateSerializer,
     UserOrganizationCreateSerializer,
     UserOrganizationMapSerializer,
+    ResourceSerializer
 )
 from participant.models import SupportTicket
 from participant.serializers import (
@@ -114,10 +117,12 @@ from utils.jwt_services import http_request_mutation
 from .models import Policy, UsagePolicy
 from .serializers import (
     PolicySerializer,
+    ResourceFileSerializer,
     UsagePolicyDetailSerializer,
     UsagePolicySerializer,
+    APIBuilderSerializer
 )
-
+from core.utils import generate_api_key
 LOGGER = logging.getLogger(__name__)
 
 con = None
@@ -2318,6 +2323,52 @@ class DatasetV2View(GenericViewSet):
     def requested_datasets(self, request, *args, **kwargs):
         try:
             user_map_id = request.data.get("user_map")
+            policy_type = request.data.get('type', None)
+            if policy_type == 'api':
+                dataset_file_id = request.data.get("dataset_file")
+                requested_recieved = (
+                UsagePolicy.objects.select_related(
+                    "dataset_file",
+                    "dataset_file__dataset",
+                    "user_organization_map__organization",
+                    )
+                    .filter(dataset_file__dataset__user_map_id=user_map_id, 
+                            dataset_file_id=dataset_file_id)
+                    .values(
+                        "id",
+                        "approval_status",
+                        "accessibility_time",
+                        "updated_at",
+                        "created_at",
+                        dataset_id=F("dataset_file__dataset_id"),
+                        dataset_name=F("dataset_file__dataset__name"),
+                        file_name=F("dataset_file__file"),
+                        organization_name=F("user_organization_map__organization__name"),
+                        organization_email=F("user_organization_map__organization__org_email"),
+                        organization_phone_number=F("user_organization_map__organization__phone_number"),
+                    )
+                    .order_by("-updated_at")
+                )
+                response_data = []
+                for values in requested_recieved:
+                    org = {
+                        "org_email": values["organization_email"],
+                        "name": values["organization_name"],
+                        "phone_number": values["organization_phone_number"],
+                    }
+                    values.pop("organization_email")
+                    values.pop("organization_name")
+                    values.pop("organization_phone_number")
+                    values["file_name"] = values.get("file_name", "").split("/")[-1]
+                    
+                    values["organization"] = org
+                    response_data.append(values)
+                return Response(
+                {
+                    "recieved": response_data,
+                    },
+                    200,
+                )
             requested_sent = (
                 UsagePolicy.objects.select_related(
                     "dataset_file",
@@ -2420,8 +2471,8 @@ class DatasetV2View(GenericViewSet):
                         "cows": (df[['Other Dual Cattle', 'Cross breed Cattle', 'Cattle boma']]).sum(axis=1).sum(),
                         "goats": df[['Small East African Goats', 'Somali Goat', 'Other Goat']].sum(axis=1).sum(),
                         "chickens": df[['Chicken -Indigenous', 'Chicken -Broilers', 'Chicken -Layers']].sum(axis=1).sum(),
-                        "ducks": df[['Ducks']].sum(axis=1).sum(),
-                        "sheep": df[['Other Sheep']].sum()
+                        "ducks": df['Ducks'].sum(),
+                        "sheep": df['Other Sheep'].sum()
                     },
                     "financial_livelihood": {
                         "lenders": (df['Moneylender']).sum(),
@@ -2439,6 +2490,14 @@ class DatasetV2View(GenericViewSet):
                     "insurance_information": {
                         "insured_crops": (df['Do you insure your crops?']).sum(),
                         "insured_machinery": (df['Do you insure your farm buildings and other assets?']).sum(),
+                    },
+                    "popular_fertilizer_user":{
+                        "dap" : (df['DAP']).sum(),
+                        "npk" : (df['NPK']).sum(),
+                        "ssp" : (df['Superphosphate']).sum(),
+                        "can" : (df['CAN']).sum(),
+                        "urea" : (df['Urea']).sum(),
+                        "Others" : (df['Others']).sum(),
                     }
                 }
             except Exception as e:
@@ -2586,7 +2645,29 @@ class UsagePolicyListCreateView(generics.ListCreateAPIView):
 class UsagePolicyRetrieveUpdateDestroyView(generics.RetrieveUpdateDestroyAPIView):
     queryset = UsagePolicy.objects.all()
     serializer_class = UsagePolicySerializer
-
+    api_builder_serializer_class=APIBuilderSerializer
+    def patch(self, request, *args, **kwargs):
+        instance = self.get_object()
+        approval_status = request.data.get('approval_status')
+        policy_type = request.data.get('type', None)
+        instance.api_key = None
+        try:
+            if policy_type == 'api':
+                if approval_status=='approved':
+                    instance.api_key = generate_api_key()
+            serializer = self.api_builder_serializer_class(instance,data=request.data,partial=True)
+            serializer.is_valid(raise_exception=True)
+            serializer.save()
+            return Response(serializer.data, status=200) 
+        
+        except ValidationError as e:
+            LOGGER.error(e,exc_info=True )
+            return Response(e.detail, status=status.HTTP_400_BAD_REQUEST)
+        
+        except Exception as error:
+            LOGGER.error(error, exc_info=True)
+            return Response(str(error), status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    
 
 class DatahubNewDashboard(GenericViewSet):
     """Datahub Dashboard viewset"""
@@ -2792,3 +2873,55 @@ class DatahubNewDashboard(GenericViewSet):
         except Exception as error:
             LOGGER.error(error, exc_info=True)
             return Response({}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+# @http_request_mutation
+class ResourceManagementViewSet(GenericViewSet):
+    """
+    Resource Management viewset.
+    """
+    queryset = Resource.objects.all()
+    serializer_class = ResourceSerializer
+    pagination_class = CustomPagination
+
+    @http_request_mutation
+    def create(self, request, *args, **kwargs):
+
+        user_map = request.META.get("map_id")
+        request.data._mutable = True
+        request.data['user_map'] = user_map
+
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+    def update(self, request, *args, **kwargs):
+        instance = self.get_object()
+        serializer = self.get_serializer(instance, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response(status=status.HTTP_200_OK)
+
+    def list(self, request, *args, **kwargs):
+        user_map = request.META.get("map_id")
+        if request.GET.get("others"):
+            queryset = Resource.objects.filter(user_map=user_map)
+        else:
+            # Created by me.
+            queryset = Resource.objects.exclude(user_map=user_map)
+        
+        page = self.paginate_queryset(queryset)
+        serializer = self.get_serializer(page, many=True)
+        return self.get_paginated_response(serializer.data)
+
+    def destroy(self, request, *args, **kwargs):
+        resource = self.get_object()
+        resource.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+    def retrieve(self, request, *args, **kwargs):
+        resource = self.get_object()
+        serializer = self.get_serializer(resource)
+        # serializer.is_valid(raise_exception=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
