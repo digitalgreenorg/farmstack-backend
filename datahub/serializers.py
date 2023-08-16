@@ -1001,7 +1001,7 @@ class ResourceSerializer(serializers.ModelSerializer):
         instance.save()
 
         # Handle existing files
-        import pdb; pdb.set_trace()
+        # import pdb; pdb.set_trace()
         existing_file_ids = []
         for file_data in uploaded_files_data:
             file_id = file_data.get('id', None)
