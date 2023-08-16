@@ -124,6 +124,7 @@ from .serializers import (
     APIBuilderSerializer
 )
 from core.utils import generate_api_key
+
 LOGGER = logging.getLogger(__name__)
 
 con = None
@@ -2328,12 +2329,12 @@ class DatasetV2View(GenericViewSet):
             if policy_type == 'api':
                 dataset_file_id = request.data.get("dataset_file")
                 requested_recieved = (
-                UsagePolicy.objects.select_related(
-                    "dataset_file",
-                    "dataset_file__dataset",
-                    "user_organization_map__organization",
+                    UsagePolicy.objects.select_related(
+                        "dataset_file",
+                        "dataset_file__dataset",
+                        "user_organization_map__organization",
                     )
-                    .filter(dataset_file__dataset__user_map_id=user_map_id, 
+                    .filter(dataset_file__dataset__user_map_id=user_map_id,
                             dataset_file_id=dataset_file_id)
                     .values(
                         "id",
@@ -2361,12 +2362,12 @@ class DatasetV2View(GenericViewSet):
                     values.pop("organization_name")
                     values.pop("organization_phone_number")
                     values["file_name"] = values.get("file_name", "").split("/")[-1]
-                    
+
                     values["organization"] = org
                     response_data.append(values)
                 return Response(
-                {
-                    "recieved": response_data,
+                    {
+                        "recieved": response_data,
                     },
                     200,
                 )
@@ -2446,14 +2447,16 @@ class DatasetV2View(GenericViewSet):
         try:
             cols_to_read = [' Gender', ' Constituency', ' County', ' Sub County', ' Crop Production',
                             ' Livestock Production', ' Ducks', ' Other Sheep', ' Total Area Irrigation', ' Family',
-                            ' NPK', ' Superphosphate', ' CAN', ' Urea', ' Other', ' Do you insure your crops?',
-                            ' Do you insure your farm buildings and other assets?' , ' Other Dual Cattle' , ' Cross breed Cattle' , ' Cattle boma' ,
-                            ' Small East African Goats', ' Somali Goat', ' Other Goat', ' Chicken -Indigenous',  ' Chicken -Broilers', ' Chicken -Layers']
+                            ' Other Money Lenders', ' Micro-finance institution', ' Self (Salary or Savings)', " Natural rivers and stream" , " Water Pan",
+                                                                                  ' NPK', ' Superphosphate', ' CAN',
+                            ' Urea', ' Other', ' Do you insure your crops?',
+                            ' Do you insure your farm buildings and other assets?', ' Other Dual Cattle',
+                            ' Cross breed Cattle', ' Cattle boma',
+                            ' Small East African Goats', ' Somali Goat', ' Other Goat', ' Chicken -Indigenous',
+                            ' Chicken -Broilers', ' Chicken -Layers']
 
-            livestock_columns = ['Other Dual Cattle', 'Cross breed Cattle', 'Cattle boma']
             dataset_file_object = DatasetV2File.objects.get(id=pk)
             dataset_file = str(dataset_file_object.standardised_file)
-            print(dataset_file)
             try:
                 if dataset_file.endswith(".xlsx") or dataset_file.endswith(".xls"):
                     df = pd.read_excel(os.path.join(settings.DATASET_FILES_URL, dataset_file))
@@ -2469,6 +2472,12 @@ class DatasetV2View(GenericViewSet):
                 df['Ducks'] = pd.to_numeric(df['Ducks'], errors='coerce')
                 df['Other Sheep'] = pd.to_numeric(df['Other Sheep'], errors='coerce')
                 df['Family'] = pd.to_numeric(df['Family'], errors='coerce')
+                df['Other Money Lenders'] = pd.to_numeric(df['Other Money Lenders'], errors='coerce')
+                df['Micro-finance institution'] = pd.to_numeric(df['Micro-finance institution'], errors='coerce')
+                df['Self (Salary or Savings)'] = pd.to_numeric(df['Self (Salary or Savings)'], errors='coerce')
+                df['Natural rivers and stream'] = pd.to_numeric(df['Natural rivers and stream'], errors='coerce')
+                df["Water Pan"] = pd.to_numeric(df["Water Pan"], errors='coerce')
+
                 df['Total Area Irrigation'] = pd.to_numeric(df['Total Area Irrigation'], errors='coerce')
                 df['NPK'] = pd.to_numeric(df['NPK'], errors='coerce')
                 df['Superphosphate'] = pd.to_numeric(df['Superphosphate'], errors='coerce')
@@ -2504,32 +2513,37 @@ class DatasetV2View(GenericViewSet):
                     "livestock_and_poultry_production": {
                         "cows": int((df[['Other Dual Cattle', 'Cross breed Cattle', 'Cattle boma']]).sum(axis=1).sum()),
                         "goats": int(df[['Small East African Goats', 'Somali Goat', 'Other Goat']].sum(axis=1).sum()),
-                        "chickens": int(df[['Chicken -Indigenous', 'Chicken -Broilers', 'Chicken -Layers']].sum(axis=1).sum()),
+                        "chickens": int(
+                            df[['Chicken -Indigenous', 'Chicken -Broilers', 'Chicken -Layers']].sum(axis=1).sum()),
                         "ducks": int(np.sum(df['Ducks'])),
                         "sheep": int(np.sum(df['Other Sheep'])),
                     },
                     "financial_livelihood": {
-                        "lenders": 0,
+                        # "lenders": 0,
                         "relatives": int(np.sum(df['Family'])),
-                        "traders": 0,
-                        "agents": 0,
-                        "institutional": 0
+                        # "traders": 0,
+                        # "agents": 0,
+                        "Other Money Lenders": int(np.sum(df['Other Money Lenders'])),
+                        "Micro-finance institution":int(np.sum(df['Micro-finance institution'])),
+                        "Self (Salary or Savings)": int(np.sum(df['Self (Salary or Savings)'])),
                     },
                     "water_sources": {
-                        "borewell": 0,
+                        # "borewell": 0,
                         "irrigation": int(np.sum(df['Total Area Irrigation'])),
-                        "rainwater": 0,
+                        "rivers": int(np.sum(df['Natural rivers and stream'])),
+                        "water_pan": int(np.sum(df['Water Pan'])),
+                        # "rainwater": 0,
 
                     },
                     "insurance_information": {
-                        "insured_crops":int(np.sum(df['Do you insure your crops?'])),
+                        "insured_crops": int(np.sum(df['Do you insure your crops?'])),
                         "insured_machinery": int(np.sum(df['Do you insure your farm buildings and other assets?'])),
                     },
                     "popular_fertilizer_user": {
                         "npk": int(np.sum(df['NPK'])),
                         "ssp": int(np.sum(df['Superphosphate'])),
                         "can": int(np.sum(df['CAN'])),
-                        "urea":int(np.sum(df['Urea'])),
+                        "urea": int(np.sum(df['Urea'])),
                         "Others": int(np.sum(df['Other'])),
                     }
                 }
@@ -2676,7 +2690,8 @@ class UsagePolicyListCreateView(generics.ListCreateAPIView):
 class UsagePolicyRetrieveUpdateDestroyView(generics.RetrieveUpdateDestroyAPIView):
     queryset = UsagePolicy.objects.all()
     serializer_class = UsagePolicySerializer
-    api_builder_serializer_class=APIBuilderSerializer
+    api_builder_serializer_class = APIBuilderSerializer
+
     def patch(self, request, *args, **kwargs):
         instance = self.get_object()
         approval_status = request.data.get('approval_status')
@@ -2684,21 +2699,21 @@ class UsagePolicyRetrieveUpdateDestroyView(generics.RetrieveUpdateDestroyAPIView
         instance.api_key = None
         try:
             if policy_type == 'api':
-                if approval_status=='approved':
+                if approval_status == 'approved':
                     instance.api_key = generate_api_key()
-            serializer = self.api_builder_serializer_class(instance,data=request.data,partial=True)
+            serializer = self.api_builder_serializer_class(instance, data=request.data, partial=True)
             serializer.is_valid(raise_exception=True)
             serializer.save()
-            return Response(serializer.data, status=200) 
-        
+            return Response(serializer.data, status=200)
+
         except ValidationError as e:
-            LOGGER.error(e,exc_info=True )
+            LOGGER.error(e, exc_info=True)
             return Response(e.detail, status=status.HTTP_400_BAD_REQUEST)
-        
+
         except Exception as error:
             LOGGER.error(error, exc_info=True)
             return Response(str(error), status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-    
+
 
 class DatahubNewDashboard(GenericViewSet):
     """Datahub Dashboard viewset"""
@@ -2905,6 +2920,7 @@ class DatahubNewDashboard(GenericViewSet):
             LOGGER.error(error, exc_info=True)
             return Response({}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
+
 # @http_request_mutation
 class ResourceManagementViewSet(GenericViewSet):
     """
@@ -2941,7 +2957,7 @@ class ResourceManagementViewSet(GenericViewSet):
         else:
             # Created by me.
             queryset = Resource.objects.exclude(user_map=user_map)
-        
+
         page = self.paginate_queryset(queryset)
         serializer = self.get_serializer(page, many=True)
         return self.get_paginated_response(serializer.data)
