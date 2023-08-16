@@ -210,13 +210,13 @@ class DatasetsMicrositeViewSet(GenericViewSet):
             file_path = request.GET.get('file_path')
             page = int(request.GET.get('page', 1))
             if file_path.endswith(".xlsx") or file_path.endswith(".xls"):
-                df = pd.read_excel(os.path.join(settings.DATASET_FILES_URL, file_path), index_col=None)
+                df = pd.read_excel(file_path, index_col=None)
             else:
-                df = pd.read_csv(os.path.join(settings.DATASET_FILES_URL, file_path), index_col=False)
+                df = pd.read_csv(file_path, index_col=False)
             total = len(df)
             total_pages = math.ceil((total/50))
             start_index = 0  + 50*(page-1)  # Adjust the start index as needed
-            end_index = start_index + 50*page
+            end_index = 50*page
             df = df.iloc[start_index:end_index]
             return JsonResponse({
             'total_pages': total_pages,
