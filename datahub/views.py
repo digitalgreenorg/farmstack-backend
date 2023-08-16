@@ -18,6 +18,7 @@ from django.conf import settings
 from django.contrib.admin.utils import get_model_from_relation
 from django.core.files.base import ContentFile
 from django.db import transaction
+# from django.http import HttpResponse
 from django.db.models import (
     DEFERRED,
     CharField,
@@ -72,6 +73,7 @@ from datahub.models import (
     Organization,
     StandardisationTemplate,
     UserOrganizationMap,
+    Resource
 )
 from datahub.serializers import (
     DatahubDatasetsSerializer,
@@ -100,6 +102,7 @@ from datahub.serializers import (
     TeamMemberUpdateSerializer,
     UserOrganizationCreateSerializer,
     UserOrganizationMapSerializer,
+    ResourceSerializer
 )
 from participant.models import SupportTicket
 from participant.serializers import (
@@ -114,6 +117,7 @@ from utils.jwt_services import http_request_mutation
 from .models import Policy, UsagePolicy
 from .serializers import (
     PolicySerializer,
+    ResourceFileSerializer,
     UsagePolicyDetailSerializer,
     UsagePolicySerializer,
     APIBuilderSerializer
@@ -2869,3 +2873,55 @@ class DatahubNewDashboard(GenericViewSet):
         except Exception as error:
             LOGGER.error(error, exc_info=True)
             return Response({}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+# @http_request_mutation
+class ResourceManagementViewSet(GenericViewSet):
+    """
+    Resource Management viewset.
+    """
+    queryset = Resource.objects.all()
+    serializer_class = ResourceSerializer
+    pagination_class = CustomPagination
+
+    @http_request_mutation
+    def create(self, request, *args, **kwargs):
+
+        user_map = request.META.get("map_id")
+        request.data._mutable = True
+        request.data['user_map'] = user_map
+
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+    def update(self, request, *args, **kwargs):
+        instance = self.get_object()
+        serializer = self.get_serializer(instance, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response(status=status.HTTP_200_OK)
+
+    def list(self, request, *args, **kwargs):
+        user_map = request.META.get("map_id")
+        if request.GET.get("others"):
+            queryset = Resource.objects.filter(user_map=user_map)
+        else:
+            # Created by me.
+            queryset = Resource.objects.exclude(user_map=user_map)
+        
+        page = self.paginate_queryset(queryset)
+        serializer = self.get_serializer(page, many=True)
+        return self.get_paginated_response(serializer.data)
+
+    def destroy(self, request, *args, **kwargs):
+        resource = self.get_object()
+        resource.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+    def retrieve(self, request, *args, **kwargs):
+        resource = self.get_object()
+        serializer = self.get_serializer(resource)
+        # serializer.is_valid(raise_exception=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
