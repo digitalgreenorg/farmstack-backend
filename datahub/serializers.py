@@ -26,6 +26,8 @@ from datahub.models import (
     Organization,
     StandardisationTemplate,
     UserOrganizationMap,
+    ResourceFile,
+    Resource
 )
 from participant.models import Connectors, SupportTicket
 from utils.custom_exceptions import NotFoundException
@@ -950,3 +952,67 @@ class UsagePolicyDetailSerializer(serializers.ModelSerializer):
     class Meta:
         model = UsagePolicy
         fields = '__all__'
+
+
+class ResourceFileSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ResourceFile
+        fields = '__all__'
+
+
+class ResourceSerializer(serializers.ModelSerializer):
+    
+    class OrganizationRetriveSerializer(serializers.ModelSerializer):
+        class Meta:
+            model = Organization
+            fields = ["id", "org_email", "name"]
+
+    class UserSerializer(serializers.ModelSerializer):
+        class Meta:
+            model = User
+            fields = ["id", "first_name", "last_name", "email", "role", "on_boarded_by"]
+
+    resources = ResourceFileSerializer(many=True, read_only=True)
+    uploaded_files = serializers.ListField(child=serializers.FileField(),
+                                           write_only=True)
+    organization = OrganizationRetriveSerializer(
+        allow_null=True, required=False, read_only=True, source="user_map.organization"
+    )
+    user = UserSerializer(allow_null=True, required=False, read_only=True, source="user_map.user")
+
+    class Meta:
+        model = Resource
+        fields = ('id', 'title', 'description', 'user_map', 'resources','uploaded_files','organization', 'user')
+
+    def create(self, validated_data):
+        resource_files_data = validated_data.pop('uploaded_files')
+        resource = Resource.objects.create(**validated_data)
+
+        for file_data in resource_files_data:
+            ResourceFile.objects.create(resource=resource, file=file_data)
+
+        return resource
+    
+    def update(self, instance, validated_data):
+        uploaded_files_data = validated_data.pop('uploaded_files', [])
+
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+        instance.save()
+
+        # Handle existing files
+        import pdb; pdb.set_trace()
+        for file_data in uploaded_files_data:
+            file_id = file_data.get('id')
+            if file_id:  # Existing file
+                existing_file = ResourceFile.objects.get(id=file_id)
+                # Update file attributes if needed
+            else:  # New file
+                ResourceFile.objects.create(resource=instance, file=file_data['file'])
+
+        # Handle deletion of files not present in uploaded_files_data
+        existing_file_ids = [file['id'] for file in uploaded_files_data if file.get('id')]
+        ResourceFile.objects.filter(resource=instance).exclude(id__in=existing_file_ids).delete()
+
+        return instance
+    
