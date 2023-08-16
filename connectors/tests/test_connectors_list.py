@@ -287,6 +287,200 @@ class TestCasesConnectors(TestCase):
         assert right_dataset_name==right_datasets_dump_data['name']
         assert right_dataset_description==right_datasets_dump_data["description"]
 
+ ###############---CREATE---RETRIEVE---UPDATE---######################
+    def test_handle_create_edit_integrate_and_get_connector(self):
+        create_connector_two["user"] = str(self.participant.id)
+        create_connector_two["maps"]=json.dumps([{
+            "condition":{
+                "how":"outer",
+                "left_on":["Age"],
+                "right_on":["Age"],
+                "left_selected": ["First Name",
+                    "Gender",
+                    "Age", ],
+                "right_selected": ["Last Name",
+                    "Gender",
+                    "Country",
+                    "Age", ]
+            },
+            "left_dataset_file":str(self.datasetv2_file_pr1.id),
+            "left_dataset_file_path": str(self.datasetv2_file_pr1.file),
+            "right_dataset_file":str(self.datasetv2_file_pr1.id),
+            "right_dataset_file_path":str(self.datasetv2_file_pr1.file)
+        }])
+        url=self.connectors_url+'integration/'
+        params=f'?user={self.participant.id}&co_steward=false'
+
+        ###########Calling integration API ################
+        response = self.user_participant.post(url+params, create_connector_two)     
+        response_data = response.json()
+        assert response.status_code == 200                    
+        data={
+            "name":create_connector_two["name"],
+            "description":create_connector_two["description"],
+            "integrated_file":create_connector_two["integrated_file"],
+            "user":create_connector_two["user"],
+            "maps":json.dumps([{
+            "condition":{
+                "how":"outer",
+                "left_on":["Age"],
+                "right_on":["Age"],
+                "left_selected": ["First Name",
+                    "Gender",
+                    "Age", ],
+                "right_selected": ["Last Name",
+                    "Gender",
+                    "Country",
+                    "Age", ]
+            },"left_dataset_file":str(self.datasetv2_file_pr1.id),
+            "right_dataset_file":str(self.datasetv2_file_pr1.id),
+            "left_dataset_file_path": str(self.datasetv2_file_pr1.file),
+            "right_dataset_file_path":str(self.datasetv2_file_pr1.file),
+            }]),
+        }
+
+        #####################CREATE-CONNECTORS######################
+        response = self.user_participant.post(self.connectors_url, data)       
+        created_data = response.json()
+        assert response.status_code == 201
+        assert created_data["name"]==create_connector_two["name"]
+        assert created_data["description"]==create_connector_two["description"]
+
+        ################## GET CREATED CONNECTOR DATA###################
+        id=created_data["id"]
+        params=f'{id}/?user={self.participant.id}&co_steward=false'
+        response = self.user_participant.get(self.connectors_url+params)
+        assert response.status_code == 200 
+        assert response.json()["id"] == id
+
+
+        ############################### UPDATE DATA WITH ID ####################################
+        connector_id=response.json()['id']
+        extract_connector_data={
+                     "user":str(self.participant.id),
+                    "name":response.json()["name"],
+                    "description":response.json()["description"],
+                    "integrated_file":response.json()["integrated_file"],
+                    "maps":json.dumps([{
+                            "condition":{
+                                "how":"outer",
+                                "left_on":["Age"],
+                                "right_on":["Age"],
+                                "left_selected": ["First Name",
+                                    "Gender",
+                                    "Age", ],
+                                "right_selected": ["Last Name",
+                                    "Gender",
+                                    "Country",
+                                    "Age", ]
+                            },"id":response.json()['maps'][0]['id'],
+                            "left_dataset_file":str(self.datasetv2_file_pr1.id),
+                            "right_dataset_file":str(self.datasetv2_file_pr1.id),
+                            "left_dataset_file_path": str(self.datasetv2_file_pr1.file),
+                            "right_dataset_file_path":str(self.datasetv2_file_pr1.file)}])
+                }
+        extract_connector_data.update({'description': 'UPDATED DATAAAAAAAAAAAAAA'})      
+        params=f'{connector_id}/?user={self.participant.id}&co_steward=false'   
+        updated_response = self.user_participant.put(self.connectors_url+params,extract_connector_data,content_type='application/json') 
+        assert updated_response.status_code == 200
+        assert updated_response.json()["description"] == 'UPDATED DATAAAAAAAAAAAAAA'
+
+        ########################### UPDATE CONNECTOR  WITHOUT PASSING ID ###############################
+        connector_id=response.json()['id']
+        id_pk=uuid.uuid4()
+        extract_connector_data={
+             "user":str(self.participant.id),
+                    "name":response.json()["name"],
+                    "description":response.json()["description"],
+                    "integrated_file":response.json()["integrated_file"],
+                    "maps":json.dumps([{
+                            "condition":{
+                                "how":"outer",
+                                "left_on":["Age"],
+                                "right_on":["Age"],
+                                "left_selected": ["First Name",
+                                    "Gender",
+                                    "Age", ],
+                                "right_selected": ["Last Name",
+                                    "Gender",
+                                    "Country",
+                                    "Age", ]
+                            },
+                            "left_dataset_file":str(self.datasetv2_file_pr1.id),
+                            "right_dataset_file":str(self.datasetv2_file_pr1.id)}])
+                }
+        extract_connector_data.update({'description': 'UPDATED DATAAAAAAAAAAAAAA 123'})      
+        params=f'{connector_id}/?user={self.participant.id}&co_steward=false'   
+        updated_response = self.user_participant.put(self.connectors_url+params,extract_connector_data,content_type='application/json') 
+        assert updated_response.status_code == 200
+        retrive_response = self.user_participant.get(self.connectors_url+params)
+        assert len(retrive_response.json().get("maps")) == 2
+
+    ############ APPENDING ONE MORE MAP DATA######### 
+        new_row={
+            "condition":{
+                "how":"outer",
+                "left_on":["Age"],
+                "right_on":["Age"],
+                "left_selected": [
+                    "Gender",
+                    "Age", ],
+                "right_selected": ["Last Name",
+                    "Gender",
+                    "Country",
+                    "Age", ]
+            },
+            "left_dataset_file":str(self.datasetv2_file_pr1.id),
+            "left_dataset_file_path": str(self.datasetv2_file_pr1.file),
+            "right_dataset_file":str(self.datasetv2_file_pr1.id),
+            "right_dataset_file_path":str(self.datasetv2_file_pr1.file)
+        }
+        maps_data = json.loads(create_connector_two["maps"])
+        maps_data.append(new_row)
+        create_connector_two["maps"] = json.dumps(maps_data)
+        create_connector_two["integrated_file"]=open("/Users/akshatanaik/Akshata/repos/datahub-api/connectors/tests/test_files/file_example_XLS_50.xls","rb") 
+        url=self.connectors_url+'integration/?edit=True'
+        params=f'?user={self.participant.id}&co_steward=false'
+        response = self.user_participant.post(url+params, create_connector_two)  
+        response_data_second = response.json()
+        assert response.status_code == 200
+   
+        create_connector_two["description"]= "description updated"
+        create_connector_two["integrated_file"]=response_data_second["integrated_file"]     
+        maps=json.loads(create_connector_two["maps"])
+        id=created_data['id']
+        params=f'{id}/?user={self.participant.id}&co_steward=false'   
+        updated_response = self.user_participant.put(self.connectors_url+params,create_connector_two,content_type='application/json')    
+        assert updated_response.status_code == 200
+        assert updated_response.json()["description"]=="description updated"
+
+
+    #################### GET API CALL(LISTING) ###################
+        params=f'?user={self.participant.id}&co_steward=false'
+        response = self.user_participant.get(self.connectors_url+params)
+        assert response.status_code == 200 
+        assert response.json()["results"][0]['dataset_count']==5
+        assert response.json()["results"][0]['providers_count']==1
+
+
+    ################ Negative test cases ######################
+
+    def test_update_connector_description_exceeding_512_chars(self):   
+        params=f'{self.connector_id}/?user={self.admin.id}&co_steward=false'
+        response = self.client_admin.get(self.connectors_url+params) 
+        response_data=response.json()
+        extract_connector_data={
+            'name':response_data['name'],
+            'description':response_data["description"],
+            'integrated_file':response_data['integrated_file'],
+            'status':response_data['status'],
+        }
+        extract_connector_data.update({'description': 'A dataset is a structured collection of data that is organized and presented in a specific format for use in analysis, research, or other purposes. Datasets can come in various forms, such as tables, spreadsheets, text files, images, videos, audio recordings, and more. They are a fundamental component in the field of data science, machine learning, and artificial intelligence as they serve as the raw material for training models, making predictions, and extracting insights.A dataset is a structured collection of data that is organized and presented in a specific form'})
+        params=f'{self.connector_id}/?user={self.admin.id}&co_steward=false'
+        updated_response = self.client_admin.put(self.connectors_url+params,extract_connector_data,content_type='application/json') 
+        assert updated_response.status_code == 400
+        assert updated_response.json()=={'description': ['Ensure this field has no more than 512 characters.']}
+
     def test_get_connector_invalid_id_handling(self):
         params=f'{self.agri_connector_hub_map_id}/?user={self.admin.id}&co_steward=false'
         response = self.client_admin.get(self.connectors_url+params)
@@ -294,6 +488,34 @@ class TestCasesConnectors(TestCase):
         assert response.status_code == 400
         assert response_data=='No Connectors matches the given query.'
 
+    def test_create_connector_existing_name_check(self):
+        data={
+            "name":"connector hub",
+            "description":create_connector_two["description"],
+            "integrated_file":connector_details["integrated_file"],
+            "maps":json.dumps([{
+            "condition":{
+                "how":"outer",
+                "left_on":["Age"],
+                "right_on":["Age"],
+                "left_selected": ["First Name",
+                    "Gender",
+                    "Age", ],
+                "right_selected": ["Last Name",
+                    "Gender",
+                    "Country",
+                    "Age", ]
+            },"left_dataset_file":str(self.datasetv2_file_pr1.id),
+            "right_dataset_file":str(self.datasetv2_file_pr1.id),
+            "left_dataset_file_path": str(self.datasetv2_file_pr1.file),
+            "right_dataset_file_path":str(self.datasetv2_file_pr1.file),
+            }]),
+        }
+        response = self.user_participant.post(self.connectors_url, data)       
+        created_data = response.json()
+        assert response.status_code == 400
+        assert created_data=={'name': ['connectors with this name already exists.'], 'user': ['This field is required.']}
+ 
     def test_get_list_of_invalid_user_id(self):
         response = self.dummy.get(self.connectors_url)
         assert response.status_code == 401
