@@ -4,7 +4,10 @@ import logging
 import operator
 import os
 from functools import reduce
-
+import pandas as pd
+from django.core.paginator import Paginator
+from rest_framework.exceptions import ValidationError
+import math
 from django.conf import settings
 from django.db.models import Q
 from django.http import FileResponse, HttpResponse, HttpResponseNotFound, JsonResponse
@@ -199,6 +202,34 @@ class DatasetsMicrositeViewSet(GenericViewSet):
 
         serializer["datasets"] = data
         return Response(serializer, status=status.HTTP_200_OK)
+    
+    @action(detail=False, methods=["get"])
+    def get_json_response(self, request, *args, **kwargs):
+        try:
+            file_path = request.GET.get('file_path')
+            page = int(request.GET.get('page', 1))
+            if file_path.endswith(".xlsx") or file_path.endswith(".xls"):
+                df = pd.read_excel(file_path, index_col=None)
+            else:
+                df = pd.read_csv(file_path, index_col=False)
+            total = len(df)
+            total_pages = math.ceil((total/50))
+            start_index = 0  + 50*(page-1)  # Adjust the start index as needed
+            end_index = 50*page
+            df = df.iloc[start_index:end_index]
+            return JsonResponse({
+            'total_pages': total_pages,
+            'current_page': page,
+            'total': total,
+            'data': df.to_dict(orient='records')
+            }, safe=False,status=200)       
+        except ValidationError as e:
+            LOGGER.error(e,exc_info=True )
+            return Response(e.detail, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as error:
+            LOGGER.error(error, exc_info=True)
+            return Response(str(error), status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        
 
     @action(detail=False, methods=["post"])
     def dataset_filters(self, request, *args, **kwargs):
