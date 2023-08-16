@@ -6,6 +6,7 @@ import operator
 import os
 import re
 import shutil
+import numpy as np
 import sys
 from calendar import c
 from functools import reduce
@@ -2443,63 +2444,96 @@ class DatasetV2View(GenericViewSet):
     @action(detail=True, methods=["get"])
     def get_dashboard_chart_data(self, request, pk, *args, **kwargs):
         try:
+            cols_to_read = [' Gender', ' Constituency', ' County', ' Sub County', ' Crop Production',
+                            ' Livestock Production', ' Ducks', ' Other Sheep', ' Total Area Irrigation', ' Family',
+                            ' NPK', ' Superphosphate', ' CAN', ' Urea', ' Other', ' Do you insure your crops?',
+                            ' Do you insure your farm buildings and other assets?' , ' Other Dual Cattle' , ' Cross breed Cattle' , ' Cattle boma' ,
+                            ' Small East African Goats', ' Somali Goat', ' Other Goat', ' Chicken -Indigenous',  ' Chicken -Broilers', ' Chicken -Layers']
+
+            livestock_columns = ['Other Dual Cattle', 'Cross breed Cattle', 'Cattle boma']
             dataset_file_object = DatasetV2File.objects.get(id=pk)
             dataset_file = str(dataset_file_object.standardised_file)
+            print(dataset_file)
             try:
                 if dataset_file.endswith(".xlsx") or dataset_file.endswith(".xls"):
                     df = pd.read_excel(os.path.join(settings.DATASET_FILES_URL, dataset_file))
                 elif dataset_file.endswith(".csv"):
-                    df = pd.read_csv(os.path.join(settings.DATASET_FILES_URL, dataset_file))
+                    df = pd.read_csv(os.path.join(settings.DATASET_FILES_URL, dataset_file), usecols=cols_to_read)
+                    df.columns = df.columns.str.strip()
 
                 else:
                     return Response(
                         "Unsupported file please use .xls or .csv.",
                         status=status.HTTP_400_BAD_REQUEST,
                     )
+                df['Ducks'] = pd.to_numeric(df['Ducks'], errors='coerce')
+                df['Other Sheep'] = pd.to_numeric(df['Other Sheep'], errors='coerce')
+                df['Family'] = pd.to_numeric(df['Family'], errors='coerce')
+                df['Total Area Irrigation'] = pd.to_numeric(df['Total Area Irrigation'], errors='coerce')
+                df['NPK'] = pd.to_numeric(df['NPK'], errors='coerce')
+                df['Superphosphate'] = pd.to_numeric(df['Superphosphate'], errors='coerce')
+                df['CAN'] = pd.to_numeric(df['CAN'], errors='coerce')
+                df['Urea'] = pd.to_numeric(df['Urea'], errors='coerce')
+                df['Other'] = pd.to_numeric(df['Other'], errors='coerce')
+
+                df['Other Dual Cattle'] = pd.to_numeric(df['Other Dual Cattle'], errors='coerce')
+                df['Cross breed Cattle'] = pd.to_numeric(df['Cross breed Cattle'], errors='coerce')
+                df['Cattle boma'] = pd.to_numeric(df['Cattle boma'], errors='coerce')
+                df['Small East African Goats'] = pd.to_numeric(df['Small East African Goats'], errors='coerce')
+                df['Somali Goat'] = pd.to_numeric(df['Somali Goat'], errors='coerce')
+                df['Other Goat'] = pd.to_numeric(df['Other Goat'], errors='coerce')
+                df['Chicken -Indigenous'] = pd.to_numeric(df['Chicken -Indigenous'], errors='coerce')
+                df['Chicken -Broilers'] = pd.to_numeric(df['Chicken -Broilers'], errors='coerce')
+                df['Chicken -Layers'] = pd.to_numeric(df['Chicken -Layers'], errors='coerce')
+
+                df['Do you insure your crops?'] = pd.to_numeric(df['Do you insure your crops?'], errors='coerce')
+                df['Do you insure your farm buildings and other assets?'] = pd.to_numeric(
+                    df['Do you insure your farm buildings and other assets?'], errors='coerce')
+
                 obj = {
                     "total_no_of_records": len(df),
-                    "male_count": (df['Gender'] == 1).sum(),
-                    "female_count": (df['Gender'] == 0).sum(),
-                    "constituencies": (df['Constituency']).nunique(),
-                    "counties": (df['County']).nunique(),
-                    "sub_counties": (df['Sub County']).nunique(),
+                    'male_count': np.sum(df['Gender'] == 1),
+                    'female_count': np.sum(df['Gender'] == 2),
+                    "constituencies": np.unique(df['Constituency']).size,
+                    "counties": np.unique(df['County']).size,
+                    "sub_counties": np.unique(df['Sub County']).size,
                     "farming_practices": {
-                        "crop_production": (df['Crop Production']).sum(),
-                        "livestock_production": (df['Livestock Production']).sum(),
+                        "crop_production": np.sum(df['Crop Production'] == 1),
+                        "livestock_production": np.sum(df['Livestock Production'] == 1),
                     },
                     "livestock_and_poultry_production": {
-                        "cows": (df[['Other Dual Cattle', 'Cross breed Cattle', 'Cattle boma']]).sum(axis=1).sum(),
-                        "goats": df[['Small East African Goats', 'Somali Goat', 'Other Goat']].sum(axis=1).sum(),
-                        "chickens": df[['Chicken -Indigenous', 'Chicken -Broilers', 'Chicken -Layers']].sum(axis=1).sum(),
-                        "ducks": df['Ducks'].sum(),
-                        "sheep": df['Other Sheep'].sum()
+                        "cows": int((df[['Other Dual Cattle', 'Cross breed Cattle', 'Cattle boma']]).sum(axis=1).sum()),
+                        "goats": int(df[['Small East African Goats', 'Somali Goat', 'Other Goat']].sum(axis=1).sum()),
+                        "chickens": int(df[['Chicken -Indigenous', 'Chicken -Broilers', 'Chicken -Layers']].sum(axis=1).sum()),
+                        "ducks": int(np.sum(df['Ducks'])),
+                        "sheep": int(np.sum(df['Other Sheep'])),
                     },
                     "financial_livelihood": {
-                        "lenders": (df['Moneylender']).sum(),
-                        "relatives": (df['Family']).sum(),
+                        "lenders": 0,
+                        "relatives": int(np.sum(df['Family'])),
                         "traders": 0,
                         "agents": 0,
                         "institutional": 0
                     },
                     "water_sources": {
                         "borewell": 0,
-                        "irrigation": (df['Total Area Irrigation']).sum(),
-                        "rainwater": (df['Rain']).sum(),
+                        "irrigation": int(np.sum(df['Total Area Irrigation'])),
+                        "rainwater": 0,
 
                     },
                     "insurance_information": {
-                        "insured_crops": (df['Do you insure your crops?']).sum(),
-                        "insured_machinery": (df['Do you insure your farm buildings and other assets?']).sum(),
+                        "insured_crops":int(np.sum(df['Do you insure your crops?'])),
+                        "insured_machinery": int(np.sum(df['Do you insure your farm buildings and other assets?'])),
                     },
-                    "popular_fertilizer_user":{
-                        "dap" : (df['DAP']).sum(),
-                        "npk" : (df['NPK']).sum(),
-                        "ssp" : (df['Superphosphate']).sum(),
-                        "can" : (df['CAN']).sum(),
-                        "urea" : (df['Urea']).sum(),
-                        "Others" : (df['Others']).sum(),
+                    "popular_fertilizer_user": {
+                        "npk": int(np.sum(df['NPK'])),
+                        "ssp": int(np.sum(df['Superphosphate'])),
+                        "can": int(np.sum(df['CAN'])),
+                        "urea":int(np.sum(df['Urea'])),
+                        "Others": int(np.sum(df['Other'])),
                     }
                 }
+
             except Exception as e:
                 print(e)
                 return Response(
@@ -2518,9 +2552,6 @@ class DatasetV2View(GenericViewSet):
                 "No dataset file for the provided id.",
                 status=status.HTTP_404_NOT_FOUND,
             )
-
-
-
 
 
 class DatasetFileV2View(GenericViewSet):
