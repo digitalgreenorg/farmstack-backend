@@ -2,6 +2,7 @@ from django.urls import include, path
 from rest_framework.routers import DefaultRouter
 
 from microsite.views import (
+    ConnectorMicrositeViewSet,
     ContactFormViewSet,
     DatahubThemeMicrositeViewSet,
     DatasetsMicrositeViewSet,
@@ -9,7 +10,8 @@ from microsite.views import (
     OrganizationMicrositeViewSet,
     ParticipantMicrositeViewSet,
     PolicyAPIView,
-    microsite_media_view, UserDataMicrositeViewSet
+    UserDataMicrositeViewSet,
+    microsite_media_view,
 )
 
 router = DefaultRouter()
@@ -23,7 +25,8 @@ router.register(r"participant", ParticipantMicrositeViewSet,
 router.register(r"policy", PolicyAPIView, basename="policy_microsite")
 router.register(r"microsite_user_data", UserDataMicrositeViewSet,
                 basename="microsite_user_data")
-
+router.register(r"connectors", ConnectorMicrositeViewSet,
+                basename="microsite_connectors")
 
 urlpatterns = [
     path("", include(router.urls)),

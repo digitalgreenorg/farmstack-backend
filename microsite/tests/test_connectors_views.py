@@ -1,22 +1,13 @@
-from rest_framework.reverse import reverse
-from django.test import Client, TestCase
-from rest_framework import status
 import json
-from datahub.models import DatasetV2, Organization, UserOrganizationMap, DatasetV2File
+from unittest import TestCase
+
+from django.test import Client, TestCase
+from rest_framework.reverse import reverse
+
 from accounts.models import User, UserRole
 from connectors.models import Connectors, ConnectorsMap
+from datahub.models import DatasetV2, DatasetV2File, Organization, UserOrganizationMap
 from participant.tests.test_util import TestUtils
-from django.core.files.base import File
-from django.core.files.uploadedfile import SimpleUploadedFile
-from connectors.models import Connectors
-from connectors.views import ConnectorsViewSet
-from connectors.serializers import ConnectorsListSerializer
-from unittest.mock import patch, MagicMock
-from rest_framework.exceptions import ValidationError
-import logging
-from rest_framework.response import Response
-from django.http import HttpRequest
-import uuid
 
 
 LOGGER = logging.getLogger(__name__)
@@ -119,7 +110,6 @@ connector_details = {
     "description": ".........",
     "integrated_file": open("/Users/akshatanaik/Akshata/repos/datahub-api/connectors/tests/test_files/file_example_XLS_100.xls", "rb")
 }
-
 class TestCasesConnectors(TestCase):
     @classmethod
     def setUpClass(self):
@@ -183,10 +173,9 @@ class TestCasesConnectors(TestCase):
         self.admin_map=UserOrganizationMap.objects.create(user_id=self.admin.id, organization_id=self.admin_org.id)
         self.co_steward_map=UserOrganizationMap.objects.create(user_id=self.co_steward.id, organization_id=self.co_steward_org.id)
         self.participant_map=UserOrganizationMap.objects.create(user_id=self.participant.id, organization_id=self.participant_org.id)
-
         ################ admin token ##################
         auth["token"] = TestUtils.create_token_for_user(self.admin, self.admin_map)
-        admin_header=self.set_auth_headers(self=self)
+        admin_header=self.set_auth_headers(self=self) # type: ignore
         self.client_admin.defaults['HTTP_AUTHORIZATION'] = admin_header[0]
         self.client_admin.defaults['CONTENT_TYPE'] = admin_header[1]
 
@@ -226,14 +215,14 @@ class TestCasesConnectors(TestCase):
 
         ############# create datasetv2 file
         datasetv2_file_one=DatasetV2File.objects.create(dataset_id=left_dataset.id,)
-        with open("/Users/akshatanaik/Akshata/repos/datahub-api/connectors/tests/test_files/file_example_XLS_10.xls", "rb") as file:
+        with open("connectors/tests/test_files/file_example_XLS_10.xls", "rb") as file:
             datasetv2_file_one.source="file"
             datasetv2_file_one.save()
             datasetv2_file_one.file.save("name_new_file.xls",File(file))
             datasetv2_file_one.save()
 
         self.file_one_id = datasetv2_file_one.id
-        with open('/Users/akshatanaik/Akshata/repos/datahub-api/connectors/tests/test_files/file.xls','rb') as file:
+        with open('connectors/tests/test_files/file.xls','rb') as file:
             file_obj = file.read()
         file = SimpleUploadedFile("file_example_XLS_10.xls", file_obj)  
         datasetv2_file_two=DatasetV2File.objects.create(dataset_id=right_dataset.id, file=file )
