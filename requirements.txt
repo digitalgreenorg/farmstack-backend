@@ -128,6 +128,6 @@ zipp==3.11.0
 ruamel.yaml
 testcontainers
 sqlalchemy
-openpyxl==3.0.10
+openpyxl
 secrets
 
