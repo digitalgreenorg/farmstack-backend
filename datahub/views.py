@@ -106,7 +106,7 @@ from datahub.serializers import (
     TeamMemberUpdateSerializer,
     UserOrganizationCreateSerializer,
     UserOrganizationMapSerializer,
-    ResourceSerializer,
+    ResourceSerializer, DatahubDatasetFileDashboardFilterSerializer,
 )
 from participant.models import SupportTicket
 from participant.serializers import (
@@ -399,7 +399,7 @@ class ParticipantViewSet(GenericViewSet):
                 to_email=request.data.get("email"),
                 content=mail_body,
                 subject=Constants.PARTICIPANT_ORG_ADDITION_SUBJECT
-                + os.environ.get(Constants.DATAHUB_NAME, Constants.datahub_name),
+                        + os.environ.get(Constants.DATAHUB_NAME, Constants.datahub_name),
             )
         except Exception as error:
             LOGGER.error(error, exc_info=True)
@@ -501,7 +501,7 @@ class ParticipantViewSet(GenericViewSet):
                 to_email=participant.email,
                 content=mail_body,
                 subject=Constants.PARTICIPANT_ORG_UPDATION_SUBJECT
-                + os.environ.get(Constants.DATAHUB_NAME, Constants.datahub_name),
+                        + os.environ.get(Constants.DATAHUB_NAME, Constants.datahub_name),
             )
 
             data = {
@@ -551,7 +551,7 @@ class ParticipantViewSet(GenericViewSet):
                     to_email=participant.email,
                     content=mail_body,
                     subject=Constants.PARTICIPANT_ORG_DELETION_SUBJECT
-                    + os.environ.get(Constants.DATAHUB_NAME, Constants.datahub_name),
+                            + os.environ.get(Constants.DATAHUB_NAME, Constants.datahub_name),
                 )
 
                 # Set the on_boarded_by_id to null if co_steward is deleted
@@ -633,7 +633,7 @@ class MailInvitationViewSet(GenericViewSet):
                         to_email=[email],
                         content=mail_body,
                         subject=os.environ.get("DATAHUB_NAME", "datahub_name")
-                        + Constants.PARTICIPANT_INVITATION_SUBJECT,
+                                + Constants.PARTICIPANT_INVITATION_SUBJECT,
                     )
                 except Exception as e:
                     emails_not_found.append()
@@ -1168,7 +1168,7 @@ class DatahubDatasetsViewSet(GenericViewSet):
 
         # reset the approval status b/c the user modified the dataset after an approval
         if getattr(instance, Constants.APPROVAL_STATUS) == Constants.APPROVED and (
-            user_obj.role_id == 3 or user_obj.role_id == 4
+                user_obj.role_id == 3 or user_obj.role_id == 4
         ):
             data[Constants.APPROVAL_STATUS] = Constants.AWAITING_REVIEW
 
@@ -2444,48 +2444,33 @@ class DatasetV2View(GenericViewSet):
     #     serializer = self.get_serializer(page, many=True).exclude(is_temp = True)
     #     return self.get_paginated_response(serializer.data)
 
-    @action(detail=True, methods=["get"])
+    @action(detail=True, methods=["post"])
     def get_dashboard_chart_data(self, request, pk, *args, **kwargs):
+
+        # req_object = {
+        #     "county" : ["county1","county2"],
+        #     "sub_county" : ["sub_county1","sub_county2"],
+        #     "ward" : ["ward1","ward2"],
+        #     "gender" : ["Male","Female"],
+        # }
+
+        # serializer = DatahubDatasetFileDashboardFilterSerializer(data=request.data)
+        # serializer.is_valid(raise_exception=True)
+        #
+        # print(serializer.data)
         try:
-            cols_to_read = [
-                " Gender",
-                " Constituency",
-                " County",
-                " Sub County",
-                " Crop Production",
-                " Livestock Production",
-                " Ducks",
-                " Other Sheep",
-                " Total Area Irrigation",
-                " Family",
-                " NPK",
-                " Superphosphate",
-                " CAN",
-                " Urea",
-                " Other",
-                " Do you insure your crops?",
-                " Do you insure your farm buildings and other assets?",
-                " Other Dual Cattle",
-                " Cross breed Cattle",
-                " Cattle boma",
-                " Small East African Goats",
-                " Somali Goat",
-                " Other Goat",
-                " Chicken -Indigenous",
-                " Chicken -Broilers",
-                " Chicken -Layers",
-            ]
             cols_to_read = [' Gender', ' Constituency', ' County', ' Sub County', ' Crop Production',
                             ' Livestock Production', ' Ducks', ' Other Sheep', ' Total Area Irrigation', ' Family',
-                            ' Other Money Lenders', ' Micro-finance institution', ' Self (Salary or Savings)', " Natural rivers and stream" , " Water Pan",
-                                                                                  ' NPK', ' Superphosphate', ' CAN',
+                            ' Ward',
+                            ' Other Money Lenders', ' Micro-finance institution', ' Self (Salary or Savings)',
+                            " Natural rivers and stream", " Water Pan",
+                            ' NPK', ' Superphosphate', ' CAN',
                             ' Urea', ' Other', ' Do you insure your crops?',
                             ' Do you insure your farm buildings and other assets?', ' Other Dual Cattle',
                             ' Cross breed Cattle', ' Cattle boma',
                             ' Small East African Goats', ' Somali Goat', ' Other Goat', ' Chicken -Indigenous',
                             ' Chicken -Broilers', ' Chicken -Layers']
 
-            livestock_columns = ["Other Dual Cattle", "Cross breed Cattle", "Cattle boma"]
             dataset_file_object = DatasetV2File.objects.get(id=pk)
             dataset_file = str(dataset_file_object.standardised_file)
             try:
@@ -2500,41 +2485,46 @@ class DatasetV2View(GenericViewSet):
                         "Unsupported file please use .xls or .csv.",
                         status=status.HTTP_400_BAD_REQUEST,
                     )
-                df["Ducks"] = pd.to_numeric(df["Ducks"], errors="coerce")
-                df["Other Sheep"] = pd.to_numeric(df["Other Sheep"], errors="coerce")
-                df["Family"] = pd.to_numeric(df["Family"], errors="coerce")
-                df["Total Area Irrigation"] = pd.to_numeric(df["Total Area Irrigation"], errors="coerce")
-                df["NPK"] = pd.to_numeric(df["NPK"], errors="coerce")
-                df["Superphosphate"] = pd.to_numeric(df["Superphosphate"], errors="coerce")
-                df["CAN"] = pd.to_numeric(df["CAN"], errors="coerce")
-                df["Urea"] = pd.to_numeric(df["Urea"], errors="coerce")
-                df["Other"] = pd.to_numeric(df["Other"], errors="coerce")
+                df['Ducks'] = pd.to_numeric(df['Ducks'], errors='coerce')
+                df['Other Sheep'] = pd.to_numeric(df['Other Sheep'], errors='coerce')
+                df['Family'] = pd.to_numeric(df['Family'], errors='coerce')
+                df['Other Money Lenders'] = pd.to_numeric(df['Other Money Lenders'], errors='coerce')
+                df['Micro-finance institution'] = pd.to_numeric(df['Micro-finance institution'], errors='coerce')
+                df['Self (Salary or Savings)'] = pd.to_numeric(df['Self (Salary or Savings)'], errors='coerce')
+                df['Natural rivers and stream'] = pd.to_numeric(df['Natural rivers and stream'], errors='coerce')
+                df["Water Pan"] = pd.to_numeric(df["Water Pan"], errors='coerce')
+                df['Total Area Irrigation'] = pd.to_numeric(df['Total Area Irrigation'], errors='coerce')
+                df['NPK'] = pd.to_numeric(df['NPK'], errors='coerce')
+                df['Superphosphate'] = pd.to_numeric(df['Superphosphate'], errors='coerce')
+                df['CAN'] = pd.to_numeric(df['CAN'], errors='coerce')
+                df['Urea'] = pd.to_numeric(df['Urea'], errors='coerce')
+                df['Other'] = pd.to_numeric(df['Other'], errors='coerce')
+                df['Other Dual Cattle'] = pd.to_numeric(df['Other Dual Cattle'], errors='coerce')
+                df['Cross breed Cattle'] = pd.to_numeric(df['Cross breed Cattle'], errors='coerce')
+                df['Cattle boma'] = pd.to_numeric(df['Cattle boma'], errors='coerce')
+                df['Small East African Goats'] = pd.to_numeric(df['Small East African Goats'], errors='coerce')
+                df['Somali Goat'] = pd.to_numeric(df['Somali Goat'], errors='coerce')
+                df['Other Goat'] = pd.to_numeric(df['Other Goat'], errors='coerce')
+                df['Chicken -Indigenous'] = pd.to_numeric(df['Chicken -Indigenous'], errors='coerce')
+                df['Chicken -Broilers'] = pd.to_numeric(df['Chicken -Broilers'], errors='coerce')
+                df['Chicken -Layers'] = pd.to_numeric(df['Chicken -Layers'], errors='coerce')
+                df['Do you insure your crops?'] = pd.to_numeric(df['Do you insure your crops?'], errors='coerce')
+                df['Do you insure your farm buildings and other assets?'] = pd.to_numeric(
+                    df['Do you insure your farm buildings and other assets?'], errors='coerce')
 
-                df["Other Dual Cattle"] = pd.to_numeric(df["Other Dual Cattle"], errors="coerce")
-                df["Cross breed Cattle"] = pd.to_numeric(df["Cross breed Cattle"], errors="coerce")
-                df["Cattle boma"] = pd.to_numeric(df["Cattle boma"], errors="coerce")
-                df["Small East African Goats"] = pd.to_numeric(df["Small East African Goats"], errors="coerce")
-                df["Somali Goat"] = pd.to_numeric(df["Somali Goat"], errors="coerce")
-                df["Other Goat"] = pd.to_numeric(df["Other Goat"], errors="coerce")
-                df["Chicken -Indigenous"] = pd.to_numeric(df["Chicken -Indigenous"], errors="coerce")
-                df["Chicken -Broilers"] = pd.to_numeric(df["Chicken -Broilers"], errors="coerce")
-                df["Chicken -Layers"] = pd.to_numeric(df["Chicken -Layers"], errors="coerce")
-
-                df["Do you insure your crops?"] = pd.to_numeric(df["Do you insure your crops?"], errors="coerce")
-                df["Do you insure your farm buildings and other assets?"] = pd.to_numeric(
-                    df["Do you insure your farm buildings and other assets?"], errors="coerce"
-                )
+                # df['County'] == serializer.data.get("county")
 
                 obj = {
                     "total_no_of_records": len(df),
-                    "male_count": np.sum(df["Gender"] == 1),
-                    "female_count": np.sum(df["Gender"] == 2),
-                    "constituencies": np.unique(df["Constituency"]).size,
-                    "counties": np.unique(df["County"]).size,
-                    "sub_counties": np.unique(df["Sub County"]).size,
+                    'male_count': np.sum(df['Gender'] == 1),
+                    'female_count': np.sum(df['Gender'] == 2),
+                    "constituencies": np.unique(df['Constituency']).size,
+                    "counties": np.unique(df['County']).size,
+                    "ward": np.unique(df['Ward']).size,
+                    "sub_counties": np.unique(df['Sub County']).size,
                     "farming_practices": {
-                        "crop_production": np.sum(df["Crop Production"] == 1),
-                        "livestock_production": np.sum(df["Livestock Production"] == 1),
+                        "crop_production": np.sum(df['Crop Production'] == 1),
+                        "livestock_production": np.sum(df['Livestock Production'] == 1),
                     },
                     "livestock_and_poultry_production": {
                         "cows": int((df[['Other Dual Cattle', 'Cross breed Cattle', 'Cattle boma']]).sum(axis=1).sum()),
@@ -2545,20 +2535,15 @@ class DatasetV2View(GenericViewSet):
                         "sheep": int(np.sum(df['Other Sheep'])),
                     },
                     "financial_livelihood": {
-                        # "lenders": 0,
                         "relatives": int(np.sum(df['Family'])),
-                        # "traders": 0,
-                        # "agents": 0,
                         "Other Money Lenders": int(np.sum(df['Other Money Lenders'])),
-                        "Micro-finance institution":int(np.sum(df['Micro-finance institution'])),
+                        "Micro-finance institution": int(np.sum(df['Micro-finance institution'])),
                         "Self (Salary or Savings)": int(np.sum(df['Self (Salary or Savings)'])),
                     },
                     "water_sources": {
-                        # "borewell": 0,
                         "irrigation": int(np.sum(df['Total Area Irrigation'])),
                         "rivers": int(np.sum(df['Natural rivers and stream'])),
                         "water_pan": int(np.sum(df['Water Pan'])),
-                        # "rainwater": 0,
 
                     },
                     "insurance_information": {
@@ -2577,6 +2562,7 @@ class DatasetV2View(GenericViewSet):
             except Exception as e:
                 print(e)
                 return Response(
+
                     "Something went wrong, please try again.",
                     status=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 )
@@ -2715,7 +2701,8 @@ class UsagePolicyListCreateView(generics.ListCreateAPIView):
 class UsagePolicyRetrieveUpdateDestroyView(generics.RetrieveUpdateDestroyAPIView):
     queryset = UsagePolicy.objects.all()
     serializer_class = UsagePolicySerializer
-    api_builder_serializer_class=APIBuilderSerializer
+    api_builder_serializer_class = APIBuilderSerializer
+
     def patch(self, request, *args, **kwargs):
         instance = self.get_object()
         approval_status = request.data.get('approval_status')
@@ -2723,21 +2710,21 @@ class UsagePolicyRetrieveUpdateDestroyView(generics.RetrieveUpdateDestroyAPIView
         instance.api_key = None
         try:
             if policy_type == 'api':
-                if approval_status=='approved':
+                if approval_status == 'approved':
                     instance.api_key = generate_api_key()
-            serializer = self.api_builder_serializer_class(instance,data=request.data,partial=True)
+            serializer = self.api_builder_serializer_class(instance, data=request.data, partial=True)
             serializer.is_valid(raise_exception=True)
             serializer.save()
-            return Response(serializer.data, status=200) 
-        
+            return Response(serializer.data, status=200)
+
         except ValidationError as e:
-            LOGGER.error(e,exc_info=True )
+            LOGGER.error(e, exc_info=True)
             return Response(e.detail, status=status.HTTP_400_BAD_REQUEST)
-        
+
         except Exception as error:
             LOGGER.error(error, exc_info=True)
             return Response(str(error), status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-    
+
 
 class DatahubNewDashboard(GenericViewSet):
     """Datahub Dashboard viewset"""

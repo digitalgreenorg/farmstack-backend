@@ -962,6 +962,7 @@ class APIBuilderSerializer(serializers.ModelSerializer):
         fields = ["approval_status", "api_key"]
 
 
+
 class UsagePolicyDetailSerializer(serializers.ModelSerializer):
     organization = DatahubDatasetsSerializer.OrganizationDatsetsListRetriveSerializer(
         required=False, allow_null=True, read_only=True, source="user_organization_map.organization"
@@ -979,6 +980,14 @@ class ResourceFileSerializer(serializers.ModelSerializer):
     class Meta:
         model = ResourceFile
         fields = "__all__"
+
+
+class DatahubDatasetFileDashboardFilterSerializer(serializers.Serializer):
+    county = serializers.ListField(allow_empty=False, required=False)
+    sub_county = serializers.ListField(allow_empty=False, required=False)
+    ward = serializers.ListField(allow_empty=False, required=False)
+    gender = serializers.CharField(required=False)
+
 
 
 class ResourceSerializer(serializers.ModelSerializer):
