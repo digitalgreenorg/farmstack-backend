@@ -1896,17 +1896,19 @@ class DataBaseViewSet(GenericViewSet):
                 db_name = config["database"]
                 mycursor.execute("use " + db_name + ";")
 
-                query_string = f"SELECT {col_names} FROM {t_name} WHERE "
+                query_string = f"SELECT {col_names} FROM {t_name}"
                 sub_queries = []  # List to store individual filter sub-queries
+                if serializer.data.get("filter_data"):
 
-                filter_data = json.loads(serializer.data.get("filter_data")[0])
-                for query_dict in filter_data:
-                    column_name = query_dict.get('column_name')
-                    operation = query_dict.get('operation')
-                    value = query_dict.get('value')
-                    sub_query = f"{column_name} {operation} '{value}'"  # Using %s as a placeholder for the value
-                    sub_queries.append(sub_query)
-                query_string += " AND ".join(sub_queries)
+                    filter_data = json.loads(serializer.data.get("filter_data")[0])
+                    for query_dict in filter_data:
+                        query_string = f"SELECT {col_names} FROM {t_name} WHERE "
+                        column_name = query_dict.get('column_name')
+                        operation = query_dict.get('operation')
+                        value = query_dict.get('value')
+                        sub_query = f"{column_name} {operation} '{value}'"  # Using %s as a placeholder for the value
+                        sub_queries.append(sub_query)
+                    query_string += " AND ".join(sub_queries)
 
                 mycursor.execute(query_string)
                 result = mycursor.fetchall()
@@ -1957,17 +1959,20 @@ class DataBaseViewSet(GenericViewSet):
                 with closing(psycopg2.connect(**config)) as conn:
                     try:
 
-                        query_string = f"SELECT {col_names} FROM {t_name} WHERE "
+                        query_string = f"SELECT {col_names} FROM {t_name}"
                         sub_queries = []  # List to store individual filter sub-queries
 
-                        filter_data = json.loads(serializer.data.get("filter_data")[0])
-                        for query_dict in filter_data:
-                            column_name = query_dict.get('column_name')
-                            operation = query_dict.get('operation')
-                            value = query_dict.get('value')
-                            sub_query = f"{column_name} {operation} '{value}'"  # Using %s as a placeholder for the value
-                            sub_queries.append(sub_query)
-                        query_string += " AND ".join(sub_queries)
+                        if serializer.data.get("filter_data"):
+                            filter_data = json.loads(serializer.data.get("filter_data")[0])
+
+                            for query_dict in filter_data:
+                                query_string = f"SELECT {col_names} FROM {t_name} WHERE "
+                                column_name = query_dict.get('column_name')
+                                operation = query_dict.get('operation')
+                                value = query_dict.get('value')
+                                sub_query = f"{column_name} {operation} '{value}'"  # Using %s as a placeholder for the value
+                                sub_queries.append(sub_query)
+                            query_string += " AND ".join(sub_queries)
                         df = pd.read_sql(query_string, conn)
                         df = df.astype(str)
                     except pd.errors.DatabaseError as error:
