@@ -2508,16 +2508,19 @@ class DatasetV2View(GenericViewSet):
                     {1: 'None', 2: 'Primary', 3: 'Secondary', 4: 'Certificate', 5: 'Diploma', 6: 'University Degree',
                      7: "Post Graduate Degree,Masters and Above"})
 
-                serializer = DatahubDatasetFileDashboardFilterSerializer(data=request.data)
-                serializer.is_valid(raise_exception=True)
+                # serializer = DatahubDatasetFileDashboardFilterSerializer(data=request.data)
+                # serializer.is_valid(raise_exception=True)
 
-                if serializer.data.get("county"):
-                    county_name = serializer.data.get("county")[0]
+                if request.data.get("county"):
+                    county_name = request.data.get("county")[0]
                     print(county_name)
                     county_name = " " +county_name
 
                 print(county_name)
                 obj = {
+                    "total_number_of_records": len(df),
+                    'male_count': df['Gender'].value_counts().get('Male', 0),
+                    'female_count': df['Gender'].value_counts().get('Female', 0),
                     "sub_county_ratio": df[df['County'] == county_name].groupby(['Sub County', 'Gender'])[
                         'Gender'].count().unstack().to_dict(orient='index'),
                     "education_level":df[df['County'] == county_name].groupby(['Highest Level of Formal Education', 'Gender'])[
@@ -2577,7 +2580,7 @@ class DatasetV2View(GenericViewSet):
             except Exception as e:
                 print(e)
                 return Response(
-                    "Something went wrong, please try again.",
+                    f"Something went wrong, please try again. {e}",
                     status=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 )
 
