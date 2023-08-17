@@ -109,7 +109,7 @@ class ConnectorsListSerializer(serializers.ModelSerializer):
         exclude = ["integrated_file","created_at", "updated_at", "config"]
     
     dataset_count = serializers.SerializerMethodField(method_name="get_dataset_count")
-    providers_data = serializers.SerializerMethodField(method_name="get_providers_count")
+    providers_count = serializers.SerializerMethodField(method_name="get_providers_count")
 
     def get_dataset_count(self, connectors):
         count = ConnectorsMap.objects.filter(connectors=connectors.id).count()
@@ -119,6 +119,7 @@ class ConnectorsListSerializer(serializers.ModelSerializer):
         query = ConnectorsMap.objects.select_related('left_dataset_file_id__dataset', 'right_dataset_file_id__dataset').filter(connectors=connectors.id).filter(connectors=connectors.id)
         count = query.distinct("left_dataset_file_id__dataset__user_map", "right_dataset_file_id__dataset__user_map").count()
         return count
+    
 class DatasetsSerializer(serializers.ModelSerializer):
     class Meta:
         model = DatasetV2
@@ -126,12 +127,11 @@ class DatasetsSerializer(serializers.ModelSerializer):
 
 
 class ConnectorsRetriveSerializer(serializers.ModelSerializer):
-    maps = ConnectorsMapSerializer(many=True, source='connectorsmap_set')
     class Meta:
         model = Connectors
         fields = Constants.ALL
 
-    datasets = serializers.SerializerMethodField(method_name="datasets_data") # type: ignore
+    dataset_and_organizations = serializers.SerializerMethodField(method_name="datasets_data") # type: ignore
 
     def datasets_data(self, organizations):
         organizations_query = ConnectorsMap.objects.filter(connectors_id=organizations.id).select_related(

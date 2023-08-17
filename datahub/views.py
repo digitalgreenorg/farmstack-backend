@@ -14,11 +14,13 @@ from pickle import TRUE
 from urllib.parse import unquote
 import json
 import django
+from jsonschema import ValidationError
 import pandas as pd
 from django.conf import settings
 from django.contrib.admin.utils import get_model_from_relation
 from django.core.files.base import ContentFile
 from django.db import transaction
+
 # from django.http import HttpResponse
 from django.db.models import (
     DEFERRED,
@@ -34,6 +36,7 @@ from django.db.models import (
 )
 from django.db.models.functions import Concat
 from rest_framework.exceptions import ValidationError
+
 # from django.db.models.functions import Index, Substr
 from django.http import JsonResponse
 from django.shortcuts import render
@@ -74,7 +77,7 @@ from datahub.models import (
     Organization,
     StandardisationTemplate,
     UserOrganizationMap,
-    Resource
+    Resource,
 )
 from datahub.serializers import (
     DatahubDatasetsSerializer,
@@ -103,7 +106,7 @@ from datahub.serializers import (
     TeamMemberUpdateSerializer,
     UserOrganizationCreateSerializer,
     UserOrganizationMapSerializer,
-    ResourceSerializer
+    ResourceSerializer,
 )
 from participant.models import SupportTicket
 from participant.serializers import (
@@ -115,13 +118,13 @@ from utils.authentication_services import authenticate_user
 from utils.file_operations import check_file_name_length
 from utils.jwt_services import http_request_mutation
 
-from .models import Policy, UsagePolicy
+from .models import Policy, ResourceFile, UsagePolicy
 from .serializers import (
     PolicySerializer,
     ResourceFileSerializer,
     UsagePolicyDetailSerializer,
     UsagePolicySerializer,
-    APIBuilderSerializer
+    APIBuilderSerializer,
 )
 from core.utils import generate_api_key
 
@@ -242,7 +245,6 @@ class OrganizationViewSet(GenericViewSet):
                         "organization": org_serializer.data,
                     }
                     return Response(data, status=status.HTTP_201_CREATED)
-
 
         except Exception as error:
             LOGGER.error(error, exc_info=True)
@@ -397,7 +399,7 @@ class ParticipantViewSet(GenericViewSet):
                 to_email=request.data.get("email"),
                 content=mail_body,
                 subject=Constants.PARTICIPANT_ORG_ADDITION_SUBJECT
-                        + os.environ.get(Constants.DATAHUB_NAME, Constants.datahub_name),
+                + os.environ.get(Constants.DATAHUB_NAME, Constants.datahub_name),
             )
         except Exception as error:
             LOGGER.error(error, exc_info=True)
@@ -444,7 +446,6 @@ class ParticipantViewSet(GenericViewSet):
                 )
                 .order_by("-user__updated_at")
                 .all()
-
             )
 
         page = self.paginate_queryset(roles)
@@ -500,7 +501,7 @@ class ParticipantViewSet(GenericViewSet):
                 to_email=participant.email,
                 content=mail_body,
                 subject=Constants.PARTICIPANT_ORG_UPDATION_SUBJECT
-                        + os.environ.get(Constants.DATAHUB_NAME, Constants.datahub_name),
+                + os.environ.get(Constants.DATAHUB_NAME, Constants.datahub_name),
             )
 
             data = {
@@ -550,7 +551,7 @@ class ParticipantViewSet(GenericViewSet):
                     to_email=participant.email,
                     content=mail_body,
                     subject=Constants.PARTICIPANT_ORG_DELETION_SUBJECT
-                            + os.environ.get(Constants.DATAHUB_NAME, Constants.datahub_name),
+                    + os.environ.get(Constants.DATAHUB_NAME, Constants.datahub_name),
                 )
 
                 # Set the on_boarded_by_id to null if co_steward is deleted
@@ -632,7 +633,7 @@ class MailInvitationViewSet(GenericViewSet):
                         to_email=[email],
                         content=mail_body,
                         subject=os.environ.get("DATAHUB_NAME", "datahub_name")
-                                + Constants.PARTICIPANT_INVITATION_SUBJECT,
+                        + Constants.PARTICIPANT_INVITATION_SUBJECT,
                     )
                 except Exception as e:
                     emails_not_found.append()
@@ -1167,7 +1168,7 @@ class DatahubDatasetsViewSet(GenericViewSet):
 
         # reset the approval status b/c the user modified the dataset after an approval
         if getattr(instance, Constants.APPROVAL_STATUS) == Constants.APPROVED and (
-                user_obj.role_id == 3 or user_obj.role_id == 4
+            user_obj.role_id == 3 or user_obj.role_id == 4
         ):
             data[Constants.APPROVAL_STATUS] = Constants.AWAITING_REVIEW
 
@@ -2094,9 +2095,9 @@ class DatasetV2ViewSetOps(GenericViewSet):
                     .filter(dataset_id__in=dataset_ids)
                     .filter(Q(file__endswith=".xls") | Q(file__endswith=".xlsx") | Q(file__endswith=".csv"))
                     .filter(
-                        Q(accessibility__in=["public", "registered"]) |
-                        Q(dataset__user_map_id=user_map) |
-                        Q(dataset_v2_file__approval_status="approved")
+                        Q(accessibility__in=["public", "registered"])
+                        | Q(dataset__user_map_id=user_map)
+                        | Q(dataset_v2_file__approval_status="approved")
                     )
                     .values(
                         "id",
@@ -2325,8 +2326,8 @@ class DatasetV2View(GenericViewSet):
     def requested_datasets(self, request, *args, **kwargs):
         try:
             user_map_id = request.data.get("user_map")
-            policy_type = request.data.get('type', None)
-            if policy_type == 'api':
+            policy_type = request.data.get("type", None)
+            if policy_type == "api":
                 dataset_file_id = request.data.get("dataset_file")
                 requested_recieved = (
                     UsagePolicy.objects.select_related(
@@ -2334,8 +2335,7 @@ class DatasetV2View(GenericViewSet):
                         "dataset_file__dataset",
                         "user_organization_map__organization",
                     )
-                    .filter(dataset_file__dataset__user_map_id=user_map_id,
-                            dataset_file_id=dataset_file_id)
+                    .filter(dataset_file__dataset__user_map_id=user_map_id, dataset_file_id=dataset_file_id)
                     .values(
                         "id",
                         "approval_status",
@@ -2382,6 +2382,7 @@ class DatasetV2View(GenericViewSet):
                     "approval_status",
                     "updated_at",
                     "accessibility_time",
+                    "type",
                     dataset_id=F("dataset_file__dataset_id"),
                     dataset_name=F("dataset_file__dataset__name"),
                     file_name=F("dataset_file__file"),
@@ -2403,6 +2404,7 @@ class DatasetV2View(GenericViewSet):
                     "approval_status",
                     "accessibility_time",
                     "updated_at",
+                    "type",
                     dataset_id=F("dataset_file__dataset_id"),
                     dataset_name=F("dataset_file__dataset__name"),
                     file_name=F("dataset_file__file"),
@@ -2445,6 +2447,34 @@ class DatasetV2View(GenericViewSet):
     @action(detail=True, methods=["get"])
     def get_dashboard_chart_data(self, request, pk, *args, **kwargs):
         try:
+            cols_to_read = [
+                " Gender",
+                " Constituency",
+                " County",
+                " Sub County",
+                " Crop Production",
+                " Livestock Production",
+                " Ducks",
+                " Other Sheep",
+                " Total Area Irrigation",
+                " Family",
+                " NPK",
+                " Superphosphate",
+                " CAN",
+                " Urea",
+                " Other",
+                " Do you insure your crops?",
+                " Do you insure your farm buildings and other assets?",
+                " Other Dual Cattle",
+                " Cross breed Cattle",
+                " Cattle boma",
+                " Small East African Goats",
+                " Somali Goat",
+                " Other Goat",
+                " Chicken -Indigenous",
+                " Chicken -Broilers",
+                " Chicken -Layers",
+            ]
             cols_to_read = [' Gender', ' Constituency', ' County', ' Sub County', ' Crop Production',
                             ' Livestock Production', ' Ducks', ' Other Sheep', ' Total Area Irrigation', ' Family',
                             ' Other Money Lenders', ' Micro-finance institution', ' Self (Salary or Savings)', " Natural rivers and stream" , " Water Pan",
@@ -2455,6 +2485,7 @@ class DatasetV2View(GenericViewSet):
                             ' Small East African Goats', ' Somali Goat', ' Other Goat', ' Chicken -Indigenous',
                             ' Chicken -Broilers', ' Chicken -Layers']
 
+            livestock_columns = ["Other Dual Cattle", "Cross breed Cattle", "Cattle boma"]
             dataset_file_object = DatasetV2File.objects.get(id=pk)
             dataset_file = str(dataset_file_object.standardised_file)
             try:
@@ -2469,46 +2500,41 @@ class DatasetV2View(GenericViewSet):
                         "Unsupported file please use .xls or .csv.",
                         status=status.HTTP_400_BAD_REQUEST,
                     )
-                df['Ducks'] = pd.to_numeric(df['Ducks'], errors='coerce')
-                df['Other Sheep'] = pd.to_numeric(df['Other Sheep'], errors='coerce')
-                df['Family'] = pd.to_numeric(df['Family'], errors='coerce')
-                df['Other Money Lenders'] = pd.to_numeric(df['Other Money Lenders'], errors='coerce')
-                df['Micro-finance institution'] = pd.to_numeric(df['Micro-finance institution'], errors='coerce')
-                df['Self (Salary or Savings)'] = pd.to_numeric(df['Self (Salary or Savings)'], errors='coerce')
-                df['Natural rivers and stream'] = pd.to_numeric(df['Natural rivers and stream'], errors='coerce')
-                df["Water Pan"] = pd.to_numeric(df["Water Pan"], errors='coerce')
+                df["Ducks"] = pd.to_numeric(df["Ducks"], errors="coerce")
+                df["Other Sheep"] = pd.to_numeric(df["Other Sheep"], errors="coerce")
+                df["Family"] = pd.to_numeric(df["Family"], errors="coerce")
+                df["Total Area Irrigation"] = pd.to_numeric(df["Total Area Irrigation"], errors="coerce")
+                df["NPK"] = pd.to_numeric(df["NPK"], errors="coerce")
+                df["Superphosphate"] = pd.to_numeric(df["Superphosphate"], errors="coerce")
+                df["CAN"] = pd.to_numeric(df["CAN"], errors="coerce")
+                df["Urea"] = pd.to_numeric(df["Urea"], errors="coerce")
+                df["Other"] = pd.to_numeric(df["Other"], errors="coerce")
 
-                df['Total Area Irrigation'] = pd.to_numeric(df['Total Area Irrigation'], errors='coerce')
-                df['NPK'] = pd.to_numeric(df['NPK'], errors='coerce')
-                df['Superphosphate'] = pd.to_numeric(df['Superphosphate'], errors='coerce')
-                df['CAN'] = pd.to_numeric(df['CAN'], errors='coerce')
-                df['Urea'] = pd.to_numeric(df['Urea'], errors='coerce')
-                df['Other'] = pd.to_numeric(df['Other'], errors='coerce')
+                df["Other Dual Cattle"] = pd.to_numeric(df["Other Dual Cattle"], errors="coerce")
+                df["Cross breed Cattle"] = pd.to_numeric(df["Cross breed Cattle"], errors="coerce")
+                df["Cattle boma"] = pd.to_numeric(df["Cattle boma"], errors="coerce")
+                df["Small East African Goats"] = pd.to_numeric(df["Small East African Goats"], errors="coerce")
+                df["Somali Goat"] = pd.to_numeric(df["Somali Goat"], errors="coerce")
+                df["Other Goat"] = pd.to_numeric(df["Other Goat"], errors="coerce")
+                df["Chicken -Indigenous"] = pd.to_numeric(df["Chicken -Indigenous"], errors="coerce")
+                df["Chicken -Broilers"] = pd.to_numeric(df["Chicken -Broilers"], errors="coerce")
+                df["Chicken -Layers"] = pd.to_numeric(df["Chicken -Layers"], errors="coerce")
 
-                df['Other Dual Cattle'] = pd.to_numeric(df['Other Dual Cattle'], errors='coerce')
-                df['Cross breed Cattle'] = pd.to_numeric(df['Cross breed Cattle'], errors='coerce')
-                df['Cattle boma'] = pd.to_numeric(df['Cattle boma'], errors='coerce')
-                df['Small East African Goats'] = pd.to_numeric(df['Small East African Goats'], errors='coerce')
-                df['Somali Goat'] = pd.to_numeric(df['Somali Goat'], errors='coerce')
-                df['Other Goat'] = pd.to_numeric(df['Other Goat'], errors='coerce')
-                df['Chicken -Indigenous'] = pd.to_numeric(df['Chicken -Indigenous'], errors='coerce')
-                df['Chicken -Broilers'] = pd.to_numeric(df['Chicken -Broilers'], errors='coerce')
-                df['Chicken -Layers'] = pd.to_numeric(df['Chicken -Layers'], errors='coerce')
-
-                df['Do you insure your crops?'] = pd.to_numeric(df['Do you insure your crops?'], errors='coerce')
-                df['Do you insure your farm buildings and other assets?'] = pd.to_numeric(
-                    df['Do you insure your farm buildings and other assets?'], errors='coerce')
+                df["Do you insure your crops?"] = pd.to_numeric(df["Do you insure your crops?"], errors="coerce")
+                df["Do you insure your farm buildings and other assets?"] = pd.to_numeric(
+                    df["Do you insure your farm buildings and other assets?"], errors="coerce"
+                )
 
                 obj = {
                     "total_no_of_records": len(df),
-                    'male_count': np.sum(df['Gender'] == 1),
-                    'female_count': np.sum(df['Gender'] == 2),
-                    "constituencies": np.unique(df['Constituency']).size,
-                    "counties": np.unique(df['County']).size,
-                    "sub_counties": np.unique(df['Sub County']).size,
+                    "male_count": np.sum(df["Gender"] == 1),
+                    "female_count": np.sum(df["Gender"] == 2),
+                    "constituencies": np.unique(df["Constituency"]).size,
+                    "counties": np.unique(df["County"]).size,
+                    "sub_counties": np.unique(df["Sub County"]).size,
                     "farming_practices": {
-                        "crop_production": np.sum(df['Crop Production'] == 1),
-                        "livestock_production": np.sum(df['Livestock Production'] == 1),
+                        "crop_production": np.sum(df["Crop Production"] == 1),
+                        "livestock_production": np.sum(df["Livestock Production"] == 1),
                     },
                     "livestock_and_poultry_production": {
                         "cows": int((df[['Other Dual Cattle', 'Cross breed Cattle', 'Cattle boma']]).sum(axis=1).sum()),
@@ -2551,7 +2577,6 @@ class DatasetV2View(GenericViewSet):
             except Exception as e:
                 print(e)
                 return Response(
-
                     "Something went wrong, please try again.",
                     status=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 )
@@ -2690,8 +2715,7 @@ class UsagePolicyListCreateView(generics.ListCreateAPIView):
 class UsagePolicyRetrieveUpdateDestroyView(generics.RetrieveUpdateDestroyAPIView):
     queryset = UsagePolicy.objects.all()
     serializer_class = UsagePolicySerializer
-    api_builder_serializer_class = APIBuilderSerializer
-
+    api_builder_serializer_class=APIBuilderSerializer
     def patch(self, request, *args, **kwargs):
         instance = self.get_object()
         approval_status = request.data.get('approval_status')
@@ -2699,21 +2723,21 @@ class UsagePolicyRetrieveUpdateDestroyView(generics.RetrieveUpdateDestroyAPIView
         instance.api_key = None
         try:
             if policy_type == 'api':
-                if approval_status == 'approved':
+                if approval_status=='approved':
                     instance.api_key = generate_api_key()
-            serializer = self.api_builder_serializer_class(instance, data=request.data, partial=True)
+            serializer = self.api_builder_serializer_class(instance,data=request.data,partial=True)
             serializer.is_valid(raise_exception=True)
             serializer.save()
-            return Response(serializer.data, status=200)
-
+            return Response(serializer.data, status=200) 
+        
         except ValidationError as e:
-            LOGGER.error(e, exc_info=True)
+            LOGGER.error(e,exc_info=True )
             return Response(e.detail, status=status.HTTP_400_BAD_REQUEST)
-
+        
         except Exception as error:
             LOGGER.error(error, exc_info=True)
             return Response(str(error), status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
+    
 
 class DatahubNewDashboard(GenericViewSet):
     """Datahub Dashboard viewset"""
@@ -2926,41 +2950,61 @@ class ResourceManagementViewSet(GenericViewSet):
     """
     Resource Management viewset.
     """
+
     queryset = Resource.objects.all()
     serializer_class = ResourceSerializer
     pagination_class = CustomPagination
 
     @http_request_mutation
     def create(self, request, *args, **kwargs):
+        try:
+            user_map = request.META.get("map_id")
+            request.data._mutable = True
+            request.data["user_map"] = user_map
 
-        user_map = request.META.get("map_id")
-        request.data._mutable = True
-        request.data['user_map'] = user_map
+            serializer = self.get_serializer(data=request.data)
+            serializer.is_valid(raise_exception=True)
+            serializer.save()
 
-        serializer = self.get_serializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        serializer.save()
-
-        return Response(serializer.data, status=status.HTTP_201_CREATED)
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        except ValidationError as e:
+            return Response(e.detail, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            LOGGER.error(e)
+            return Response(str(e), status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     def update(self, request, *args, **kwargs):
-        instance = self.get_object()
-        serializer = self.get_serializer(instance, data=request.data, partial=True)
-        serializer.is_valid(raise_exception=True)
-        serializer.save()
-        return Response(status=status.HTTP_200_OK)
+        try:
+            instance = self.get_object()
+            serializer = self.get_serializer(instance, data=request.data, partial=True)
+            serializer.is_valid(raise_exception=True)
+            serializer.save()
+            return Response(status=status.HTTP_200_OK)
+        except ValidationError as e:
+            return Response(e.detail, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            LOGGER.error(e)
+            return Response(str(e), status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
+    @http_request_mutation
     def list(self, request, *args, **kwargs):
-        user_map = request.META.get("map_id")
-        if request.GET.get("others"):
-            queryset = Resource.objects.filter(user_map=user_map)
-        else:
-            # Created by me.
-            queryset = Resource.objects.exclude(user_map=user_map)
+        try:
+            user_map = request.META.get("map_id")
+            # import pdb; pdb.set_trace();
+            if request.GET.get("others", None):
+                queryset = Resource.objects.exclude(user_map=user_map)
+            else:
+                queryset = Resource.objects.filter(user_map=user_map)
+                # Created by me.
 
-        page = self.paginate_queryset(queryset)
-        serializer = self.get_serializer(page, many=True)
-        return self.get_paginated_response(serializer.data)
+            page = self.paginate_queryset(queryset)
+            serializer = self.get_serializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
+        except ValidationError as e:
+            return Response(e.detail, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            LOGGER.error(e)
+            return Response(str(e), status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     def destroy(self, request, *args, **kwargs):
         resource = self.get_object()
@@ -2972,3 +3016,26 @@ class ResourceManagementViewSet(GenericViewSet):
         serializer = self.get_serializer(resource)
         # serializer.is_valid(raise_exception=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
+
+
+class ResourceFileManagementViewSet(GenericViewSet):
+    """
+    Resource File Management
+    """
+
+    queryset = ResourceFile.objects.all()
+    serializer_class = ResourceFileSerializer
+
+    @http_request_mutation
+    def create(self, request, *args, **kwargs):
+        request.data._mutable = True
+        request.data["file_size"] = request.FILES.get("file").size
+        serializer = self.get_serializer(data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+    def destroy(self, request, *args, **kwargs):
+        instance = self.get_object()
+        instance.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
