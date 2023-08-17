@@ -2460,6 +2460,7 @@ class DatasetV2View(GenericViewSet):
         # print(serializer.data)
         try:
             cols_to_read = [' Gender', ' Constituency', ' County', ' Sub County', ' Crop Production',
+                            ' farmer_mobile_number',
                             ' Livestock Production', ' Ducks', ' Other Sheep', ' Total Area Irrigation', ' Family',
                             ' Ward',
                             ' Other Money Lenders', ' Micro-finance institution', ' Self (Salary or Savings)',
@@ -2512,10 +2513,9 @@ class DatasetV2View(GenericViewSet):
                 df['Do you insure your farm buildings and other assets?'] = pd.to_numeric(
                     df['Do you insure your farm buildings and other assets?'], errors='coerce')
 
-                # df['County'] == serializer.data.get("county")
+                df['Gender'] = df['Gender'].map({1: 'Male', 2: 'Female'})
 
                 obj = {
-                    "total_no_of_records": len(df),
                     'male_count': np.sum(df['Gender'] == 1),
                     'female_count': np.sum(df['Gender'] == 2),
                     "constituencies": np.unique(df['Constituency']).size,
@@ -2523,39 +2523,45 @@ class DatasetV2View(GenericViewSet):
                     "ward": np.unique(df['Ward']).size,
                     "sub_counties": np.unique(df['Sub County']).size,
                     "farming_practices": {
-                        "crop_production": np.sum(df['Crop Production'] == 1),
-                        "livestock_production": np.sum(df['Livestock Production'] == 1),
-                    },
-                    "livestock_and_poultry_production": {
-                        "cows": int((df[['Other Dual Cattle', 'Cross breed Cattle', 'Cattle boma']]).sum(axis=1).sum()),
-                        "goats": int(df[['Small East African Goats', 'Somali Goat', 'Other Goat']].sum(axis=1).sum()),
-                        "chickens": int(
-                            df[['Chicken -Indigenous', 'Chicken -Broilers', 'Chicken -Layers']].sum(axis=1).sum()),
-                        "ducks": int(np.sum(df['Ducks'])),
-                        "sheep": int(np.sum(df['Other Sheep'])),
-                    },
-                    "financial_livelihood": {
-                        "relatives": int(np.sum(df['Family'])),
-                        "Other Money Lenders": int(np.sum(df['Other Money Lenders'])),
-                        "Micro-finance institution": int(np.sum(df['Micro-finance institution'])),
-                        "Self (Salary or Savings)": int(np.sum(df['Self (Salary or Savings)'])),
-                    },
-                    "water_sources": {
-                        "irrigation": int(np.sum(df['Total Area Irrigation'])),
-                        "rivers": int(np.sum(df['Natural rivers and stream'])),
-                        "water_pan": int(np.sum(df['Water Pan'])),
+                        "crop_production":{
+                            "total_crop_production": np.sum(df['Crop Production'] == 1),
+                            "bifurcation" : df[df['Crop Production'] == 1]["Gender"].value_counts()
+                        },
+                        "livestock_production":{
+                            "total_livestock_production": np.sum(df['Livestock Production'] == 1),
+                            "bifurcation": df[df['Livestock Production'] == 1]["Gender"].value_counts()
+                        }
 
                     },
+                    # "livestock_and_poultry_production": {
+                    #     "cows": int((df[['Other Dual Cattle', 'Cross breed Cattle', 'Cattle boma']]).sum(axis=1).sum()),
+                    #     "goats": int(df[['Small East African Goats', 'Somali Goat', 'Other Goat']].sum(axis=1).sum()),
+                    #     "chickens": int(
+                    #         df[['Chicken -Indigenous', 'Chicken -Broilers', 'Chicken -Layers']].sum(axis=1).sum()),
+                    #     "ducks": int(np.sum(df['Ducks'])),
+                    #     "sheep": int(np.sum(df['Other Sheep'])),
+                    # },
+                    "financial_livelihood": {
+                        "relatives": df[df['Family'] > 0]["Gender"].value_counts().to_dict(),
+                        "Other Money Lenders": df[df['Other Money Lenders'] > 0]["Gender"].value_counts().to_dict(),
+                        "Micro-finance institution": df[df['Micro-finance institution'] > 0]["Gender"].value_counts().to_dict(),
+                        "Self (Salary or Savings)":  df[df['Self (Salary or Savings)'] > 0]["Gender"].value_counts().to_dict(),
+                    },
+                    "water_sources": {
+                        "irrigation": df[df['irrigation'] > 0]["Gender"].value_counts().to_dict(),
+                        "rivers": df[df['rivers'] > 0]["Gender"].value_counts().to_dict(),
+                        "water_pan": df[df['water_pan'] > 0]["Gender"].value_counts().to_dict(),
+                    },
                     "insurance_information": {
-                        "insured_crops": int(np.sum(df['Do you insure your crops?'])),
-                        "insured_machinery": int(np.sum(df['Do you insure your farm buildings and other assets?'])),
+                        "insured_crops":  df[df['Do you insure your crops?'] > 0]["Gender"].value_counts().to_dict(),
+                        "insured_machinery":   df[df['Do you insure your farm buildings and other assets?'] > 0]["Gender"].value_counts().to_dict(),
                     },
                     "popular_fertilizer_user": {
-                        "npk": int(np.sum(df['NPK'])),
-                        "ssp": int(np.sum(df['Superphosphate'])),
-                        "can": int(np.sum(df['CAN'])),
-                        "urea": int(np.sum(df['Urea'])),
-                        "Others": int(np.sum(df['Other'])),
+                        "npk":   df[df['NPK'] > 0]["Gender"].value_counts().to_dict(),
+                        "ssp": df[df['NPK'] > 0]["Superphosphate"].value_counts().to_dict(),
+                        "can": df[df['NPK'] > 0]["CAN"].value_counts().to_dict(),
+                        "urea": df[df['NPK'] > 0]["Urea"].value_counts().to_dict(),
+                        "Others": df[df['NPK'] > 0]["Other"].value_counts().to_dict(),
                     }
                 }
 
