@@ -646,6 +646,7 @@ class ConnectorMicrositeViewSet(GenericViewSet):
 
 
 class ResourceMicrositeViewSet(GenericViewSet):
+    permission_classes = []
     queryset = Resource.objects.all()
     serializer_class = ResourceSerializer
     pagination_class = CustomPagination
