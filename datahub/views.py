@@ -2508,8 +2508,8 @@ class DatasetV2View(GenericViewSet):
                     {1: 'None', 2: 'Primary', 3: 'Secondary', 4: 'Certificate', 5: 'Diploma', 6: 'University Degree',
                      7: "Post Graduate Degree,Masters and Above"})
 
-                # serializer = DatahubDatasetFileDashboardFilterSerializer(data=request.data)
-                # serializer.is_valid(raise_exception=True)
+                serializer = DatahubDatasetFileDashboardFilterSerializer(data=request.data)
+                serializer.is_valid(raise_exception=True)
 
                 if request.data.get("county"):
                     county_name = request.data.get("county")[0]
