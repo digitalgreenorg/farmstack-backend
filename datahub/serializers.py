@@ -1006,6 +1006,7 @@ class ResourceSerializer(serializers.ModelSerializer):
             "title",
             "description",
             "user_map",
+            "category",
             "resources",
             "uploaded_files",
             "organization",

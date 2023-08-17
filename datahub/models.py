@@ -295,6 +295,7 @@ class Resource(TimeStampMixin):
     title = models.CharField(max_length=20)
     description = models.TextField(max_length=100)
     user_map = models.ForeignKey(UserOrganizationMap, on_delete=models.CASCADE)
+    category = models.JSONField(default=dict)
 
     def __str__(self) -> str:
         return self.title
