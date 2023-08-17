@@ -537,7 +537,7 @@ class DatabaseDataExportSerializer(serializers.Serializer):
     dataset_name = serializers.CharField(max_length=200, allow_blank=False)
     source = serializers.CharField(max_length=200, allow_blank=False)
     file_name = serializers.CharField(max_length=200, allow_blank=False)
-    filter_data = serializers.ListField(allow_empty=True)
+    filter_data = serializers.ListField(allow_empty=False,required=False)
     # {
     #     "column_name" : "column_name",
     #     "operation" : "operation",

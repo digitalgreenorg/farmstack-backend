@@ -2475,11 +2475,19 @@ class DatasetV2View(GenericViewSet):
                 " Chicken -Broilers",
                 " Chicken -Layers",
             ]
+            cols_to_read = [' Gender', ' Constituency', ' County', ' Sub County', ' Crop Production',
+                            ' Livestock Production', ' Ducks', ' Other Sheep', ' Total Area Irrigation', ' Family',
+                            ' Other Money Lenders', ' Micro-finance institution', ' Self (Salary or Savings)', " Natural rivers and stream" , " Water Pan",
+                                                                                  ' NPK', ' Superphosphate', ' CAN',
+                            ' Urea', ' Other', ' Do you insure your crops?',
+                            ' Do you insure your farm buildings and other assets?', ' Other Dual Cattle',
+                            ' Cross breed Cattle', ' Cattle boma',
+                            ' Small East African Goats', ' Somali Goat', ' Other Goat', ' Chicken -Indigenous',
+                            ' Chicken -Broilers', ' Chicken -Layers']
 
             livestock_columns = ["Other Dual Cattle", "Cross breed Cattle", "Cattle boma"]
             dataset_file_object = DatasetV2File.objects.get(id=pk)
             dataset_file = str(dataset_file_object.standardised_file)
-            print(dataset_file)
             try:
                 if dataset_file.endswith(".xlsx") or dataset_file.endswith(".xls"):
                     df = pd.read_excel(os.path.join(settings.DATASET_FILES_URL, dataset_file))
@@ -2529,39 +2537,41 @@ class DatasetV2View(GenericViewSet):
                         "livestock_production": np.sum(df["Livestock Production"] == 1),
                     },
                     "livestock_and_poultry_production": {
-                        "cows": int(
-                            (df[["Other Dual Cattle", "Cross breed Cattle", "Cattle boma"]]).sum(axis=1).sum()
-                        ),
-                        "goats": int(df[["Small East African Goats", "Somali Goat", "Other Goat"]].sum(axis=1).sum()),
+                        "cows": int((df[['Other Dual Cattle', 'Cross breed Cattle', 'Cattle boma']]).sum(axis=1).sum()),
+                        "goats": int(df[['Small East African Goats', 'Somali Goat', 'Other Goat']].sum(axis=1).sum()),
                         "chickens": int(
-                            df[["Chicken -Indigenous", "Chicken -Broilers", "Chicken -Layers"]].sum(axis=1).sum()
-                        ),
-                        "ducks": int(np.sum(df["Ducks"])),
-                        "sheep": int(np.sum(df["Other Sheep"])),
+                            df[['Chicken -Indigenous', 'Chicken -Broilers', 'Chicken -Layers']].sum(axis=1).sum()),
+                        "ducks": int(np.sum(df['Ducks'])),
+                        "sheep": int(np.sum(df['Other Sheep'])),
                     },
                     "financial_livelihood": {
-                        "lenders": 0,
-                        "relatives": int(np.sum(df["Family"])),
-                        "traders": 0,
-                        "agents": 0,
-                        "institutional": 0,
+                        # "lenders": 0,
+                        "relatives": int(np.sum(df['Family'])),
+                        # "traders": 0,
+                        # "agents": 0,
+                        "Other Money Lenders": int(np.sum(df['Other Money Lenders'])),
+                        "Micro-finance institution":int(np.sum(df['Micro-finance institution'])),
+                        "Self (Salary or Savings)": int(np.sum(df['Self (Salary or Savings)'])),
                     },
                     "water_sources": {
-                        "borewell": 0,
-                        "irrigation": int(np.sum(df["Total Area Irrigation"])),
-                        "rainwater": 0,
+                        # "borewell": 0,
+                        "irrigation": int(np.sum(df['Total Area Irrigation'])),
+                        "rivers": int(np.sum(df['Natural rivers and stream'])),
+                        "water_pan": int(np.sum(df['Water Pan'])),
+                        # "rainwater": 0,
+
                     },
                     "insurance_information": {
-                        "insured_crops": int(np.sum(df["Do you insure your crops?"])),
-                        "insured_machinery": int(np.sum(df["Do you insure your farm buildings and other assets?"])),
+                        "insured_crops": int(np.sum(df['Do you insure your crops?'])),
+                        "insured_machinery": int(np.sum(df['Do you insure your farm buildings and other assets?'])),
                     },
                     "popular_fertilizer_user": {
-                        "npk": int(np.sum(df["NPK"])),
-                        "ssp": int(np.sum(df["Superphosphate"])),
-                        "can": int(np.sum(df["CAN"])),
-                        "urea": int(np.sum(df["Urea"])),
-                        "Others": int(np.sum(df["Other"])),
-                    },
+                        "npk": int(np.sum(df['NPK'])),
+                        "ssp": int(np.sum(df['Superphosphate'])),
+                        "can": int(np.sum(df['CAN'])),
+                        "urea": int(np.sum(df['Urea'])),
+                        "Others": int(np.sum(df['Other'])),
+                    }
                 }
 
             except Exception as e:
@@ -2588,9 +2598,8 @@ class DatasetFileV2View(GenericViewSet):
     serializer_class = DatasetFileV2NewSerializer
 
     def create(self, request, *args, **kwargs):
-        validity = check_file_name_length(
-            incoming_file_name=request.data.get("file"), accepted_file_name_size=NumericalConstants.FILE_NAME_LENGTH
-        )
+        validity = check_file_name_length(incoming_file_name=request.data.get("file"),
+                                          accepted_file_name_size=NumericalConstants.FILE_NAME_LENGTH)
         if not validity:
             return Response(
                 {"message": f"File name should not be more than {NumericalConstants.FILE_NAME_LENGTH} characters."},
@@ -2706,30 +2715,29 @@ class UsagePolicyListCreateView(generics.ListCreateAPIView):
 class UsagePolicyRetrieveUpdateDestroyView(generics.RetrieveUpdateDestroyAPIView):
     queryset = UsagePolicy.objects.all()
     serializer_class = UsagePolicySerializer
-    api_builder_serializer_class = APIBuilderSerializer
-
+    api_builder_serializer_class=APIBuilderSerializer
     def patch(self, request, *args, **kwargs):
         instance = self.get_object()
-        approval_status = request.data.get("approval_status")
-        policy_type = request.data.get("type", None)
+        approval_status = request.data.get('approval_status')
+        policy_type = request.data.get('type', None)
         instance.api_key = None
         try:
-            if policy_type == "api":
-                if approval_status == "approved":
+            if policy_type == 'api':
+                if approval_status=='approved':
                     instance.api_key = generate_api_key()
-            serializer = self.api_builder_serializer_class(instance, data=request.data, partial=True)
+            serializer = self.api_builder_serializer_class(instance,data=request.data,partial=True)
             serializer.is_valid(raise_exception=True)
             serializer.save()
-            return Response(serializer.data, status=200)
-
+            return Response(serializer.data, status=200) 
+        
         except ValidationError as e:
-            LOGGER.error(e, exc_info=True)
+            LOGGER.error(e,exc_info=True )
             return Response(e.detail, status=status.HTTP_400_BAD_REQUEST)
-
+        
         except Exception as error:
             LOGGER.error(error, exc_info=True)
             return Response(str(error), status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
+    
 
 class DatahubNewDashboard(GenericViewSet):
     """Datahub Dashboard viewset"""
@@ -2824,36 +2832,36 @@ class DatahubNewDashboard(GenericViewSet):
         user_id = data.get("user_id")
         user_org_map = data.get("map_id")
         my_dataset_used_in_connectors = (
-            dataset_query.prefetch_related("datasets__right_dataset_file")
-            .values("datasets__right_dataset_file")
-            .filter(datasets__right_dataset_file__connectors__user_id=user_id)
-            .distinct()
-            .count()
-            + dataset_query.prefetch_related("datasets__left_dataset_file")
-            .values("datasets__left_dataset_file")
-            .filter(datasets__left_dataset_file__connectors__user_id=user_id)
-            .distinct()
-            .count()
+                dataset_query.prefetch_related("datasets__right_dataset_file")
+                .values("datasets__right_dataset_file")
+                .filter(datasets__right_dataset_file__connectors__user_id=user_id)
+                .distinct()
+                .count()
+                + dataset_query.prefetch_related("datasets__left_dataset_file")
+                .values("datasets__left_dataset_file")
+                .filter(datasets__left_dataset_file__connectors__user_id=user_id)
+                .distinct()
+                .count()
         )
         connectors_query = Connectors.objects.filter(user_id=user_id).all()
 
         other_datasets_used_in_my_connectors = (
-            dataset_query.prefetch_related("datasets__right_dataset_file")
-            .select_related("datasets__right_dataset_file__connectors")
-            .filter(datasets__right_dataset_file__connectors__user_id=user_id)
-            .values("datasets__right_dataset_file")
-            .exclude(user_map_id=user_org_map)
-            .distinct()
-            .count()
-        ) + (
-            dataset_query.prefetch_related("datasets__left_dataset_file")
-            .select_related("datasets__left_dataset_file__connectors")
-            .filter(datasets__left_dataset_file__connectors__user_id=user_id)
-            .values("datasets__left_dataset_file")
-            .exclude(user_map_id=user_org_map)
-            .distinct()
-            .count()
-        )
+                                                   dataset_query.prefetch_related("datasets__right_dataset_file")
+                                                   .select_related("datasets__right_dataset_file__connectors")
+                                                   .filter(datasets__right_dataset_file__connectors__user_id=user_id)
+                                                   .values("datasets__right_dataset_file")
+                                                   .exclude(user_map_id=user_org_map)
+                                                   .distinct()
+                                                   .count()
+                                               ) + (
+                                                   dataset_query.prefetch_related("datasets__left_dataset_file")
+                                                   .select_related("datasets__left_dataset_file__connectors")
+                                                   .filter(datasets__left_dataset_file__connectors__user_id=user_id)
+                                                   .values("datasets__left_dataset_file")
+                                                   .exclude(user_map_id=user_org_map)
+                                                   .distinct()
+                                                   .count()
+                                               )
         return {
             "total_connectors_count": connectors_query.count(),
             "other_datasets_used_in_my_connectors": other_datasets_used_in_my_connectors,
