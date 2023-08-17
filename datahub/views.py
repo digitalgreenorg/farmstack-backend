@@ -2456,8 +2456,6 @@ class DatasetV2View(GenericViewSet):
 
         serializer = DatahubDatasetFileDashboardFilterSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-
-        print(serializer.data)
         try:
             cols_to_read = [' Gender', ' Constituency', ' County', ' Sub County', ' Crop Production',
                             ' farmer_mobile_number',
@@ -2470,7 +2468,7 @@ class DatasetV2View(GenericViewSet):
                             ' Do you insure your farm buildings and other assets?', ' Other Dual Cattle',
                             ' Cross breed Cattle', ' Cattle boma',
                             ' Small East African Goats', ' Somali Goat', ' Other Goat', ' Chicken -Indigenous',
-                            ' Chicken -Broilers', ' Chicken -Layers']
+                            ' Chicken -Broilers', ' Chicken -Layers', ' Highest Level of Formal Education ']
 
             dataset_file_object = DatasetV2File.objects.get(id=pk)
             dataset_file = str(dataset_file_object.standardised_file)
@@ -2510,61 +2508,76 @@ class DatasetV2View(GenericViewSet):
                 df['Chicken -Broilers'] = pd.to_numeric(df['Chicken -Broilers'], errors='coerce')
                 df['Chicken -Layers'] = pd.to_numeric(df['Chicken -Layers'], errors='coerce')
                 df['Do you insure your crops?'] = pd.to_numeric(df['Do you insure your crops?'], errors='coerce')
+                df['Highest Level of Formal Education'] = pd.to_numeric(df['Highest Level of Formal Education'],
+                                                                        errors='coerce')
                 df['Do you insure your farm buildings and other assets?'] = pd.to_numeric(
                     df['Do you insure your farm buildings and other assets?'], errors='coerce')
                 county_name = None
                 df['Gender'] = df['Gender'].map({1: 'Male', 2: 'Female'})
+                df['Highest Level of Formal Education'] = df['Highest Level of Formal Education'].map(
+                    {1: 'None', 2: 'Primary', 3: 'Secondary', 4: 'Certificate', 5: 'Diploma', 6: 'University Degree',
+                     7: "Post Graduate Degree,Masters and Above"})
                 if serializer.data.get("county"):
-                    county_name = serializer.data.get("county")
+                    county_name = serializer.data.get("county")[0]
+                    print(county_name)
+                    county_name = " " +county_name
 
-                print()
+                print(county_name)
                 obj = {
-                    "farmers": df[df['County'] == " BUSIA"].groupby(['Sub County', 'Gender'])['Gender'].count().unstack().to_dict(orient='index'),
-                        "constituencies": np.unique(df['Constituency']).size,
-                        "counties": np.unique(df['County']).size,
-                        "ward": np.unique(df['Ward']).size,
-                        "sub_counties": np.unique(df['Sub County']).size,
-                        "farming_practices": {
-                            "crop_production":{
-                                "total_crop_production": np.sum(df['Crop Production'] == 1),
-                                "bifurcation" : df[df['Crop Production'] == 1]["Gender"].value_counts().to_dict(),
-                            },
-                            "livestock_production":{
-                                "total_livestock_production": np.sum(df['Livestock Production'] == 1),
-                                "bifurcation": df[df['Livestock Production'] == 1]["Gender"].value_counts().to_dict(),
-                            }
+                    "sub_county_ratio": df[df['County'] == county_name].groupby(['Sub County', 'Gender'])[
+                        'Gender'].count().unstack().to_dict(orient='index'),
+                    "education_level":df[df['County'] == county_name].groupby(['Highest Level of Formal Education', 'Gender'])[
+                        'Gender'].count().unstack().to_dict(orient='index'),
 
+                    "constituencies":np.unique(df['Constituency']).size,
+                    "counties": np.unique(df['County']).size,
+                    "ward": np.unique(df['Ward']).size,
+                    "sub_counties": np.unique(df['Sub County']).size,
+                    "farming_practices": {
+                        "crop_production": {
+                            "total_crop_production": np.sum(df['Crop Production'] == 1),
+                            "bifurcation": df[df['Crop Production'] == 1]["Gender"].value_counts().to_dict(),
                         },
-                        # "livestock_and_poultry_production": {
-                        #     "cows": int((df[['Other Dual Cattle', 'Cross breed Cattle', 'Cattle boma']]).sum(axis=1).sum()),
-                        #     "goats": int(df[['Small East African Goats', 'Somali Goat', 'Other Goat']].sum(axis=1).sum()),
-                        #     "chickens": int(
-                        #         df[['Chicken -Indigenous', 'Chicken -Broilers', 'Chicken -Layers']].sum(axis=1).sum()),
-                        #     "ducks": int(np.sum(df['Ducks'])),
-                        #     "sheep": int(np.sum(df['Other Sheep'])),
-                        # },
-                        "financial_livelihood": {
-                            "relatives": df[df['Family'] > 0]["Gender"].value_counts().to_dict(),
-                            "Other Money Lenders": df[df['Other Money Lenders'] > 0]["Gender"].value_counts().to_dict(),
-                            "Micro-finance institution": df[df['Micro-finance institution'] > 0]["Gender"].value_counts().to_dict(),
-                            "Self (Salary or Savings)":  df[df['Self (Salary or Savings)'] > 0]["Gender"].value_counts().to_dict(),
-                        },
-                        "water_sources": {
-                            "irrigation": df[df['Total Area Irrigation'] > 0]["Gender"].value_counts().to_dict(),
-                            "rivers": df[df['Natural rivers and stream'] > 0]["Gender"].value_counts().to_dict(),
-                            "water_pan": df[df['Water Pan'] > 0]["Gender"].value_counts().to_dict(),
-                        },
-                        "insurance_information": {
-                            "insured_crops":  df[df['Do you insure your crops?'] > 0]["Gender"].value_counts().to_dict(),
-                            "insured_machinery":   df[df['Do you insure your farm buildings and other assets?'] > 0]["Gender"].value_counts().to_dict(),
-                        },
-                        "popular_fertilizer_used": {
-                            "npk":   df[df['NPK'] > 0]["Gender"].value_counts().to_dict(),
-                            "ssp": df[df['Superphosphate'] > 0]["Gender"].value_counts().to_dict(),
-                            "can": df[df['CAN'] > 0]["Gender"].value_counts().to_dict(),
-                            "urea": df[df['Urea'] > 0]["Gender"].value_counts().to_dict(),
-                            "Others": df[df['Other'] > 0]["Gender"].value_counts().to_dict(),
+                        "livestock_production": {
+                            "total_livestock_production": np.sum(df['Livestock Production'] == 1),
+                            "bifurcation": df[df['Livestock Production'] == 1]["Gender"].value_counts().to_dict(),
                         }
+
+                    },
+                    "livestock_and_poultry_production": {
+                        "cows": int((df[['Other Dual Cattle', 'Cross breed Cattle', 'Cattle boma']]).sum(axis=1).sum()),
+                        "goats": int(df[['Small East African Goats', 'Somali Goat', 'Other Goat']].sum(axis=1).sum()),
+                        "chickens": int(
+                            df[['Chicken -Indigenous', 'Chicken -Broilers', 'Chicken -Layers']].sum(axis=1).sum()),
+                        "ducks": int(np.sum(df['Ducks'])),
+                        "sheep": int(np.sum(df['Other Sheep'])),
+                    },
+                    "financial_livelihood": {
+                        "relatives": df[df['Family'] > 0]["Gender"].value_counts().to_dict(),
+                        "Other Money Lenders": df[df['Other Money Lenders'] > 0]["Gender"].value_counts().to_dict(),
+                        "Micro-finance institution": df[df['Micro-finance institution'] > 0][
+                            "Gender"].value_counts().to_dict(),
+                        "Self (Salary or Savings)": df[df['Self (Salary or Savings)'] > 0][
+                            "Gender"].value_counts().to_dict(),
+                    },
+                    "water_sources": {
+                        "irrigation": df[df['Total Area Irrigation'] > 0]["Gender"].value_counts().to_dict(),
+                        "rivers": df[df['Natural rivers and stream'] > 0]["Gender"].value_counts().to_dict(),
+                        "water_pan": df[df['Water Pan'] > 0]["Gender"].value_counts().to_dict(),
+                    },
+                    "insurance_information": {
+                        "insured_crops": df[df['Do you insure your crops?'] > 0]["Gender"].value_counts().to_dict(),
+                        "insured_machinery": df[df['Do you insure your farm buildings and other assets?'] > 0][
+                            "Gender"].value_counts().to_dict(),
+                    },
+                    "popular_fertilizer_used": {
+                        "npk": df[df['NPK'] > 0]["Gender"].value_counts().to_dict(),
+                        "ssp": df[df['Superphosphate'] > 0]["Gender"].value_counts().to_dict(),
+                        "can": df[df['CAN'] > 0]["Gender"].value_counts().to_dict(),
+                        "urea": df[df['Urea'] > 0]["Gender"].value_counts().to_dict(),
+                        "Others": df[df['Other'] > 0]["Gender"].value_counts().to_dict(),
+                    },
+
                 }
 
             except Exception as e:
