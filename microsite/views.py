@@ -651,7 +651,7 @@ class ResourceMicrositeViewSet(GenericViewSet):
     serializer_class = ResourceSerializer
     pagination_class = CustomPagination
 
-    @http_request_mutation
+    # @http_request_mutation
     def list(self, request, *args, **kwargs):
         try:
             page = self.paginate_queryset(self.get_queryset().order_by("-updated_at"))
