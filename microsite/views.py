@@ -213,6 +213,7 @@ class DatasetsMicrositeViewSet(GenericViewSet):
                 df = pd.read_excel(file_path, index_col=None)
             else:
                 df = pd.read_csv(file_path, index_col=False)
+            df=df.fillna("")
             total = len(df)
             total_pages = math.ceil((total/50))
             start_index = 0  + 50*(page-1)  # Adjust the start index as needed
