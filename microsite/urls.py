@@ -9,7 +9,7 @@ from microsite.views import (
     OrganizationMicrositeViewSet,
     ParticipantMicrositeViewSet,
     PolicyAPIView,
-    microsite_media_view, UserDataMicrositeViewSet
+    microsite_media_view, UserDataMicrositeViewSet,APIResponseViewSet,
 )
 
 router = DefaultRouter()
@@ -23,7 +23,7 @@ router.register(r"participant", ParticipantMicrositeViewSet,
 router.register(r"policy", PolicyAPIView, basename="policy_microsite")
 router.register(r"microsite_user_data", UserDataMicrositeViewSet,
                 basename="microsite_user_data")
-
+router.register(r"datasets_file", APIResponseViewSet, basename="dataset_json_response")
 
 urlpatterns = [
     path("", include(router.urls)),
