@@ -20,6 +20,7 @@ from rest_framework.viewsets import GenericViewSet
 
 from accounts.models import User, UserRole
 from accounts.serializers import UserCreateSerializer
+from connectors.models import Connectors
 from core.constants import Constants
 from core.utils import (
     CustomPagination,
@@ -36,6 +37,7 @@ from datahub.models import (
     DatasetV2File,
     Organization,
     Policy,
+    Resource,
     UsagePolicy,
     UserOrganizationMap,
 )
@@ -44,9 +46,12 @@ from datahub.serializers import (
     DatasetV2Serializer,
     OrganizationSerializer,
     ParticipantSerializer,
+    ResourceSerializer,
     micrositeOrganizationSerializer,
 )
 from microsite.serializers import (
+    ConnectorsListSerializer,
+    ConnectorsRetriveSerializer,
     ContactFormSerializer,
     DatasetsMicrositeSerializer,
     LegalDocumentSerializer,
@@ -73,8 +78,7 @@ class OrganizationMicrositeViewSet(GenericViewSet):
             datahub_admin = User.objects.filter(role_id=1)
 
             if not datahub_admin:
-                data = {Constants.USER: None, "message": [
-                    "Datahub admin not Found."]}
+                data = {Constants.USER: None, "message": ["Datahub admin not Found."]}
                 return Response(data, status=status.HTTP_200_OK)
 
             user_queryset = datahub_admin.first()
@@ -91,8 +95,7 @@ class OrganizationMicrositeViewSet(GenericViewSet):
                 }
                 return Response(data, status=status.HTTP_200_OK)
 
-            org_obj = Organization.objects.get(
-                id=user_org_queryset.first().organization_id)
+            org_obj = Organization.objects.get(id=user_org_queryset.first().organization_id)
             org_seriliazer = OrganizationMicrositeSerializer(org_obj)
             data = {
                 Constants.USER: user_serializer.data,
@@ -116,16 +119,14 @@ class DatahubThemeMicrositeViewSet(GenericViewSet):
         data = {}
 
         try:
-            css_attribute = file_operations.get_css_attributes(
-                css_path, "background-color")
+            css_attribute = file_operations.get_css_attributes(css_path, "background-color")
 
             if not css_path and not file_paths:
                 data = {"hero_image": None, "css": None}
             elif not css_path:
                 data = {"hero_image": file_paths, "css": None}
             elif css_path and not file_paths:
-                data = {"hero_image": None, "css": {
-                    "btnBackground": css_attribute}}
+                data = {"hero_image": None, "css": {"btnBackground": css_attribute}}
             elif css_path and file_paths:
                 data = {
                     "hero_image": file_paths,
@@ -182,8 +183,7 @@ class DatasetsMicrositeViewSet(GenericViewSet):
         dataset_file_obj = DatasetV2File.objects.filter(dataset_id=obj.id)
         data = []
         for file in dataset_file_obj:
-            path_ = os.path.join(settings.DATASET_FILES_URL,
-                                 str(file.standardised_file))
+            path_ = os.path.join(settings.DATASET_FILES_URL, str(file.standardised_file))
             file_path = {}
             file_path["content"] = read_contents_from_csv_or_xlsx_file(path_)
             # Omitted the actual name of the file so the user can't manually download the file
@@ -194,8 +194,7 @@ class DatasetsMicrositeViewSet(GenericViewSet):
             file_path["file_size"] = file.file_size
             file_path["accessibility"] = file.accessibility
             file_path["standardised_file"] = (
-                os.path.join(settings.DATASET_FILES_URL,
-                             str(file.standardised_file))
+                os.path.join(settings.DATASET_FILES_URL, str(file.standardised_file))
                 if file.accessibility == Constants.PUBLIC
                 else None
             )
@@ -243,11 +242,9 @@ class DatasetsMicrositeViewSet(GenericViewSet):
         user_id = data.pop(Constants.USER_ID, "")
         exclude, filters = {}, {}
         if others:
-            exclude = {
-                Constants.USER_MAP_ORGANIZATION: org_id} if org_id else {}
+            exclude = {Constants.USER_MAP_ORGANIZATION: org_id} if org_id else {}
         else:
-            filters = {
-                Constants.USER_MAP_ORGANIZATION: org_id} if org_id else {}
+            filters = {Constants.USER_MAP_ORGANIZATION: org_id} if org_id else {}
         try:
             if categories is not None:
                 data = (
@@ -282,8 +279,7 @@ class DatasetsMicrositeViewSet(GenericViewSet):
                     .all()
                 )
         except Exception as error:  # type: ignore
-            logging.error(
-                "Error while filtering the datasets. ERROR: %s", error)
+            logging.error("Error while filtering the datasets. ERROR: %s", error)
             return Response(f"Invalid filter fields: {list(request.data.keys())}", status=500)
 
         page = self.paginate_queryset(data)
@@ -299,12 +295,10 @@ class DatasetsMicrositeViewSet(GenericViewSet):
         user_id = data.pop(Constants.USER_ID, "")
         exclude, filters = {}, {}
         if others:
-            exclude = {
-                Constants.USER_MAP_ORGANIZATION: org_id} if org_id else {}
+            exclude = {Constants.USER_MAP_ORGANIZATION: org_id} if org_id else {}
             # filters = {Constants.APPROVAL_STATUS: Constants.APPROVED}
         else:
-            filters = {
-                Constants.USER_MAP_ORGANIZATION: org_id} if org_id else {}
+            filters = {Constants.USER_MAP_ORGANIZATION: org_id} if org_id else {}
         try:
             geography = (
                 DatasetV2.objects.values_list(Constants.GEOGRAPHY, flat=True)
@@ -332,8 +326,7 @@ class DatasetsMicrositeViewSet(GenericViewSet):
             else:
                 category_detail = []
         except Exception as error:  # type: ignore
-            logging.error(
-                "Error while filtering the datasets. ERROR: %s", error)
+            logging.error("Error while filtering the datasets. ERROR: %s", error)
             return Response(f"Invalid filter fields: {list(request.data.keys())}", status=500)
         return Response({"geography": geography, "category_detail": category_detail}, status=200)
 
@@ -355,15 +348,13 @@ class DatasetsMicrositeViewSet(GenericViewSet):
                 return Response(data, status=status.HTTP_200_OK)
             except Exception as error:
                 LOGGER.error(error, exc_info=True)
-                raise custom_exceptions.NotFoundException(
-                    detail="Categories not found")
+                raise custom_exceptions.NotFoundException(detail="Categories not found")
 
     @action(detail=False, methods=["post"])
     def search_datasets(self, request, *args, **kwargs):
         data = request.data
         search_pattern = data.pop(Constants.SEARCH_PATTERNS, "")
-        filters = {
-            Constants.NAME_ICONTAINS: search_pattern} if search_pattern else {}
+        filters = {Constants.NAME_ICONTAINS: search_pattern} if search_pattern else {}
         try:
             data = (
                 DatasetV2.objects.select_related(
@@ -377,12 +368,10 @@ class DatasetsMicrositeViewSet(GenericViewSet):
                 .all()
             )
             page = self.paginate_queryset(data)
-            participant_serializer = DatahubDatasetsV2Serializer(
-                page, many=True)
+            participant_serializer = DatahubDatasetsV2Serializer(page, many=True)
             return self.get_paginated_response(participant_serializer.data)
         except Exception as error:  # type: ignore
-            logging.error(
-                "Error while filtering the datasets. ERROR: %s", error)
+            logging.error("Error while filtering the datasets. ERROR: %s", error)
             return Response(
                 f"Invalid filter fields: {list(request.data.keys())}",
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -402,15 +391,13 @@ class ContactFormViewSet(GenericViewSet):
         print(serializer)
         serializer.is_valid(raise_exception=True)
         try:
-
             date = datetime.datetime.now().strftime("%d-%m-%Y")
             data = serializer.data
             data.update({"date": date})
             print(data)
 
             # render email from query_email template
-            email_render = render(
-                request, "user_fills_in_contact_form.html", data)
+            email_render = render(request, "user_fills_in_contact_form.html", data)
             mail_body = email_render.content.decode("utf-8")
             Utils().send_email(
                 to_email=[datahub_admin.email],
@@ -494,8 +481,7 @@ class ParticipantMicrositeViewSet(GenericViewSet):
         try:
             if on_boarded_by:
                 roles = (
-                    UserOrganizationMap.objects.select_related(
-                        Constants.USER, Constants.ORGANIZATION)
+                    UserOrganizationMap.objects.select_related(Constants.USER, Constants.ORGANIZATION)
                     .filter(
                         user__status=True,
                         user__on_boarded_by=on_boarded_by,
@@ -508,16 +494,14 @@ class ParticipantMicrositeViewSet(GenericViewSet):
                 )
             elif co_steward:
                 roles = (
-                    UserOrganizationMap.objects.select_related(
-                        Constants.USER, Constants.ORGANIZATION)
+                    UserOrganizationMap.objects.select_related(Constants.USER, Constants.ORGANIZATION)
                     .filter(user__status=True, user__role=6, **filter)
                     .order_by("-user__updated_at")
                     .all()
                 )
             else:
                 roles = (
-                    UserOrganizationMap.objects.select_related(
-                        Constants.USER, Constants.ORGANIZATION)
+                    UserOrganizationMap.objects.select_related(Constants.USER, Constants.ORGANIZATION)
                     .filter(
                         user__status=True,
                         user__role=3,
@@ -538,8 +522,7 @@ class ParticipantMicrositeViewSet(GenericViewSet):
     def retrieve(self, request, pk):
         """GET method: retrieve an object or instance of the Product model"""
         roles = (
-            UserOrganizationMap.objects.prefetch_related(
-                Constants.USER, Constants.ORGANIZATION)
+            UserOrganizationMap.objects.prefetch_related(Constants.USER, Constants.ORGANIZATION)
             .filter(user__status=True, user=pk)
             .all()
         )
@@ -559,21 +542,18 @@ class ParticipantMicrositeViewSet(GenericViewSet):
         try:
             if co_steward:
                 roles = (
-                    UserOrganizationMap.objects.select_related(
-                        Constants.ORGANIZATION)
+                    UserOrganizationMap.objects.select_related(Constants.ORGANIZATION)
                     .filter(user__status=True, user__role=6)
                     .all()
                 )
             else:
                 roles = (
-                    UserOrganizationMap.objects.select_related(
-                        Constants.USER, Constants.ORGANIZATION)
+                    UserOrganizationMap.objects.select_related(Constants.USER, Constants.ORGANIZATION)
                     .filter((Q(user__role=3) | Q(user__role=1)), user__status=True)
                     .all()
                 )
             page = self.paginate_queryset(roles)
-            participant_serializer = micrositeOrganizationSerializer(
-                page, many=True)
+            participant_serializer = micrositeOrganizationSerializer(page, many=True)
             return self.get_paginated_response(participant_serializer.data)
         except Exception as error:
             LOGGER.error(error, exc_info=True)
@@ -589,7 +569,7 @@ class PolicyAPIView(GenericViewSet):
         queryset = self.get_queryset()
         serializer = self.get_serializer(queryset, many=True)
         return Response(serializer.data)
-    
+
     def retrieve(self, request, *args, **kwargs):
         instance = self.get_object()
         serializer = self.get_serializer(instance)
@@ -647,8 +627,7 @@ class UserDataMicrositeViewSet(GenericViewSet):
     def user_data(self, request):
         """GET method: retrieve an object of Organization using User ID of the User (IMPORTANT: Using USER ID instead of Organization ID)"""
         try:
-            datahub_admin = User.objects.get(
-                id=request.GET.get("user_id", ""))
+            datahub_admin = User.objects.get(id=request.GET.get("user_id", ""))
             print(datahub_admin, "datahub_admin")
 
             serializer = UserDataMicrositeSerializer(datahub_admin)
@@ -664,20 +643,71 @@ class UserDataMicrositeViewSet(GenericViewSet):
 #     queryset = Policy.objects.all()
 #     serializer_class = PolicySerializer
 
+
 def microsite_media_view(request):
     file = get_object_or_404(DatasetV2File, id=request.GET.get("id"))
-    file_path = ''
+    file_path = ""
     try:
         if file.accessibility == Constants.PUBLIC:
             file_path = str(file.file)
             file_path = os.path.join(settings.DATASET_FILES_URL, file_path)
             if not os.path.exists(file_path):
-                return HttpResponseNotFound('File not found', 404)
-            response = FileResponse(open(file_path, 'rb'))
+                return HttpResponseNotFound("File not found", 404)
+            response = FileResponse(open(file_path, "rb"))
         else:
-            return HttpResponse(f"You don't have access to download this private file, Your request status is", status=403)
+            return HttpResponse(
+                f"You don't have access to download this private file, Your request status is", status=403
+            )
 
         return response
     except Exception as error:
         LOGGER.error(error, exc_info=True)
         return Response({str(error)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+class ConnectorMicrositeViewSet(GenericViewSet):
+    """Viewset for Product model"""
+
+    permission_classes = []
+    queryset = Connectors.objects.all()
+    pagination_class = CustomPagination
+
+    def list(self, request, *args, **kwargs):
+        data = Connectors.objects.all().order_by(Constants.UPDATED_AT).reverse()
+        page = self.paginate_queryset(data)
+        connectors_data = ConnectorsListSerializer(page, many=True)
+        return self.get_paginated_response(connectors_data.data)
+
+    def retrieve(self, request, pk):
+        """GET method: retrieve an object or instance of the Product model"""
+        try:
+            instance = self.get_object()
+            serializer = ConnectorsRetriveSerializer(instance=instance)
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        except Exception as error:
+            return Response(str(error), status=status.HTTP_400_BAD_REQUEST)
+
+
+class ResourceMicrositeViewSet(GenericViewSet):
+    permission_classes = []
+    queryset = Resource.objects.all()
+    serializer_class = ResourceSerializer
+    pagination_class = CustomPagination
+
+    # @http_request_mutation
+    def list(self, request, *args, **kwargs):
+        try:
+            page = self.paginate_queryset(self.get_queryset().order_by("-updated_at"))
+            serializer = self.get_serializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
+        except ValidationError as e:
+            return Response(e.detail, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            LOGGER.error(e)
+            return Response(str(e), status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    def retrieve(self, request, *args, **kwargs):
+        resource = self.get_object()
+        serializer = self.get_serializer(resource)
+        # serializer.is_valid(raise_exception=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
