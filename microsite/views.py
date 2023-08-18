@@ -206,27 +206,26 @@ class DatasetsMicrositeViewSet(GenericViewSet):
     @action(detail=False, methods=["get"])
     def get_json_response(self, request, *args, **kwargs):
         try:
+            next = False
             file_path = request.GET.get('file_path')
             page = int(request.GET.get('page', 1))
-            if file_path.endswith(".xlsx") or file_path.endswith(".xls"):
-                df = pd.read_excel(file_path, index_col=None)
-            else:
-                df = pd.read_csv(file_path, index_col=False)       
-            total = len(df)
-            total_pages = math.ceil((total/50))
             start_index = 0  + 50*(page-1)  # Adjust the start index as needed
             end_index = 50*page
-            df = df.iloc[start_index:end_index]
+            if file_path.endswith(".xlsx") or file_path.endswith(".xls"):
+                df = pd.read_excel(file_path, index_col=None, skiprows=range(0, start_index), nrows=end_index - start_index+1)
+            else:
+                df = pd.read_csv(file_path, index_col=False, skiprows=range(0, start_index), nrows=end_index - start_index+1)       
             df=df.fillna("")
+            next, df = (True, df[0:-1]) if len(df) > 50 else (False,df)
             return JsonResponse({
-            'total_pages': total_pages,
+            'next': next,
             'current_page': page,
-            'total': total,
+            'total': "total",
             'data': df.to_dict(orient='records')
             }, safe=False,status=200)       
-        except ValidationError as e:
-            LOGGER.error(e,exc_info=True )
-            return Response(e.detail, status=status.HTTP_400_BAD_REQUEST)
+        except pd.errors.EmptyDataError:
+            logging.info("The file is empty or Reached end of file.")
+            return Response(str("Table is Empty or Reached End of the table"), status=400)
         except Exception as error:
             LOGGER.error(error, exc_info=True)
             return Response(str(error), status=status.HTTP_500_INTERNAL_SERVER_ERROR)
