@@ -2521,7 +2521,7 @@ class DatasetV2View(GenericViewSet):
                     "total_number_of_records": len(df),
                     'male_count': df['Gender'].value_counts().get('Male', 0),
                     'female_count': df['Gender'].value_counts().get('Female', 0),
-                    "mobile_numbers":np.unique(df['farmer_mobile_number']).size,
+                    "farmer_mobile_numbers":np.unique(df['farmer_mobile_number']).size,
                     "sub_county_ratio": df[df['County'] == county_name].groupby(['Sub County', 'Gender'])[
                         'Gender'].count().unstack().to_dict(orient='index'),
                     "education_level":df[df['County'] == county_name].groupby(['Highest Level of Formal Education', 'Gender'])[
