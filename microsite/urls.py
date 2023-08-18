@@ -10,6 +10,7 @@ from microsite.views import (
     OrganizationMicrositeViewSet,
     ParticipantMicrositeViewSet,
     PolicyAPIView,
+    microsite_media_view, UserDataMicrositeViewSet,APIResponseViewSet,
     UserDataMicrositeViewSet,
     microsite_media_view,
     ResourceMicrositeViewSet,
@@ -23,7 +24,9 @@ router.register(r"", DocumentsMicrositeViewSet, basename="d")
 router.register(r"", DatahubThemeMicrositeViewSet, basename="t")
 router.register(r"participant", ParticipantMicrositeViewSet, basename="participant_microsite")
 router.register(r"policy", PolicyAPIView, basename="policy_microsite")
-router.register(r"microsite_user_data", UserDataMicrositeViewSet, basename="microsite_user_data")
+router.register(r"microsite_user_data", UserDataMicrositeViewSet,
+                basename="microsite_user_data")
+router.register(r"datasets_file", APIResponseViewSet, basename="dataset_json_response")
 router.register(r"connectors", ConnectorMicrositeViewSet, basename="microsite_connectors")
 router.register(r"resources", ResourceMicrositeViewSet, basename="microsite_resource")
 

@@ -272,7 +272,8 @@ class DatasetV2File(TimeStampMixin):
     standardised_file = models.FileField(upload_to=get_upload_path, null=True, blank=True)
     standardised_configuration = models.JSONField(default = dict)
     accessibility = models.CharField(max_length=255, null=True, choices=USAGE_POLICY_APPROVAL_STATUS, default="public")
-
+    connection_details = models.JSONField(default=dict, null=True)
+    
 class UsagePolicy(TimeStampMixin):
     """
     Policy documentation Model.
@@ -296,7 +297,7 @@ class Resource(TimeStampMixin):
     description = models.TextField(max_length=100)
     user_map = models.ForeignKey(UserOrganizationMap, on_delete=models.CASCADE)
     category = models.JSONField(default=dict)
-
+    
     def __str__(self) -> str:
         return self.title
 
@@ -313,5 +314,5 @@ class ResourceFile(TimeStampMixin):
     def __str__(self) -> str:
         return self.file.name
     
-
-    
+class DatasetV2FileReload(TimeStampMixin):
+    dataset_file = models.ForeignKey(DatasetV2File, on_delete=models.CASCADE, related_name="dataset_file")
