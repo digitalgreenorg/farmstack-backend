@@ -106,7 +106,7 @@ class ConnectorsListSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Connectors
-        exclude = ["integrated_file","created_at", "updated_at", "config"]
+        exclude = ["integrated_file", "config"]
     
     dataset_count = serializers.SerializerMethodField(method_name="get_dataset_count")
     providers_count = serializers.SerializerMethodField(method_name="get_providers_count")
