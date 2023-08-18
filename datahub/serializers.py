@@ -513,10 +513,10 @@ class DatasetV2TempFileSerializer(serializers.Serializer):
                     f"Document type not supported. Only following documents are allowed: {Constants.DATASET_FILE_TYPES}"
                 )
 
-            if not validate_dataset_size(file, Constants.DATASET_MAX_FILE_SIZE):
-                raise ValidationError(
-                    f"You cannot upload/export file size more than {Constants.DATASET_MAX_FILE_SIZE}MB."
-                )
+            #if not validate_dataset_size(file, Constants.DATASET_MAX_FILE_SIZE):
+            #    raise ValidationError(
+            #        f"You cannot upload/export file size more than {Constants.DATASET_MAX_FILE_SIZE}MB."
+            #    )
 
         return files
 
