@@ -220,7 +220,6 @@ class DatasetsMicrositeViewSet(GenericViewSet):
             return JsonResponse({
             'next': next,
             'current_page': page,
-            'total': "total",
             'data': df.to_dict(orient='records')
             }, safe=False,status=200)       
         except pd.errors.EmptyDataError:
@@ -591,27 +590,24 @@ class APIResponseViewSet(GenericViewSet):
             file_path_query_set=UsagePolicy.objects.select_related('dataset_file').filter(api_key=get_api_key).values('dataset_file__standardised_file')
             file_path = file_path_query_set[0]["dataset_file__standardised_file"]
             protected_file_path = os.path.join(settings.DATASET_FILES_URL, str(file_path))
-
-            if protected_file_path.endswith(".xlsx") or protected_file_path.endswith(".xls"):
-                df = pd.read_excel(protected_file_path, index_col=None)
-            else:
-                df = pd.read_csv(protected_file_path, index_col=False)      
-            df=df.fillna("")
-            total = len(df)
-            total_pages = math.ceil((total/50))
+            next=False
             start_index = 0  + 50*(page-1) 
-            end_index = 50*page
-            df = df.iloc[start_index:end_index]
+            end_index = 50*page  
+            if protected_file_path.endswith(".xlsx") or protected_file_path.endswith(".xls"):                       
+                df = pd.read_excel(protected_file_path, index_col=None, skiprows=range(0, start_index), nrows=end_index - start_index+1)
+            else:
+                df = pd.read_csv(protected_file_path, index_col=False, skiprows=range(0, start_index), nrows=end_index - start_index+1)
+            df=df.fillna("")
+            next, df = (True, df[0:-1]) if len(df) > 50 else (False,df)   
             return JsonResponse(
             {
-            'total_pages': total_pages,
+            'next': next,
             'current_page': page,
-            'total': total,
             'data': df.to_dict(orient='records')
             }, safe=False,status=200)       
-        except ValidationError as e:
-            LOGGER.error(e,exc_info=True )
-            return Response(e.detail, status=status.HTTP_400_BAD_REQUEST)
+        except pd.errors.EmptyDataError:
+            logging.info("The file is empty or Reached end of file.")
+            return Response(str("File is Empty or Reached End of the file"), status=400)
         except Exception as error:
             LOGGER.error(error, exc_info=True)
             return Response(str(error), status=status.HTTP_500_INTERNAL_SERVER_ERROR)
