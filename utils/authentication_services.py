@@ -5,7 +5,7 @@ from rest_framework.response import Response
 
 from connectors.models import Connectors
 from core.constants import Constants
-from datahub.models import Datasets, DatasetV2, DatasetV2File, Organization
+from datahub.models import Datasets, DatasetV2, DatasetV2File, Organization, UsagePolicy
 from utils.jwt_services import JWTServices
 
 
@@ -19,6 +19,17 @@ def authenticate_user(model):
                 query_id = kwargs.get("pk")
                 dsv = DatasetV2File.objects.filter(
                     id=query_id, dataset__user_map_id=payload.get("map_id")
+                )
+                if not dsv:
+                    return Response(
+                        {"message": "Authorization Failed"},
+                        status=status.HTTP_403_FORBIDDEN,
+                    )
+                    
+            elif model == UsagePolicy:
+                query_id = kwargs.get("pk")
+                dsv = UsagePolicy.objects.filter(
+                    id=query_id, dataset_file__dataset__user_map_id=payload.get("map_id")
                 )
                 if not dsv:
                     return Response(

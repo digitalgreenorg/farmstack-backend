@@ -2717,9 +2717,17 @@ class UsagePolicyListCreateView(generics.ListCreateAPIView):
 
 
 class UsagePolicyRetrieveUpdateDestroyView(generics.RetrieveUpdateDestroyAPIView):
+    """
+        ``PATCH`` method: PATCH method to update the status of USAGE POLICY 
+        for api/dataset files.
+        **Endpoint**
+        [ref]: /usage_policies/<uuid>
+    """
     queryset = UsagePolicy.objects.all()
     serializer_class = UsagePolicySerializer
     api_builder_serializer_class=APIBuilderSerializer
+    
+    @authenticate_user(model=UsagePolicy)
     def patch(self, request, *args, **kwargs):
         instance = self.get_object()
         approval_status = request.data.get('approval_status')
