@@ -151,5 +151,3 @@ class ConnectorsRetriveSerializer(serializers.ModelSerializer):
         dataset_data = DatasetV2.objects.all().filter(id__in = datasets[0])
         dataset_searilezer = DatasetsSerializer(dataset_data, many=True)
         return {"organizations": searilezer.data, "datasets": dataset_searilezer.data}
-      
-    
