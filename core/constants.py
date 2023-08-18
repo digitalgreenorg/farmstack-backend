@@ -139,7 +139,7 @@ class Constants:
     SOURCE_POSTGRESQL = "source_postgresql"
     SOURCE_API_TYPE = "live_api"
     DATASET_FILE_TYPES = ["xls", "xlsx", "csv", "pdf", "jpeg", "jpg", "png", "tiff"]
-    DATASET_MAX_FILE_SIZE = 50
+    DATASET_MAX_FILE_SIZE = 500
     DATASET_V2_URL = "dataset/v2"
     DATASETS_V2_URL = "datasets/v2"
     DATASET_FILES = "dataset_files"
