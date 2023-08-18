@@ -115,7 +115,7 @@ from participant.serializers import (
 )
 from utils import custom_exceptions, file_operations, string_functions, validators
 from utils.authentication_services import authenticate_user
-from utils.file_operations import check_file_name_length
+from utils.file_operations import check_file_name_length, filter_dataframe_for_dashboard_counties
 from utils.jwt_services import http_request_mutation
 
 from .models import Policy, ResourceFile, UsagePolicy
@@ -399,7 +399,7 @@ class ParticipantViewSet(GenericViewSet):
                 to_email=request.data.get("email"),
                 content=mail_body,
                 subject=Constants.PARTICIPANT_ORG_ADDITION_SUBJECT
-                + os.environ.get(Constants.DATAHUB_NAME, Constants.datahub_name),
+                        + os.environ.get(Constants.DATAHUB_NAME, Constants.datahub_name),
             )
         except Exception as error:
             LOGGER.error(error, exc_info=True)
@@ -501,7 +501,7 @@ class ParticipantViewSet(GenericViewSet):
                 to_email=participant.email,
                 content=mail_body,
                 subject=Constants.PARTICIPANT_ORG_UPDATION_SUBJECT
-                + os.environ.get(Constants.DATAHUB_NAME, Constants.datahub_name),
+                        + os.environ.get(Constants.DATAHUB_NAME, Constants.datahub_name),
             )
 
             data = {
@@ -551,7 +551,7 @@ class ParticipantViewSet(GenericViewSet):
                     to_email=participant.email,
                     content=mail_body,
                     subject=Constants.PARTICIPANT_ORG_DELETION_SUBJECT
-                    + os.environ.get(Constants.DATAHUB_NAME, Constants.datahub_name),
+                            + os.environ.get(Constants.DATAHUB_NAME, Constants.datahub_name),
                 )
 
                 # Set the on_boarded_by_id to null if co_steward is deleted
@@ -633,7 +633,7 @@ class MailInvitationViewSet(GenericViewSet):
                         to_email=[email],
                         content=mail_body,
                         subject=os.environ.get("DATAHUB_NAME", "datahub_name")
-                        + Constants.PARTICIPANT_INVITATION_SUBJECT,
+                                + Constants.PARTICIPANT_INVITATION_SUBJECT,
                     )
                 except Exception as e:
                     emails_not_found.append()
@@ -1168,7 +1168,7 @@ class DatahubDatasetsViewSet(GenericViewSet):
 
         # reset the approval status b/c the user modified the dataset after an approval
         if getattr(instance, Constants.APPROVAL_STATUS) == Constants.APPROVED and (
-            user_obj.role_id == 3 or user_obj.role_id == 4
+                user_obj.role_id == 3 or user_obj.role_id == 4
         ):
             data[Constants.APPROVAL_STATUS] = Constants.AWAITING_REVIEW
 
@@ -2502,91 +2502,40 @@ class DatasetV2View(GenericViewSet):
                                                                         errors='coerce')
                 df['Do you insure your farm buildings and other assets?'] = pd.to_numeric(
                     df['Do you insure your farm buildings and other assets?'], errors='coerce')
-                county_name = None
-                df['Gender'] = df['Gender'].map({1: 'Male', 2: 'Female'})
-                df['Highest Level of Formal Education'] = df['Highest Level of Formal Education'].map(
-                    {1: 'None', 2: 'Primary', 3: 'Secondary', 4: 'Certificate', 5: 'Diploma', 6: 'University Degree',
-                     7: "Post Graduate Degree,Masters and Above"})
 
                 serializer = DatahubDatasetFileDashboardFilterSerializer(data=request.data)
                 serializer.is_valid(raise_exception=True)
 
+                counties = []
+                sub_counties = []
+                gender = []
+
                 if serializer.data.get("county"):
-                    county_name = serializer.data.get("county")[0]
-                    print(county_name)
-                    county_name = " " +county_name
+                    counties = serializer.data.get("county")
 
-                print(county_name)
-                obj = {
-                    "total_number_of_records": len(df),
-                    'male_count': df['Gender'].value_counts().get('Male', 0),
-                    'female_count': df['Gender'].value_counts().get('Female', 0),
-                    "farmer_mobile_numbers":np.unique(df['farmer_mobile_number']).size,
-                    "sub_county_ratio": df[df['County'] == county_name].groupby(['Sub County', 'Gender'])[
-                        'Gender'].count().unstack().to_dict(orient='index'),
-                    "education_level":df[df['County'] == county_name].groupby(['Highest Level of Formal Education', 'Gender'])[
-                        'Gender'].count().unstack().to_dict(orient='index'),
+                if serializer.data.get("sub_county"):
+                    sub_counties = serializer.data.get("sub_county")
 
-                    "constituencies":np.unique(df['Constituency']).size,
-                    "counties": np.unique(df['County']).size,
-                    "ward": np.unique(df['Ward']).size,
-                    "sub_counties": np.unique(df['Sub County']).size,
-                    "farming_practices": {
-                        "crop_production": {
-                            "total_crop_production": np.sum(df['Crop Production'] == 1),
-                            "bifurcation": df[df['Crop Production'] == 1]["Gender"].value_counts().to_dict(),
-                        },
-                        "livestock_production": {
-                            "total_livestock_production": np.sum(df['Livestock Production'] == 1),
-                            "bifurcation": df[df['Livestock Production'] == 1]["Gender"].value_counts().to_dict(),
-                        }
+                if serializer.data.get("gender"):
+                    gender = serializer.data.get("gender")
 
-                    },
-                    "livestock_and_poultry_production": {
-                        "cows": int((df[['Other Dual Cattle', 'Cross breed Cattle', 'Cattle boma']]).sum(axis=1).sum()),
-                        "goats": int(df[['Small East African Goats', 'Somali Goat', 'Other Goat']].sum(axis=1).sum()),
-                        "chickens": int(
-                            df[['Chicken -Indigenous', 'Chicken -Broilers', 'Chicken -Layers']].sum(axis=1).sum()),
-                        "ducks": int(np.sum(df['Ducks'])),
-                        "sheep": int(np.sum(df['Other Sheep'])),
-                    },
-                    "financial_livelihood": {
-                        "relatives": df[df['Family'] > 0]["Gender"].value_counts().to_dict(),
-                        "Other Money Lenders": df[df['Other Money Lenders'] > 0]["Gender"].value_counts().to_dict(),
-                        "Micro-finance institution": df[df['Micro-finance institution'] > 0][
-                            "Gender"].value_counts().to_dict(),
-                        "Self (Salary or Savings)": df[df['Self (Salary or Savings)'] > 0][
-                            "Gender"].value_counts().to_dict(),
-                    },
-                    "water_sources": {
-                        "irrigation": df[df['Total Area Irrigation'] > 0]["Gender"].value_counts().to_dict(),
-                        "rivers": df[df['Natural rivers and stream'] > 0]["Gender"].value_counts().to_dict(),
-                        "water_pan": df[df['Water Pan'] > 0]["Gender"].value_counts().to_dict(),
-                    },
-                    "insurance_information": {
-                        "insured_crops": df[df['Do you insure your crops?'] > 0]["Gender"].value_counts().to_dict(),
-                        "insured_machinery": df[df['Do you insure your farm buildings and other assets?'] > 0][
-                            "Gender"].value_counts().to_dict(),
-                    },
-                    "popular_fertilizer_used": {
-                        "npk": df[df['NPK'] > 0]["Gender"].value_counts().to_dict(),
-                        "ssp": df[df['Superphosphate'] > 0]["Gender"].value_counts().to_dict(),
-                        "can": df[df['CAN'] > 0]["Gender"].value_counts().to_dict(),
-                        "urea": df[df['Urea'] > 0]["Gender"].value_counts().to_dict(),
-                        "Others": df[df['Other'] > 0]["Gender"].value_counts().to_dict(),
-                    },
+                data = filter_dataframe_for_dashboard_counties(
+                    df=df,
+                    counties=counties if counties else [],
+                    sub_counties=sub_counties if sub_counties else [],
+                    gender=gender if sub_counties else [],
 
-                }
+                )
 
             except Exception as e:
                 print(e)
                 return Response(
                     f"Something went wrong, please try again. {e}",
-                    status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                    status=status.HTTP_400_BAD_REQUEST,
                 )
 
             return Response(
-                obj,
+                data,
                 status=status.HTTP_200_OK,
             )
 
@@ -2719,7 +2668,8 @@ class UsagePolicyListCreateView(generics.ListCreateAPIView):
 class UsagePolicyRetrieveUpdateDestroyView(generics.RetrieveUpdateDestroyAPIView):
     queryset = UsagePolicy.objects.all()
     serializer_class = UsagePolicySerializer
-    api_builder_serializer_class=APIBuilderSerializer
+    api_builder_serializer_class = APIBuilderSerializer
+
     def patch(self, request, *args, **kwargs):
         instance = self.get_object()
         approval_status = request.data.get('approval_status')
@@ -2727,21 +2677,21 @@ class UsagePolicyRetrieveUpdateDestroyView(generics.RetrieveUpdateDestroyAPIView
         instance.api_key = None
         try:
             if policy_type == 'api':
-                if approval_status=='approved':
+                if approval_status == 'approved':
                     instance.api_key = generate_api_key()
-            serializer = self.api_builder_serializer_class(instance,data=request.data,partial=True)
+            serializer = self.api_builder_serializer_class(instance, data=request.data, partial=True)
             serializer.is_valid(raise_exception=True)
             serializer.save()
-            return Response(serializer.data, status=200) 
-        
+            return Response(serializer.data, status=200)
+
         except ValidationError as e:
-            LOGGER.error(e,exc_info=True )
+            LOGGER.error(e, exc_info=True)
             return Response(e.detail, status=status.HTTP_400_BAD_REQUEST)
-        
+
         except Exception as error:
             LOGGER.error(error, exc_info=True)
             return Response(str(error), status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-    
+
 
 class DatahubNewDashboard(GenericViewSet):
     """Datahub Dashboard viewset"""
