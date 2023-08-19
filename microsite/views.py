@@ -1,20 +1,21 @@
 import datetime
 import json
 import logging
+import math
 import operator
 import os
 from functools import reduce
+
 import pandas as pd
-from django.core.paginator import Paginator
-from rest_framework.exceptions import ValidationError
-import math
 from django.conf import settings
+from django.core.paginator import Paginator
 from django.db.models import Q
 from django.http import FileResponse, HttpResponse, HttpResponseNotFound, JsonResponse
 from django.shortcuts import get_object_or_404, render
 from python_http_client import exceptions
 from rest_framework import generics, permissions, status, viewsets
 from rest_framework.decorators import action
+from rest_framework.exceptions import ValidationError
 from rest_framework.response import Response
 from rest_framework.viewsets import GenericViewSet
 
@@ -212,9 +213,12 @@ class DatasetsMicrositeViewSet(GenericViewSet):
             start_index = 0  + 50*(page-1)  # Adjust the start index as needed
             end_index = 50*page
             if file_path.endswith(".xlsx") or file_path.endswith(".xls"):
+                df_headers = pd.read_csv(file_path, nrows=1, header=None)
                 df = pd.read_excel(file_path, index_col=None, skiprows=range(0, start_index), nrows=end_index - start_index+1)
             else:
+                df_headers = pd.read_csv(file_path, nrows=1, header=None)
                 df = pd.read_csv(file_path, index_col=False, skiprows=range(0, start_index), nrows=end_index - start_index+1)       
+            df.columns = df_headers.iloc[0]
             df=df.fillna("")
             next, df = (True, df[0:-1]) if len(df) > 50 else (False,df)
             return JsonResponse({
@@ -575,6 +579,7 @@ class PolicyAPIView(GenericViewSet):
 
 class APIResponseViewSet(GenericViewSet):
     permission_classes = []
+
     @action(detail=False, methods=["get"])
     def api(self, request, *args, **kwargs):
         try:
@@ -593,10 +598,13 @@ class APIResponseViewSet(GenericViewSet):
             next=False
             start_index = 0  + 50*(page-1) 
             end_index = 50*page  
-            if protected_file_path.endswith(".xlsx") or protected_file_path.endswith(".xls"):                       
-                df = pd.read_excel(protected_file_path, index_col=None, skiprows=range(0, start_index), nrows=end_index - start_index+1)
+            if protected_file_path.endswith(".xlsx") or protected_file_path.endswith(".xls"):
+                df_header = pd.read_csv(protected_file_path, nrows=0, header=None)                       
+                df = pd.read_excel(protected_file_path, index_col=None,  header=0, skiprows=range(0, start_index), nrows=end_index - start_index+1)
             else:
-                df = pd.read_csv(protected_file_path, index_col=False, skiprows=range(0, start_index), nrows=end_index - start_index+1)
+                df_header = pd.read_csv(protected_file_path, nrows=1, header=None)
+                df = pd.read_csv(protected_file_path, index_col=False, header=0, skiprows=range(0, start_index), nrows=end_index - start_index+1)
+            df.columns = df_header.iloc[0]
             df=df.fillna("")
             next, df = (True, df[0:-1]) if len(df) > 50 else (False,df)   
             return JsonResponse(
