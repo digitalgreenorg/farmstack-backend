@@ -2523,7 +2523,7 @@ class DatasetV2View(GenericViewSet):
                     df=df,
                     counties=counties if counties else [],
                     sub_counties=sub_counties if sub_counties else [],
-                    gender=gender if sub_counties else [],
+                    gender=gender if gender else [],
 
                 )
 
