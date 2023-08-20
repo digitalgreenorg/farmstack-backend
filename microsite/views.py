@@ -221,11 +221,15 @@ class DatasetsMicrositeViewSet(GenericViewSet):
             df.columns = df_headers.iloc[0]
             df=df.fillna("")
             next, df = (True, df[0:-1]) if len(df) > 50 else (False,df)
+            column = {
+            "ellipsis": True,
+            "width": 200
+            }
             return JsonResponse({
-            # 'columns': df.columns.to_list(),
+            'columns': [{**column,"title": col.replace("_", " ").strip(), "dataIndex": col } for col in df.columns.to_list()],
             'next': next,
             'current_page': page,
-            'data': df.to_dict(orient='records')
+            'data': df.to_dict()
             }, safe=False,status=200)       
         except pd.errors.EmptyDataError:
             logging.info("The file is empty or Reached end of file.")
