@@ -222,6 +222,7 @@ class DatasetsMicrositeViewSet(GenericViewSet):
             df=df.fillna("")
             next, df = (True, df[0:-1]) if len(df) > 50 else (False,df)
             return JsonResponse({
+            'columns': df.columns.to_list(),
             'next': next,
             'current_page': page,
             'data': df.to_dict(orient='records')
