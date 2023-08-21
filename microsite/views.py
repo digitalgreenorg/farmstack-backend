@@ -213,11 +213,13 @@ class DatasetsMicrositeViewSet(GenericViewSet):
             start_index = 0  + 50*(page-1)  # Adjust the start index as needed
             end_index = 50*page
             if file_path.endswith(".xlsx") or file_path.endswith(".xls"):
-                df_headers = pd.read_csv(file_path, nrows=1, header=None)
+                df_headers = pd.read_excel(file_path, nrows=1, header=None)
                 df = pd.read_excel(file_path, index_col=None, skiprows=range(0, start_index), nrows=end_index - start_index+1)
             else:
                 df_headers = pd.read_csv(file_path, nrows=1, header=None)
                 df = pd.read_csv(file_path, index_col=False, skiprows=range(0, start_index), nrows=end_index - start_index+1)       
+            for i, value in enumerate(df_headers.iloc[0]):
+                df_headers[i] = str(value)
             df.columns = df_headers.iloc[0]
             df=df.fillna("")
             next, df = (True, df[0:-1]) if len(df) > 50 else (False,df)
@@ -604,7 +606,7 @@ class APIResponseViewSet(GenericViewSet):
             start_index = 0  + 50*(page-1) 
             end_index = 50*page  
             if protected_file_path.endswith(".xlsx") or protected_file_path.endswith(".xls"):
-                df_header = pd.read_csv(protected_file_path, nrows=0, header=None)                       
+                df_header = pd.read_excel(protected_file_path, nrows=0, header=None)                       
                 df = pd.read_excel(protected_file_path, index_col=None,  header=0, skiprows=range(0, start_index), nrows=end_index - start_index+1)
             else:
                 df_header = pd.read_csv(protected_file_path, nrows=1, header=None)
