@@ -2499,7 +2499,6 @@ class DatasetV2View(GenericViewSet):
                             'Chicken -Broilers', 'Chicken -Layers', 'Highest Level of Formal Education']
 
             dataset_file_object = DatasetV2File.objects.get(id=pk)
-            print(dataset_file_object.standardised_file)
             dataset_file = str(dataset_file_object.standardised_file)
             try:
                 if dataset_file.endswith(".xlsx") or dataset_file.endswith(".xls"):
