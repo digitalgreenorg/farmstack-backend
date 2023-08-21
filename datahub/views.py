@@ -1828,6 +1828,7 @@ class DatasetV2ViewSet(GenericViewSet):
         [ref]: /datahub/dataset/v2/<id>/
         """
         user_map = request.GET.get("user_map")
+        type = request.GET.get("type", None)
         obj = self.get_object()
         serializer = self.get_serializer(obj).data
         dataset_file_obj = DatasetV2File.objects.prefetch_related("dataset_v2_file").filter(dataset_id=obj.id)
@@ -1846,13 +1847,27 @@ class DatasetV2ViewSet(GenericViewSet):
             file_path["standardised_file"] = os.path.join(settings.DATASET_FILES_URL, str(file.standardised_file))
             file_path["standardisation_config"] = file.standardised_configuration
             if not user_map:
-                usage_policy = UsagePolicyDetailSerializer(file.dataset_v2_file.all(), many=True).data
+                # usage_policy = UsagePolicyDetailSerializer(file.dataset_v2_file.all(), many=True).data
+                if type == "api":
+                    usage_policy = UsagePolicyDetailSerializer(
+                                        file.dataset_v2_file.filter(type="api").all(), many=True
+                                    ).data
+                else: 
+                    usage_policy = UsagePolicyDetailSerializer(
+                                        file.dataset_v2_file.filter(type="dataset_file").all(), many=True).data
             else:
-                usage_policy = (
-                    file.dataset_v2_file.filter(user_organization_map=user_map).order_by("-updated_at").first()
-                )
-
-                usage_policy = UsagePolicyDetailSerializer(usage_policy).data if usage_policy else {}
+                if type == "api":
+                    usage_policy = (file.dataset_v2_file.filter(
+                                    user_organization_map=user_map, type="api").order_by(
+                                        "-updated_at").first()
+                                    )
+                    usage_policy = UsagePolicyDetailSerializer(usage_policy).data if usage_policy else {}
+                else:
+                    usage_policy = (file.dataset_v2_file.filter(
+                                    user_organization_map=user_map, type="dataset_file").order_by(
+                                        "-updated_at").first()
+                                    )
+                    usage_policy = UsagePolicyDetailSerializer(usage_policy).data if usage_policy else {}
             file_path["usage_policy"] = usage_policy
             data.append(file_path)
 
@@ -2377,7 +2392,7 @@ class DatasetV2View(GenericViewSet):
                     "dataset_file__dataset",
                     "user_organization_map__organization",
                 )
-                .filter(user_organization_map=user_map_id)
+                .filter(user_organization_map=user_map_id, type="dataset_file")
                 .values(
                     "approval_status",
                     "updated_at",
@@ -2398,7 +2413,7 @@ class DatasetV2View(GenericViewSet):
                     "dataset_file__dataset",
                     "user_organization_map__organization",
                 )
-                .filter(dataset_file__dataset__user_map_id=user_map_id)
+                .filter(dataset_file__dataset__user_map_id=user_map_id, type="dataset_file")
                 .values(
                     "id",
                     "approval_status",
