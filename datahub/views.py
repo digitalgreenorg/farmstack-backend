@@ -501,7 +501,7 @@ class ParticipantViewSet(GenericViewSet):
                 to_email=participant.email,
                 content=mail_body,
                 subject=Constants.PARTICIPANT_ORG_UPDATION_SUBJECT
-                        + os.environ.get(Constants.DATAHUB_NAME, Constants.datahub_name),
+                + os.environ.get(Constants.DATAHUB_NAME, Constants.datahub_name),
             )
 
             data = {
@@ -551,7 +551,7 @@ class ParticipantViewSet(GenericViewSet):
                     to_email=participant.email,
                     content=mail_body,
                     subject=Constants.PARTICIPANT_ORG_DELETION_SUBJECT
-                            + os.environ.get(Constants.DATAHUB_NAME, Constants.datahub_name),
+                    + os.environ.get(Constants.DATAHUB_NAME, Constants.datahub_name),
                 )
 
                 # Set the on_boarded_by_id to null if co_steward is deleted
@@ -633,7 +633,7 @@ class MailInvitationViewSet(GenericViewSet):
                         to_email=[email],
                         content=mail_body,
                         subject=os.environ.get("DATAHUB_NAME", "datahub_name")
-                                + Constants.PARTICIPANT_INVITATION_SUBJECT,
+                        + Constants.PARTICIPANT_INVITATION_SUBJECT,
                     )
                 except Exception as e:
                     emails_not_found.append()
@@ -2481,10 +2481,10 @@ class DatasetV2View(GenericViewSet):
             dataset_file = str(dataset_file_object.standardised_file)
             try:
                 if dataset_file.endswith(".xlsx") or dataset_file.endswith(".xls"):
-                    df = pd.read_excel(os.path.join(settings.DATASET_FILES_URL, dataset_file), usecols=cols_to_read)
+                    df = pd.read_excel(os.path.join(settings.DATASET_FILES_URL, dataset_file))
                 elif dataset_file.endswith(".csv"):
                     df = pd.read_csv(os.path.join(settings.DATASET_FILES_URL, dataset_file), usecols=cols_to_read)
-                    # df.columns = df.columns.str.strip()
+                    df.columns = df.columns.str.strip()
 
                 else:
                     return Response(
@@ -2519,6 +2519,7 @@ class DatasetV2View(GenericViewSet):
                                                                         errors='coerce')
                 df['Do you insure your farm buildings and other assets?'] = pd.to_numeric(
                     df['Do you insure your farm buildings and other assets?'], errors='coerce')
+
 
 
                 data = filter_dataframe_for_dashboard_counties(
@@ -2685,16 +2686,16 @@ class UsagePolicyRetrieveUpdateDestroyView(generics.RetrieveUpdateDestroyAPIView
             serializer = self.api_builder_serializer_class(instance,data=request.data,partial=True)
             serializer.is_valid(raise_exception=True)
             serializer.save()
-            return Response(serializer.data, status=200) 
-        
+            return Response(serializer.data, status=200)
+
         except ValidationError as e:
             LOGGER.error(e,exc_info=True )
             return Response(e.detail, status=status.HTTP_400_BAD_REQUEST)
-        
+
         except Exception as error:
             LOGGER.error(error, exc_info=True)
             return Response(str(error), status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-    
+
 
 class DatahubNewDashboard(GenericViewSet):
     """Datahub Dashboard viewset"""
