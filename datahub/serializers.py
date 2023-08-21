@@ -959,7 +959,7 @@ class UsagePolicySerializer(serializers.ModelSerializer):
 class APIBuilderSerializer(serializers.ModelSerializer):
     class Meta:
         model = UsagePolicy
-        fields = ["approval_status", "api_key"]
+        fields = ["approval_status", "accessibility_time", "api_key"]
 
 
 
