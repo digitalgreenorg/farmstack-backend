@@ -322,7 +322,7 @@ def filter_dataframe_for_dashboard_counties(df: Any, counties: [], sub_counties:
 
     obj["total_number_of_records"] = len(filtered_by_counties)
     obj["counties"] = np.unique(filtered_by_counties["County"]).size
-    obj["constituencies"] = np.unique(filtered_by_counties['Constituency']).size
+    obj["constituencies"] = filtered_by_counties["Constituency"].nunique()
     obj["sub_counties"] = np.unique(filtered_by_counties['Sub County']).size
 
 
