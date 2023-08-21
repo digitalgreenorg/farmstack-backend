@@ -611,6 +611,8 @@ class APIResponseViewSet(GenericViewSet):
             else:
                 df_header = pd.read_csv(protected_file_path, nrows=1, header=None)
                 df = pd.read_csv(protected_file_path, index_col=False, header=0, skiprows=range(0, start_index), nrows=end_index - start_index+1)
+            for i, value in enumerate(df_header.iloc[0]):
+                df_header[i] = str(value)
             df.columns = df_header.iloc[0]
             df=df.fillna("")
             next, df = (True, df[0:-1]) if len(df) > 50 else (False,df)   
