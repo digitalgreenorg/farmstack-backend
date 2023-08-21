@@ -229,27 +229,23 @@ def filter_dataframe_for_dashboard_counties(df: Any, counties: [], sub_counties:
     df['Highest Level of Formal Education'] = df['Highest Level of Formal Education'].map(
         {1: 'None', 2: 'Primary', 3: 'Secondary', 4: 'Certificate', 5: 'Diploma', 6: 'University Degree',
          7: "Post Graduate Degree,Masters and Above"})
-    print("counties")
-    print(gender)
+    filtered_by_counties = df  # Start with the original DataFrame
+    filtered_by_counties_across_county = df  # Start with the original DataFrame
+
     if len(counties) > 0:
-        filtered_by_counties = df[df['County'].isin(counties)]
-    else:
-        filtered_by_counties = df
+        filtered_by_counties = filtered_by_counties[filtered_by_counties['County'].isin(counties)]
 
     if len(sub_counties) > 0:
         filtered_by_counties = filtered_by_counties[filtered_by_counties['Sub County'].isin(sub_counties)]
-    else:
-        filtered_by_counties = df
 
     if len(gender) > 0:
         filtered_by_counties = filtered_by_counties[filtered_by_counties['Gender'].isin(gender)]
-    else:
-        filtered_by_counties = df
+        filtered_by_counties_across_county = filtered_by_counties_across_county[filtered_by_counties_across_county['Gender'].isin(gender)]
 
     obj["male_count"] = filtered_by_counties['Gender'].value_counts().get('Male', 0)
     obj["female_count"] = filtered_by_counties['Gender'].value_counts().get('Female', 0)
     obj["farmer_mobile_numbers"] = np.unique(filtered_by_counties['farmer_mobile_number']).size
-    obj["sub_county_ratio"] = filtered_by_counties.groupby(['Sub County', 'Gender'])[
+    obj["sub_county_ratio"] = filtered_by_counties_across_county.groupby(['Sub County', 'Gender'])[
         'Gender'].count().unstack().to_dict(orient='index')
     farming_practices = {
         "crop_production": filtered_by_counties[filtered_by_counties['Crop Production'] == 1][
@@ -328,5 +324,6 @@ def filter_dataframe_for_dashboard_counties(df: Any, counties: [], sub_counties:
     obj["counties"] = np.unique(filtered_by_counties["County"]).size
     obj["constituencies"] = np.unique(filtered_by_counties['Constituency']).size
     obj["sub_counties"] = np.unique(filtered_by_counties['Sub County']).size
+
 
     return obj
