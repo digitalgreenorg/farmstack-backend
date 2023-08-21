@@ -42,9 +42,7 @@ class TestApiBuilder(TestCase):
         self.client_admin = Client()
         self.user_participant=Client() 
         self.user=Client() 
-        self.monkeypatch = MonkeyPatch()
-        self.get_json_response_url=reverse('datasets-list')
-        
+        self.monkeypatch = MonkeyPatch()     
         self.dataset_files_url=reverse("dataset_files-list")
         self.usage_policy_url=reverse("usage-policy-list-create")
 
@@ -133,7 +131,7 @@ class TestApiBuilder(TestCase):
 
         file_data1 = {
             "dataset": str(self.first_dataset.id),
-            "file":open("/Users/akshatanaik/Akshata/repos/datahub-api/protected/datasets/dump_datasets 1/file/file_example_XLS_10.xls","rb"),
+            "file":open("microsite/tests/test_files/file.xls","rb"),
             "source": "file",
         }
         response = self.client_admin.post(self.dataset_files_url, file_data1)
@@ -193,9 +191,8 @@ class TestApiBuilder(TestCase):
         headers = {'HTTP_API_KEY': usage_policy_valid["api_key"]}
         response = self.client_admin.get(url, **headers)
         assert response.status_code==200
-        assert response.json()["next"]==False
         assert response.json()["current_page"]==1
-        assert response.json()["data"][0]=={'0': 1, 'First Name': 'Dulce', 'Last Name': 'Abril', 'Gender': 'Female', 'Country': 'United States', 'Age': 32, 'Date': '15/10/2017', 'Id': 1562}
+        assert response.json()["data"][0]=={'SR.': 1, 'NAME': 'Dett', 'GENDER': 'Male', 'AGE': 18, 'DATE ': '21/05/2015', 'COUNTRY': 'Great Britain'}
 
         ####### Handling Out-of-Range Sheet Index #########
         page_num = 10000
@@ -203,7 +200,7 @@ class TestApiBuilder(TestCase):
         headers = {'HTTP_API_KEY': usage_policy_valid["api_key"]}
         response = self.client_admin.get(url, **headers)
         assert response.status_code==500
-        assert response.json()=="Length mismatch: Expected axis has 0 elements, new values have 8 elements"
+        assert response.json()=="Length mismatch: Expected axis has 0 elements, new values have 6 elements"
 
     def test_response_based_on_api_key_xls_files_invalid_auth(self):
         ######## requesting ######
