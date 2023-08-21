@@ -606,7 +606,7 @@ class APIResponseViewSet(GenericViewSet):
             start_index = 0  + 50*(page-1) 
             end_index = 50*page  
             if protected_file_path.endswith(".xlsx") or protected_file_path.endswith(".xls"):
-                df_header = pd.read_excel(protected_file_path, nrows=0, header=None)                       
+                df_header = pd.read_excel(protected_file_path, nrows=1, header=None)                       
                 df = pd.read_excel(protected_file_path, index_col=None,  header=0, skiprows=range(0, start_index), nrows=end_index - start_index+1)
             else:
                 df_header = pd.read_csv(protected_file_path, nrows=1, header=None)
