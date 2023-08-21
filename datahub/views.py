@@ -399,7 +399,7 @@ class ParticipantViewSet(GenericViewSet):
                 to_email=request.data.get("email"),
                 content=mail_body,
                 subject=Constants.PARTICIPANT_ORG_ADDITION_SUBJECT
-                + os.environ.get(Constants.DATAHUB_NAME, Constants.datahub_name),
+                        + os.environ.get(Constants.DATAHUB_NAME, Constants.datahub_name),
             )
         except Exception as error:
             LOGGER.error(error, exc_info=True)
@@ -501,7 +501,7 @@ class ParticipantViewSet(GenericViewSet):
                 to_email=participant.email,
                 content=mail_body,
                 subject=Constants.PARTICIPANT_ORG_UPDATION_SUBJECT
-                + os.environ.get(Constants.DATAHUB_NAME, Constants.datahub_name),
+                        + os.environ.get(Constants.DATAHUB_NAME, Constants.datahub_name),
             )
 
             data = {
@@ -551,7 +551,7 @@ class ParticipantViewSet(GenericViewSet):
                     to_email=participant.email,
                     content=mail_body,
                     subject=Constants.PARTICIPANT_ORG_DELETION_SUBJECT
-                    + os.environ.get(Constants.DATAHUB_NAME, Constants.datahub_name),
+                            + os.environ.get(Constants.DATAHUB_NAME, Constants.datahub_name),
                 )
 
                 # Set the on_boarded_by_id to null if co_steward is deleted
@@ -633,7 +633,7 @@ class MailInvitationViewSet(GenericViewSet):
                         to_email=[email],
                         content=mail_body,
                         subject=os.environ.get("DATAHUB_NAME", "datahub_name")
-                        + Constants.PARTICIPANT_INVITATION_SUBJECT,
+                                + Constants.PARTICIPANT_INVITATION_SUBJECT,
                     )
                 except Exception as e:
                     emails_not_found.append()
@@ -1168,7 +1168,7 @@ class DatahubDatasetsViewSet(GenericViewSet):
 
         # reset the approval status b/c the user modified the dataset after an approval
         if getattr(instance, Constants.APPROVAL_STATUS) == Constants.APPROVED and (
-            user_obj.role_id == 3 or user_obj.role_id == 4
+                user_obj.role_id == 3 or user_obj.role_id == 4
         ):
             data[Constants.APPROVAL_STATUS] = Constants.AWAITING_REVIEW
 
@@ -2463,6 +2463,12 @@ class DatasetV2View(GenericViewSet):
     def get_dashboard_chart_data(self, request, pk, *args, **kwargs):
         try:
 
+            if str(pk) != "c6552c05-0ada-4522-b584-71e26286a2e3":
+                return Response(
+                    "Requested resource is currently unavailable. Please try again later.",
+                    status=status.HTTP_200_OK,
+                )
+
             serializer = DatahubDatasetFileDashboardFilterSerializer(data=request.data)
             serializer.is_valid(raise_exception=True)
 
@@ -2534,8 +2540,6 @@ class DatasetV2View(GenericViewSet):
                                                                         errors='coerce')
                 df['Do you insure your farm buildings and other assets?'] = pd.to_numeric(
                     df['Do you insure your farm buildings and other assets?'], errors='coerce')
-
-
 
                 data = filter_dataframe_for_dashboard_counties(
                     df=df,
@@ -2686,7 +2690,7 @@ class UsagePolicyListCreateView(generics.ListCreateAPIView):
 class UsagePolicyRetrieveUpdateDestroyView(generics.RetrieveUpdateDestroyAPIView):
     queryset = UsagePolicy.objects.all()
     serializer_class = UsagePolicySerializer
-    api_builder_serializer_class=APIBuilderSerializer
+    api_builder_serializer_class = APIBuilderSerializer
 
     @authenticate_user(model=UsagePolicy)
     def patch(self, request, *args, **kwargs):
@@ -2696,15 +2700,15 @@ class UsagePolicyRetrieveUpdateDestroyView(generics.RetrieveUpdateDestroyAPIView
         instance.api_key = None
         try:
             if policy_type == 'api':
-                if approval_status=='approved':
+                if approval_status == 'approved':
                     instance.api_key = generate_api_key()
-            serializer = self.api_builder_serializer_class(instance,data=request.data,partial=True)
+            serializer = self.api_builder_serializer_class(instance, data=request.data, partial=True)
             serializer.is_valid(raise_exception=True)
             serializer.save()
             return Response(serializer.data, status=200)
 
         except ValidationError as e:
-            LOGGER.error(e,exc_info=True )
+            LOGGER.error(e, exc_info=True)
             return Response(e.detail, status=status.HTTP_400_BAD_REQUEST)
 
         except Exception as error:
