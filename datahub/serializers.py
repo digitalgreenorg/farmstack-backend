@@ -959,7 +959,7 @@ class UsagePolicySerializer(serializers.ModelSerializer):
 class APIBuilderSerializer(serializers.ModelSerializer):
     class Meta:
         model = UsagePolicy
-        fields = ["approval_status", "api_key"]
+        fields = ["approval_status", "accessibility_time", "api_key"]
 
 
 
@@ -985,8 +985,7 @@ class ResourceFileSerializer(serializers.ModelSerializer):
 class DatahubDatasetFileDashboardFilterSerializer(serializers.Serializer):
     county = serializers.ListField(allow_empty=False, required=False)
     sub_county = serializers.ListField(allow_empty=False, required=False)
-    ward = serializers.ListField(allow_empty=False, required=False)
-    gender = serializers.CharField(required=False)
+    gender = serializers.ListField(allow_empty=False, required=False)
 
 
 

@@ -1,20 +1,21 @@
 import datetime
 import json
 import logging
+import math
 import operator
 import os
 from functools import reduce
+
 import pandas as pd
-from django.core.paginator import Paginator
-from rest_framework.exceptions import ValidationError
-import math
 from django.conf import settings
+from django.core.paginator import Paginator
 from django.db.models import Q
 from django.http import FileResponse, HttpResponse, HttpResponseNotFound, JsonResponse
 from django.shortcuts import get_object_or_404, render
 from python_http_client import exceptions
 from rest_framework import generics, permissions, status, viewsets
 from rest_framework.decorators import action
+from rest_framework.exceptions import ValidationError
 from rest_framework.response import Response
 from rest_framework.viewsets import GenericViewSet
 
@@ -206,27 +207,35 @@ class DatasetsMicrositeViewSet(GenericViewSet):
     @action(detail=False, methods=["get"])
     def get_json_response(self, request, *args, **kwargs):
         try:
+            next = False
             file_path = request.GET.get('file_path')
             page = int(request.GET.get('page', 1))
-            if file_path.endswith(".xlsx") or file_path.endswith(".xls"):
-                df = pd.read_excel(file_path, index_col=None)
-            else:
-                df = pd.read_csv(file_path, index_col=False)       
-            total = len(df)
-            total_pages = math.ceil((total/50))
             start_index = 0  + 50*(page-1)  # Adjust the start index as needed
             end_index = 50*page
-            df = df.iloc[start_index:end_index]
+            if file_path.endswith(".xlsx") or file_path.endswith(".xls"):
+                df_headers = pd.read_excel(file_path, nrows=1, header=None)
+                df = pd.read_excel(file_path, index_col=None, skiprows=range(0, start_index), nrows=end_index - start_index+1)
+            else:
+                df_headers = pd.read_csv(file_path, nrows=1, header=None)
+                df = pd.read_csv(file_path, index_col=False, skiprows=range(0, start_index), nrows=end_index - start_index+1)       
+            for i, value in enumerate(df_headers.iloc[0]):
+                df_headers[i] = str(value)
+            df.columns = df_headers.iloc[0]
             df=df.fillna("")
+            next, df = (True, df[0:-1]) if len(df) > 50 else (False,df)
+            column = {
+            "ellipsis": True,
+            "width": 200
+            }
             return JsonResponse({
-            'total_pages': total_pages,
+            'columns': [{**column,"title": col.replace("_", " ").strip(), "dataIndex": col } for col in df.columns.to_list()],
+            'next': next,
             'current_page': page,
-            'total': total,
             'data': df.to_dict(orient='records')
             }, safe=False,status=200)       
-        except ValidationError as e:
-            LOGGER.error(e,exc_info=True )
-            return Response(e.detail, status=status.HTTP_400_BAD_REQUEST)
+        except pd.errors.EmptyDataError:
+            logging.info("The file is empty or Reached end of file.")
+            return Response(str("Table is Empty or Reached End of the table"), status=400)
         except Exception as error:
             LOGGER.error(error, exc_info=True)
             return Response(str(error), status=status.HTTP_500_INTERNAL_SERVER_ERROR)
@@ -577,6 +586,7 @@ class PolicyAPIView(GenericViewSet):
 
 class APIResponseViewSet(GenericViewSet):
     permission_classes = []
+
     @action(detail=False, methods=["get"])
     def api(self, request, *args, **kwargs):
         try:
@@ -592,27 +602,29 @@ class APIResponseViewSet(GenericViewSet):
             file_path_query_set=UsagePolicy.objects.select_related('dataset_file').filter(api_key=get_api_key).values('dataset_file__standardised_file')
             file_path = file_path_query_set[0]["dataset_file__standardised_file"]
             protected_file_path = os.path.join(settings.DATASET_FILES_URL, str(file_path))
-
-            if protected_file_path.endswith(".xlsx") or protected_file_path.endswith(".xls"):
-                df = pd.read_excel(protected_file_path, index_col=None)
-            else:
-                df = pd.read_csv(protected_file_path, index_col=False)      
-            df=df.fillna("")
-            total = len(df)
-            total_pages = math.ceil((total/50))
+            next=False
             start_index = 0  + 50*(page-1) 
-            end_index = 50*page
-            df = df.iloc[start_index:end_index]
+            end_index = 50*page  
+            if protected_file_path.endswith(".xlsx") or protected_file_path.endswith(".xls"):
+                df_header = pd.read_excel(protected_file_path, nrows=1, header=None)                       
+                df = pd.read_excel(protected_file_path, index_col=None,  header=0, skiprows=range(0, start_index), nrows=end_index - start_index+1)
+            else:
+                df_header = pd.read_csv(protected_file_path, nrows=1, header=None)
+                df = pd.read_csv(protected_file_path, index_col=False, header=0, skiprows=range(0, start_index), nrows=end_index - start_index+1)
+            for i, value in enumerate(df_header.iloc[0]):
+                df_header[i] = str(value)
+            df.columns = df_header.iloc[0]
+            df=df.fillna("")
+            next, df = (True, df[0:-1]) if len(df) > 50 else (False,df)   
             return JsonResponse(
             {
-            'total_pages': total_pages,
+            'next': next,
             'current_page': page,
-            'total': total,
             'data': df.to_dict(orient='records')
             }, safe=False,status=200)       
-        except ValidationError as e:
-            LOGGER.error(e,exc_info=True )
-            return Response(e.detail, status=status.HTTP_400_BAD_REQUEST)
+        except pd.errors.EmptyDataError:
+            logging.info("The file is empty or Reached end of file.")
+            return Response(str("File is Empty or Reached End of the file"), status=400)
         except Exception as error:
             LOGGER.error(error, exc_info=True)
             return Response(str(error), status=status.HTTP_500_INTERNAL_SERVER_ERROR)

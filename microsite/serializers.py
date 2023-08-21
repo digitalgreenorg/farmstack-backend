@@ -106,7 +106,7 @@ class ConnectorsListSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Connectors
-        exclude = ["integrated_file","created_at", "updated_at", "config"]
+        exclude = ["integrated_file", "config"]
     
     dataset_count = serializers.SerializerMethodField(method_name="get_dataset_count")
     providers_count = serializers.SerializerMethodField(method_name="get_providers_count")
@@ -151,5 +151,3 @@ class ConnectorsRetriveSerializer(serializers.ModelSerializer):
         dataset_data = DatasetV2.objects.all().filter(id__in = datasets[0])
         dataset_searilezer = DatasetsSerializer(dataset_data, many=True)
         return {"organizations": searilezer.data, "datasets": dataset_searilezer.data}
-      
-    
