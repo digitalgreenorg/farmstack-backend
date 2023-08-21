@@ -501,7 +501,7 @@ class ParticipantViewSet(GenericViewSet):
                 to_email=participant.email,
                 content=mail_body,
                 subject=Constants.PARTICIPANT_ORG_UPDATION_SUBJECT
-                + os.environ.get(Constants.DATAHUB_NAME, Constants.datahub_name),
+                        + os.environ.get(Constants.DATAHUB_NAME, Constants.datahub_name),
             )
 
             data = {
@@ -551,7 +551,7 @@ class ParticipantViewSet(GenericViewSet):
                     to_email=participant.email,
                     content=mail_body,
                     subject=Constants.PARTICIPANT_ORG_DELETION_SUBJECT
-                    + os.environ.get(Constants.DATAHUB_NAME, Constants.datahub_name),
+                            + os.environ.get(Constants.DATAHUB_NAME, Constants.datahub_name),
                 )
 
                 # Set the on_boarded_by_id to null if co_steward is deleted
@@ -633,7 +633,7 @@ class MailInvitationViewSet(GenericViewSet):
                         to_email=[email],
                         content=mail_body,
                         subject=os.environ.get("DATAHUB_NAME", "datahub_name")
-                        + Constants.PARTICIPANT_INVITATION_SUBJECT,
+                                + Constants.PARTICIPANT_INVITATION_SUBJECT,
                     )
                 except Exception as e:
                     emails_not_found.append()
@@ -2447,27 +2447,44 @@ class DatasetV2View(GenericViewSet):
     @action(detail=True, methods=["post"])
     def get_dashboard_chart_data(self, request, pk, *args, **kwargs):
         try:
-            cols_to_read = [' Gender', ' Constituency', ' County', ' Sub County', ' Crop Production',
-                            ' farmer_mobile_number',
-                            ' Livestock Production', ' Ducks', ' Other Sheep', ' Total Area Irrigation', ' Family',
-                            ' Ward',
-                            ' Other Money Lenders', ' Micro-finance institution', ' Self (Salary or Savings)',
-                            " Natural rivers and stream", " Water Pan",
-                            ' NPK', ' Superphosphate', ' CAN',
-                            ' Urea', ' Other', ' Do you insure your crops?',
-                            ' Do you insure your farm buildings and other assets?', ' Other Dual Cattle',
-                            ' Cross breed Cattle', ' Cattle boma',
-                            ' Small East African Goats', ' Somali Goat', ' Other Goat', ' Chicken -Indigenous',
-                            ' Chicken -Broilers', ' Chicken -Layers', ' Highest Level of Formal Education ']
+
+            serializer = DatahubDatasetFileDashboardFilterSerializer(data=request.data)
+            serializer.is_valid(raise_exception=True)
+
+            counties = []
+            sub_counties = []
+            gender = []
+
+            if serializer.data.get("county"):
+                counties = serializer.data.get("county")
+
+            if serializer.data.get("sub_county"):
+                sub_counties = serializer.data.get("sub_county")
+
+            if serializer.data.get("gender"):
+                gender = serializer.data.get("gender")
+
+            cols_to_read = ['Gender', 'Constituency', 'County', 'Sub County', 'Crop Production',
+                            'farmer_mobile_number',
+                            'Livestock Production', 'Ducks', 'Other Sheep', 'Total Area Irrigation', 'Family',
+                            'Ward',
+                            'Other Money Lenders', 'Micro-finance institution', 'Self (Salary or Savings)',
+                            "Natural rivers and stream", "Water Pan",
+                            'NPK', 'Superphosphate', 'CAN',
+                            'Urea', 'Other', 'Do you insure your crops?',
+                            'Do you insure your farm buildings and other assets?', 'Other Dual Cattle',
+                            'Cross breed Cattle', 'Cattle boma',
+                            'Small East African Goats', 'Somali Goat', 'Other Goat', 'Chicken -Indigenous',
+                            'Chicken -Broilers', 'Chicken -Layers', 'Highest Level of Formal Education']
 
             dataset_file_object = DatasetV2File.objects.get(id=pk)
             dataset_file = str(dataset_file_object.standardised_file)
             try:
                 if dataset_file.endswith(".xlsx") or dataset_file.endswith(".xls"):
-                    df = pd.read_excel(os.path.join(settings.DATASET_FILES_URL, dataset_file))
+                    df = pd.read_excel(os.path.join(settings.DATASET_FILES_URL, dataset_file), usecols=cols_to_read)
                 elif dataset_file.endswith(".csv"):
                     df = pd.read_csv(os.path.join(settings.DATASET_FILES_URL, dataset_file), usecols=cols_to_read)
-                    df.columns = df.columns.str.strip()
+                    # df.columns = df.columns.str.strip()
 
                 else:
                     return Response(
@@ -2503,21 +2520,6 @@ class DatasetV2View(GenericViewSet):
                 df['Do you insure your farm buildings and other assets?'] = pd.to_numeric(
                     df['Do you insure your farm buildings and other assets?'], errors='coerce')
 
-                serializer = DatahubDatasetFileDashboardFilterSerializer(data=request.data)
-                serializer.is_valid(raise_exception=True)
-
-                counties = []
-                sub_counties = []
-                gender = []
-
-                if serializer.data.get("county"):
-                    counties = serializer.data.get("county")
-
-                if serializer.data.get("sub_county"):
-                    sub_counties = serializer.data.get("sub_county")
-
-                if serializer.data.get("gender"):
-                    gender = serializer.data.get("gender")
 
                 data = filter_dataframe_for_dashboard_counties(
                     df=df,
