@@ -983,9 +983,10 @@ class ResourceFileSerializer(serializers.ModelSerializer):
 
 
 class DatahubDatasetFileDashboardFilterSerializer(serializers.Serializer):
-    county = serializers.ListField(allow_empty=False, required=False)
+    county = serializers.ListField(allow_empty=False, required=True)
     sub_county = serializers.ListField(allow_empty=False, required=False)
     gender = serializers.ListField(allow_empty=False, required=False)
+    value_chain = serializers.ListField(allow_empty=False, required=False)
 
 
 
