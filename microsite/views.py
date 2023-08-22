@@ -218,6 +218,8 @@ class DatasetsMicrositeViewSet(GenericViewSet):
             else:
                 df_headers = pd.read_csv(file_path, nrows=1, header=None)
                 df = pd.read_csv(file_path, index_col=False, skiprows=range(0, start_index), nrows=end_index - start_index+1)       
+            if df.empty  :
+                raise pd.errors.EmptyDataError("The file is empty or Reached end of file.")     
             for i, value in enumerate(df_headers.iloc[0]):
                 df_headers[i] = str(value)
             df.columns = df_headers.iloc[0]
@@ -611,6 +613,8 @@ class APIResponseViewSet(GenericViewSet):
             else:
                 df_header = pd.read_csv(protected_file_path, nrows=1, header=None)
                 df = pd.read_csv(protected_file_path, index_col=False, header=0, skiprows=range(0, start_index), nrows=end_index - start_index+1)
+            if df.empty  :
+                raise pd.errors.EmptyDataError("The file is empty or Reached end of file.")      
             for i, value in enumerate(df_header.iloc[0]):
                 df_header[i] = str(value)
             df.columns = df_header.iloc[0]
