@@ -2,6 +2,7 @@ from django.urls import include, path
 from rest_framework.routers import DefaultRouter
 
 from microsite.views import (
+    APIResponseViewSet,
     ConnectorMicrositeViewSet,
     ContactFormViewSet,
     DatahubThemeMicrositeViewSet,
@@ -10,10 +11,9 @@ from microsite.views import (
     OrganizationMicrositeViewSet,
     ParticipantMicrositeViewSet,
     PolicyAPIView,
-    microsite_media_view, UserDataMicrositeViewSet,APIResponseViewSet,
+    ResourceMicrositeViewSet,
     UserDataMicrositeViewSet,
     microsite_media_view,
-    ResourceMicrositeViewSet,
 )
 
 router = DefaultRouter()
