@@ -2,18 +2,19 @@ from django.urls import include, path
 from rest_framework.routers import DefaultRouter
 
 from microsite.views import (
+    APIResponseViewSet,
     ConnectorMicrositeViewSet,
     ContactFormViewSet,
     DatahubThemeMicrositeViewSet,
     DatasetsMicrositeViewSet,
+    DatasetV2ViewSet,
     DocumentsMicrositeViewSet,
     OrganizationMicrositeViewSet,
     ParticipantMicrositeViewSet,
     PolicyAPIView,
-    microsite_media_view, UserDataMicrositeViewSet,APIResponseViewSet,
+    ResourceMicrositeViewSet,
     UserDataMicrositeViewSet,
     microsite_media_view,
-    ResourceMicrositeViewSet,
 )
 
 router = DefaultRouter()
@@ -29,6 +30,7 @@ router.register(r"microsite_user_data", UserDataMicrositeViewSet,
 router.register(r"datasets_file", APIResponseViewSet, basename="dataset_json_response")
 router.register(r"connectors", ConnectorMicrositeViewSet, basename="microsite_connectors")
 router.register(r"resources", ResourceMicrositeViewSet, basename="microsite_resource")
+router.register(r"new_dataset_v2", DatasetV2ViewSet, basename="new_dataset_v2")
 
 urlpatterns = [
     path("", include(router.urls)),
