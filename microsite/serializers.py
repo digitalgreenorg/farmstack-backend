@@ -153,7 +153,7 @@ class ConnectorsRetriveSerializer(serializers.ModelSerializer):
         return {"organizations": searilezer.data, "datasets": dataset_searilezer.data}
 
 class DatahubDatasetFileDashboardFilterSerializer(serializers.Serializer):
-    county = serializers.ListField(allow_empty=False, required=False)
+    county = serializers.ListField(allow_empty=False, required=True)
     sub_county = serializers.ListField(allow_empty=False, required=False)
     gender = serializers.ListField(allow_empty=False, required=False)
-
+    value_chain = serializers.ListField(allow_empty=False, required=False)

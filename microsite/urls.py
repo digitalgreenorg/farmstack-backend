@@ -7,7 +7,6 @@ from microsite.views import (
     ContactFormViewSet,
     DatahubThemeMicrositeViewSet,
     DatasetsMicrositeViewSet,
-    DatasetV2ViewSet,
     DocumentsMicrositeViewSet,
     OrganizationMicrositeViewSet,
     ParticipantMicrositeViewSet,
@@ -30,7 +29,6 @@ router.register(r"microsite_user_data", UserDataMicrositeViewSet,
 router.register(r"datasets_file", APIResponseViewSet, basename="dataset_json_response")
 router.register(r"connectors", ConnectorMicrositeViewSet, basename="microsite_connectors")
 router.register(r"resources", ResourceMicrositeViewSet, basename="microsite_resource")
-router.register(r"new_dataset_v2", DatasetV2ViewSet, basename="new_dataset_v2")
 
 urlpatterns = [
     path("", include(router.urls)),
