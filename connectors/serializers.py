@@ -11,7 +11,8 @@ from core import settings
 from core.constants import Constants
 from datahub.models import DatasetV2, DatasetV2File, Organization, UserOrganizationMap
 from datahub.serializers import DatasetV2FileSerializer
-from django.db.models import Subquery, Min
+from django.db.models import Subquery, Min, Count
+from django.db import models
 
 
 class OrganizationRetriveSerializer(serializers.ModelSerializer):
@@ -101,8 +102,10 @@ class ConnectorsListSerializer(serializers.ModelSerializer):
             )
             return query.count()
         else:
-            query = ConnectorsMap.objects.select_related('left_dataset_file_id__dataset', 'right_dataset_file_id__dataset').filter(connectors=connectors.id).filter(connectors=connectors.id)
-            count = query.distinct("left_dataset_file_id__dataset__user_map", "right_dataset_file_id__dataset__user_map").count()
+            query = ConnectorsMap.objects.select_related('left_dataset_file__dataset', 'right_dataset_file__dataset').filter(connectors=connectors.id)
+            user_map_ids = list(query.values_list("left_dataset_file_id__dataset__user_map").distinct())
+            user_map_ids.extend(list(query.values_list("right_dataset_file_id__dataset__user_map").distinct()))
+            count= len(set(user_map_ids))
             return count
 
 class ConnectorsRetriveSerializer(serializers.ModelSerializer):
