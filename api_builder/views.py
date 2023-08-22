@@ -12,6 +12,14 @@ from core.utils import read_contents_from_csv_or_xlsx_file
 from .models import API
 from datahub.models import DatasetV2File
 
+class ListUserAPIsView(APIView):
+    permission_classes = [IsAuthenticated]
+    def get(self, request):
+        user = request.user
+        apis = API.objects.filter(endpoint__startswith=f"/api/{user.id}/")
+        serializer = APISerializer(apis, many=True)
+        return JsonResponse({'apis': serializer.data}, status=200)
+
 class CreateAPIView(APIView):
     permission_classes = [IsAuthenticated]
     def post(self, request):
