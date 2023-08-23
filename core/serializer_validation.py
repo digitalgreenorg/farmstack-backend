@@ -27,13 +27,6 @@ class OrganizationSerializerValidator(serializers.ModelSerializer):
                     raise serializers.ValidationError({"phone_number": "Invalid phone number format."})
             except Exception:
                 raise serializers.ValidationError({"phone_number": "Invalid phone number format."})
-        if org_email:
-            email_validator = EmailValidator(message={"org_email":"Enter a valid email address."})
-            try:
-                email_validator(org_email)
-            except ValidationError:
-                raise serializers.ValidationError({"org_email": ["Enter a valid email address."]})
-            return org_email
         return attrs
 
     

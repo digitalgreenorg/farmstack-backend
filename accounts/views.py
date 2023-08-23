@@ -458,7 +458,7 @@ class SelfRegisterParticipantViewSet(GenericViewSet):
     def create(self, request, *args, **kwargs):
         """POST method: create action to save an object by sending a POST request"""
         OrganizationSerializerValidator.validate_website(request.data)
-        org_serializer = OrganizationSerializer(data=request.data, partial=True)
+        org_serializer = OrganizationSerializer(data=request.data)
         org_serializer.is_valid(raise_exception=True)
         org_queryset = self.perform_create(org_serializer)
         org_id = org_queryset.id

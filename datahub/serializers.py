@@ -80,8 +80,8 @@ class OrganizationSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Organization
-        exclude = Constants.EXCLUDE_DATES
 
+        fields="__all__"
 
 class UserOrganizationCreateSerializer(serializers.Serializer):
     """_summary_
