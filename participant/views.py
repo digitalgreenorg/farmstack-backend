@@ -1917,6 +1917,9 @@ class DataBaseViewSet(GenericViewSet):
                 file_path = file_ops.create_directory(
                     settings.DATASET_FILES_URL, [dataset_name, source])
                 df = pd.read_sql(query_string, mydb)
+                if df.empty:
+                    return Response({"data": [f"No data was found for the filter applied. Please try again."]},
+                                    status=status.HTTP_400_BAD_REQUEST)
                 df = df.astype(str)
                 df.to_excel(file_path + "/" + file_name + ".xls")
                 instance = DatasetV2File.objects.create(
@@ -1974,6 +1977,10 @@ class DataBaseViewSet(GenericViewSet):
                                 sub_queries.append(sub_query)
                             query_string += " AND ".join(sub_queries)
                         df = pd.read_sql(query_string, conn)
+                        if df.empty:
+                            return Response({"data": [f"No data was found for the filter applied. Please try again."]},
+                                            status=status.HTTP_400_BAD_REQUEST)
+
                         df = df.astype(str)
                     except pd.errors.DatabaseError as error:
                         LOGGER.error(error, exc_info=True)

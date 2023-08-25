@@ -116,8 +116,10 @@ class ConnectorsListSerializer(serializers.ModelSerializer):
         return  count+1 if count else 0
     
     def get_providers_count(self, connectors):
-        query = ConnectorsMap.objects.select_related('left_dataset_file_id__dataset', 'right_dataset_file_id__dataset').filter(connectors=connectors.id).filter(connectors=connectors.id)
-        count = query.distinct("left_dataset_file_id__dataset__user_map", "right_dataset_file_id__dataset__user_map").count()
+        query = ConnectorsMap.objects.select_related('left_dataset_file_id__dataset', 'right_dataset_file_id__dataset').filter(connectors=connectors.id)
+        user_map_ids = list(query.values_list("left_dataset_file_id__dataset__user_map").distinct())
+        user_map_ids.extend(list(query.values_list("right_dataset_file_id__dataset__user_map").distinct()))
+        count= len(set(user_map_ids))
         return count
     
 class DatasetsSerializer(serializers.ModelSerializer):
@@ -151,3 +153,9 @@ class ConnectorsRetriveSerializer(serializers.ModelSerializer):
         dataset_data = DatasetV2.objects.all().filter(id__in = datasets[0])
         dataset_searilezer = DatasetsSerializer(dataset_data, many=True)
         return {"organizations": searilezer.data, "datasets": dataset_searilezer.data}
+
+class DatahubDatasetFileDashboardFilterSerializer(serializers.Serializer):
+    county = serializers.ListField(allow_empty=False, required=True)
+    sub_county = serializers.ListField(allow_empty=False, required=False)
+    gender = serializers.ListField(allow_empty=False, required=False)
+    value_chain = serializers.ListField(allow_empty=False, required=False)

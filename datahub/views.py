@@ -20,7 +20,7 @@ from django.conf import settings
 from django.contrib.admin.utils import get_model_from_relation
 from django.core.files.base import ContentFile
 from django.db import transaction
-
+from rest_framework.exceptions import ValidationError
 # from django.http import HttpResponse
 from django.db.models import (
     DEFERRED,
@@ -51,7 +51,7 @@ from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.viewsets import GenericViewSet, ViewSet
 from uritemplate import partial
-
+from core.serializer_validation import OrganizationSerializerValidator,UserCreateSerializerValidator
 from accounts.models import User, UserRole
 from accounts.serializers import (
     UserCreateSerializer,
@@ -150,10 +150,16 @@ class TeamMemberViewSet(GenericViewSet):
 
     def create(self, request, *args, **kwargs):
         """POST method: create action to save an object by sending a POST request"""
-        serializer = TeamMemberCreateSerializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        serializer.save()
-        return Response(serializer.data, status=status.HTTP_201_CREATED)
+        try:
+            serializer = TeamMemberCreateSerializer(data=request.data)
+            serializer.is_valid(raise_exception=True)
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        except ValidationError as e:
+            return Response(e.detail, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            LOGGER.error(e,exc_info=True)
+            return Response(str(e), status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     def list(self, request, *args, **kwargs):
         """GET method: query all the list of objects from the Product model"""
@@ -176,12 +182,18 @@ class TeamMemberViewSet(GenericViewSet):
 
     def update(self, request, *args, **kwargs):
         """PUT method: update or send a PUT request on an object of the Product model"""
-        instance = self.get_object()
-        # request.data["role"] = UserRole.objects.get(role_name=request.data["role"]).id
-        serializer = TeamMemberUpdateSerializer(instance, data=request.data, partial=True)
-        serializer.is_valid(raise_exception=True)
-        serializer.save()
-        return Response(serializer.data, status=status.HTTP_201_CREATED)
+        try:
+            instance = self.get_object()
+            # request.data["role"] = UserRole.objects.get(role_name=request.data["role"]).id
+            serializer = TeamMemberUpdateSerializer(instance, data=request.data, partial=True)
+            serializer.is_valid(raise_exception=True)
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        except ValidationError as e:
+            return Response(e.detail, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            LOGGER.error(e,exc_info=True)
+            return Response(str(e), status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     def destroy(self, request, pk):
         """DELETE method: delete an object"""
@@ -227,6 +239,7 @@ class OrganizationViewSet(GenericViewSet):
                 with transaction.atomic():
                     # create organization and userorganizationmap object
                     print("Creating org & user_org_map")
+                    OrganizationSerializerValidator.validate_website(request.data)
                     org_serializer = OrganizationSerializer(data=request.data, partial=True)
                     org_serializer.is_valid(raise_exception=True)
                     org_queryset = self.perform_create(org_serializer)
@@ -245,10 +258,12 @@ class OrganizationViewSet(GenericViewSet):
                         "organization": org_serializer.data,
                     }
                     return Response(data, status=status.HTTP_201_CREATED)
-
-        except Exception as error:
-            LOGGER.error(error, exc_info=True)
-            return Response(str(error), status=status.HTTP_400_BAD_REQUEST)
+                
+        except ValidationError as e:
+            return Response(e.detail, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            LOGGER.error(e,exc_info=True)
+            return Response(str(e), status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     def list(self, request, *args, **kwargs):
         """GET method: query the list of Organization objects"""
@@ -297,25 +312,30 @@ class OrganizationViewSet(GenericViewSet):
 
         if not user_org_queryset:
             return Response({}, status=status.HTTP_404_NOT_FOUND)  # 310-360 not covered 4
-
+        OrganizationSerializerValidator.validate_website(request.data)
         organization_serializer = OrganizationSerializer(
             Organization.objects.get(id=user_org_queryset.first().organization_id),
             data=request.data,
             partial=True,
         )
-
-        organization_serializer.is_valid(raise_exception=True)
-        self.perform_create(organization_serializer)
-        data = {
-            Constants.USER: {"id": pk},
-            Constants.ORGANIZATION: organization_serializer.data,
-            "user_map": user_org_queryset.first().id,
-            "org_id": user_org_queryset.first().organization_id,
-        }
-        return Response(
-            data,
-            status=status.HTTP_201_CREATED,
-        )
+        try:
+            organization_serializer.is_valid(raise_exception=True)
+            self.perform_create(organization_serializer)
+            data = {
+                Constants.USER: {"id": pk},
+                Constants.ORGANIZATION: organization_serializer.data,
+                "user_map": user_org_queryset.first().id,
+                "org_id": user_org_queryset.first().organization_id,
+            }
+            return Response(
+                data,
+                status=status.HTTP_201_CREATED,
+            )
+        except ValidationError as e:
+            return Response(e.detail, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            LOGGER.error(e,exc_info=True)
+            return Response(str(e), status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     def destroy(self, request, pk):
         """DELETE method: delete an object"""
@@ -356,10 +376,12 @@ class ParticipantViewSet(GenericViewSet):
     @transaction.atomic
     def create(self, request, *args, **kwargs):
         """POST method: create action to save an object by sending a POST request"""
+        OrganizationSerializerValidator.validate_website(request.data)
         org_serializer = OrganizationSerializer(data=request.data, partial=True)
         org_serializer.is_valid(raise_exception=True)
         org_queryset = self.perform_create(org_serializer)
         org_id = org_queryset.id
+        UserCreateSerializerValidator.validate_phone_number_format(request.data)
         user_serializer = UserCreateSerializer(data=request.data)
         user_serializer.is_valid(raise_exception=True)
         user_saved = self.perform_create(user_serializer)
@@ -401,9 +423,11 @@ class ParticipantViewSet(GenericViewSet):
                 subject=Constants.PARTICIPANT_ORG_ADDITION_SUBJECT
                         + os.environ.get(Constants.DATAHUB_NAME, Constants.datahub_name),
             )
-        except Exception as error:
-            LOGGER.error(error, exc_info=True)
-            return Response({"message": ["An error occured"]}, status=status.HTTP_200_OK)
+        except ValidationError as e:
+            return Response(e.detail, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            LOGGER.error(e,exc_info=True)
+            return Response(str(e), status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
         return Response(user_org_serializer.data, status=status.HTTP_201_CREATED)
 
@@ -474,6 +498,7 @@ class ParticipantViewSet(GenericViewSet):
             user_serializer = self.get_serializer(participant, data=request.data, partial=True)
             user_serializer.is_valid(raise_exception=True)
             organization = Organization.objects.get(id=request.data.get(Constants.ID))
+            OrganizationSerializerValidator.validate_website(request.data)
             organization_serializer = OrganizationSerializer(organization, data=request.data, partial=True)
             organization_serializer.is_valid(raise_exception=True)
             user_data = self.perform_create(user_serializer)
@@ -509,9 +534,12 @@ class ParticipantViewSet(GenericViewSet):
                 Constants.ORGANIZATION: organization_serializer.data,
             }
             return Response(data, status=status.HTTP_201_CREATED)
-        except Exception as error:
-            LOGGER.error(error, exc_info=True)
-            return Response({"message": ["An error occured"]}, status=status.HTTP_200_OK)
+        except ValidationError as e:
+            return Response(e.detail, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            LOGGER.error(e,exc_info=True)
+            return Response(str(e), status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
 
     @authenticate_user(model=Organization)
     def destroy(self, request, pk):
@@ -646,7 +674,8 @@ class MailInvitationViewSet(GenericViewSet):
                 },
                 status=status.HTTP_200_OK,
             )
-
+        except ValidationError as e:
+            return Response(e.detail, status=status.HTTP_400_BAD_REQUEST)
         except Exception as error:
             LOGGER.error(error, exc_info=True)
             return Response(
@@ -678,7 +707,8 @@ class DropDocumentView(GenericViewSet):
                 {key: [f"{file_name} uploading in progress ..."]},
                 status=status.HTTP_201_CREATED,
             )
-
+        except ValidationError as e:
+            return Response(e.detail, status=status.HTTP_400_BAD_REQUEST)
         except Exception as error:
             LOGGER.error(error, exc_info=True)
 
@@ -757,6 +787,8 @@ class DocumentSaveView(GenericViewSet):
                     {"message": "Documents and content saved!"},
                     status=status.HTTP_201_CREATED,
                 )
+        except ValidationError as e:
+            return Response(e.detail, status=status.HTTP_400_BAD_REQUEST)
         except Exception as error:
             LOGGER.error(error, exc_info=True)
 
@@ -844,6 +876,8 @@ class DatahubThemeView(GenericViewSet):
             # user.save()
             return Response(data, status=status.HTTP_201_CREATED)
 
+        except ValidationError as e:
+            return Response(e.detail, status=status.HTTP_400_BAD_REQUEST)
         except Exception as error:
             LOGGER.error(error, exc_info=True)
 
@@ -955,10 +989,16 @@ class SupportViewSet(GenericViewSet):
 
     def create(self, request, *args, **kwargs):
         """POST method: create action to save an object by sending a POST request"""
-        serializer = self.get_serializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        self.perform_create(serializer)
-        return Response(serializer.data, status=status.HTTP_201_CREATED)
+        try:
+            serializer = self.get_serializer(data=request.data)
+            serializer.is_valid(raise_exception=True)
+            self.perform_create(serializer)
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        except ValidationError as e:
+            return Response(e.detail, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            LOGGER.error(e,exc_info=True)
+            return Response(str(e), status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     @action(detail=False, methods=["post"])
     def filters_tickets(self, request, *args, **kwargs):
@@ -985,11 +1025,17 @@ class SupportViewSet(GenericViewSet):
 
     def update(self, request, *args, **kwargs):
         """PUT method: update or send a PUT request on an object of the Product model"""
-        instance = self.get_object()
-        serializer = self.get_serializer(instance, data=request.data, partial=True)
-        serializer.is_valid(raise_exception=True)
-        self.perform_create(serializer)
-        return Response(serializer.data, status=status.HTTP_201_CREATED)
+        try:
+            instance = self.get_object()
+            serializer = self.get_serializer(instance, data=request.data, partial=True)
+            serializer.is_valid(raise_exception=True)
+            self.perform_create(serializer)
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        except ValidationError as e:
+            return Response(e.detail, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            LOGGER.error(e,exc_info=True)
+            return Response(str(e), status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     def list(self, request, *args, **kwargs):
         """GET method: query all the list of objects from the Product model"""
@@ -1087,11 +1133,17 @@ class DatahubDatasetsViewSet(GenericViewSet):
                     },
                     400,
                 )
-        data[Constants.APPROVAL_STATUS] = Constants.APPROVED
-        serializer = self.get_serializer(data=data)
-        serializer.is_valid(raise_exception=True)
-        self.perform_create(serializer)
-        return Response(serializer.data, status=status.HTTP_201_CREATED)
+        try:
+            data[Constants.APPROVAL_STATUS] = Constants.APPROVED
+            serializer = self.get_serializer(data=data)
+            serializer.is_valid(raise_exception=True)
+            self.perform_create(serializer)
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        except ValidationError as e:
+            return Response(e.detail, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            LOGGER.error(e,exc_info=True)
+            return Response(str(e), status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     @http_request_mutation
     def list(self, request, *args, **kwargs):
@@ -1741,16 +1793,22 @@ class DatasetV2ViewSet(GenericViewSet):
         **Endpoint**
         [ref]: /datahub/dataset/v2/
         """
-        serializer = self.get_serializer(
-            data=request.data,
-            context={
-                "standardisation_template": request.data.get("standardisation_template"),
-                "standardisation_config": request.data.get("standardisation_config"),
-            },
-        )
-        serializer.is_valid(raise_exception=True)
-        serializer.save()
-        return Response(serializer.data, status=status.HTTP_201_CREATED)
+        try:
+            serializer = self.get_serializer(
+                data=request.data,
+                context={
+                    "standardisation_template": request.data.get("standardisation_template"),
+                    "standardisation_config": request.data.get("standardisation_config"),
+                },
+            )
+            serializer.is_valid(raise_exception=True)
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        except ValidationError as e:
+            return Response(e.detail, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            LOGGER.error(e,exc_info=True)
+            return Response(str(e), status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     @authenticate_user(model=DatasetV2)
     def update(self, request, pk, *args, **kwargs):
@@ -1778,9 +1836,11 @@ class DatasetV2ViewSet(GenericViewSet):
             serializer.is_valid(raise_exception=True)
             serializer.save()
             return Response(serializer.data, status=status.HTTP_201_CREATED)
-        except Exception as error:
-            LOGGER.error(error, exc_info=True)
-            return Response(str(error), status=status.HTTP_400_BAD_REQUEST)
+        except ValidationError as e:
+            return Response(e.detail, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            LOGGER.error(e,exc_info=True)
+            return Response(str(e), status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     # not being used
     @action(detail=False, methods=["delete"])
@@ -2238,11 +2298,17 @@ class StandardisationTemplateView(GenericViewSet):
     queryset = StandardisationTemplate.objects.all()
 
     def create(self, request, *args, **kwargs):
-        serializer = self.get_serializer(data=request.data, many=True)
-        serializer.is_valid(raise_exception=True)
-        serializer.save()
-        LOGGER.info("Standardisation Template Created Successfully.")
-        return Response(serializer.data, status=status.HTTP_201_CREATED)
+        try:
+            serializer = self.get_serializer(data=request.data, many=True)
+            serializer.is_valid(raise_exception=True)
+            serializer.save()
+            LOGGER.info("Standardisation Template Created Successfully.")
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        except ValidationError as e:
+            return Response(e.detail, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            LOGGER.error(e,exc_info=True)
+            return Response(str(e), status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     @action(detail=False, methods=["put"])
     def update_standardisation_template(self, request, *args, **kwargs):
@@ -2302,11 +2368,17 @@ class DatasetV2View(GenericViewSet):
     pagination_class = CustomPagination
 
     def create(self, request, *args, **kwargs):
-        serializer = self.get_serializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        serializer.save()
-        LOGGER.info("Dataset created Successfully.")
-        return Response(serializer.data, status=status.HTTP_201_CREATED)
+        try:
+            serializer = self.get_serializer(data=request.data)
+            serializer.is_valid(raise_exception=True)
+            serializer.save()
+            LOGGER.info("Dataset created Successfully.")
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        except ValidationError as e:
+            return Response(e.detail, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            LOGGER.error(e,exc_info=True)
+            return Response(str(e), status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     def retrieve(self, request, *args, **kwargs):
         serializer = DatasetV2DetailNewSerializer(instance=self.get_object())
@@ -2323,9 +2395,11 @@ class DatasetV2View(GenericViewSet):
             serializer.is_valid(raise_exception=True)
             serializer.save()
             return Response(serializer.data, status=status.HTTP_200_OK)
-        except Exception as error:
-            LOGGER.error(error, exc_info=True)
-            return Response(str(error), status=status.HTTP_400_BAD_REQUEST)
+        except ValidationError as e:
+            return Response(e.detail, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            LOGGER.error(e,exc_info=True)
+            return Response(str(e), status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     @authenticate_user(model=DatasetV2)
     def destroy(self, request, *args, **kwargs):
@@ -2475,6 +2549,7 @@ class DatasetV2View(GenericViewSet):
             counties = []
             sub_counties = []
             gender = []
+            value_chain = []
 
             if serializer.data.get("county"):
                 counties = serializer.data.get("county")
@@ -2485,7 +2560,10 @@ class DatasetV2View(GenericViewSet):
             if serializer.data.get("gender"):
                 gender = serializer.data.get("gender")
 
-            cols_to_read = ['Gender', 'Constituency', 'County', 'Sub County', 'Crop Production',
+            if serializer.data.get("value_chain"):
+                value_chain = serializer.data.get("value_chain")
+
+            cols_to_read = ['Gender', 'Constituency', 'Millet', 'County', 'Sub County', 'Crop Production',
                             'farmer_mobile_number',
                             'Livestock Production', 'Ducks', 'Other Sheep', 'Total Area Irrigation', 'Family',
                             'Ward',
@@ -2496,7 +2574,8 @@ class DatasetV2View(GenericViewSet):
                             'Do you insure your farm buildings and other assets?', 'Other Dual Cattle',
                             'Cross breed Cattle', 'Cattle boma',
                             'Small East African Goats', 'Somali Goat', 'Other Goat', 'Chicken -Indigenous',
-                            'Chicken -Broilers', 'Chicken -Layers', 'Highest Level of Formal Education']
+                            'Chicken -Broilers', 'Chicken -Layers', 'Highest Level of Formal Education',
+                            'Maize food crop', "Beans", 'Cassava', 'Sorghum', 'Potatoes', 'Cowpeas']
 
             dataset_file_object = DatasetV2File.objects.get(id=pk)
             dataset_file = str(dataset_file_object.standardised_file)
@@ -2504,9 +2583,9 @@ class DatasetV2View(GenericViewSet):
                 if dataset_file.endswith(".xlsx") or dataset_file.endswith(".xls"):
                     df = pd.read_excel(os.path.join(settings.DATASET_FILES_URL, dataset_file))
                 elif dataset_file.endswith(".csv"):
-                    df = pd.read_csv(os.path.join(settings.DATASET_FILES_URL, dataset_file), usecols=cols_to_read)
-                    df.columns = df.columns.str.strip()
-
+                    df = pd.read_csv(os.path.join(settings.DATASET_FILES_URL, dataset_file), usecols=cols_to_read,
+                                     low_memory=False)
+                    # df.columns = df.columns.str.strip()
                 else:
                     return Response(
                         "Unsupported file please use .xls or .csv.",
@@ -2546,7 +2625,7 @@ class DatasetV2View(GenericViewSet):
                     counties=counties if counties else [],
                     sub_counties=sub_counties if sub_counties else [],
                     gender=gender if gender else [],
-
+                    value_chain=value_chain if value_chain else [],
                 )
 
             except Exception as e:
@@ -2580,18 +2659,23 @@ class DatasetFileV2View(GenericViewSet):
                 {"message": f"File name should not be more than {NumericalConstants.FILE_NAME_LENGTH} characters."},
                 status=status.HTTP_400_BAD_REQUEST,
             )
-
-        serializer = self.get_serializer(data=request.data, partial=True)
-        serializer.is_valid(raise_exception=True)
-        serializer.save()
-        data = serializer.data
-        instance = DatasetV2File.objects.get(id=data.get("id"))
-        instance.standardised_file = instance.file  # type: ignore
-        instance.file_size = os.path.getsize(os.path.join(settings.DATASET_FILES_URL, str(instance.file)))
-        instance.save()
-        LOGGER.info("Dataset created Successfully.")
-        data = DatasetFileV2NewSerializer(instance)
-        return Response(data.data, status=status.HTTP_201_CREATED)
+        try:
+            serializer = self.get_serializer(data=request.data, partial=True)
+            serializer.is_valid(raise_exception=True)
+            serializer.save()
+            data = serializer.data
+            instance = DatasetV2File.objects.get(id=data.get("id"))
+            instance.standardised_file = instance.file  # type: ignore
+            instance.file_size = os.path.getsize(os.path.join(settings.DATASET_FILES_URL, str(instance.file)))
+            instance.save()
+            LOGGER.info("Dataset created Successfully.")
+            data = DatasetFileV2NewSerializer(instance)
+            return Response(data.data, status=status.HTTP_201_CREATED)
+        except ValidationError as e:
+            return Response(e.detail, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            LOGGER.error(e,exc_info=True)
+            return Response(str(e), status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     @authenticate_user(model=DatasetV2File)
     def update(self, request, *args, **kwargs):
@@ -2650,9 +2734,11 @@ class DatasetFileV2View(GenericViewSet):
             serializer.save()
             DatasetV2File.objects.filter(id=serializer.data.get("id")).update(standardised_file=standardised_file_path)
             return Response(serializer.data, status=status.HTTP_200_OK)
-        except Exception as error:
-            LOGGER.error(error, exc_info=True)
-            return Response(str(error), status=status.HTTP_400_BAD_REQUEST)
+        except ValidationError as e:
+            return Response(e.detail, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            LOGGER.error(e,exc_info=True)
+            return Response(str(e), status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     def list(self, request, *args, **kwargs):
         data = DatasetV2File.objects.filter(dataset=request.GET.get("dataset")).values("id", "file")
@@ -2947,7 +3033,7 @@ class ResourceManagementViewSet(GenericViewSet):
         except ValidationError as e:
             return Response(e.detail, status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
-            LOGGER.error(e)
+            LOGGER.error(e,exc_info=True)
             return Response(str(e), status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     def update(self, request, *args, **kwargs):
@@ -3005,12 +3091,18 @@ class ResourceFileManagementViewSet(GenericViewSet):
 
     @http_request_mutation
     def create(self, request, *args, **kwargs):
-        request.data._mutable = True
-        request.data["file_size"] = request.FILES.get("file").size
-        serializer = self.get_serializer(data=request.data, partial=True)
-        serializer.is_valid(raise_exception=True)
-        serializer.save()
-        return Response(serializer.data, status=status.HTTP_201_CREATED)
+        try:
+            request.data._mutable = True
+            request.data["file_size"] = request.FILES.get("file").size
+            serializer = self.get_serializer(data=request.data, partial=True)
+            serializer.is_valid(raise_exception=True)
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        except ValidationError as e:
+            return Response(e.detail, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            LOGGER.error(e,exc_info=True)
+            return Response(str(e), status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     def destroy(self, request, *args, **kwargs):
         instance = self.get_object()

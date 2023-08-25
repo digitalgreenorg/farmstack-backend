@@ -54,6 +54,7 @@ from microsite.serializers import (
     ConnectorsListSerializer,
     ConnectorsRetriveSerializer,
     ContactFormSerializer,
+    DatahubDatasetFileDashboardFilterSerializer,
     DatasetsMicrositeSerializer,
     LegalDocumentSerializer,
     OrganizationMicrositeSerializer,
@@ -62,6 +63,10 @@ from microsite.serializers import (
     UserSerializer,
 )
 from utils import custom_exceptions, file_operations
+from utils.file_operations import (
+    check_file_name_length,
+    filter_dataframe_for_dashboard_counties,
+)
 from utils.jwt_services import http_request_mutation
 
 LOGGER = logging.getLogger(__name__)
@@ -189,7 +194,7 @@ class DatasetsMicrositeViewSet(GenericViewSet):
             file_path["content"] = read_contents_from_csv_or_xlsx_file(path_)
             # Omitted the actual name of the file so the user can't manually download the file
             # Added file name : As they need to show the file name in frontend.
-            file_path["id"] = file.id if file.accessibility == Constants.PUBLIC else None
+            file_path["id"] = file.id
             file_path["file"] = path_.split("/")[-1]
             file_path["source"] = file.source
             file_path["file_size"] = file.file_size
@@ -218,6 +223,8 @@ class DatasetsMicrositeViewSet(GenericViewSet):
             else:
                 df_headers = pd.read_csv(file_path, nrows=1, header=None)
                 df = pd.read_csv(file_path, index_col=False, skiprows=range(0, start_index), nrows=end_index - start_index+1)       
+            if df.empty  :
+                raise pd.errors.EmptyDataError("The file is empty or Reached end of file.")     
             for i, value in enumerate(df_headers.iloc[0]):
                 df_headers[i] = str(value)
             df.columns = df_headers.iloc[0]
@@ -384,6 +391,119 @@ class DatasetsMicrositeViewSet(GenericViewSet):
             return Response(
                 f"Invalid filter fields: {list(request.data.keys())}",
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+
+    @action(detail=True, methods=["post"])
+    def get_dashboard_chart_data(self, request, pk, *args, **kwargs):
+        try:
+
+            if str(pk) != "c6552c05-0ada-4522-b584-71e26286a2e3":
+                return Response(
+                    "Requested resource is currently unavailable. Please try again later.",
+                    status=status.HTTP_200_OK,
+                )
+
+            serializer = DatahubDatasetFileDashboardFilterSerializer(data=request.data)
+            serializer.is_valid(raise_exception=True)
+
+            counties = []
+            sub_counties = []
+            gender = []
+            value_chain = []
+
+            if serializer.data.get("county"):
+                counties = serializer.data.get("county")
+
+            if serializer.data.get("sub_county"):
+                sub_counties = serializer.data.get("sub_county")
+
+            if serializer.data.get("gender"):
+                gender = serializer.data.get("gender")
+
+            if serializer.data.get("value_chain"):
+                value_chain = serializer.data.get("value_chain")
+
+            cols_to_read = ['Gender', 'Constituency', 'Millet', 'County', 'Sub County', 'Crop Production',
+                            'farmer_mobile_number',
+                            'Livestock Production', 'Ducks', 'Other Sheep', 'Total Area Irrigation', 'Family',
+                            'Ward',
+                            'Other Money Lenders', 'Micro-finance institution', 'Self (Salary or Savings)',
+                            "Natural rivers and stream", "Water Pan",
+                            'NPK', 'Superphosphate', 'CAN',
+                            'Urea', 'Other', 'Do you insure your crops?',
+                            'Do you insure your farm buildings and other assets?', 'Other Dual Cattle',
+                            'Cross breed Cattle', 'Cattle boma',
+                            'Small East African Goats', 'Somali Goat', 'Other Goat', 'Chicken -Indigenous',
+                            'Chicken -Broilers', 'Chicken -Layers', 'Highest Level of Formal Education',
+                            'Maize food crop', "Beans", 'Cassava', 'Sorghum', 'Potatoes', 'Cowpeas']
+
+            dataset_file_object = DatasetV2File.objects.get(id=pk)
+            dataset_file = str(dataset_file_object.standardised_file)
+            try:
+                if dataset_file.endswith(".xlsx") or dataset_file.endswith(".xls"):
+                    df = pd.read_excel(os.path.join(settings.DATASET_FILES_URL, dataset_file))
+                elif dataset_file.endswith(".csv"):
+                    df = pd.read_csv(os.path.join(settings.DATASET_FILES_URL, dataset_file), usecols=cols_to_read,
+                                     low_memory=False)
+                    # df.columns = df.columns.str.strip()
+                else:
+                    return Response(
+                        "Unsupported file please use .xls or .csv.",
+                        status=status.HTTP_400_BAD_REQUEST,
+                    )
+                df['Ducks'] = pd.to_numeric(df['Ducks'], errors='coerce')
+                df['Other Sheep'] = pd.to_numeric(df['Other Sheep'], errors='coerce')
+                df['Family'] = pd.to_numeric(df['Family'], errors='coerce')
+                df['Other Money Lenders'] = pd.to_numeric(df['Other Money Lenders'], errors='coerce')
+                df['Micro-finance institution'] = pd.to_numeric(df['Micro-finance institution'], errors='coerce')
+                df['Self (Salary or Savings)'] = pd.to_numeric(df['Self (Salary or Savings)'], errors='coerce')
+                df['Natural rivers and stream'] = pd.to_numeric(df['Natural rivers and stream'], errors='coerce')
+                df["Water Pan"] = pd.to_numeric(df["Water Pan"], errors='coerce')
+                df['Total Area Irrigation'] = pd.to_numeric(df['Total Area Irrigation'], errors='coerce')
+                df['NPK'] = pd.to_numeric(df['NPK'], errors='coerce')
+                df['Superphosphate'] = pd.to_numeric(df['Superphosphate'], errors='coerce')
+                df['CAN'] = pd.to_numeric(df['CAN'], errors='coerce')
+                df['Urea'] = pd.to_numeric(df['Urea'], errors='coerce')
+                df['Other'] = pd.to_numeric(df['Other'], errors='coerce')
+                df['Other Dual Cattle'] = pd.to_numeric(df['Other Dual Cattle'], errors='coerce')
+                df['Cross breed Cattle'] = pd.to_numeric(df['Cross breed Cattle'], errors='coerce')
+                df['Cattle boma'] = pd.to_numeric(df['Cattle boma'], errors='coerce')
+                df['Small East African Goats'] = pd.to_numeric(df['Small East African Goats'], errors='coerce')
+                df['Somali Goat'] = pd.to_numeric(df['Somali Goat'], errors='coerce')
+                df['Other Goat'] = pd.to_numeric(df['Other Goat'], errors='coerce')
+                df['Chicken -Indigenous'] = pd.to_numeric(df['Chicken -Indigenous'], errors='coerce')
+                df['Chicken -Broilers'] = pd.to_numeric(df['Chicken -Broilers'], errors='coerce')
+                df['Chicken -Layers'] = pd.to_numeric(df['Chicken -Layers'], errors='coerce')
+                df['Do you insure your crops?'] = pd.to_numeric(df['Do you insure your crops?'], errors='coerce')
+                df['Highest Level of Formal Education'] = pd.to_numeric(df['Highest Level of Formal Education'],
+                                                                        errors='coerce')
+                df['Do you insure your farm buildings and other assets?'] = pd.to_numeric(
+                    df['Do you insure your farm buildings and other assets?'], errors='coerce')
+
+                data = filter_dataframe_for_dashboard_counties(
+                    df=df,
+                    counties=counties if counties else [],
+                    sub_counties=sub_counties if sub_counties else [],
+                    gender=gender if gender else [],
+                    value_chain=value_chain if value_chain else [],
+                )
+
+            except Exception as e:
+                print(e)
+                return Response(
+                    f"Something went wrong, please try again. {e}",
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+            return Response(
+                data,
+                status=status.HTTP_200_OK,
+            )
+
+        except DatasetV2File.DoesNotExist:
+            return Response(
+                "No dataset file for the provided id.",
+                status=status.HTTP_404_NOT_FOUND,
             )
 
 
@@ -611,6 +731,8 @@ class APIResponseViewSet(GenericViewSet):
             else:
                 df_header = pd.read_csv(protected_file_path, nrows=1, header=None)
                 df = pd.read_csv(protected_file_path, index_col=False, header=0, skiprows=range(0, start_index), nrows=end_index - start_index+1)
+            if df.empty  :
+                raise pd.errors.EmptyDataError("The file is empty or Reached end of file.")      
             for i, value in enumerate(df_header.iloc[0]):
                 df_header[i] = str(value)
             df.columns = df_header.iloc[0]

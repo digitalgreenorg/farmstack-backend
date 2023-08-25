@@ -131,7 +131,7 @@ class TestApiBuilder(TestCase):
 
         file_data1 = {
             "dataset": str(self.first_dataset.id),
-            "file":open("microsite/tests/test_files/file.xls","rb"),
+            "file":open("microsite/tests/test_files/sheet.xlsx","rb"),
             "source": "file",
         }
         response = self.client_admin.post(self.dataset_files_url, file_data1)
@@ -192,15 +192,15 @@ class TestApiBuilder(TestCase):
         response = self.client_admin.get(url, **headers)
         assert response.status_code==200
         assert response.json()["current_page"]==1
-        assert response.json()["data"][0]=={'SR.': 1, 'NAME': 'Dett', 'GENDER': 'Male', 'AGE': 18, 'DATE ': '21/05/2015', 'COUNTRY': 'Great Britain'}
+        assert response.json()=={'next': False, 'current_page': 1, 'data': [{'Name': 'Akshata', 'Age': 25, 'Country': 'India'}, {'Name': 'Arun', 'Age': 20, 'Country': 'India'}, {'Name': 'Aman', 'Age': 12, 'Country': 'India'}, {'Name': 'Amogh', 'Age': 34, 'Country': 'India'}]}
 
         ####### Handling Out-of-Range Sheet Index #########
-        page_num = 10000
+        page_num = 100
         url = self.json_url + f'?page={page_num}'
         headers = {'HTTP_API_KEY': usage_policy_valid["api_key"]}
         response = self.client_admin.get(url, **headers)
-        assert response.status_code==500
-        assert response.json()=="Length mismatch: Expected axis has 0 elements, new values have 6 elements"
+        assert response.status_code==400
+        assert response.json()=="File is Empty or Reached End of the file"
 
     def test_response_based_on_api_key_xls_files_invalid_auth(self):
         ######## requesting ######
@@ -239,7 +239,7 @@ class TestApiBuilder(TestCase):
         assert response.json()=={'message': 'Invalid auth credentials provided.'}
 
 
-    #################### negative test case ##############################
+    ################### negative test case ##############################
     def test_response_based_on_api_key_csv(self):
         usage_policy_valid = {
             "dataset_file": self.datasetfile_id_two,
@@ -267,7 +267,7 @@ class TestApiBuilder(TestCase):
         data = response.json()
 
         ####### Handling Out-of-Range Sheet Index #########
-        page = 1000000
+        page = 1000
         url = self.json_url + f'?page={page}'
         headers = {'HTTP_API_KEY': usage_policy_valid["api_key"]}
         response = self.user_participant.get(url, **headers)
