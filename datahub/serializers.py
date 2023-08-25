@@ -26,8 +26,6 @@ from datahub.models import (
     Organization,
     StandardisationTemplate,
     UserOrganizationMap,
-    ResourceFile,
-    Resource,
 )
 from participant.models import Connectors, SupportTicket
 from utils.custom_exceptions import NotFoundException
@@ -44,7 +42,6 @@ from utils.validators import (
 from .models import Policy, UsagePolicy
 from django.core.validators import URLValidator
 from django.core.exceptions import ValidationError
-
 LOGGER = logging.getLogger(__name__)
 
 
@@ -63,25 +60,26 @@ class OrganizationRetriveSerializer(serializers.ModelSerializer):
 
 
 class OrganizationSerializer(serializers.ModelSerializer):
-    # org_email = serializers.EmailField()
-    # website = serializers.CharField()
 
-    # def validate(self, attrs):
-    #     # Use URLValidator to validate the website field
-    #     website = attrs.get("website")
-    #     if website:
-    #         validator = URLValidator(schemes=["https"])
-    #         try:
-    #             validator(website)
-    #         except ValidationError:
-    #             raise serializers.ValidationError({"website": "Invalid website URL"})
+    org_email = serializers.EmailField()
+    website = serializers.CharField()
 
-    #     return attrs
+    def validate(self, attrs):
+        # Use URLValidator to validate the website field
+        website = attrs.get('website')
+        if website:       
+            validator = URLValidator(schemes=["https"])
+            try:
+                validator(website)
+            except ValidationError:
+                raise serializers.ValidationError({"website": "Invalid website URL"})
 
+        return attrs
     class Meta:
         model = Organization
+        exclude = Constants.EXCLUDE_DATES
 
-        fields="__all__"
+
 
 class UserOrganizationCreateSerializer(serializers.Serializer):
     """_summary_
@@ -124,7 +122,7 @@ class UserOrganizationMapSerializer(serializers.ModelSerializer):
         # exclude = Constants.EXCLUDE_DATES
 
 
-class ParticipantSerializer(serializers.ModelSerializer):
+class  ParticipantSerializer(serializers.ModelSerializer):
     user_id = serializers.PrimaryKeyRelatedField(
         queryset=models.User.objects.all(),
         required=True,
@@ -560,15 +558,8 @@ class DatasetV2FileSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = DatasetV2File
-        fields = [
-            "id",
-            "dataset",
-            "file",
-            "source",
-            "standardised_file",
-            "standardised_configuration",
-            "accessibility",
-        ]
+        fields = ["id", "dataset", "file", "source", "standardised_file", "standardised_configuration", "accessibility"
+]
 
 
 class DatasetV2Serializer(serializers.ModelSerializer):
@@ -920,7 +911,6 @@ class DatasetFileV2NewSerializer(serializers.ModelSerializer):
         model = DatasetV2File
         exclude = ["standardised_file"]
 
-
 class DatasetFileV2StandardisedSerializer(serializers.ModelSerializer):
     class Meta:
         model = DatasetV2File
@@ -932,36 +922,23 @@ class DatasetFileV2ListSerializer(serializers.ModelSerializer):
         model = DatasetV2File
         exclude = ["created_at", "updated_at"]
 
-
 class DatasetV2ListNewSerializer(serializers.ModelSerializer):
-    dataset_files = DatasetFileV2ListSerializer(many=True, source="datasets")
-
+    dataset_files = DatasetFileV2ListSerializer(many=True, source='datasets')
     class Meta:
         model = DatasetV2
         exclude = ["created_at", "updated_at"]
 
-
 class DatasetV2DetailNewSerializer(serializers.ModelSerializer):
-    dataset_files = DatasetFileV2StandardisedSerializer(many=True, source="datasets")
-
+    dataset_files = DatasetFileV2StandardisedSerializer(many=True, source='datasets')
     class Meta:
         model = DatasetV2
         fields = Constants.ALL
         # fields = ['id', 'name', 'geography', 'category', 'dataset_files']
-
-
+        
 class UsagePolicySerializer(serializers.ModelSerializer):
     class Meta:
         model = UsagePolicy
-        fields = "__all__"
-
-
-class APIBuilderSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = UsagePolicy
-        fields = ["approval_status", "accessibility_time", "api_key"]
-
-
+        fields = '__all__'
 
 class UsagePolicyDetailSerializer(serializers.ModelSerializer):
     organization = DatahubDatasetsSerializer.OrganizationDatsetsListRetriveSerializer(
@@ -970,96 +947,6 @@ class UsagePolicyDetailSerializer(serializers.ModelSerializer):
     user = DatahubDatasetsSerializer.UserDatasetSerializer(
         required=False, allow_null=True, read_only=True, source="user_organization_map.user"
     )
-
     class Meta:
         model = UsagePolicy
-        fields = "__all__"
-
-
-class ResourceFileSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = ResourceFile
-        fields = "__all__"
-
-
-class DatahubDatasetFileDashboardFilterSerializer(serializers.Serializer):
-    county = serializers.ListField(allow_empty=False, required=True)
-    sub_county = serializers.ListField(allow_empty=False, required=False)
-    gender = serializers.ListField(allow_empty=False, required=False)
-    value_chain = serializers.ListField(allow_empty=False, required=False)
-
-
-
-class ResourceSerializer(serializers.ModelSerializer):
-    class OrganizationRetriveSerializer(serializers.ModelSerializer):
-        class Meta:
-            model = Organization
-            fields = ["id", "org_email", "name"]
-
-    class UserSerializer(serializers.ModelSerializer):
-        class Meta:
-            model = User
-            fields = ["id", "first_name", "last_name", "email", "role", "on_boarded_by"]
-
-    resources = ResourceFileSerializer(many=True, read_only=True)
-    uploaded_files = serializers.ListField(child=serializers.FileField(), write_only=True)
-    organization = OrganizationRetriveSerializer(
-        allow_null=True, required=False, read_only=True, source="user_map.organization"
-    )
-    user = UserSerializer(allow_null=True, required=False, read_only=True, source="user_map.user")
-
-    class Meta:
-        model = Resource
-        fields = (
-            "id",
-            "title",
-            "description",
-            "user_map",
-            "category",
-            "resources",
-            "uploaded_files",
-            "organization",
-            "user",
-            "created_at",
-            "updated_at",
-        )
-
-    def create(self, validated_data):
-        resource_files_data = validated_data.pop("uploaded_files")
-        resource = Resource.objects.create(**validated_data)
-
-        for file_data in resource_files_data:
-            file_size = file_data.size
-            ResourceFile.objects.create(resource=resource, file=file_data, file_size=file_size)
-
-        return resource
-
-    # def update(self, instance, validated_data):
-    #     uploaded_files_data = validated_data.pop('uploaded_files', [])
-
-    #     for attr, value in validated_data.items():
-    #         setattr(instance, attr, value)
-    #     instance.save()
-
-    #     # Handle existing files
-    #     # import pdb; pdb.set_trace()
-    #     existing_file_ids = []
-    #     for file_data in uploaded_files_data:
-    #         file_id = file_data.get('id', None)
-    #         if file_id and file_data.get('delete', None):  # Existing file
-    #             existing_file = ResourceFile.objects.get(id=file_id)
-    #             existing_file_ids.append(existing_file.id)
-    #             # Update file attributes if needed
-    #         else:  # New file
-    #             ResourceFile.objects.create(resource=instance, file=file_data['file'])
-
-    #     # Handle deletion of files not present in uploaded_files_data
-    #     unwanted_files = ResourceFile.objects.filter(resource=instance).exclude(id__in=existing_file_ids)
-    #     unwanted_files.delete()
-    #     return instance
-
-
-class ResourceFileSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = ResourceFile
-        fields = "__all__"
+        fields = '__all__'

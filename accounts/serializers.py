@@ -19,26 +19,26 @@ class UserRoleSerializer(serializers.ModelSerializer):
 class UserCreateSerializer(serializers.ModelSerializer):
     """UserCreateSerializer"""
 
-    # parser_classes = MultiPartParser
-    # email = serializers.EmailField()
-    # role = serializers.PrimaryKeyRelatedField(
-    #     queryset=UserRole.objects.all(),
-    #     required=True,
-    # )
-    # phone_number = serializers.CharField()
+    parser_classes = MultiPartParser
+    email = serializers.EmailField()
+    role = serializers.PrimaryKeyRelatedField(
+        queryset=UserRole.objects.all(),
+        required=True,
+    )
+    phone_number = serializers.CharField()
 
-    # def validate(self, attrs):
-    #     phone_number = attrs.get('phone_number')
-    #     if phone_number:
-    #         try:
-    #             valid = validate_phone_number(phone_number=phone_number)
-    #             if valid:
-    #                 pass
-    #             if not valid:
-    #                 raise serializers.ValidationError({"phone_number": "Invalid phone number format."})
-    #         except Exception:
-    #             raise serializers.ValidationError({"phone_number": "Invalid phone number format."})
-    #     return attrs
+    def validate(self, attrs):
+        phone_number = attrs.get('phone_number')
+        if phone_number:
+            try:
+                valid = validate_phone_number(phone_number=phone_number)
+                if valid:
+                    pass
+                if not valid:
+                    raise serializers.ValidationError({"phone_number": "Invalid phone number format."})
+            except Exception:
+                raise serializers.ValidationError({"phone_number": "Invalid phone number format."})
+        return attrs
     class Meta:
         model = User
         fields = (

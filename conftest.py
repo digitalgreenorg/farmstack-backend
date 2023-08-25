@@ -39,6 +39,8 @@ from core import settings
 
 
 
+
+   
 @pytest.fixture(scope="session", autouse=True)
 def postgres_test_container():
     """

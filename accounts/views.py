@@ -29,7 +29,7 @@ from core.utils import Utils
 from datahub.models import UserOrganizationMap
 from utils import login_helper, string_functions
 from utils.jwt_services import http_request_mutation
-from core.serializer_validation import OrganizationSerializerValidator,UserCreateSerializerValidator
+
 LOGGER = logging.getLogger(__name__)
 from rest_framework.parsers import JSONParser, MultiPartParser
 
@@ -457,15 +457,13 @@ class SelfRegisterParticipantViewSet(GenericViewSet):
     @transaction.atomic
     def create(self, request, *args, **kwargs):
         """POST method: create action to save an object by sending a POST request"""
-        OrganizationSerializerValidator.validate_website(request.data)
-        org_serializer = OrganizationSerializer(data=request.data)
+        org_serializer = OrganizationSerializer(data=request.data, partial=True)
         org_serializer.is_valid(raise_exception=True)
         org_queryset = self.perform_create(org_serializer)
         org_id = org_queryset.id
         request.data._mutable=True
         request.data.update({'role':3})
         request.data.update({'approval_status':False})
-        UserCreateSerializerValidator.validate_phone_number_format(request.data)
         user_serializer = UserCreateSerializer(data=request.data)
         user_serializer.is_valid(raise_exception=True)
         user_saved = self.perform_create(user_serializer)
