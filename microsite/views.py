@@ -17,6 +17,7 @@ from rest_framework import generics, permissions, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.exceptions import ValidationError
 from rest_framework.response import Response
+from rest_framework.throttling import AnonRateThrottle
 from rest_framework.viewsets import GenericViewSet
 
 from accounts.models import User, UserRole
@@ -393,7 +394,7 @@ class DatasetsMicrositeViewSet(GenericViewSet):
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
 
-    @action(detail=True, methods=["post"])
+    @action(detail=True, methods=["post"],throttle_classes=[AnonRateThrottle])
     def get_dashboard_chart_data(self, request, pk, *args, **kwargs):
         try:
 
