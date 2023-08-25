@@ -262,9 +262,7 @@ class OrganizationViewSet(GenericViewSet):
             user_obj = User.objects.get(id=pk, status=True)
             user_org_queryset = UserOrganizationMap.objects.prefetch_related(
                 Constants.USER, Constants.ORGANIZATION
-            ).filter(organization__status=True, user=pk)
-
-
+            ).filter(user=pk)
             if not user_org_queryset: 
                 data = {Constants.USER: {"id": user_obj.id}, Constants.ORGANIZATION: "null"}
                 return Response(data, status=status.HTTP_200_OK)
