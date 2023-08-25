@@ -36,7 +36,7 @@ class Organization(TimeStampMixin):
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     name = models.CharField(max_length=255)
-    org_email = models.EmailField(max_length=255, unique=True)
+    org_email = models.CharField(max_length=255, unique=True)
     address = models.JSONField()
     phone_number = models.CharField(max_length=50, null=True, blank=True)
     logo = models.ImageField(
@@ -101,10 +101,6 @@ USAGE_POLICY_REQUEST_STATUS = (
     ("rejected", "rejected"),
     ("requested", "requested")
 
-)
-USAGE_POLICY_API_TYPE = (
-    ("dataset_file", "dataset_file"),
-    ("api", "api")
 )
 
 USAGE_POLICY_APPROVAL_STATUS = (
@@ -272,8 +268,7 @@ class DatasetV2File(TimeStampMixin):
     standardised_file = models.FileField(upload_to=get_upload_path, null=True, blank=True)
     standardised_configuration = models.JSONField(default = dict)
     accessibility = models.CharField(max_length=255, null=True, choices=USAGE_POLICY_APPROVAL_STATUS, default="public")
-    connection_details = models.JSONField(default=dict, null=True)
-    
+
 class UsagePolicy(TimeStampMixin):
     """
     Policy documentation Model.
@@ -285,34 +280,4 @@ class UsagePolicy(TimeStampMixin):
     dataset_file = models.ForeignKey(DatasetV2File, on_delete=models.CASCADE, related_name="dataset_v2_file")
     approval_status = models.CharField(max_length=255, null=True, choices=USAGE_POLICY_REQUEST_STATUS, default="requested")
     accessibility_time = models.DateField(null=True)
-    type = models.CharField(max_length=20, null=True, choices=USAGE_POLICY_API_TYPE, default="dataset_file")
-    api_key = models.CharField(max_length=64, null=True, unique=True)
 
-class Resource(TimeStampMixin):
-    """
-    Resource Module -- Any user can create resource.
-    """
-    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    title = models.CharField(max_length=100)
-    description = models.TextField(max_length=250)
-    user_map = models.ForeignKey(UserOrganizationMap, on_delete=models.CASCADE)
-    category = models.JSONField(default=dict)
-    
-    def __str__(self) -> str:
-        return self.title
-
-class ResourceFile(TimeStampMixin):
-    """
-    Resource Files Model -- Has a one to many relation 
-    -- 1 resource can have multiple resource files.
-    """
-    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    resource = models.ForeignKey(Resource, on_delete=models.CASCADE, related_name="resources")
-    file = models.FileField(upload_to=settings.RESOURCES_URL)
-    file_size = models.PositiveIntegerField(null=True, blank=True)
-
-    def __str__(self) -> str:
-        return self.file.name
-    
-class DatasetV2FileReload(TimeStampMixin):
-    dataset_file = models.ForeignKey(DatasetV2File, on_delete=models.CASCADE, related_name="dataset_file")

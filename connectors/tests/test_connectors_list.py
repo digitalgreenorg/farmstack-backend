@@ -100,13 +100,13 @@ connectors_info = {
 create_connector = {
     "name": "creating_connector",
     "description": "created agriculture database connectors",
-    "integrated_file": open("connectors/tests/test_files/file_example_XLS_100.xls", "rb")
+    "integrated_file": open("/Users/akshatanaik/Akshata/repos/datahub-api/connectors/tests/test_files/file_example_XLS_100.xls", "rb")
 }
 
 create_connector_two = {
     "name": "creating_connector_two",
     "description": ".........",
-    "integrated_file": open("connectors/tests/test_files/file_example_XLS_100.xls", "rb")
+    "integrated_file": open("/Users/akshatanaik/Akshata/repos/datahub-api/connectors/tests/test_files/file_example_XLS_100.xls", "rb")
 }
 
 create_connector_new = {
@@ -117,7 +117,7 @@ create_connector_new = {
 connector_details = {
     "name": "creating_connector_two",
     "description": ".........",
-    "integrated_file": open("connectors/tests/test_files/file_example_XLS_100.xls", "rb")
+    "integrated_file": open("/Users/akshatanaik/Akshata/repos/datahub-api/connectors/tests/test_files/file_example_XLS_100.xls", "rb")
 }
 
 class TestCasesConnectors(TestCase):
@@ -204,12 +204,12 @@ class TestCasesConnectors(TestCase):
         self.left_dataset_pr = DatasetV2.objects.create(user_map=self.participant_map, **datasetOnepr)
         self.right_dataset_pr = DatasetV2.objects.create(user_map=self.participant_map, **datasetTwopr)
         self.right_dataset_pr_two = DatasetV2.objects.create(user_map=self.participant_map, **datasetThreepr)
-        with open('connectors/tests/test_files/file_example_XLS_100.xls','rb') as file:
+        with open('/Users/akshatanaik/Akshata/repos/datahub-api/connectors/tests/test_files/file_example_XLS_100.xls','rb') as file:
             file_obj = file.read()
         file = SimpleUploadedFile("file_example_XLS_100.xls", file_obj) 
         datasetv2_file_response=DatasetV2File.objects.create(dataset_id=self.left_dataset_pr.id ,file=file)
         self.datasetv2_file_pr1 = datasetv2_file_response
-        with open('connectors/tests/test_files/file_example_XLS_50.xls','rb') as file:
+        with open('/Users/akshatanaik/Akshata/repos/datahub-api/connectors/tests/test_files/file_example_XLS_50.xls','rb') as file:
             file_obj = file.read()
         file = SimpleUploadedFile("file_example_XLS_50.xls", file_obj) 
         self.datasetv2_file_pr2=DatasetV2File.objects.create(dataset_id=self.right_dataset_pr.id ,file=file)
@@ -226,14 +226,14 @@ class TestCasesConnectors(TestCase):
 
         ############# create datasetv2 file
         datasetv2_file_one=DatasetV2File.objects.create(dataset_id=left_dataset.id,)
-        with open("connectors/tests/test_files/file_example_XLS_10.xls", "rb") as file:
+        with open("/Users/akshatanaik/Akshata/repos/datahub-api/connectors/tests/test_files/file_example_XLS_10.xls", "rb") as file:
             datasetv2_file_one.source="file"
             datasetv2_file_one.save()
             datasetv2_file_one.file.save("name_new_file.xls",File(file))
             datasetv2_file_one.save()
 
         self.file_one_id = datasetv2_file_one.id
-        with open('connectors/tests/test_files/file.xls','rb') as file:
+        with open('/Users/akshatanaik/Akshata/repos/datahub-api/connectors/tests/test_files/file.xls','rb') as file:
             file_obj = file.read()
         file = SimpleUploadedFile("file_example_XLS_10.xls", file_obj)  
         datasetv2_file_two=DatasetV2File.objects.create(dataset_id=right_dataset.id, file=file )
@@ -438,7 +438,7 @@ class TestCasesConnectors(TestCase):
         maps_data = json.loads(create_connector_two["maps"])
         maps_data.append(new_row)
         create_connector_two["maps"] = json.dumps(maps_data)
-        create_connector_two["integrated_file"]=open("connectors/tests/test_files/file_example_XLS_50.xls","rb") 
+        create_connector_two["integrated_file"]=open("/Users/akshatanaik/Akshata/repos/datahub-api/connectors/tests/test_files/file_example_XLS_50.xls","rb") 
         url=self.connectors_url+'integration/?edit=True'
         params=f'?user={self.participant.id}&co_steward=false'
         response = self.user_participant.post(url+params, create_connector_two)  

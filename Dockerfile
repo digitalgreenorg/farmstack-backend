@@ -1,28 +1,33 @@
 FROM python:3.8-slim
 
-# Install dependencies
-RUN apt-get update && apt-get install -y libsasl2-dev curl gcc libldap2-dev \
+RUN set -ex \
+    && apt-get -y update && apt-get -y upgrade \
+    && apt install python3-pip -y \
+    && apt install curl -y \
     && DOCKER_CONFIG=${DOCKER_CONFIG:-$HOME/.docker} \
     && mkdir -p $DOCKER_CONFIG/cli-plugins \
     && curl -SL https://github.com/docker/compose/releases/download/v2.2.3/docker-compose-linux-x86_64 -o $DOCKER_CONFIG/cli-plugins/docker-compose \
     && chmod +x $DOCKER_CONFIG/cli-plugins/docker-compose
 
-# Set the working directory and copy the application files
+
+ADD . /datahub
 WORKDIR /datahub
-COPY . /datahub
 
-# Upgrade pip and install required Python packages
-RUN python -m pip install --upgrade pip \
-    && pip install python-ldap==3.3.1 \
-    && pip install --upgrade pyopenssl \
-    && pip install -r requirements.txt
+# RUN poetry init
+RUN python3 -m pip install --upgrade  pip
+RUN pip install -r requirements.txt
 
-# Set environment variables
-ENV PYTHONUNBUFFERED 1
+# RUN python manage.py makemigrations \
+#     && python manage.py migrate \
+#     && python manage.py loaddata db_scripts/userrole_fixture.yaml \
+#     && python manage.py loaddata db_scripts/initial_data.yaml
 
-# Expose port 8000 for the Django app
+ENV  PYTHONUNBUFFERED 1
+# ENV VIRTUAL_ENV /env
+
+# ENV PATH /env/bin:$PATH
+
 EXPOSE 8000
 
-# Command to run the Django development server
-CMD ["python", "manage.py", "runserver", "0.0.0.0:8000"]
 
+CMD ["python", "manage.py", "runserver", "0.0.0.0:8000"]

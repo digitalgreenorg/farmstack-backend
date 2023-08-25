@@ -529,20 +529,12 @@ class DatabaseColumnRetrieveSerializer(serializers.Serializer):
     table_name = serializers.CharField(max_length=200, allow_blank=False)
 
 
-
-
 class DatabaseDataExportSerializer(serializers.Serializer):
     table_name = serializers.CharField(max_length=200, allow_blank=False)
     col = serializers.ListField(allow_empty=False)
     dataset_name = serializers.CharField(max_length=200, allow_blank=False)
     source = serializers.CharField(max_length=200, allow_blank=False)
-    file_name = serializers.CharField(max_length=85, allow_blank=False)
-    filter_data = serializers.ListField(allow_empty=True,required=False)
-    # {
-    #     "column_name" : "column_name",
-    #     "operation" : "operation",
-    #     "value" : "value",
-    # }
+    file_name = serializers.CharField(max_length=200, allow_blank=False)
 
 
 class UserSupportTicketSerializer(serializers.ModelSerializer):
@@ -568,7 +560,6 @@ class OrganizationsSupportTicketSerializer(serializers.ModelSerializer):
             "logo",
         )
 
-
 class UserOrganizationMapSerializerSupport(serializers.ModelSerializer):
     user = UserSupportTicketSerializer()
     organization = OrganizationsSupportTicketSerializer()
@@ -584,13 +575,12 @@ class SupportTicketV2Serializer(serializers.ModelSerializer):
     class Meta:
         model = SupportTicketV2
         fields = '__all__'
-
-
+        
 class UpdateSupportTicketV2Serializer(serializers.ModelSerializer):
+    
     class Meta:
         model = SupportTicketV2
         fields = ('status',)
-
 
 class CreateSupportTicketV2Serializer(serializers.ModelSerializer):
     class Meta:
@@ -608,7 +598,6 @@ class SupportTicketResolutionsSerializer(serializers.ModelSerializer):
 
 class SupportTicketResolutionsSerializerMinimised(serializers.ModelSerializer):
     user_map = UserOrganizationMapSerializerSupport()
-
     class Meta:
         model = Resolution
         fields = '__all__'
