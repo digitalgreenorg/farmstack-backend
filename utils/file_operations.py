@@ -2,7 +2,8 @@ import logging
 import os
 import re
 import shutil
-
+from typing import Any
+import json
 import cssutils
 from core.constants import Constants
 from django.core.files.storage import FileSystemStorage
@@ -11,6 +12,7 @@ from django.utils import timezone
 from .validators import validate_image_type
 
 LOGGER = logging.getLogger(__name__)
+import numpy as np
 
 
 def remove_files(file_key: str, destination: str):
@@ -28,14 +30,15 @@ def remove_files(file_key: str, destination: str):
             for file in file_path:
                 # deleting file based on file key, that is passed without extension
                 if file.is_file() and file.name.split(".")[:-1][0] == file_key:
-                    LOGGER.info(f"Deleting file: {destination+file.name}")
+                    LOGGER.info(f"Deleting file: {destination + file.name}")
                     fs.delete(destination + file.name)
                 # deleting file based on file name
                 elif file.is_file() and file.name == file_key:
-                    LOGGER.info(f"Deleting file: {destination+file.name}")
+                    LOGGER.info(f"Deleting file: {destination + file.name}")
                     fs.delete(destination + file.name)
     except Exception as error:
         LOGGER.error(error, exc_info=True)
+
 
 def get_csv_or_xls_files_from_directory(directory: str):
     """
@@ -50,8 +53,8 @@ def get_csv_or_xls_files_from_directory(directory: str):
         for root, _, files in os.walk(top=directory):
             for file in files:
                 if os.path.splitext(file)[1] in types:
-                    extracted_files.append(root+"/"+file)
-        
+                    extracted_files.append(root + "/" + file)
+
         return extracted_files
     except Exception as err:
         LOGGER.error(f"Error while extracting files from given temporary location {directory}", err)
@@ -111,11 +114,11 @@ def file_save(source_file, file_name: str, directory: str):
     ``destination`` (str): directory or file path where to save the file
     """
     try:
-        with open(directory+file_name, "wb+") as dest_file:
+        with open(directory + file_name, "wb+") as dest_file:
             for chunk in source_file.chunks():
                 dest_file.write(chunk)
 
-        LOGGER.info(f"File saved: {directory+file_name}")
+        LOGGER.info(f"File saved: {directory + file_name}")
     except Exception as error:
         LOGGER.error(error, exc_info=True)
     return file_name
@@ -159,7 +162,7 @@ def files_move(source: str, destination: str):
                 if file.is_file():
                     # shutil.copyfileobj(source+file.name, destination)
                     shutil.move(os.path.join(source, file.name), os.path.join(destination, file.name))
-                    LOGGER.info(f"File moved: {source+file.name}")
+                    LOGGER.info(f"File moved: {source + file.name}")
 
     except Exception as error:
         LOGGER.error(error, exc_info=True)
@@ -212,9 +215,118 @@ def get_css_attributes(css_path: str, css_attribute: str):
         LOGGER.error(error, exc_info=True)
 
 
-def check_file_name_length(incoming_file_name:str, accepted_file_name_size:int):
+def check_file_name_length(incoming_file_name: str, accepted_file_name_size: int):
     valid = True
 
     if len(str(incoming_file_name)) > accepted_file_name_size:
         valid = False
     return valid
+
+
+def filter_dataframe_for_dashboard_counties(df: Any, counties: [], sub_counties: [], gender: [], value_chain: []):
+    obj = {}
+    df['Gender'] = df['Gender'].map({1: 'Male', 2: 'Female'})
+    df['Highest Level of Formal Education'] = df['Highest Level of Formal Education'].map(
+        {1: 'None', 2: 'Primary', 3: 'Secondary', 4: 'Certificate', 5: 'Diploma', 6: 'University Degree',
+         7: "Post Graduate Degree,Masters and Above"})
+    filtered_by_counties = df  # Start with the original DataFrame
+    filtered_by_counties_across_county = df  # Start with the original DataFrame
+    if len(counties) > 0:
+        filtered_by_counties = filtered_by_counties[filtered_by_counties['County'].isin(counties)]
+
+    if len(sub_counties) > 0:
+        filtered_by_counties = filtered_by_counties[filtered_by_counties['Sub County'].isin(sub_counties)]
+
+    if len(gender) > 0:
+        filtered_by_counties = filtered_by_counties[filtered_by_counties['Gender'].isin(gender)]
+        filtered_by_counties_across_county = filtered_by_counties_across_county[
+            filtered_by_counties_across_county['Gender'].isin(gender)]
+
+    if len(value_chain) > 0:
+        filtered_by_counties = filtered_by_counties[filtered_by_counties[value_chain].notna().any(axis=1)]
+        filtered_by_counties_across_county = filtered_by_counties_across_county[filtered_by_counties_across_county[value_chain].notna().any(axis=1)]
+
+    obj["male_count"] = filtered_by_counties['Gender'].value_counts().get('Male', 0)
+    obj["female_count"] = filtered_by_counties['Gender'].value_counts().get('Female', 0)
+    obj["farmer_mobile_numbers"] = np.unique(filtered_by_counties['farmer_mobile_number']).size
+    obj["sub_county_ratio"] = filtered_by_counties_across_county.groupby(['Sub County', 'Gender'])[
+        'Gender'].count().unstack().to_dict(orient='index')
+    farming_practices = {
+        "crop_production": filtered_by_counties[filtered_by_counties['Crop Production'] == 1][
+            "Gender"].value_counts().to_dict(),
+        "livestock_production": filtered_by_counties[filtered_by_counties['Livestock Production'] == 1][
+            "Gender"].value_counts().to_dict(),
+    }
+
+    financial_livelihood = {
+        "relatives": filtered_by_counties[filtered_by_counties['Family'] > 0]["Gender"].value_counts().to_dict(),
+        "Other Money Lenders": filtered_by_counties[filtered_by_counties['Other Money Lenders'] > 0][
+            "Gender"].value_counts().to_dict(),
+        "Micro-finance institution": filtered_by_counties[filtered_by_counties['Micro-finance institution'] > 0][
+            "Gender"].value_counts().to_dict(),
+        "Self (Salary or Savings)": filtered_by_counties[filtered_by_counties['Self (Salary or Savings)'] > 0][
+            "Gender"].value_counts().to_dict(),
+    }
+
+    water_sources = {
+        "irrigation": filtered_by_counties[filtered_by_counties['Total Area Irrigation'] > 0][
+            "Gender"].value_counts().to_dict(),
+        "rivers": filtered_by_counties[filtered_by_counties['Natural rivers and stream'] > 0][
+            "Gender"].value_counts().to_dict(),
+        "water_pan": filtered_by_counties[filtered_by_counties['Water Pan'] > 0]["Gender"].value_counts().to_dict(),
+    }
+
+    insurance_information = {
+        "insured_crops": filtered_by_counties[filtered_by_counties['Do you insure your crops?'] > 0][
+            "Gender"].value_counts().to_dict(),
+        "insured_machinery":
+            filtered_by_counties[filtered_by_counties['Do you insure your farm buildings and other assets?'] > 0][
+                "Gender"].value_counts().to_dict(),
+    }
+
+    popular_fertilizer_used = {
+        "npk": filtered_by_counties[filtered_by_counties['NPK'] > 0]["Gender"].value_counts().to_dict(),
+        "ssp": filtered_by_counties[filtered_by_counties['Superphosphate'] > 0]["Gender"].value_counts().to_dict(),
+        "can": filtered_by_counties[filtered_by_counties['CAN'] > 0]["Gender"].value_counts().to_dict(),
+        "urea": filtered_by_counties[filtered_by_counties['Urea'] > 0]["Gender"].value_counts().to_dict(),
+        "Others": filtered_by_counties[filtered_by_counties['Other'] > 0]["Gender"].value_counts().to_dict(),
+    }
+
+    filtered_by_counties['Sum_Columns_Cattle'] = filtered_by_counties[
+        ['Other Dual Cattle', 'Cross breed Cattle', 'Cattle boma']].sum(axis=1)
+    filtered_by_counties['Sum_Columns_Goats'] = filtered_by_counties[
+        ['Small East African Goats', 'Somali Goat', 'Other Goat']].sum(axis=1)
+    filtered_by_counties['Sum_Columns_Chickens'] = filtered_by_counties[
+        ['Chicken -Indigenous', 'Chicken -Broilers', 'Chicken -Layers']].sum(axis=1)
+    filtered_by_counties['Sum_Columns_Ducks'] = filtered_by_counties[['Ducks']].sum(axis=1)
+    filtered_by_counties['Sum_Columns_Sheep'] = filtered_by_counties[['Other Sheep']].sum(axis=1)
+
+    gender_grouped_cattle = filtered_by_counties.groupby('Gender')['Sum_Columns_Cattle'].sum()
+    gender_grouped_goats = filtered_by_counties.groupby('Gender')['Sum_Columns_Goats'].sum()
+    gender_grouped_chicken = filtered_by_counties.groupby('Gender')['Sum_Columns_Chickens'].sum()
+    gender_grouped_ducks = filtered_by_counties.groupby('Gender')['Sum_Columns_Ducks'].sum()
+    gender_grouped_sheep = filtered_by_counties.groupby('Gender')['Sum_Columns_Sheep'].sum()
+
+    livestock_and_poultry_production = {
+        "cows": gender_grouped_cattle.astype(int).to_dict(),
+        "goats": gender_grouped_goats.astype(int).to_dict(),
+        "chickens":gender_grouped_chicken.astype(int).to_dict(),
+        "ducks": gender_grouped_ducks.astype(int).to_dict(),
+        "sheep": gender_grouped_sheep.astype(int).to_dict()
+    }
+
+    obj["farming_practices"] = farming_practices
+    obj["livestock_and_poultry_production"] = livestock_and_poultry_production
+    obj["financial_livelihood"] = financial_livelihood
+    obj["water_sources"] = water_sources
+    obj["insurance_information"] = insurance_information
+    obj["popular_fertilizer_used"] = popular_fertilizer_used
+    obj["education_level"] = filtered_by_counties.groupby(['Highest Level of Formal Education', 'Gender'])[
+        'Gender'].count().unstack().fillna(0).astype(int).to_dict(orient='index')
+
+    obj["total_number_of_records"] = len(filtered_by_counties)
+    obj["counties"] = np.unique(filtered_by_counties["County"]).size
+    obj["constituencies"] = filtered_by_counties["Constituency"].nunique()
+    obj["sub_counties"] = np.unique(filtered_by_counties['Sub County']).size
+
+    return obj

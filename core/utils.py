@@ -18,6 +18,7 @@ from rest_framework.response import Response
 from sendgrid.helpers.mail import Content, Email, Mail
 
 from core.constants import Constants
+import secrets
 
 LOGGER = logging.getLogger(__name__)
 
@@ -224,3 +225,7 @@ def timer(func):
         return result
     # return reference to the wrapper function
     return wrapper
+
+def generate_api_key(length=32):
+    api_key = secrets.token_hex(length)
+    return api_key
