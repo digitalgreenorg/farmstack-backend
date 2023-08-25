@@ -150,7 +150,7 @@ class ParticipantSerializer(serializers.ModelSerializer):
         read_only=False,
         required=False,
     )
-    organization = OrganizationRetriveSerializer(
+    organization = OrganizationMicrositeSerializer(
         required=False,
         allow_null=True,
         read_only=True,
