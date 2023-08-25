@@ -6,15 +6,22 @@ from rest_framework import serializers
 
 from accounts.models import User
 from connectors.models import Connectors, ConnectorsMap
+from connectors.serializers import OrganizationRetriveSerializer
 from core import settings
 from core.utils import Constants
-from datahub.models import DatahubDocuments, Datasets, DatasetV2, Organization, Policy
+from datahub.models import (
+    DatahubDocuments,
+    Datasets,
+    DatasetV2,
+    Organization,
+    Policy,
+    UserOrganizationMap,
+)
 from datahub.serializers import DatasetV2FileSerializer
 
 
 class OrganizationMicrositeSerializer(serializers.ModelSerializer):
     """Organization Serializer for microsite"""
-
     class Meta:
         """_summary_"""
 
@@ -106,7 +113,7 @@ class ConnectorsListSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Connectors
-        exclude = ["integrated_file", "config"]
+        exclude = ["integrated_file","config"]
     
     dataset_count = serializers.SerializerMethodField(method_name="get_dataset_count")
     providers_count = serializers.SerializerMethodField(method_name="get_providers_count")
@@ -125,8 +132,32 @@ class ConnectorsListSerializer(serializers.ModelSerializer):
 class DatasetsSerializer(serializers.ModelSerializer):
     class Meta:
         model = DatasetV2
-        exclude = ["created_at", "updated_at"]
-
+        exclude = ["updated_at"]
+        
+class ParticipantSerializer(serializers.ModelSerializer):
+    user_id = serializers.PrimaryKeyRelatedField(
+        queryset=User.objects.all(),
+        required=True,
+        source=Constants.USER,
+    )
+    organization_id = serializers.PrimaryKeyRelatedField(
+        queryset=Organization.objects.all(),
+        allow_null=True,
+        required=False,
+        source=Constants.ORGANIZATION,
+    )
+    user = UserSerializer(
+        read_only=False,
+        required=False,
+    )
+    organization = OrganizationRetriveSerializer(
+        required=False,
+        allow_null=True,
+        read_only=True,
+    )
+    class Meta:
+        model = UserOrganizationMap
+        exclude = Constants.EXCLUDE_DATES
 
 class ConnectorsRetriveSerializer(serializers.ModelSerializer):
     class Meta:
@@ -148,12 +179,12 @@ class ConnectorsRetriveSerializer(serializers.ModelSerializer):
             'left_dataset_file__dataset__user_map__organization',
             'right_dataset_file__dataset__user_map__organization'
         ).distinct()
-        data = Organization.objects.all().filter(id__in = organizations[0])
-        searilezer = OrganizationMicrositeSerializer(data, many=True)
+        data = UserOrganizationMap.objects.select_related("user", "organization").all().filter(organization_id__in = organizations[0])
+        searilezer = ParticipantSerializer(data, many=True)
         dataset_data = DatasetV2.objects.all().filter(id__in = datasets[0])
         dataset_searilezer = DatasetsSerializer(dataset_data, many=True)
         return {"organizations": searilezer.data, "datasets": dataset_searilezer.data}
-
+      
 class DatahubDatasetFileDashboardFilterSerializer(serializers.Serializer):
     county = serializers.ListField(allow_empty=False, required=True)
     sub_county = serializers.ListField(allow_empty=False, required=False)
