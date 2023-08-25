@@ -322,7 +322,7 @@ def filter_dataframe_for_dashboard_counties(df: Any, counties: [], sub_counties:
     obj["insurance_information"] = insurance_information
     obj["popular_fertilizer_used"] = popular_fertilizer_used
     obj["education_level"] = filtered_by_counties.groupby(['Highest Level of Formal Education', 'Gender'])[
-        'Gender'].count().unstack().to_dict(orient='index')
+        'Gender'].count().unstack().fillna(0).astype(int).to_dict(orient='index')
 
     obj["total_number_of_records"] = len(filtered_by_counties)
     obj["counties"] = np.unique(filtered_by_counties["County"]).size
