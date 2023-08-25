@@ -2475,7 +2475,6 @@ class DatasetV2View(GenericViewSet):
             counties = []
             sub_counties = []
             gender = []
-            value_chain = []
 
             if serializer.data.get("county"):
                 counties = serializer.data.get("county")
@@ -2486,10 +2485,7 @@ class DatasetV2View(GenericViewSet):
             if serializer.data.get("gender"):
                 gender = serializer.data.get("gender")
 
-            if serializer.data.get("value_chain"):
-                value_chain = serializer.data.get("value_chain")
-
-            cols_to_read = ['Gender', 'Constituency', 'Millet','County', 'Sub County', 'Crop Production',
+            cols_to_read = ['Gender', 'Constituency', 'County', 'Sub County', 'Crop Production',
                             'farmer_mobile_number',
                             'Livestock Production', 'Ducks', 'Other Sheep', 'Total Area Irrigation', 'Family',
                             'Ward',
@@ -2500,7 +2496,7 @@ class DatasetV2View(GenericViewSet):
                             'Do you insure your farm buildings and other assets?', 'Other Dual Cattle',
                             'Cross breed Cattle', 'Cattle boma',
                             'Small East African Goats', 'Somali Goat', 'Other Goat', 'Chicken -Indigenous',
-                            'Chicken -Broilers', 'Chicken -Layers', 'Highest Level of Formal Education' , 'Maize food crop',"Beans",'Cassava','Sorghum','Potatoes','Cowpeas']
+                            'Chicken -Broilers', 'Chicken -Layers', 'Highest Level of Formal Education']
 
             dataset_file_object = DatasetV2File.objects.get(id=pk)
             dataset_file = str(dataset_file_object.standardised_file)
@@ -2508,16 +2504,15 @@ class DatasetV2View(GenericViewSet):
                 if dataset_file.endswith(".xlsx") or dataset_file.endswith(".xls"):
                     df = pd.read_excel(os.path.join(settings.DATASET_FILES_URL, dataset_file))
                 elif dataset_file.endswith(".csv"):
-                    df = pd.read_csv(os.path.join(settings.DATASET_FILES_URL, dataset_file), usecols=cols_to_read,low_memory=False)
-                    df.columns = df.columns.str.strip()
-
+                    df = pd.read_csv(os.path.join(settings.DATASET_FILES_URL, dataset_file), usecols=cols_to_read,
+                                     low_memory=False)
+                    # df.columns = df.columns.str.strip()
                 else:
                     return Response(
                         "Unsupported file please use .xls or .csv.",
                         status=status.HTTP_400_BAD_REQUEST,
                     )
                 df['Ducks'] = pd.to_numeric(df['Ducks'], errors='coerce')
-                # df['Maize food crop'] = pd.to_numeric(df['Maize food crop'], errors='coerce')
                 df['Other Sheep'] = pd.to_numeric(df['Other Sheep'], errors='coerce')
                 df['Family'] = pd.to_numeric(df['Family'], errors='coerce')
                 df['Other Money Lenders'] = pd.to_numeric(df['Other Money Lenders'], errors='coerce')
@@ -2551,7 +2546,7 @@ class DatasetV2View(GenericViewSet):
                     counties=counties if counties else [],
                     sub_counties=sub_counties if sub_counties else [],
                     gender=gender if gender else [],
-                    value_chain=value_chain if value_chain else [],
+
                 )
 
             except Exception as e:

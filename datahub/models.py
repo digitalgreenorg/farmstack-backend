@@ -36,7 +36,7 @@ class Organization(TimeStampMixin):
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     name = models.CharField(max_length=255)
-    org_email = models.CharField(max_length=255, unique=True)
+    org_email = models.EmailField(max_length=255, unique=True)
     address = models.JSONField()
     phone_number = models.CharField(max_length=50, null=True, blank=True)
     logo = models.ImageField(

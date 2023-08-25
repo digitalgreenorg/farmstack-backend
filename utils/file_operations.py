@@ -231,7 +231,6 @@ def filter_dataframe_for_dashboard_counties(df: Any, counties: [], sub_counties:
          7: "Post Graduate Degree,Masters and Above"})
     filtered_by_counties = df  # Start with the original DataFrame
     filtered_by_counties_across_county = df  # Start with the original DataFrame
-
     if len(counties) > 0:
         filtered_by_counties = filtered_by_counties[filtered_by_counties['County'].isin(counties)]
 

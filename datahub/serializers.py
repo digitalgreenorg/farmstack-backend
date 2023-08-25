@@ -63,25 +63,25 @@ class OrganizationRetriveSerializer(serializers.ModelSerializer):
 
 
 class OrganizationSerializer(serializers.ModelSerializer):
-    org_email = serializers.EmailField()
-    website = serializers.CharField()
+    # org_email = serializers.EmailField()
+    # website = serializers.CharField()
 
-    def validate(self, attrs):
-        # Use URLValidator to validate the website field
-        website = attrs.get("website")
-        if website:
-            validator = URLValidator(schemes=["https"])
-            try:
-                validator(website)
-            except ValidationError:
-                raise serializers.ValidationError({"website": "Invalid website URL"})
+    # def validate(self, attrs):
+    #     # Use URLValidator to validate the website field
+    #     website = attrs.get("website")
+    #     if website:
+    #         validator = URLValidator(schemes=["https"])
+    #         try:
+    #             validator(website)
+    #         except ValidationError:
+    #             raise serializers.ValidationError({"website": "Invalid website URL"})
 
-        return attrs
+    #     return attrs
 
     class Meta:
         model = Organization
-        exclude = Constants.EXCLUDE_DATES
 
+        fields="__all__"
 
 class UserOrganizationCreateSerializer(serializers.Serializer):
     """_summary_
