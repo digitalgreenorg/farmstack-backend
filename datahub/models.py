@@ -15,6 +15,7 @@ from utils.validators import (
     validate_file_size,
     validate_image_type,
 )
+from django.core.files.storage import Storage
 
 
 def auto_str(cls):
@@ -174,7 +175,6 @@ class Policy(TimeStampMixin):
         validators=[validate_25MB_file_size],
         null=True
     )
-from django.core.files.storage import Storage
 
 
 class CustomStorage(Storage):
@@ -287,6 +287,8 @@ class UsagePolicy(TimeStampMixin):
     accessibility_time = models.DateField(null=True)
     type = models.CharField(max_length=20, null=True, choices=USAGE_POLICY_API_TYPE, default="dataset_file")
     api_key = models.CharField(max_length=64, null=True, unique=True)
+    configs = models.JSONField(default=dict, null=True)
+
 
 class Resource(TimeStampMixin):
     """

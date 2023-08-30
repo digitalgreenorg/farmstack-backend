@@ -80,6 +80,7 @@ from datahub.models import (
     Resource,
 )
 from datahub.serializers import (
+    UsageUpdatePolicySerializer,
     DatahubDatasetsSerializer,
     DatahubDatasetsV2Serializer,
     DatahubThemeSerializer,
@@ -2775,7 +2776,7 @@ class UsagePolicyListCreateView(generics.ListCreateAPIView):
 
 class UsagePolicyRetrieveUpdateDestroyView(generics.RetrieveUpdateDestroyAPIView):
     queryset = UsagePolicy.objects.all()
-    serializer_class = UsagePolicySerializer
+    serializer_class = UsageUpdatePolicySerializer
     api_builder_serializer_class = APIBuilderSerializer
 
     @authenticate_user(model=UsagePolicy)
