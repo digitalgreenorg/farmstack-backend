@@ -128,6 +128,7 @@ from .serializers import (
     APIBuilderSerializer,
 )
 from core.utils import generate_api_key
+from django.core.cache import cache
 
 LOGGER = logging.getLogger(__name__)
 
@@ -2585,7 +2586,7 @@ class DatasetV2View(GenericViewSet):
                             'Maize food crop', "Beans", 'Cassava', 'Sorghum', 'Potatoes', 'Cowpeas']
 
             dataset_file_object = DatasetV2File.objects.get(id=pk)
-            dataset_file = str(dataset_file_object.standardised_file)
+            dataset_file = str(dataset_file_object.file)
             try:
                 if dataset_file.endswith(".xlsx") or dataset_file.endswith(".xls"):
                     df = pd.read_excel(os.path.join(settings.DATASET_FILES_URL, dataset_file))

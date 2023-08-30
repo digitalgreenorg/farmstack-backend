@@ -5,7 +5,6 @@ import time
 import urllib
 from inspect import formatannotationrelativeto
 from urllib import parse
-
 import pandas as pd
 import requests
 import sendgrid
