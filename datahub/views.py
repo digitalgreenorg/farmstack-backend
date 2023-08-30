@@ -128,6 +128,7 @@ from .serializers import (
     APIBuilderSerializer,
 )
 from core.utils import generate_api_key
+from django.core.cache import cache
 
 LOGGER = logging.getLogger(__name__)
 
@@ -1920,15 +1921,15 @@ class DatasetV2ViewSet(GenericViewSet):
                 if type == "api":
                     usage_policy = (file.dataset_v2_file.filter(
                                     user_organization_map=user_map, type="api").order_by(
-                                        "-updated_at").first()
+                                        "-updated_at").all()
                                     )
-                    usage_policy = UsagePolicyDetailSerializer(usage_policy).data if usage_policy else {}
+                    usage_policy = UsagePolicyDetailSerializer(usage_policy, many=True).data if usage_policy else {}
                 else:
                     usage_policy = (file.dataset_v2_file.filter(
                                     user_organization_map=user_map, type="dataset_file").order_by(
-                                        "-updated_at").first()
+                                        "-updated_at").all()
                                     )
-                    usage_policy = UsagePolicyDetailSerializer(usage_policy).data if usage_policy else {}
+                    usage_policy = UsagePolicyDetailSerializer(usage_policy, many=True).data if usage_policy else {}
             file_path["usage_policy"] = usage_policy
             data.append(file_path)
 
@@ -2543,7 +2544,13 @@ class DatasetV2View(GenericViewSet):
                     "Requested resource is currently unavailable. Please try again later.",
                     status=status.HTTP_200_OK,
                 )
-
+            cache_data = cache.get(pk, {})
+            if cache_data:
+                LOGGER.info("Dashboard details found in cache", exc_info=True)
+                return Response(
+                data,
+                status=status.HTTP_200_OK,
+                )
             serializer = DatahubDatasetFileDashboardFilterSerializer(data=request.data)
             serializer.is_valid(raise_exception=True)
 
@@ -2579,7 +2586,7 @@ class DatasetV2View(GenericViewSet):
                             'Maize food crop', "Beans", 'Cassava', 'Sorghum', 'Potatoes', 'Cowpeas']
 
             dataset_file_object = DatasetV2File.objects.get(id=pk)
-            dataset_file = str(dataset_file_object.standardised_file)
+            dataset_file = str(dataset_file_object.file)
             try:
                 if dataset_file.endswith(".xlsx") or dataset_file.endswith(".xls"):
                     df = pd.read_excel(os.path.join(settings.DATASET_FILES_URL, dataset_file))
@@ -2635,7 +2642,8 @@ class DatasetV2View(GenericViewSet):
                     f"Something went wrong, please try again. {e}",
                     status=status.HTTP_400_BAD_REQUEST,
                 )
-
+            cache[pk] = data
+            LOGGER.info("Dashboard details added to cache", exc_info=True)
             return Response(
                 data,
                 status=status.HTTP_200_OK,

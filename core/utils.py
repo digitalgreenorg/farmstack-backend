@@ -5,7 +5,6 @@ import time
 import urllib
 from inspect import formatannotationrelativeto
 from urllib import parse
-
 import pandas as pd
 import requests
 import sendgrid
@@ -195,11 +194,12 @@ def read_contents_from_csv_or_xlsx_file(file_path):
     dataframe = pd.DataFrame([])
     try:
         if file_path.endswith(".xlsx") or file_path.endswith(".xls"):
-            content = pd.read_excel(file_path, index_col=None, nrows=21).head(
-                2) if file_path else dataframe
+            content = pd.read_excel(file_path, index_col=None, nrows=2) if file_path else dataframe
+        elif file_path.endswith(".csv"):
+            content = pd.read_csv(file_path, index_col=False, nrows=2) if file_path else dataframe
         else:
-            content = pd.read_csv(file_path, index_col=False, nrows=21).head(
-                2) if file_path else dataframe
+            return []
+
         content = content.drop(content.filter(regex='Unnamed').columns, axis=1)
         content = content.fillna("")
     except Exception as error:
