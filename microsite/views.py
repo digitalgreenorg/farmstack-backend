@@ -719,8 +719,9 @@ class APIResponseViewSet(GenericViewSet):
                 },
                 status=status.HTTP_401_UNAUTHORIZED
             )          
-            file_path_query_set=UsagePolicy.objects.select_related('dataset_file').filter(api_key=get_api_key).values('dataset_file__standardised_file')
+            file_path_query_set=UsagePolicy.objects.select_related('dataset_file').filter(api_key=get_api_key).values('dataset_file__standardised_file', 'configs')
             file_path = file_path_query_set[0]["dataset_file__standardised_file"]
+            configs = file_path_query_set[0]["configs"]
             protected_file_path = os.path.join(settings.DATASET_FILES_URL, str(file_path))
             next=False
             start_index = 0  + 50*(page-1) 
@@ -736,6 +737,7 @@ class APIResponseViewSet(GenericViewSet):
             for i, value in enumerate(df_header.iloc[0]):
                 df_header[i] = str(value)
             df.columns = df_header.iloc[0]
+            df=df[configs.get('columns')] if configs.get('columns', []) else df
             df=df.fillna("")
             next, df = (True, df[0:-1]) if len(df) > 50 else (False,df)   
             return JsonResponse(
