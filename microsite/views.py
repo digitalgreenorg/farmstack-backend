@@ -712,14 +712,14 @@ class APIResponseViewSet(GenericViewSet):
         try:
             get_api_key = request.META.get("HTTP_API_KEY", None)
             page = int(request.GET.get('page', 1))
-            if get_api_key is None:
+            file_path_query_set=UsagePolicy.objects.select_related('dataset_file').filter(api_key=get_api_key).values('dataset_file__standardised_file', 'configs')
+            if get_api_key is None or not file_path_query_set:
                 return Response(
                 {
                     "message" : "Invalid auth credentials provided."
                 },
                 status=status.HTTP_401_UNAUTHORIZED
             )          
-            file_path_query_set=UsagePolicy.objects.select_related('dataset_file').filter(api_key=get_api_key).values('dataset_file__standardised_file', 'configs')
             file_path = file_path_query_set[0]["dataset_file__standardised_file"]
             configs = file_path_query_set[0]["configs"]
             protected_file_path = os.path.join(settings.DATASET_FILES_URL, str(file_path))

@@ -953,8 +953,12 @@ class DatasetV2DetailNewSerializer(serializers.ModelSerializer):
 class UsagePolicySerializer(serializers.ModelSerializer):
     class Meta:
         model = UsagePolicy
-        fields = "__all__"
+        exclude = ["created_at", "updated_at", "approval_status"]
 
+class UsageUpdatePolicySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = UsagePolicy
+        fields = "__all__"
 
 class APIBuilderSerializer(serializers.ModelSerializer):
     class Meta:
