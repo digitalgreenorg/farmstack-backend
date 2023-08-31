@@ -1900,7 +1900,7 @@ class DatasetV2ViewSet(GenericViewSet):
             file_path = {}
             file_path["id"] = file.id
             file_path["content"] = read_contents_from_csv_or_xlsx_file(
-                os.path.join(settings.DATASET_FILES_URL, str(file.standardised_file)), file.standardisation_configuration
+                os.path.join(settings.DATASET_FILES_URL, str(file.standardised_file)), file.standardised_configuration
             )
             file_path["file"] = path_
             file_path["source"] = file.source
