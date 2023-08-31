@@ -177,10 +177,10 @@ def csv_and_xlsx_file_validatation(file_obj):
     try:
         name = file_obj.name
         if name.endswith(".xlsx") or name.endswith(".xls"):
-            df = pd.read_excel(file_obj, header=0, nrows=21)
+            df = pd.read_excel(file_obj, header=0, nrows=6)
         else:
             df = pd.read_csv(
-                file_obj, encoding="unicode_escape", header=0, nrows=21)
+                file_obj, encoding="unicode_escape", header=0, nrows=6)
         if len(df) < 5:
             return False
     except Exception as error:
@@ -189,7 +189,7 @@ def csv_and_xlsx_file_validatation(file_obj):
     return True
 
 
-def read_contents_from_csv_or_xlsx_file(file_path):
+def read_contents_from_csv_or_xlsx_file(file_path, standardisation_config={}):
     """This function reads the file and return the contents as dict"""
     dataframe = pd.DataFrame([])
     try:
@@ -199,9 +199,11 @@ def read_contents_from_csv_or_xlsx_file(file_path):
             content = pd.read_csv(file_path, index_col=False, nrows=2) if file_path else dataframe
         else:
             return []
-
         content = content.drop(content.filter(regex='Unnamed').columns, axis=1)
         content = content.fillna("")
+        mask_columns = [key for key, value in standardisation_config.items() if value.get('masked', False)]
+        if mask_columns:
+            content[mask_columns] = "######"
     except Exception as error:
         logging.error("Invalid file ERROR: %s", error)
         return []

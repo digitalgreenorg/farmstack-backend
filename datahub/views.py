@@ -1900,7 +1900,7 @@ class DatasetV2ViewSet(GenericViewSet):
             file_path = {}
             file_path["id"] = file.id
             file_path["content"] = read_contents_from_csv_or_xlsx_file(
-                os.path.join(settings.DATASET_FILES_URL, str(file.standardised_file))
+                os.path.join(settings.DATASET_FILES_URL, str(file.standardised_file)), file.standardisation_config
             )
             file_path["file"] = path_
             file_path["source"] = file.source
@@ -2694,9 +2694,9 @@ class DatasetFileV2View(GenericViewSet):
             instance = self.get_object()
             # Generate the file and write the path to standardised file.
             standardised_configuration = request.data.get("standardised_configuration")
-            mask_columns = request.data.get(
-                "mask_columns",
-            )
+            # mask_columns = request.data.get(
+            #     "mask_columns",
+            # )
             config = request.data.get("config")
             file_path = str(instance.file)
 
@@ -2704,8 +2704,6 @@ class DatasetFileV2View(GenericViewSet):
                 df = pd.read_excel(os.path.join(settings.DATASET_FILES_URL, file_path), index_col=None)
             else:
                 df = pd.read_csv(os.path.join(settings.DATASET_FILES_URL, file_path), index_col=False)
-
-            df[mask_columns] = "######"
 
             df.rename(columns=standardised_configuration, inplace=True)
             df.columns = df.columns.astype(str)

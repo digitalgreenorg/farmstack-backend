@@ -191,7 +191,7 @@ class DatasetsMicrositeViewSet(GenericViewSet):
         for file in dataset_file_obj:
             path_ = os.path.join(settings.DATASET_FILES_URL, str(file.standardised_file))
             file_path = {}
-            file_path["content"] = read_contents_from_csv_or_xlsx_file(path_)
+            file_path["content"] = read_contents_from_csv_or_xlsx_file(path_, standardisation_config)
             # Omitted the actual name of the file so the user can't manually download the file
             # Added file name : As they need to show the file name in frontend.
             file_path["id"] = file.id
