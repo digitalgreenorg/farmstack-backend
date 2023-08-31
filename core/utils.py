@@ -194,9 +194,9 @@ def read_contents_from_csv_or_xlsx_file(file_path, standardisation_config={}):
     dataframe = pd.DataFrame([])
     try:
         if file_path.endswith(".xlsx") or file_path.endswith(".xls"):
-            content = pd.read_excel(file_path, index_col=None, nrows=3) if file_path else dataframe
+            content = pd.read_excel(file_path, index_col=None, nrows=2) if file_path else dataframe
         elif file_path.endswith(".csv"):
-            content = pd.read_csv(file_path, index_col=False, nrows=3) if file_path else dataframe
+            content = pd.read_csv(file_path, index_col=False, nrows=2) if file_path else dataframe
         else:
             return []
         content = content.drop(content.filter(regex='Unnamed').columns, axis=1)
