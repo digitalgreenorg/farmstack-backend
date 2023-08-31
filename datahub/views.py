@@ -2642,7 +2642,7 @@ class DatasetV2View(GenericViewSet):
                     f"Something went wrong, please try again. {e}",
                     status=status.HTTP_400_BAD_REQUEST,
                 )
-            cache[pk] = data
+            cache.set(pk, data)
             LOGGER.info("Dashboard details added to cache", exc_info=True)
             return Response(
                 data,
