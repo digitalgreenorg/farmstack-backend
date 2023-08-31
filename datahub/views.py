@@ -1693,7 +1693,7 @@ class DatasetV2ViewSet(GenericViewSet):
             dataset_file = DatasetV2File.objects.get(id=request.data.get("id"))
             file_path = str(dataset_file.file)
             if file_path.endswith(".xlsx") or file_path.endswith(".xls"):
-                df = pd.read_excel(os.path.join(settings.DATASET_FILES_URL, file_path), index_col=None, nrows=q)
+                df = pd.read_excel(os.path.join(settings.DATASET_FILES_URL, file_path), index_col=None, nrows=1)
             else:
                 df = pd.read_csv(os.path.join(settings.DATASET_FILES_URL, file_path), index_col=False, nrows=1)
             df.columns = df.columns.astype(str)
