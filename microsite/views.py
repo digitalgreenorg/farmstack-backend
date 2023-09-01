@@ -506,7 +506,7 @@ class DatasetsMicrositeViewSet(GenericViewSet):
                     status=status.HTTP_400_BAD_REQUEST,
                 )
             compressed_data = gzip.compress(pickle.dumps(data))
-            cache.set(hash_key, compressed_data, timeout_seconds=86400)
+            cache.set(hash_key, compressed_data, 86400)
             LOGGER.info("Dashboard details added to cache", exc_info=True)
             return Response(
                 data,
