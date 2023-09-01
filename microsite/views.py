@@ -30,6 +30,7 @@ from core.utils import (
     csv_and_xlsx_file_validatation,
     date_formater,
     read_contents_from_csv_or_xlsx_file,
+    generate_hash_key_for_dashboard
 )
 from datahub.models import (
     DatahubDocuments,
@@ -403,7 +404,8 @@ class DatasetsMicrositeViewSet(GenericViewSet):
                     "Requested resource is currently unavailable. Please try again later.",
                     status=status.HTTP_200_OK,
                 )
-            cache_data = cache.get(pk, {})
+            hash_key = generate_hash_key_for_dashboard(request.data)
+            cache_data = cache.get(hash_key, {})
             if cache_data:
                 LOGGER.info("Dashboard details found in cache", exc_info=True)
                 return Response(
@@ -501,7 +503,7 @@ class DatasetsMicrositeViewSet(GenericViewSet):
                     f"Something went wrong, please try again. {e}",
                     status=status.HTTP_400_BAD_REQUEST,
                 )
-            cache.set(pk, data)
+            cache.set(hash_key, data)
             LOGGER.info("Dashboard details added to cache", exc_info=True)
             return Response(
                 data,
