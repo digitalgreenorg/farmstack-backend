@@ -411,7 +411,7 @@ class DatasetsMicrositeViewSet(GenericViewSet):
             if cache_data:
                 LOGGER.info("Dashboard details found in cache", exc_info=True)
                 return Response(
-                pickle.loads(gzip.decompress(cache_data))
+                pickle.loads(gzip.decompress(cache_data)),
                 status=status.HTTP_200_OK,
                 )
             serializer = DatahubDatasetFileDashboardFilterSerializer(data=request.data)
