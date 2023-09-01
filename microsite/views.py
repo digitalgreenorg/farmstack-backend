@@ -68,6 +68,7 @@ from utils.file_operations import (
     filter_dataframe_for_dashboard_counties,
 )
 from utils.jwt_services import http_request_mutation
+from django.core.cache import cache
 
 LOGGER = logging.getLogger(__name__)
 
@@ -402,7 +403,13 @@ class DatasetsMicrositeViewSet(GenericViewSet):
                     "Requested resource is currently unavailable. Please try again later.",
                     status=status.HTTP_200_OK,
                 )
-
+            cache_data = cache.get(pk, {})
+            if cache_data:
+                LOGGER.info("Dashboard details found in cache", exc_info=True)
+                return Response(
+                cache_data,
+                status=status.HTTP_200_OK,
+                )
             serializer = DatahubDatasetFileDashboardFilterSerializer(data=request.data)
             serializer.is_valid(raise_exception=True)
 
@@ -494,7 +501,8 @@ class DatasetsMicrositeViewSet(GenericViewSet):
                     f"Something went wrong, please try again. {e}",
                     status=status.HTTP_400_BAD_REQUEST,
                 )
-
+            cache.set(pk, data)
+            LOGGER.info("Dashboard details added to cache", exc_info=True)
             return Response(
                 data,
                 status=status.HTTP_200_OK,
