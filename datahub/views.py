@@ -130,7 +130,8 @@ from .serializers import (
 )
 from core.utils import generate_api_key
 from django.core.cache import cache
-
+import gzip
+import pickle
 LOGGER = logging.getLogger(__name__)
 
 con = None

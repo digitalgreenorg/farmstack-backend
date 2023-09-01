@@ -4,6 +4,8 @@ import logging
 import math
 import operator
 import os
+import gzip
+import pickle
 from functools import reduce
 
 import pandas as pd
