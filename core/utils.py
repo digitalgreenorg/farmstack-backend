@@ -244,3 +244,4 @@ def generate_hash_key_for_dashboard(data):
     # Get the hexadecimal representation of the hash
     hash_key = hash_obj.hexdigest()
     return hash_key
+
