@@ -30,6 +30,7 @@ from core.utils import (
     csv_and_xlsx_file_validatation,
     date_formater,
     read_contents_from_csv_or_xlsx_file,
+    generate_hash_key_for_dashboard
 )
 from datahub.models import (
     DatahubDocuments,
@@ -68,6 +69,7 @@ from utils.file_operations import (
     filter_dataframe_for_dashboard_counties,
 )
 from utils.jwt_services import http_request_mutation
+from django.core.cache import cache
 
 LOGGER = logging.getLogger(__name__)
 
@@ -402,7 +404,14 @@ class DatasetsMicrositeViewSet(GenericViewSet):
                     "Requested resource is currently unavailable. Please try again later.",
                     status=status.HTTP_200_OK,
                 )
-
+            hash_key = generate_hash_key_for_dashboard(request.data)
+            cache_data = cache.get(hash_key, {})
+            if cache_data:
+                LOGGER.info("Dashboard details found in cache", exc_info=True)
+                return Response(
+                cache_data,
+                status=status.HTTP_200_OK,
+                )
             serializer = DatahubDatasetFileDashboardFilterSerializer(data=request.data)
             serializer.is_valid(raise_exception=True)
 
@@ -494,7 +503,8 @@ class DatasetsMicrositeViewSet(GenericViewSet):
                     f"Something went wrong, please try again. {e}",
                     status=status.HTTP_400_BAD_REQUEST,
                 )
-
+            cache.set(hash_key, data)
+            LOGGER.info("Dashboard details added to cache", exc_info=True)
             return Response(
                 data,
                 status=status.HTTP_200_OK,

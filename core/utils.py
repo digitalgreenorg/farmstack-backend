@@ -18,6 +18,8 @@ from sendgrid.helpers.mail import Content, Email, Mail
 
 from core.constants import Constants
 import secrets
+import hashlib
+import json
 
 LOGGER = logging.getLogger(__name__)
 
@@ -231,3 +233,15 @@ def timer(func):
 def generate_api_key(length=32):
     api_key = secrets.token_hex(length)
     return api_key
+
+def generate_hash_key_for_dashboard(data):
+    data_string = json.dumps(request.data, sort_keys=True)
+    # Create a hashlib SHA-256 hash object
+    hash_obj = hashlib.sha256()
+    # Update the hash object with the data as bytes
+    hash_obj.update(data_string.encode('utf-8'))
+
+    # Get the hexadecimal representation of the hash
+    hash_key = hash_obj.hexdigest()
+    return hash_key
+
