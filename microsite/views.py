@@ -409,7 +409,7 @@ class DatasetsMicrositeViewSet(GenericViewSet):
             if cache_data:
                 LOGGER.info("Dashboard details found in cache", exc_info=True)
                 return Response(
-                cache_data,
+                pickle.loads(gzip.decompress(cache_data))
                 status=status.HTTP_200_OK,
                 )
             serializer = DatahubDatasetFileDashboardFilterSerializer(data=request.data)
@@ -503,7 +503,8 @@ class DatasetsMicrositeViewSet(GenericViewSet):
                     f"Something went wrong, please try again. {e}",
                     status=status.HTTP_400_BAD_REQUEST,
                 )
-            cache.set(hash_key, data)
+            compressed_data = gzip.compress(pickle.dumps(data))
+            cache.set(hash_key, compressed_data, timeout_seconds=86400)
             LOGGER.info("Dashboard details added to cache", exc_info=True)
             return Response(
                 data,
