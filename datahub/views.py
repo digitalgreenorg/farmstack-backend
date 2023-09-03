@@ -1917,7 +1917,7 @@ class DatasetV2ViewSet(GenericViewSet):
             usage_policy = UsagePolicyDetailSerializer(
                 queryset.order_by("-updated_at").all(),
                 many=True
-            ).data if queryset.exists() else {}
+            ).data if queryset.exists() else []
             file_path["usage_policy"] = usage_policy
             data.append(file_path)
 
