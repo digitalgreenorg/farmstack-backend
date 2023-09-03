@@ -1910,28 +1910,14 @@ class DatasetV2ViewSet(GenericViewSet):
             file_path["accessibility"] = file.accessibility
             file_path["standardised_file"] = os.path.join(settings.DATASET_FILES_URL, str(file.standardised_file))
             file_path["standardisation_config"] = file.standardised_configuration
-            if not user_map:
-                # usage_policy = UsagePolicyDetailSerializer(file.dataset_v2_file.all(), many=True).data
-                if type == "api":
-                    usage_policy = UsagePolicyDetailSerializer(
-                                        file.dataset_v2_file.filter(type="api").all(), many=True
-                                    ).data
-                else: 
-                    usage_policy = UsagePolicyDetailSerializer(
-                                        file.dataset_v2_file.filter(type="dataset_file").all(), many=True).data
-            else:
-                if type == "api":
-                    usage_policy = (file.dataset_v2_file.filter(
-                                    user_organization_map=user_map, type="api").order_by(
-                                        "-updated_at").all()
-                                    )
-                    usage_policy = UsagePolicyDetailSerializer(usage_policy, many=True).data if usage_policy else {}
-                else:
-                    usage_policy = (file.dataset_v2_file.filter(
-                                    user_organization_map=user_map, type="dataset_file").order_by(
-                                        "-updated_at").all()
-                                    )
-                    usage_policy = UsagePolicyDetailSerializer(usage_policy, many=True).data if usage_policy else {}
+            type_filter = type if type == "api" else "dataset_file"
+            queryset = file.dataset_v2_file.filter(type=type_filter)
+            if user_map:
+                queryset = queryset.filter(user_organization_map=user_map)
+            usage_policy = UsagePolicyDetailSerializer(
+                queryset.order_by("-updated_at").all(),
+                many=True
+            ).data if queryset.exists() else []
             file_path["usage_policy"] = usage_policy
             data.append(file_path)
 
