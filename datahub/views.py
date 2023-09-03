@@ -3075,6 +3075,34 @@ class ResourceManagementViewSet(GenericViewSet):
         serializer = self.get_serializer(resource)
         # serializer.is_valid(raise_exception=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
+    
+    @http_request_mutation
+    @action(detail=False, methods=["post"])
+    def resources_filter(self, request, *args, **kwargs):
+        try:
+            data =request.data
+            user_map = request.META.get("map_id")
+            categories = data.pop(Constants.CATEGORY, None)
+            others = data.pop(Constants.OTHERS, "")
+            filters = {key: value for key, value in data.items() if value}
+            query_set = self.get_queryset().filter(**filters).order_by("-updated_at")
+            if categories:
+                query_set = query_set.filter(
+                    reduce(
+                        operator.or_,
+                        (Q(category__contains=cat) for cat in categories),
+                    )
+                )
+            query_set = query_set.exclude(user_map=user_map) if others else query_set.filter(
+                user_map=user_map)
+            page = self.paginate_queryset(query_set)
+            serializer = self.get_serializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
+        except ValidationError as e:
+            return Response(e.detail, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            LOGGER.error(e)
+            return Response(str(e), status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 class ResourceFileManagementViewSet(GenericViewSet):
