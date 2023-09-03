@@ -1910,7 +1910,7 @@ class DatasetV2ViewSet(GenericViewSet):
             file_path["accessibility"] = file.accessibility
             file_path["standardised_file"] = os.path.join(settings.DATASET_FILES_URL, str(file.standardised_file))
             file_path["standardisation_config"] = file.standardised_configuration
-            type_filter = type if type == "api" else "dataset_file":
+            type_filter = type if type == "api" else "dataset_file"
             queryset = file.dataset_v2_file.filter(type=type_filter)
             if user_map:
                 queryset = queryset.filter(user_organization_map=user_map)
