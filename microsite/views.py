@@ -68,7 +68,10 @@ from microsite.serializers import (
 from utils import custom_exceptions, file_operations
 from utils.file_operations import (
     check_file_name_length,
-    filter_dataframe_for_dashboard_counties, generate_omfp_dashboard, generate_fsp_dashboard
+    filter_dataframe_for_dashboard_counties,
+    generate_omfp_dashboard,
+    generate_fsp_dashboard,
+    generate_knfd_dashboard
 )
 from utils.jwt_services import http_request_mutation
 from django.core.cache import cache
@@ -420,6 +423,8 @@ class DatasetsMicrositeViewSet(GenericViewSet):
                 return generate_omfp_dashboard(dataset_file, request.data, hash_key)
             if "/fsp" in dataset_file.lower():
                 return generate_fsp_dashboard(dataset_file, request.data, hash_key)
+            if "/knfd" in dataset_file.lower():
+                return generate_knfd_dashboard(dataset_file, request.data, hash_key)
             if not "/kiamis" in dataset_file.lower():
                  return Response(
                     "Requested resource is currently unavailable. Please try again later.",

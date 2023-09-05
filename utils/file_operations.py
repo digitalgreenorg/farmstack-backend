@@ -335,8 +335,6 @@ def filter_dataframe_for_dashboard_counties(df: Any, counties: [], sub_counties:
     LOGGER.info("Dashboard details added to cache", exc_info=True)
     return obj
 
-
-
 def generate_omfp_dashboard(dataset_file, data, hash_key):
     if dataset_file.endswith(".xlsx") or dataset_file.endswith(".xls"):
         df = pd.read_excel(os.path.join(settings.DATASET_FILES_URL, dataset_file))
@@ -414,11 +412,55 @@ def generate_fsp_dashboard(dataset_file, data, hash_key):
             "female_count": filtered_df['Farmer_Sex'].value_counts().get('FEMALE', 0),
             "farmer_mobile_numbers": np.unique(filtered_df['Farmer_TelephoneNumebr']).size,
         }
-        dashboard_details["gender_by_subcounty"] =filtered_df.groupby(['Subcounty', 'Farmer_Sex'])['Farmer_Sex'].count().unstack().fillna(0).astype(int).to_dict(orient='index')
-        dashboard_details["primary_value_chain_by_subcounty"] =filtered_df.groupby(['Subcounty', 'vc'])['vc'].count().unstack().fillna(0).astype(int).to_dict(orient='index')
-        dashboard_details["second_value_chain_by_subcounty"] =filtered_df.groupby(['Subcounty', 'vc_two'])['vc_two'].count().unstack().fillna(0).astype(int).to_dict(orient='index')
-        dashboard_details["third_value_chain_by_subcounty"] =filtered_df.groupby(['Subcounty', 'vc_three'])['vc_three'].count().unstack().fillna(0).astype(int).to_dict(orient='index')
+        dashboard_details["gender_by_sub_county"] =filtered_df.groupby(['Subcounty', 'Farmer_Sex'])['Farmer_Sex'].count().unstack().fillna(0).astype(int).to_dict(orient='index')
+        dashboard_details["primary_value_chain_by_sub_county"] =filtered_df.groupby(['Subcounty', 'vc'])['vc'].count().unstack().fillna(0).astype(int).to_dict(orient='index')
+        dashboard_details["second_value_chain_by_sub_county"] =filtered_df.groupby(['Subcounty', 'vc_two'])['vc_two'].count().unstack().fillna(0).astype(int).to_dict(orient='index')
+        dashboard_details["third_value_chain_by_sub_county"] =filtered_df.groupby(['Subcounty', 'vc_three'])['vc_three'].count().unstack().fillna(0).astype(int).to_dict(orient='index')
     except Exception as e:
+        logging.error(e)
+        return Response(
+            f"Something went wrong, please try again. {e}",
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+    cache.set(hash_key, dashboard_details, 86400)
+    LOGGER.info("Dashboard details added to cache", exc_info=True) 
+    return Response(
+            dashboard_details,
+            status=200
+        )
+
+def generate_knfd_dashboard(dataset_file, data, hash_key):
+    if dataset_file.endswith(".xlsx") or dataset_file.endswith(".xls"):
+        df = pd.read_excel(os.path.join(settings.DATASET_FILES_URL, dataset_file))
+    elif dataset_file.endswith(".csv"):
+        df = pd.read_csv(os.path.join(settings.DATASET_FILES_URL, dataset_file),low_memory=False)
+    else:
+        return Response(
+            "Unsupported file please use .xls or .csv.",
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+    convert_columns = ['County', 'Sub-County', 'Telephone', "Gender", "PrimaryValueChain"]
+    df[convert_columns] = df[convert_columns].astype(str)
+    df["Sub-County"] = df["Sub-County"].str.upper()
+    df["Gender"] = df["Gender"].str.upper()
+    df["County"] = df["County"].str.upper()
+    dashboard_details={}
+    try:
+        county_filters = data.get("county", [])
+        filtered_df = df[df['County'].isin(county_filters)] if county_filters else df
+        sub_county_filters = data.get("sub_county", [])
+        filtered_df = filtered_df[filtered_df['Sub-County'].isin(sub_county_filters)] if sub_county_filters else filtered_df
+        dashboard_details = {
+            "total_number_of_records": len(filtered_df),
+            "county": np.unique(filtered_df['County']),
+            "sub_county": np.unique(filtered_df['Sub-County']),
+            "male_count": filtered_df['Gender'].value_counts().get('MALE', 0),
+            "female_count": filtered_df['Gender'].value_counts().get('FEMALE', 0),
+            "farmer_mobile_numbers": np.unique(filtered_df['Telephone']).size,
+        }
+        dashboard_details["gender_by_sub_county"] =filtered_df.groupby(['Sub-County', 'Gender'])['Gender'].count().unstack().fillna(0).astype(int).to_dict(orient='index')
+        dashboard_details["primary_value_chain_by_sub_county"] =filtered_df.groupby(['Sub-County', 'PrimaryValueChain'])['PrimaryValueChain'].count().unstack().fillna(0).astype(int).to_dict(orient='index')
+       except Exception as e:
         logging.error(e)
         return Response(
             f"Something went wrong, please try again. {e}",
