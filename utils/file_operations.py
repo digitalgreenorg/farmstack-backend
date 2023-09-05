@@ -460,7 +460,7 @@ def generate_knfd_dashboard(dataset_file, data, hash_key):
         }
         dashboard_details["gender_by_sub_county"] =filtered_df.groupby(['Sub-County', 'Gender'])['Gender'].count().unstack().fillna(0).astype(int).to_dict(orient='index')
         dashboard_details["primary_value_chain_by_sub_county"] =filtered_df.groupby(['Sub-County', 'PrimaryValueChain'])['PrimaryValueChain'].count().unstack().fillna(0).astype(int).to_dict(orient='index')
-       except Exception as e:
+    except Exception as e:
         logging.error(e)
         return Response(
             f"Something went wrong, please try again. {e}",
