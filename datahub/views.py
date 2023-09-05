@@ -2531,22 +2531,20 @@ class DatasetV2View(GenericViewSet):
             #         "Requested resource is currently unavailable. Please try again later.",
             #         status=status.HTTP_200_OK,
             #     )
-            # hash_key = generate_hash_key_for_dashboard(request.data)
-            # cache_data = cache.get(hash_key, {})
-            # if cache_data:
-            #     LOGGER.info("Dashboard details found in cache", exc_info=True)
-            #     return Response(
-            #     cache_data,
-            #     status=status.HTTP_200_OK,
-            #     )
+            hash_key = generate_hash_key_for_dashboard(pk, request.data)
+            cache_data = cache.get(hash_key, {})
+            if cache_data:
+                LOGGER.info("Dashboard details found in cache", exc_info=True)
+                return Response(
+                cache_data,
+                status=status.HTTP_200_OK,
+                )
             dataset_file_object = DatasetV2File.objects.get(id=pk)
             dataset_file = str(dataset_file_object.file)
-            # print(dataset_file_object)
-            # import pdb; pdb.set_trace()
             if "/omfp" in dataset_file.lower():
-                return generate_omfp_dashboard(dataset_file, request.data)
+                return generate_omfp_dashboard(dataset_file, request.data, hash_key)
             if "/fsp" in dataset_file.lower():
-                return generate_fsp_dashboard(dataset_file, request.data)
+                return generate_fsp_dashboard(dataset_file, request.data, hash_key)
             if not "/kiamis" in dataset_file.lower():
                  return Response(
                     "Requested resource is currently unavailable. Please try again later.",
@@ -2639,8 +2637,6 @@ class DatasetV2View(GenericViewSet):
                     f"Something went wrong, please try again. {e}",
                     status=status.HTTP_400_BAD_REQUEST,
                 )
-            cache.set(hash_key, data, 86400)
-            LOGGER.info("Dashboard details added to cache", exc_info=True)
             return Response(
                 data,
                 status=status.HTTP_200_OK,

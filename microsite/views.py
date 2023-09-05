@@ -406,13 +406,25 @@ class DatasetsMicrositeViewSet(GenericViewSet):
                     "Requested resource is currently unavailable. Please try again later.",
                     status=status.HTTP_200_OK,
                 )
-            hash_key = generate_hash_key_for_dashboard(request.data)
+            hash_key = generate_hash_key_for_dashboard(pk, request.data)
             cache_data = cache.get(hash_key, {})
             if cache_data:
                 LOGGER.info("Dashboard details found in cache", exc_info=True)
                 return Response(
                 cache_data,
                 status=status.HTTP_200_OK,
+                )
+            dataset_file_object = DatasetV2File.objects.get(id=pk)
+            dataset_file = str(dataset_file_object.file)
+            
+            if "/omfp" in dataset_file.lower():
+                return generate_omfp_dashboard(dataset_file, request.data)
+            if "/fsp" in dataset_file.lower():
+                return generate_fsp_dashboard(dataset_file, request.data)
+            if not "/kiamis" in dataset_file.lower():
+                 return Response(
+                    "Requested resource is currently unavailable. Please try again later.",
+                    status=status.HTTP_200_OK,
                 )
             serializer = DatahubDatasetFileDashboardFilterSerializer(data=request.data)
             serializer.is_valid(raise_exception=True)
@@ -447,9 +459,6 @@ class DatasetsMicrositeViewSet(GenericViewSet):
                             'Small East African Goats', 'Somali Goat', 'Other Goat', 'Chicken -Indigenous',
                             'Chicken -Broilers', 'Chicken -Layers', 'Highest Level of Formal Education',
                             'Maize food crop', "Beans", 'Cassava', 'Sorghum', 'Potatoes', 'Cowpeas']
-
-            dataset_file_object = DatasetV2File.objects.get(id=pk)
-            dataset_file = str(dataset_file_object.standardised_file)
             try:
                 if dataset_file.endswith(".xlsx") or dataset_file.endswith(".xls"):
                     df = pd.read_excel(os.path.join(settings.DATASET_FILES_URL, dataset_file))
@@ -497,6 +506,7 @@ class DatasetsMicrositeViewSet(GenericViewSet):
                     sub_counties=sub_counties if sub_counties else [],
                     gender=gender if gender else [],
                     value_chain=value_chain if value_chain else [],
+                    hsah_key=hash_key
                 )
 
             except Exception as e:
