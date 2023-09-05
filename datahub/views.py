@@ -117,7 +117,10 @@ from participant.serializers import (
 )
 from utils import custom_exceptions, file_operations, string_functions, validators
 from utils.authentication_services import authenticate_user
-from utils.file_operations import check_file_name_length, filter_dataframe_for_dashboard_counties
+from utils.file_operations import check_file_name_length, filter_dataframe_for_dashboard_counties,
+ generate_omfp_dashboard,
+  generate_fsp_dashboard,
+  generate_knfd_dashboard
 from utils.jwt_services import http_request_mutation
 
 from .models import Policy, ResourceFile, UsagePolicy
@@ -2526,13 +2529,12 @@ class DatasetV2View(GenericViewSet):
     @action(detail=True, methods=["post"])
     def get_dashboard_chart_data(self, request, pk, *args, **kwargs):
         try:
-
-            if str(pk) != "c6552c05-0ada-4522-b584-71e26286a2e3":
-                return Response(
-                    "Requested resource is currently unavailable. Please try again later.",
-                    status=status.HTTP_200_OK,
-                )
-            hash_key = generate_hash_key_for_dashboard(request.data)
+            # if str(pk) != "c6552c05-0ada-4522-b584-71e26286a2e3":
+            #     return Response(
+            #         "Requested resource is currently unavailable. Please try again later.",
+            #         status=status.HTTP_200_OK,
+            #     )
+            hash_key = generate_hash_key_for_dashboard(pk, request.data)
             cache_data = cache.get(hash_key, {})
             if cache_data:
                 LOGGER.info("Dashboard details found in cache", exc_info=True)
@@ -2540,9 +2542,21 @@ class DatasetV2View(GenericViewSet):
                 cache_data,
                 status=status.HTTP_200_OK,
                 )
+            dataset_file_object = DatasetV2File.objects.get(id=pk)
+            dataset_file = str(dataset_file_object.file)
+            if "/omfp" in dataset_file.lower():
+                return generate_omfp_dashboard(dataset_file, request.data, hash_key)
+            if "/fsp" in dataset_file.lower():
+                return generate_fsp_dashboard(dataset_file, request.data, hash_key)
+            if "/knfd" in dataset_file.lower():
+                return generate_knfd_dashboard(dataset_file, request.data, hash_key)
+            if not "/kiamis" in dataset_file.lower():
+                 return Response(
+                    "Requested resource is currently unavailable. Please try again later.",
+                    status=status.HTTP_200_OK,
+                )
             serializer = DatahubDatasetFileDashboardFilterSerializer(data=request.data)
             serializer.is_valid(raise_exception=True)
-
             counties = []
             sub_counties = []
             gender = []
@@ -2559,7 +2573,6 @@ class DatasetV2View(GenericViewSet):
 
             if serializer.data.get("value_chain"):
                 value_chain = serializer.data.get("value_chain")
-
             cols_to_read = ['Gender', 'Constituency', 'Millet', 'County', 'Sub County', 'Crop Production',
                             'farmer_mobile_number',
                             'Livestock Production', 'Ducks', 'Other Sheep', 'Total Area Irrigation', 'Family',
@@ -2574,8 +2587,6 @@ class DatasetV2View(GenericViewSet):
                             'Chicken -Broilers', 'Chicken -Layers', 'Highest Level of Formal Education',
                             'Maize food crop', "Beans", 'Cassava', 'Sorghum', 'Potatoes', 'Cowpeas']
 
-            dataset_file_object = DatasetV2File.objects.get(id=pk)
-            dataset_file = str(dataset_file_object.file)
             try:
                 if dataset_file.endswith(".xlsx") or dataset_file.endswith(".xls"):
                     df = pd.read_excel(os.path.join(settings.DATASET_FILES_URL, dataset_file))
@@ -2631,8 +2642,6 @@ class DatasetV2View(GenericViewSet):
                     f"Something went wrong, please try again. {e}",
                     status=status.HTTP_400_BAD_REQUEST,
                 )
-            cache.set(hash_key, data, 86400)
-            LOGGER.info("Dashboard details added to cache", exc_info=True)
             return Response(
                 data,
                 status=status.HTTP_200_OK,
@@ -2643,7 +2652,6 @@ class DatasetV2View(GenericViewSet):
                 "No dataset file for the provided id.",
                 status=status.HTTP_404_NOT_FOUND,
             )
-
 
 class DatasetFileV2View(GenericViewSet):
     queryset = DatasetV2File.objects.all()

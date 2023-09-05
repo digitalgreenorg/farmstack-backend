@@ -234,8 +234,10 @@ def generate_api_key(length=32):
     api_key = secrets.token_hex(length)
     return api_key
 
-def generate_hash_key_for_dashboard(data):
-    data_string = json.dumps(data, sort_keys=True)
+def generate_hash_key_for_dashboard(pk, data):
+    data["pk"] = pk
+    print(data)
+    data_string = json.dumps(data)
     # Create a hashlib SHA-256 hash object
     hash_obj = hashlib.sha256()
     # Update the hash object with the data as bytes
