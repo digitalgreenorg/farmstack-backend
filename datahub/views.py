@@ -117,10 +117,10 @@ from participant.serializers import (
 )
 from utils import custom_exceptions, file_operations, string_functions, validators
 from utils.authentication_services import authenticate_user
-from utils.file_operations import check_file_name_length, filter_dataframe_for_dashboard_counties,
- generate_omfp_dashboard,
-  generate_fsp_dashboard,
-  generate_knfd_dashboard
+from utils.file_operations import (check_file_name_length, filter_dataframe_for_dashboard_counties,
+    generate_omfp_dashboard,
+    generate_fsp_dashboard,
+    generate_knfd_dashboard)
 from utils.jwt_services import http_request_mutation
 
 from .models import Policy, ResourceFile, UsagePolicy

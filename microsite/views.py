@@ -525,7 +525,6 @@ class DatasetsMicrositeViewSet(GenericViewSet):
                 data,
                 status=status.HTTP_200_OK,
             )
-
         except DatasetV2File.DoesNotExist:
             return Response(
                 "No dataset file for the provided id.",
