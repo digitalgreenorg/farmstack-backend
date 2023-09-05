@@ -68,7 +68,7 @@ from microsite.serializers import (
 from utils import custom_exceptions, file_operations
 from utils.file_operations import (
     check_file_name_length,
-    filter_dataframe_for_dashboard_counties,
+    filter_dataframe_for_dashboard_counties, generate_omfp_dashboard, generate_fsp_dashboard
 )
 from utils.jwt_services import http_request_mutation
 from django.core.cache import cache
@@ -400,12 +400,11 @@ class DatasetsMicrositeViewSet(GenericViewSet):
     @action(detail=True, methods=["post"])
     def get_dashboard_chart_data(self, request, pk, *args, **kwargs):
         try:
-
-            if str(pk) != "c6552c05-0ada-4522-b584-71e26286a2e3":
-                return Response(
-                    "Requested resource is currently unavailable. Please try again later.",
-                    status=status.HTTP_200_OK,
-                )
+            # if str(pk) != "c6552c05-0ada-4522-b584-71e26286a2e3":
+            #     return Response(
+            #         "Requested resource is currently unavailable. Please try again later.",
+            #         status=status.HTTP_200_OK,
+            #     )
             hash_key = generate_hash_key_for_dashboard(pk, request.data)
             cache_data = cache.get(hash_key, {})
             if cache_data:
@@ -416,11 +415,11 @@ class DatasetsMicrositeViewSet(GenericViewSet):
                 )
             dataset_file_object = DatasetV2File.objects.get(id=pk)
             dataset_file = str(dataset_file_object.file)
-            
+
             if "/omfp" in dataset_file.lower():
-                return generate_omfp_dashboard(dataset_file, request.data)
+                return generate_omfp_dashboard(dataset_file, request.data, hash_key)
             if "/fsp" in dataset_file.lower():
-                return generate_fsp_dashboard(dataset_file, request.data)
+                return generate_fsp_dashboard(dataset_file, request.data, hash_key)
             if not "/kiamis" in dataset_file.lower():
                  return Response(
                     "Requested resource is currently unavailable. Please try again later.",
