@@ -2526,23 +2526,34 @@ class DatasetV2View(GenericViewSet):
     @action(detail=True, methods=["post"])
     def get_dashboard_chart_data(self, request, pk, *args, **kwargs):
         try:
-
-            if str(pk) != "c6552c05-0ada-4522-b584-71e26286a2e3":
-                return Response(
+            # if str(pk) != "c6552c05-0ada-4522-b584-71e26286a2e3":
+            #     return Response(
+            #         "Requested resource is currently unavailable. Please try again later.",
+            #         status=status.HTTP_200_OK,
+            #     )
+            # hash_key = generate_hash_key_for_dashboard(request.data)
+            # cache_data = cache.get(hash_key, {})
+            # if cache_data:
+            #     LOGGER.info("Dashboard details found in cache", exc_info=True)
+            #     return Response(
+            #     cache_data,
+            #     status=status.HTTP_200_OK,
+            #     )
+            dataset_file_object = DatasetV2File.objects.get(id=pk)
+            dataset_file = str(dataset_file_object.file)
+            # print(dataset_file_object)
+            # import pdb; pdb.set_trace()
+            if "/omfp" in dataset_file.lower():
+                return self.generate_omfp_dashboard(dataset_file, request.data)
+            if "/fsp" in dataset_file.lower():
+                return self.generate_fsp_dashboard(dataset_file, request.data)
+            if not "/kiamis" in dataset_file.lower():
+                 return Response(
                     "Requested resource is currently unavailable. Please try again later.",
                     status=status.HTTP_200_OK,
                 )
-            hash_key = generate_hash_key_for_dashboard(request.data)
-            cache_data = cache.get(hash_key, {})
-            if cache_data:
-                LOGGER.info("Dashboard details found in cache", exc_info=True)
-                return Response(
-                cache_data,
-                status=status.HTTP_200_OK,
-                )
             serializer = DatahubDatasetFileDashboardFilterSerializer(data=request.data)
             serializer.is_valid(raise_exception=True)
-
             counties = []
             sub_counties = []
             gender = []
@@ -2559,7 +2570,6 @@ class DatasetV2View(GenericViewSet):
 
             if serializer.data.get("value_chain"):
                 value_chain = serializer.data.get("value_chain")
-
             cols_to_read = ['Gender', 'Constituency', 'Millet', 'County', 'Sub County', 'Crop Production',
                             'farmer_mobile_number',
                             'Livestock Production', 'Ducks', 'Other Sheep', 'Total Area Irrigation', 'Family',
@@ -2574,8 +2584,6 @@ class DatasetV2View(GenericViewSet):
                             'Chicken -Broilers', 'Chicken -Layers', 'Highest Level of Formal Education',
                             'Maize food crop', "Beans", 'Cassava', 'Sorghum', 'Potatoes', 'Cowpeas']
 
-            dataset_file_object = DatasetV2File.objects.get(id=pk)
-            dataset_file = str(dataset_file_object.file)
             try:
                 if dataset_file.endswith(".xlsx") or dataset_file.endswith(".xls"):
                     df = pd.read_excel(os.path.join(settings.DATASET_FILES_URL, dataset_file))
@@ -2644,6 +2652,93 @@ class DatasetV2View(GenericViewSet):
                 status=status.HTTP_404_NOT_FOUND,
             )
 
+    def generate_omfp_dashboard(self, dataset_file, data):
+        if dataset_file.endswith(".xlsx") or dataset_file.endswith(".xls"):
+            df = pd.read_excel(os.path.join(settings.DATASET_FILES_URL, dataset_file))
+        elif dataset_file.endswith(".csv"):
+            df = pd.read_csv(os.path.join(settings.DATASET_FILES_URL, dataset_file),low_memory=False)
+        else:
+            return Response(
+                "Unsupported file please use .xls or .csv.",
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        dashboard_details={}
+        convert_columns = ['County', 'Sub County', 'Telephone', "Gender", "Primary Value Chain"]
+        df[convert_columns] = df[convert_columns].astype(str)
+        df["Gender"] = df["Gender"].str.upper()
+        df["Sub County"] = df["Sub County"].str.upper()
+        try:
+            county_filters = data.get("county", [])
+            filtered_df = df[df['County'].isin(county_filters)] if county_filters else df
+            sub_county_filters = data.get("sub_county", [])
+            filtered_df = filtered_df[filtered_df['County'].isin(sub_county_filters)] if sub_county_filters else filtered_df
+            # import pdb; pdb.set_trace()
+            dashboard_details = {
+                "total_number_of_records": len(filtered_df),
+                "county": np.unique(filtered_df['County'].str.upper()),
+                "sub_county": np.unique(filtered_df['Sub County']),
+                "male_count": filtered_df['Gender'].value_counts().get('MALE', 0),
+                "female_count": filtered_df['Gender'].value_counts().get('FEMALE', 0),
+                "farmer_mobile_numbers": np.unique(filtered_df['Telephone']).size,
+            }
+            dashboard_details["gender_by_sub_county"] =filtered_df.groupby(['Sub County', 'Gender'])['Gender'].count().unstack().fillna(0).astype(int).to_dict(orient='index')
+            dashboard_details["primary_value_chain_by_sub_county"] =filtered_df.groupby(['Sub County', 'Primary Value Chain'])['Primary Value Chain'].count().unstack().fillna(0).astype(int).to_dict(orient='index')
+            # dashboard_details["second_value_chain_by_county"] =filtered_df.groupby(['County', 'vc_two'])['vc_two'].count().unstack().fillna(0).astype(int).to_dict(orient='index')
+            # dashboard_details["third_value_chain_by_county"] =filtered_df.groupby(['County', 'vc_three'])['vc_three'].count().unstack().fillna(0).astype(int).to_dict(orient='index')
+        except Exception as e:
+            logging.error(e)
+            return Response(
+                f"Something went wrong, please try again. {e}",
+                status=status.HTTP_400_BAD_REQUEST,
+            ) 
+        return Response(
+                dashboard_details,
+                status=200
+            )
+
+    def generate_fsp_dashboard(self, dataset_file, data):
+        if dataset_file.endswith(".xlsx") or dataset_file.endswith(".xls"):
+            df = pd.read_excel(os.path.join(settings.DATASET_FILES_URL, dataset_file))
+        elif dataset_file.endswith(".csv"):
+            df = pd.read_csv(os.path.join(settings.DATASET_FILES_URL, dataset_file),low_memory=False)
+        else:
+            return Response(
+                "Unsupported file please use .xls or .csv.",
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        df['Farmer_Sex'] = df['Farmer_Sex'].map({1: 'Male', 2: 'Female'})
+        convert_columns = ['County', 'Subcounty', 'Farmer_TelephoneNumebr', "Farmer_Sex", "vc", "vc_two", "vc_three"]
+        df[convert_columns] = df[convert_columns].astype(str)
+        df["Subcounty"] = df["Subcounty"].str.upper()
+        df["Farmer_Sex"] = df["Farmer_Sex"].str.upper()
+        dashboard_details={}
+        try:
+            county_filters = data.get("county", [])
+            filtered_df = df[df['County'].isin(county_filters)] if county_filters else df
+            sub_county_filters = data.get("sub_county", [])
+            filtered_df = filtered_df[filtered_df['County'].isin(sub_county_filters)] if sub_county_filters else filtered_df
+            dashboard_details = {
+                "total_number_of_records": len(filtered_df),
+                "county": np.unique(filtered_df['County']),
+                "sub_county": np.unique(filtered_df['Subcounty']),
+                "male_count": filtered_df['Farmer_Sex'].value_counts().get('MALE', 0),
+                "female_count": filtered_df['Farmer_Sex'].value_counts().get('FEMALE', 0),
+                "farmer_mobile_numbers": np.unique(filtered_df['Farmer_TelephoneNumebr']).size,
+            }
+            dashboard_details["gender_by_subcounty"] =filtered_df.groupby(['Subcounty', 'Farmer_Sex'])['Farmer_Sex'].count().unstack().fillna(0).astype(int).to_dict(orient='index')
+            dashboard_details["primary_value_chain_by_subcounty"] =filtered_df.groupby(['Subcounty', 'vc'])['vc'].count().unstack().fillna(0).astype(int).to_dict(orient='index')
+            dashboard_details["second_value_chain_by_subcounty"] =filtered_df.groupby(['Subcounty', 'vc_two'])['vc_two'].count().unstack().fillna(0).astype(int).to_dict(orient='index')
+            dashboard_details["third_value_chain_by_subcounty"] =filtered_df.groupby(['Subcounty', 'vc_three'])['vc_three'].count().unstack().fillna(0).astype(int).to_dict(orient='index')
+        except Exception as e:
+            logging.error(e)
+            return Response(
+                f"Something went wrong, please try again. {e}",
+                status=status.HTTP_400_BAD_REQUEST,
+            ) 
+        return Response(
+                dashboard_details,
+                status=200
+            )
 
 class DatasetFileV2View(GenericViewSet):
     queryset = DatasetV2File.objects.all()

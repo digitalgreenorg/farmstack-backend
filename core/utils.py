@@ -235,13 +235,13 @@ def generate_api_key(length=32):
     return api_key
 
 def generate_hash_key_for_dashboard(data):
-    data_string = json.dumps(data, sort_keys=True)
+    data_string = json.dumps(data)
     # Create a hashlib SHA-256 hash object
-    hash_obj = hashlib.sha256()
-    # Update the hash object with the data as bytes
-    hash_obj.update(data_string.encode('utf-8'))
+    # hash_obj = hashlib.sha256()
+    # # Update the hash object with the data as bytes
+    # hash_obj.update(data_string.encode('utf-8'))
 
-    # Get the hexadecimal representation of the hash
-    hash_key = hash_obj.hexdigest()
+    # # Get the hexadecimal representation of the hash
+    # hash_key = hash_obj.hexdigest()
     return hash_key
 
