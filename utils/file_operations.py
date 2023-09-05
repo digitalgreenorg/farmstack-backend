@@ -331,6 +331,7 @@ def filter_dataframe_for_dashboard_counties(df: Any, counties: [], sub_counties:
     obj["counties"] = np.unique(filtered_by_counties["County"]).size
     obj["constituencies"] = filtered_by_counties["Constituency"].nunique()
     obj["sub_counties"] = np.unique(filtered_by_counties['Sub County']).size
+    obj["type"] = "kiamis"
     cache.set(hash_key, obj, 86400)
     LOGGER.info("Dashboard details added to cache", exc_info=True)
     return obj
@@ -367,6 +368,8 @@ def generate_omfp_dashboard(dataset_file, data, hash_key):
         }
         dashboard_details["gender_by_sub_county"] =filtered_df.groupby(['Sub County', 'Gender'])['Gender'].count().unstack().fillna(0).astype(int).to_dict(orient='index')
         dashboard_details["primary_value_chain_by_sub_county"] =filtered_df.groupby(['Sub County', 'Primary Value Chain'])['Primary Value Chain'].count().unstack().fillna(0).astype(int).to_dict(orient='index')
+        dashboard_details["type"] = "omfp"
+
         # dashboard_details["second_value_chain_by_county"] =filtered_df.groupby(['County', 'vc_two'])['vc_two'].count().unstack().fillna(0).astype(int).to_dict(orient='index')
         # dashboard_details["third_value_chain_by_county"] =filtered_df.groupby(['County', 'vc_three'])['vc_three'].count().unstack().fillna(0).astype(int).to_dict(orient='index')
     except Exception as e:
@@ -416,6 +419,7 @@ def generate_fsp_dashboard(dataset_file, data, hash_key):
         dashboard_details["primary_value_chain_by_sub_county"] =filtered_df.groupby(['Subcounty', 'vc'])['vc'].count().unstack().fillna(0).astype(int).to_dict(orient='index')
         dashboard_details["second_value_chain_by_sub_county"] =filtered_df.groupby(['Subcounty', 'vc_two'])['vc_two'].count().unstack().fillna(0).astype(int).to_dict(orient='index')
         dashboard_details["third_value_chain_by_sub_county"] =filtered_df.groupby(['Subcounty', 'vc_three'])['vc_three'].count().unstack().fillna(0).astype(int).to_dict(orient='index')
+        dashboard_details["type"] = "fsp"
     except Exception as e:
         logging.error(e)
         return Response(
@@ -460,6 +464,7 @@ def generate_knfd_dashboard(dataset_file, data, hash_key):
         }
         dashboard_details["gender_by_sub_county"] =filtered_df.groupby(['Sub-County', 'Gender'])['Gender'].count().unstack().fillna(0).astype(int).to_dict(orient='index')
         dashboard_details["primary_value_chain_by_sub_county"] =filtered_df.groupby(['Sub-County', 'PrimaryValueChain'])['PrimaryValueChain'].count().unstack().fillna(0).astype(int).to_dict(orient='index')
+        dashboard_details["type"] = "knfd"
     except Exception as e:
         logging.error(e)
         return Response(
