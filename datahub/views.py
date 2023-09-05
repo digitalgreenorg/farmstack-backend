@@ -2688,43 +2688,46 @@ class DatasetFileV2View(GenericViewSet):
             # )
             config = request.data.get("config")
             file_path = str(instance.file)
+            if standardised_configuration:
+                if file_path.endswith(".xlsx") or file_path.endswith(".xls"):
+                    df = pd.read_excel(os.path.join(settings.DATASET_FILES_URL, file_path), index_col=None)
+                else:
+                    df = pd.read_csv(os.path.join(settings.DATASET_FILES_URL, file_path), index_col=False)
 
-            if file_path.endswith(".xlsx") or file_path.endswith(".xls"):
-                df = pd.read_excel(os.path.join(settings.DATASET_FILES_URL, file_path), index_col=None)
+                df.rename(columns=standardised_configuration, inplace=True)
+                df.columns = df.columns.astype(str)
+                df = df.drop(df.filter(regex="Unnamed").columns, axis=1)
+
+                if not os.path.exists(os.path.join(settings.DATASET_FILES_URL, instance.dataset.name, instance.source)):
+                    os.makedirs(os.path.join(settings.DATASET_FILES_URL, instance.dataset.name, instance.source))
+
+                file_name = os.path.basename(file_path).replace(".", "_standerdise.")
+                if file_path.endswith(".csv"):
+                    df.to_csv(
+                        os.path.join(
+                            settings.DATASET_FILES_URL,
+                            instance.dataset.name,
+                            instance.source,
+                            file_name,
+                        )
+                    )  # type: ignore
+                else:
+                    df.to_excel(
+                        os.path.join(
+                            settings.DATASET_FILES_URL,
+                            instance.dataset.name,
+                            instance.source,
+                            file_name,
+                        )
+                    )  # type: ignore
+                # data = request.data
+                standardised_file_path = os.path.join(instance.dataset.name, instance.source, file_name)
+                data["file_size"] = os.path.getsize(os.path.join(settings.DATASET_FILES_URL, str(standardised_file_path)))
             else:
-                df = pd.read_csv(os.path.join(settings.DATASET_FILES_URL, file_path), index_col=False)
-
-            df.rename(columns=standardised_configuration, inplace=True)
-            df.columns = df.columns.astype(str)
-            df = df.drop(df.filter(regex="Unnamed").columns, axis=1)
-
-            if not os.path.exists(os.path.join(settings.DATASET_FILES_URL, instance.dataset.name, instance.source)):
-                os.makedirs(os.path.join(settings.DATASET_FILES_URL, instance.dataset.name, instance.source))
-
-            file_name = os.path.basename(file_path).replace(".", "_standerdise.")
-            if file_path.endswith(".csv"):
-                df.to_csv(
-                    os.path.join(
-                        settings.DATASET_FILES_URL,
-                        instance.dataset.name,
-                        instance.source,
-                        file_name,
-                    )
-                )  # type: ignore
-            else:
-                df.to_excel(
-                    os.path.join(
-                        settings.DATASET_FILES_URL,
-                        instance.dataset.name,
-                        instance.source,
-                        file_name,
-                    )
-                )  # type: ignore
-
-            # data = request.data
-            standardised_file_path = os.path.join(instance.dataset.name, instance.source, file_name)
+                file_name = os.path.basename(file_path)
+                standardised_file_path = os.path.join(instance.dataset.name, instance.source, file_name)
+                # data["file_size"] = os.path.getsize(os.path.join(settings.DATASET_FILES_URL, str(standardised_file_path)))
             data["standardised_configuration"] = config
-            data["file_size"] = os.path.getsize(os.path.join(settings.DATASET_FILES_URL, str(standardised_file_path)))
             serializer = self.get_serializer(instance, data=data, partial=True)
             serializer.is_valid(raise_exception=True)
             serializer.save()
