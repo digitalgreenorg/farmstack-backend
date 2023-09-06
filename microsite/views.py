@@ -403,11 +403,6 @@ class DatasetsMicrositeViewSet(GenericViewSet):
     @action(detail=True, methods=["post"])
     def get_dashboard_chart_data(self, request, pk, *args, **kwargs):
         try:
-            # if str(pk) != "c6552c05-0ada-4522-b584-71e26286a2e3":
-            #     return Response(
-            #         "Requested resource is currently unavailable. Please try again later.",
-            #         status=status.HTTP_200_OK,
-            #     )
             hash_key = generate_hash_key_for_dashboard(pk, request.data)
             cache_data = cache.get(hash_key, {})
             if cache_data:
@@ -430,25 +425,25 @@ class DatasetsMicrositeViewSet(GenericViewSet):
                     "Requested resource is currently unavailable. Please try again later.",
                     status=status.HTTP_200_OK,
                 )
-            serializer = DatahubDatasetFileDashboardFilterSerializer(data=request.data)
-            serializer.is_valid(raise_exception=True)
+            # serializer = DatahubDatasetFileDashboardFilterSerializer(data=request.data)
+            # serializer.is_valid(raise_exception=True)
 
             counties = []
             sub_counties = []
             gender = []
             value_chain = []
 
-            if serializer.data.get("county"):
-                counties = serializer.data.get("county")
+        # if serializer.data.get("county"):
+            counties = request.data.get("county")
 
-            if serializer.data.get("sub_county"):
-                sub_counties = serializer.data.get("sub_county")
+        # if serializer.data.get("sub_county"):
+            sub_counties = request.data.get("sub_county")
 
-            if serializer.data.get("gender"):
-                gender = serializer.data.get("gender")
+        # if serializer.data.get("gender"):
+            gender = request.data.get("gender")
 
-            if serializer.data.get("value_chain"):
-                value_chain = serializer.data.get("value_chain")
+        # if serializer.data.get("value_chain"):
+            value_chain = request.data.get("value_chain")
 
             cols_to_read = ['Gender', 'Constituency', 'Millet', 'County', 'Sub County', 'Crop Production',
                             'farmer_mobile_number',
@@ -510,9 +505,9 @@ class DatasetsMicrositeViewSet(GenericViewSet):
                     sub_counties=sub_counties if sub_counties else [],
                     gender=gender if gender else [],
                     value_chain=value_chain if value_chain else [],
-                    hsah_key=hash_key
+                    hash_key=hash_key,
+                    microsite=True
                 )
-
             except Exception as e:
                 print(e)
                 return Response(
@@ -548,8 +543,6 @@ class ContactFormViewSet(GenericViewSet):
             date = datetime.datetime.now().strftime("%d-%m-%Y")
             data = serializer.data
             data.update({"date": date})
-            print(data)
-
             # render email from query_email template
             email_render = render(request, "user_fills_in_contact_form.html", data)
             mail_body = email_render.content.decode("utf-8")
