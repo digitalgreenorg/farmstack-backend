@@ -8,6 +8,7 @@ import cssutils
 from core.constants import Constants
 from django.core.files.storage import FileSystemStorage
 from django.utils import timezone
+from rest_framework import generics, permissions, status, viewsets
 
 from .validators import validate_image_type
 
@@ -353,25 +354,25 @@ def generate_omfp_dashboard(dataset_file, data, hash_key):
     df["Sub County"] = df["Sub County"].str.upper()
     df["County"] = df["County"].str.upper()
     try:
+        filters = {"cohort":np.unique(df['Cohort']),
+                    "county": np.unique(df['County']),
+                    "sub_county": np.unique(df['Sub County']),
+                    "gender": np.unique(df['Gender'])}
         county_filters = data.get("county", [])
         filtered_df = df[df['County'].isin(county_filters)] if county_filters else df
         sub_county_filters = data.get("sub_county", [])
         filtered_df = filtered_df[filtered_df['Sub County'].isin(sub_county_filters)] if sub_county_filters else filtered_df
-        # import pdb; pdb.set_trace()
         dashboard_details = {
             "total_number_of_records": len(filtered_df),
-            "county": np.unique(filtered_df['County']),
-            "sub_county": np.unique(filtered_df['Sub County']),
+            "filters":filters,
             "male_count": filtered_df['Gender'].value_counts().get('MALE', 0),
             "female_count": filtered_df['Gender'].value_counts().get('FEMALE', 0),
             "farmer_mobile_numbers": np.unique(filtered_df['Telephone']).size,
         }
         dashboard_details["gender_by_sub_county"] =filtered_df.groupby(['Sub County', 'Gender'])['Gender'].count().unstack().fillna(0).astype(int).to_dict(orient='index')
-        dashboard_details["primary_value_chain_by_sub_county"] =filtered_df.groupby(['Sub County', 'Primary Value Chain'])['Primary Value Chain'].count().unstack().fillna(0).astype(int).to_dict(orient='index')
-        dashboard_details["type"] = "omfp"
 
-        # dashboard_details["second_value_chain_by_county"] =filtered_df.groupby(['County', 'vc_two'])['vc_two'].count().unstack().fillna(0).astype(int).to_dict(orient='index')
-        # dashboard_details["third_value_chain_by_county"] =filtered_df.groupby(['County', 'vc_three'])['vc_three'].count().unstack().fillna(0).astype(int).to_dict(orient='index')
+        dashboard_details["primary_value_chain_by_sub_county"] = process_column(filtered_df, 'Primary Value Chain', 'Sub County')
+        dashboard_details["type"] = "omfp"
     except Exception as e:
         logging.error(e)
         return Response(
@@ -403,22 +404,25 @@ def generate_fsp_dashboard(dataset_file, data, hash_key):
     df["County"] = df["County"].str.upper()
     dashboard_details={}
     try:
+        filters = {
+            "county": np.unique(df['County']),
+            "sub_county": np.unique(df['Subcounty']),
+            "gender": np.unique(df['Farmer_Sex'])}
         county_filters = data.get("county", [])
         filtered_df = df[df['County'].isin(county_filters)] if county_filters else df
         sub_county_filters = data.get("sub_county", [])
         filtered_df = filtered_df[filtered_df['Subcounty'].isin(sub_county_filters)] if sub_county_filters else filtered_df
         dashboard_details = {
             "total_number_of_records": len(filtered_df),
-            "county": np.unique(filtered_df['County']),
-            "sub_county": np.unique(filtered_df['Subcounty']),
+            "filters":filters,
             "male_count": filtered_df['Farmer_Sex'].value_counts().get('MALE', 0),
             "female_count": filtered_df['Farmer_Sex'].value_counts().get('FEMALE', 0),
             "farmer_mobile_numbers": np.unique(filtered_df['Farmer_TelephoneNumebr']).size,
         }
         dashboard_details["gender_by_sub_county"] =filtered_df.groupby(['Subcounty', 'Farmer_Sex'])['Farmer_Sex'].count().unstack().fillna(0).astype(int).to_dict(orient='index')
-        dashboard_details["primary_value_chain_by_sub_county"] =filtered_df.groupby(['Subcounty', 'vc'])['vc'].count().unstack().fillna(0).astype(int).to_dict(orient='index')
-        dashboard_details["second_value_chain_by_sub_county"] =filtered_df.groupby(['Subcounty', 'vc_two'])['vc_two'].count().unstack().fillna(0).astype(int).to_dict(orient='index')
-        dashboard_details["third_value_chain_by_sub_county"] =filtered_df.groupby(['Subcounty', 'vc_three'])['vc_three'].count().unstack().fillna(0).astype(int).to_dict(orient='index')
+        dashboard_details["primary_value_chain_by_sub_county"] = process_column(filtered_df, "vc", "Subcounty")
+        dashboard_details["second_value_chain_by_sub_county"] = process_column(filtered_df, "vc_two", "Subcounty")
+        dashboard_details["third_value_chain_by_sub_county"] =  process_column(filtered_df, "vc_three", "Subcounty")
         dashboard_details["type"] = "fsp"
     except Exception as e:
         logging.error(e)
@@ -450,20 +454,23 @@ def generate_knfd_dashboard(dataset_file, data, hash_key):
     df["County"] = df["County"].str.upper()
     dashboard_details={}
     try:
+        filters = {
+            "county": np.unique(df['County']),
+            "sub_county": np.unique(df['Sub-County']),
+            "gender": np.unique(df['Gender'])}
         county_filters = data.get("county", [])
         filtered_df = df[df['County'].isin(county_filters)] if county_filters else df
         sub_county_filters = data.get("sub_county", [])
         filtered_df = filtered_df[filtered_df['Sub-County'].isin(sub_county_filters)] if sub_county_filters else filtered_df
         dashboard_details = {
             "total_number_of_records": len(filtered_df),
-            "county": np.unique(filtered_df['County']),
-            "sub_county": np.unique(filtered_df['Sub-County']),
+            "filters": filters,
             "male_count": filtered_df['Gender'].value_counts().get('MALE', 0),
             "female_count": filtered_df['Gender'].value_counts().get('FEMALE', 0),
             "farmer_mobile_numbers": np.unique(filtered_df['Telephone']).size,
         }
         dashboard_details["gender_by_sub_county"] =filtered_df.groupby(['Sub-County', 'Gender'])['Gender'].count().unstack().fillna(0).astype(int).to_dict(orient='index')
-        dashboard_details["primary_value_chain_by_sub_county"] =filtered_df.groupby(['Sub-County', 'PrimaryValueChain'])['PrimaryValueChain'].count().unstack().fillna(0).astype(int).to_dict(orient='index')
+        dashboard_details["primary_value_chain_by_sub_county"] = process_column(filtered_df, "PrimaryValueChain", 'Sub-County')
         dashboard_details["type"] = "knfd"
     except Exception as e:
         logging.error(e)
@@ -477,3 +484,21 @@ def generate_knfd_dashboard(dataset_file, data, hash_key):
             dashboard_details,
             status=200
         )
+
+# Function to process a column and create the nested dictionary
+def process_column(df, column_name, sub_county):
+    # Replace NaN values in the specified column with 'NaN'
+    df[column_name].replace(['nan', 'N/A', 'NA', 'NAN', np.nan], 'NaN', inplace=True)
+
+    # Group by 'Sub County' and the specified column, count occurrences, and create a nested dictionary
+    result_dict = (
+        df[df[column_name] != 'NaN']
+        .groupby([sub_county, column_name])[column_name]
+        .count()
+        .unstack(fill_value=0)
+        .astype(int)
+        .apply(lambda x: {k: v for k, v in x.items() if v > 0}, axis=1)
+        .to_dict()
+    )
+
+    return result_dict

@@ -2525,7 +2525,7 @@ class DatasetV2View(GenericViewSet):
     #     page = self.paginate_queryset(self.queryset)
     #     serializer = self.get_serializer(page, many=True).exclude(is_temp = True)
     #     return self.get_paginated_response(serializer.data)
-
+    @http_request_mutation
     @action(detail=True, methods=["post"])
     def get_dashboard_chart_data(self, request, pk, *args, **kwargs):
         try:
@@ -2534,7 +2534,8 @@ class DatasetV2View(GenericViewSet):
             #         "Requested resource is currently unavailable. Please try again later.",
             #         status=status.HTTP_200_OK,
             #     )
-            hash_key = generate_hash_key_for_dashboard(pk, request.data)
+            role_id = request.META.get("role_id")
+            hash_key = generate_hash_key_for_dashboard(pk, request.data, role_id)
             cache_data = cache.get(hash_key, {})
             if cache_data:
                 LOGGER.info("Dashboard details found in cache", exc_info=True)
@@ -2544,13 +2545,13 @@ class DatasetV2View(GenericViewSet):
                 )
             dataset_file_object = DatasetV2File.objects.get(id=pk)
             dataset_file = str(dataset_file_object.file)
-            if "/omfp" in dataset_file.lower():
-                return generate_omfp_dashboard(dataset_file, request.data, hash_key)
-            if "/fsp" in dataset_file.lower():
-                return generate_fsp_dashboard(dataset_file, request.data, hash_key)
-            if "/knfd" in dataset_file.lower():
-                return generate_knfd_dashboard(dataset_file, request.data, hash_key)
-            if not "/kiamis" in dataset_file.lower():
+            if "omfp" in dataset_file.lower():
+                return  generate_omfp_dashboard(file, request.data, hash_key)
+            if "fsp" in dataset_file.lower():
+                return generate_fsp_dashboard(file, request.data, hash_key)
+            if "knfd" in dataset_file.lower():
+                return generate_knfd_dashboard(file, request.data, hash_key)
+            if not "kiamis" in dataset_file.lower():
                  return Response(
                     "Requested resource is currently unavailable. Please try again later.",
                     status=status.HTTP_200_OK,
@@ -2586,7 +2587,8 @@ class DatasetV2View(GenericViewSet):
                             'Small East African Goats', 'Somali Goat', 'Other Goat', 'Chicken -Indigenous',
                             'Chicken -Broilers', 'Chicken -Layers', 'Highest Level of Formal Education',
                             'Maize food crop', "Beans", 'Cassava', 'Sorghum', 'Potatoes', 'Cowpeas']
-
+            # if role_id == str(1):
+            #     dataset_file = get_consolidated_file("kiamis")
             try:
                 if dataset_file.endswith(".xlsx") or dataset_file.endswith(".xls"):
                     df = pd.read_excel(os.path.join(settings.DATASET_FILES_URL, dataset_file))
@@ -2652,6 +2654,31 @@ class DatasetV2View(GenericViewSet):
                 "No dataset file for the provided id.",
                 status=status.HTTP_404_NOT_FOUND,
             )
+        except Exception as e:
+            print(e)
+            return Response(e.detail,
+                status=status.HTTP_404_NOT_FOUND,
+            )
+    
+    def get_consolidated_file(self, name):
+        consolidated_file = f"consolidated_{name}.csv" 
+        if os.path.exists(os.path.join(settings.DATASET_FILES_URL, consolidated_busia)):
+            logging.info("Consolidated Busia file available")
+        else:
+            dataset_file_objects = (
+                DatasetV2File.objects
+                .select_related("dataset")
+                .filter(dataset__name__icontains=name, file__iendswith=".csv")
+                .values_list('file', flat=True)  # Flatten the list of values
+            )
+            for csv_file in dataset_file_objects:
+                file_path = os.path.join(settings.DATASET_FILES_URL,  csv_file)
+                df = pd.read_csv(file_path)
+                combined_df = combined_df.concat(df, ignore_index=True)
+                # Save the combined DataFrame to a new CSV file
+            combined_df.to_csv(os.path.join(settings.DATASET_FILES_URL, consolidated_busia), index=False)
+            logging.info("Consolidated Busia file created")
+        return consolidated_file
 
 class DatasetFileV2View(GenericViewSet):
     queryset = DatasetV2File.objects.all()
