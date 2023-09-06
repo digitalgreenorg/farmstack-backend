@@ -1,14 +1,16 @@
+import json
 import logging
 import os
 import re
 import shutil
 from typing import Any
-import json
+
 import cssutils
-from core.constants import Constants
 from django.core.files.storage import FileSystemStorage
 from django.utils import timezone
 from rest_framework import generics, permissions, status, viewsets
+
+from core.constants import Constants
 
 from .validators import validate_image_type
 
@@ -16,8 +18,9 @@ LOGGER = logging.getLogger(__name__)
 import numpy as np
 import pandas as pd
 from django.conf import settings
-from rest_framework.response import Response
 from django.core.cache import cache
+from rest_framework.response import Response
+
 
 def remove_files(file_key: str, destination: str):
     """
@@ -227,9 +230,9 @@ def check_file_name_length(incoming_file_name: str, accepted_file_name_size: int
     return valid
 
 
-def filter_dataframe_for_dashboard_counties(df: Any, counties: [], sub_counties: [], gender: [], value_chain: [], hash_key: str):
+def filter_dataframe_for_dashboard_counties(df: Any, counties: [], sub_counties: [], gender: [], value_chain: [], hash_key: str, microsite=False):
     obj = {}
-    df['Gender'] = df['Gender'].map({1: 'Male', 2: 'Female'})
+    df['Gender'] = df['Gender'].map({1: 'MALE', 2: 'FEMALE'})
     df['Highest Level of Formal Education'] = df['Highest Level of Formal Education'].map(
         {1: 'None', 2: 'Primary', 3: 'Secondary', 4: 'Certificate', 5: 'Diploma', 6: 'University Degree',
          7: "Post Graduate Degree,Masters and Above"})
@@ -250,10 +253,10 @@ def filter_dataframe_for_dashboard_counties(df: Any, counties: [], sub_counties:
         filtered_by_counties = filtered_by_counties[filtered_by_counties[value_chain].notna().any(axis=1)]
         filtered_by_counties_across_county = filtered_by_counties_across_county[filtered_by_counties_across_county[value_chain].notna().any(axis=1)]
 
-    obj["male_count"] = filtered_by_counties['Gender'].value_counts().get('Male', 0)
-    obj["female_count"] = filtered_by_counties['Gender'].value_counts().get('Female', 0)
+    obj["male_count"] = filtered_by_counties['Gender'].value_counts().get('MALE', 0)
+    obj["female_count"] = filtered_by_counties['Gender'].value_counts().get('FEMALE', 0)
     obj["farmer_mobile_numbers"] = np.unique(filtered_by_counties['farmer_mobile_number']).size
-    obj["sub_county_ratio"] = filtered_by_counties_across_county.groupby(['Sub County', 'Gender'])[
+    obj["gender_by_sub_county"] = filtered_by_counties_across_county.groupby(['Sub County', 'Gender'])[
         'Gender'].count().unstack().to_dict(orient='index')
     farming_practices = {
         "crop_production": filtered_by_counties[filtered_by_counties['Crop Production'] == 1][
@@ -332,6 +335,17 @@ def filter_dataframe_for_dashboard_counties(df: Any, counties: [], sub_counties:
     obj["counties"] = np.unique(filtered_by_counties["County"]).size
     obj["constituencies"] = filtered_by_counties["Constituency"].nunique()
     obj["sub_counties"] = np.unique(filtered_by_counties['Sub County']).size
+    if not microsite:
+        convert_columns = ['County', 'Sub County', "Gender"]
+        df[convert_columns] = df[convert_columns].astype(str)
+        obj["filters"]= {
+                "county": df['County'].unique().tolist(),
+                "sub_county": df['Sub County'].unique().tolist(),
+                # "constituencies": df['Constituency'].unique().tolist(),
+                "gender": df['Gender'].unique().tolist()
+                }
+    else:
+        obj["filters"]={}
     obj["type"] = "kiamis"
     cache.set(hash_key, obj, 86400)
     LOGGER.info("Dashboard details added to cache", exc_info=True)
@@ -350,9 +364,9 @@ def generate_omfp_dashboard(dataset_file, data, hash_key, microsite=False):
     dashboard_details={}
     convert_columns = ['County', 'Sub County', 'Telephone', "Gender", "Primary Value Chain"]
     df[convert_columns] = df[convert_columns].astype(str)
-    df["Gender"] = df["Gender"].str.upper()
-    df["Sub County"] = df["Sub County"].str.upper()
-    df["County"] = df["County"].str.upper()
+    df["Gender"] = df["Gender"].str.upper().str.strip()
+    df["Sub County"] = df["Sub County"].str.upper().str.strip()
+    df["County"] = df["County"].str.upper().str.strip()
     try:
         filters = {"cohort":np.unique(df['Cohort']),
                     "county": np.unique(df['County']),
@@ -398,12 +412,12 @@ def generate_fsp_dashboard(dataset_file, data, hash_key, microsite=False):
             "Unsupported file please use .xls or .csv.",
             status=status.HTTP_400_BAD_REQUEST,
         )
-    df['Farmer_Sex'] = df['Farmer_Sex'].map({1: 'Male', 2: 'Female'})
+    df['Farmer_Sex'] = df['Farmer_Sex'].map({1: 'MALE', 2: 'FEMALE'})
     convert_columns = ['County', 'Subcounty', 'Farmer_TelephoneNumebr', "Farmer_Sex", "vc", "vc_two", "vc_three"]
     df[convert_columns] = df[convert_columns].astype(str)
-    df["Subcounty"] = df["Subcounty"].str.upper()
-    df["Farmer_Sex"] = df["Farmer_Sex"].str.upper()
-    df["County"] = df["County"].str.upper()
+    df["Subcounty"] = df["Subcounty"].str.upper().str.strip()
+    df["Farmer_Sex"] = df["Farmer_Sex"].str.strip()
+    df["County"] = df["County"].str.upper().str.strip()
     dashboard_details={}
     try:
         filters = {
@@ -455,7 +469,7 @@ def generate_knfd_dashboard(dataset_file, data, hash_key, microsite=False):
     df[convert_columns] = df[convert_columns].astype(str)
     df["Sub-County"] = df["Sub-County"].str.upper()
     df["Gender"] = df["Gender"].str.upper().str.strip()
-    df["County"] = df["County"].str.upper()
+    df["County"] = df["County"].str.upper().str.strip()
     dashboard_details={}
     try:
         filters = {

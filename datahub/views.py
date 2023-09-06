@@ -2526,17 +2526,12 @@ class DatasetV2View(GenericViewSet):
     #     serializer = self.get_serializer(page, many=True).exclude(is_temp = True)
     #     return self.get_paginated_response(serializer.data)
 
-
+    @http_request_mutation
     @action(detail=True, methods=["post"])
     def get_dashboard_chart_data(self, request, pk, *args, **kwargs):
         try:
-            # if str(pk) != "c6552c05-0ada-4522-b584-71e26286a2e3":
-            #     return Response(
-            #         "Requested resource is currently unavailable. Please try again later.",
-            #         status=status.HTTP_200_OK,
-            #     )
-            # role_id = request.META.get("role_id")
-            hash_key = generate_hash_key_for_dashboard(pk, request.data, True)
+            role_id = request.META.get("role_id")
+            hash_key = generate_hash_key_for_dashboard(pk, request.data, role_id, True)
             cache_data = cache.get(hash_key, {})
             if cache_data:
                 LOGGER.info("Dashboard details found in cache", exc_info=True)
@@ -2547,34 +2542,37 @@ class DatasetV2View(GenericViewSet):
             dataset_file_object = DatasetV2File.objects.get(id=pk)
             dataset_file = str(dataset_file_object.file)
             if "omfp" in dataset_file.lower():
-                return generate_omfp_dashboard(dataset_file, request.data, hash_key)
+                return (generate_omfp_dashboard(self.get_consolidated_file("omfp"), request.data, hash_key) 
+                            if role_id == str(1) else generate_omfp_dashboard(dataset_file, request.data, hash_key))
             if "fsp" in dataset_file.lower():
-                return generate_fsp_dashboard(dataset_file, request.data, hash_key)
+                return (generate_fsp_dashboard(self.get_consolidated_file("fsp"), request.data, hash_key) 
+                            if role_id == str(1) else generate_fsp_dashboard(dataset_file, request.data, hash_key))
             if "knfd" in dataset_file.lower():
-                return generate_knfd_dashboard(dataset_file, request.data, hash_key)
+                return (generate_knfd_dashboard(self.get_consolidated_file("knfd"), request.data, hash_key) 
+                            if role_id == str(1) else generate_knfd_dashboard(dataset_file, request.data, hash_key))
             if not "kiamis" in dataset_file.lower():
                  return Response(
                     "Requested resource is currently unavailable. Please try again later.",
                     status=status.HTTP_200_OK,
                 )
-            serializer = DatahubDatasetFileDashboardFilterSerializer(data=request.data)
-            serializer.is_valid(raise_exception=True)
+            # serializer = DatahubDatasetFileDashboardFilterSerializer(data=request.data)
+            # serializer.is_valid(raise_exception=True)
             counties = []
             sub_counties = []
             gender = []
             value_chain = []
 
-            if serializer.data.get("county"):
-                counties = serializer.data.get("county")
+            # if serializer.data.get("county"):
+            counties = request.data.get("county")
 
-            if serializer.data.get("sub_county"):
-                sub_counties = serializer.data.get("sub_county")
+            # if serializer.data.get("sub_county"):
+            sub_counties = request.data.get("sub_county")
 
-            if serializer.data.get("gender"):
-                gender = serializer.data.get("gender")
+            # if serializer.data.get("gender"):
+            gender = request.data.get("gender")
 
-            if serializer.data.get("value_chain"):
-                value_chain = serializer.data.get("value_chain")
+            # if serializer.data.get("value_chain"):
+            value_chain = request.data.get("value_chain")
             cols_to_read = ['Gender', 'Constituency', 'Millet', 'County', 'Sub County', 'Crop Production',
                             'farmer_mobile_number',
                             'Livestock Production', 'Ducks', 'Other Sheep', 'Total Area Irrigation', 'Family',
@@ -2588,8 +2586,8 @@ class DatasetV2View(GenericViewSet):
                             'Small East African Goats', 'Somali Goat', 'Other Goat', 'Chicken -Indigenous',
                             'Chicken -Broilers', 'Chicken -Layers', 'Highest Level of Formal Education',
                             'Maize food crop', "Beans", 'Cassava', 'Sorghum', 'Potatoes', 'Cowpeas']
-            # if role_id == str(1):
-            #     dataset_file = get_consolidated_file("kiamis")
+            if role_id == str(1):
+                dataset_file = self.get_consolidated_file("kiamis")
             try:
                 if dataset_file.endswith(".xlsx") or dataset_file.endswith(".xls"):
                     df = pd.read_excel(os.path.join(settings.DATASET_FILES_URL, dataset_file))
@@ -2637,10 +2635,10 @@ class DatasetV2View(GenericViewSet):
                     sub_counties=sub_counties if sub_counties else [],
                     gender=gender if gender else [],
                     value_chain=value_chain if value_chain else [],
+                    hash_key=hash_key
                 )
-
             except Exception as e:
-                print(e)
+                logging.error(e, exc_info=True)
                 return Response(
                     f"Something went wrong, please try again. {e}",
                     status=status.HTTP_400_BAD_REQUEST,
@@ -2650,36 +2648,47 @@ class DatasetV2View(GenericViewSet):
                 status=status.HTTP_200_OK,
             )
 
-        except DatasetV2File.DoesNotExist:
+        except DatasetV2File.DoesNotExist as e:
+            logging.error(e, exc_info=True)
             return Response(
                 "No dataset file for the provided id.",
                 status=status.HTTP_404_NOT_FOUND,
             )
-        # except Exception as e:
-        #     print(e)
-        #     return Response(e.detail,
-        #         status=status.HTTP_404_NOT_FOUND,
-        #     )
-    
+        except Exception as e:
+            logging.error(e, exc_info=True)
+            return Response(
+                f"Something went wrong, please try again. {e}",
+                status=status.HTTP_400_BAD_REQUEST,
+            )
     def get_consolidated_file(self, name):
         consolidated_file = f"consolidated_{name}.csv" 
-        if os.path.exists(os.path.join(settings.DATASET_FILES_URL, consolidated_busia)):
-            logging.info("Consolidated Busia file available")
-        else:
-            dataset_file_objects = (
-                DatasetV2File.objects
-                .select_related("dataset")
-                .filter(dataset__name__icontains=name, file__iendswith=".csv")
-                .values_list('file', flat=True)  # Flatten the list of values
-            )
-            for csv_file in dataset_file_objects:
-                file_path = os.path.join(settings.DATASET_FILES_URL,  csv_file)
-                df = pd.read_csv(file_path)
-                combined_df = combined_df.concat(df, ignore_index=True)
+        try:
+            combined_df = pd.DataFrame([])
+            dataframes= []
+            if os.path.exists(os.path.join(settings.DATASET_FILES_URL, consolidated_file)):
+                logging.info(f"{consolidated_file} file available")
+            else:
+                dataset_file_objects = (
+                    DatasetV2File.objects
+                    .select_related("dataset")
+                    .filter(dataset__name__icontains=name, file__iendswith=".csv")
+                    .values_list('file', flat=True).all()  # Flatten the list of values
+                )
+                for csv_file in dataset_file_objects:
+                    file_path = os.path.join(settings.DATASET_FILES_URL,  csv_file)
+                    df = pd.read_csv(file_path)
+                    dataframes.append(df)
+                combined_df = pd.concat(dataframes, ignore_index=True)
                 # Save the combined DataFrame to a new CSV file
-            combined_df.to_csv(os.path.join(settings.DATASET_FILES_URL, consolidated_busia), index=False)
-            logging.info("Consolidated Busia file created")
-        return consolidated_file
+                combined_df.to_csv(os.path.join(settings.DATASET_FILES_URL, consolidated_file), index=False)
+                logging.info(f"{consolidated_file} file created")
+            return consolidated_file
+        except Exception as e:
+            logging.error(f"Error occoured while creating {consolidated_file}", exc_info=True)
+            return Response(
+                    "Requested resource is currently unavailable. Please try again later.",
+                    status=status.HTTP_200_OK,
+                )
 
 class DatasetFileV2View(GenericViewSet):
     queryset = DatasetV2File.objects.all()
