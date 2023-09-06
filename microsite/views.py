@@ -410,12 +410,12 @@ class DatasetsMicrositeViewSet(GenericViewSet):
             #     )
             hash_key = generate_hash_key_for_dashboard(pk, request.data)
             cache_data = cache.get(hash_key, {})
-            # if cache_data:
-            #     LOGGER.info("Dashboard details found in cache", exc_info=True)
-            #     return Response(
-            #     cache_data,
-            #     status=status.HTTP_200_OK,
-            #     )
+            if cache_data:
+                LOGGER.info("Dashboard details found in cache", exc_info=True)
+                return Response(
+                cache_data,
+                status=status.HTTP_200_OK,
+                )
             dataset_file_object = DatasetV2File.objects.get(id=pk)
             dataset_file = str(dataset_file_object.file)
 

@@ -2525,7 +2525,8 @@ class DatasetV2View(GenericViewSet):
     #     page = self.paginate_queryset(self.queryset)
     #     serializer = self.get_serializer(page, many=True).exclude(is_temp = True)
     #     return self.get_paginated_response(serializer.data)
-    @http_request_mutation
+
+
     @action(detail=True, methods=["post"])
     def get_dashboard_chart_data(self, request, pk, *args, **kwargs):
         try:
@@ -2534,15 +2535,15 @@ class DatasetV2View(GenericViewSet):
             #         "Requested resource is currently unavailable. Please try again later.",
             #         status=status.HTTP_200_OK,
             #     )
-            role_id = request.META.get("role_id")
+            # role_id = request.META.get("role_id")
             hash_key = generate_hash_key_for_dashboard(pk, request.data, role_id)
             cache_data = cache.get(hash_key, {})
-            # if cache_data:
-            #     LOGGER.info("Dashboard details found in cache", exc_info=True)
-            #     return Response(
-            #     cache_data,
-            #     status=status.HTTP_200_OK,
-            #     )
+            if cache_data:
+                LOGGER.info("Dashboard details found in cache", exc_info=True)
+                return Response(
+                cache_data,
+                status=status.HTTP_200_OK,
+                )
             dataset_file_object = DatasetV2File.objects.get(id=pk)
             dataset_file = str(dataset_file_object.file)
             if "omfp" in dataset_file.lower():
