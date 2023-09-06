@@ -364,6 +364,8 @@ def generate_omfp_dashboard(dataset_file, data, hash_key, microsite=False):
         filtered_df = filtered_df[filtered_df['Sub County'].isin(sub_county_filters)] if sub_county_filters else filtered_df
         dashboard_details = {
             "total_number_of_records": len(filtered_df),
+            "counties": np.unique(filtered_df["County"]).size,
+            "sub_counties":np.unique(filtered_df['Sub County']).size,
             "filters":filters,
             "male_count": filtered_df['Gender'].value_counts().get('MALE', 0),
             "female_count": filtered_df['Gender'].value_counts().get('FEMALE', 0),
@@ -414,6 +416,8 @@ def generate_fsp_dashboard(dataset_file, data, hash_key, microsite=False):
         filtered_df = filtered_df[filtered_df['Subcounty'].isin(sub_county_filters)] if sub_county_filters else filtered_df
         dashboard_details = {
             "total_number_of_records": len(filtered_df),
+            "counties":np.unique(filtered_df["County"]).size,
+            "sub_counties":np.unique(filtered_df['Subcounty']).size,
             "filters":filters,
             "male_count": filtered_df['Farmer_Sex'].value_counts().get('MALE', 0),
             "female_count": filtered_df['Farmer_Sex'].value_counts().get('FEMALE', 0),
@@ -464,6 +468,8 @@ def generate_knfd_dashboard(dataset_file, data, hash_key, microsite=False):
         filtered_df = filtered_df[filtered_df['Sub-County'].isin(sub_county_filters)] if sub_county_filters else filtered_df
         dashboard_details = {
             "total_number_of_records": len(filtered_df),
+            "counties":np.unique(filtered_df["County"]).size,
+            "sub_counties": np.unique(filtered_df['Sub-County']).size,
             "filters": filters,
             "male_count": filtered_df['Gender'].value_counts().get('MALE', 0),
             "female_count": filtered_df['Gender'].value_counts().get('FEMALE', 0),
