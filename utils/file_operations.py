@@ -337,7 +337,7 @@ def filter_dataframe_for_dashboard_counties(df: Any, counties: [], sub_counties:
     LOGGER.info("Dashboard details added to cache", exc_info=True)
     return obj
 
-def generate_omfp_dashboard(dataset_file, data, hash_key):
+def generate_omfp_dashboard(dataset_file, data, hash_key, microsite=False):
     if dataset_file.endswith(".xlsx") or dataset_file.endswith(".xls"):
         df = pd.read_excel(os.path.join(settings.DATASET_FILES_URL, dataset_file))
     elif dataset_file.endswith(".csv"):
@@ -357,8 +357,8 @@ def generate_omfp_dashboard(dataset_file, data, hash_key):
         filters = {"cohort":np.unique(df['Cohort']),
                     "county": np.unique(df['County']),
                     "sub_county": np.unique(df['Sub County']),
-                    "gender": np.unique(df['Gender'])}
-        county_filters = data.get("county", [])
+                    "gender": np.unique(df['Gender'])} if not microsite else {}
+        county_filters = data.get("county", []) 
         filtered_df = df[df['County'].isin(county_filters)] if county_filters else df
         sub_county_filters = data.get("sub_county", [])
         filtered_df = filtered_df[filtered_df['Sub County'].isin(sub_county_filters)] if sub_county_filters else filtered_df
@@ -386,7 +386,7 @@ def generate_omfp_dashboard(dataset_file, data, hash_key):
             status=200
         )
 
-def generate_fsp_dashboard(dataset_file, data, hash_key):
+def generate_fsp_dashboard(dataset_file, data, hash_key, microsite=False):
     if dataset_file.endswith(".xlsx") or dataset_file.endswith(".xls"):
         df = pd.read_excel(os.path.join(settings.DATASET_FILES_URL, dataset_file))
     elif dataset_file.endswith(".csv"):
@@ -407,8 +407,8 @@ def generate_fsp_dashboard(dataset_file, data, hash_key):
         filters = {
             "county": np.unique(df['County']),
             "sub_county": np.unique(df['Subcounty']),
-            "gender": np.unique(df['Farmer_Sex'])}
-        county_filters = data.get("county", [])
+            "gender": np.unique(df['Farmer_Sex'])} if not microsite else {}
+        county_filters = data.get("county", []) 
         filtered_df = df[df['County'].isin(county_filters)] if county_filters else df
         sub_county_filters = data.get("sub_county", [])
         filtered_df = filtered_df[filtered_df['Subcounty'].isin(sub_county_filters)] if sub_county_filters else filtered_df
@@ -437,7 +437,7 @@ def generate_fsp_dashboard(dataset_file, data, hash_key):
             status=200
         )
 
-def generate_knfd_dashboard(dataset_file, data, hash_key):
+def generate_knfd_dashboard(dataset_file, data, hash_key, microsite=False):
     if dataset_file.endswith(".xlsx") or dataset_file.endswith(".xls"):
         df = pd.read_excel(os.path.join(settings.DATASET_FILES_URL, dataset_file))
     elif dataset_file.endswith(".csv"):
@@ -450,14 +450,14 @@ def generate_knfd_dashboard(dataset_file, data, hash_key):
     convert_columns = ['County', 'Sub-County', 'Telephone', "Gender", "PrimaryValueChain"]
     df[convert_columns] = df[convert_columns].astype(str)
     df["Sub-County"] = df["Sub-County"].str.upper()
-    df["Gender"] = df["Gender"].str.upper()
+    df["Gender"] = df["Gender"].str.upper().str.strip()
     df["County"] = df["County"].str.upper()
     dashboard_details={}
     try:
         filters = {
             "county": np.unique(df['County']),
             "sub_county": np.unique(df['Sub-County']),
-            "gender": np.unique(df['Gender'])}
+            "gender": np.unique(df['Gender'])} if not microsite else {}
         county_filters = data.get("county", [])
         filtered_df = df[df['County'].isin(county_filters)] if county_filters else df
         sub_county_filters = data.get("sub_county", [])
