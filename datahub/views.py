@@ -2530,7 +2530,6 @@ class DatasetV2View(GenericViewSet):
     @action(detail=True, methods=["post"])
     def get_dashboard_chart_data(self, request, pk, *args, **kwargs):
         try:
-
             role_id = request.META.get("role_id")
             hash_key = generate_hash_key_for_dashboard(pk, request.data, role_id, True)
             cache_data = cache.get(hash_key, {})
