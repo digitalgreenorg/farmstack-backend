@@ -117,7 +117,10 @@ from participant.serializers import (
 )
 from utils import custom_exceptions, file_operations, string_functions, validators
 from utils.authentication_services import authenticate_user
-from utils.file_operations import check_file_name_length, filter_dataframe_for_dashboard_counties
+from utils.file_operations import (check_file_name_length, filter_dataframe_for_dashboard_counties,
+    generate_omfp_dashboard,
+    generate_fsp_dashboard,
+    generate_knfd_dashboard)
 from utils.jwt_services import http_request_mutation
 
 from .models import Policy, ResourceFile, UsagePolicy
@@ -2523,16 +2526,17 @@ class DatasetV2View(GenericViewSet):
     #     serializer = self.get_serializer(page, many=True).exclude(is_temp = True)
     #     return self.get_paginated_response(serializer.data)
 
+
     @action(detail=True, methods=["post"])
     def get_dashboard_chart_data(self, request, pk, *args, **kwargs):
         try:
-
-            if str(pk) != "c6552c05-0ada-4522-b584-71e26286a2e3":
-                return Response(
-                    "Requested resource is currently unavailable. Please try again later.",
-                    status=status.HTTP_200_OK,
-                )
-            hash_key = generate_hash_key_for_dashboard(request.data)
+            # if str(pk) != "c6552c05-0ada-4522-b584-71e26286a2e3":
+            #     return Response(
+            #         "Requested resource is currently unavailable. Please try again later.",
+            #         status=status.HTTP_200_OK,
+            #     )
+            # role_id = request.META.get("role_id")
+            hash_key = generate_hash_key_for_dashboard(pk, request.data, True)
             cache_data = cache.get(hash_key, {})
             if cache_data:
                 LOGGER.info("Dashboard details found in cache", exc_info=True)
@@ -2540,9 +2544,21 @@ class DatasetV2View(GenericViewSet):
                 cache_data,
                 status=status.HTTP_200_OK,
                 )
+            dataset_file_object = DatasetV2File.objects.get(id=pk)
+            dataset_file = str(dataset_file_object.file)
+            if "omfp" in dataset_file.lower():
+                return generate_omfp_dashboard(dataset_file, request.data, hash_key)
+            if "fsp" in dataset_file.lower():
+                return generate_fsp_dashboard(dataset_file, request.data, hash_key)
+            if "knfd" in dataset_file.lower():
+                return generate_knfd_dashboard(dataset_file, request.data, hash_key)
+            if not "kiamis" in dataset_file.lower():
+                 return Response(
+                    "Requested resource is currently unavailable. Please try again later.",
+                    status=status.HTTP_200_OK,
+                )
             serializer = DatahubDatasetFileDashboardFilterSerializer(data=request.data)
             serializer.is_valid(raise_exception=True)
-
             counties = []
             sub_counties = []
             gender = []
@@ -2559,7 +2575,6 @@ class DatasetV2View(GenericViewSet):
 
             if serializer.data.get("value_chain"):
                 value_chain = serializer.data.get("value_chain")
-
             cols_to_read = ['Gender', 'Constituency', 'Millet', 'County', 'Sub County', 'Crop Production',
                             'farmer_mobile_number',
                             'Livestock Production', 'Ducks', 'Other Sheep', 'Total Area Irrigation', 'Family',
@@ -2573,9 +2588,8 @@ class DatasetV2View(GenericViewSet):
                             'Small East African Goats', 'Somali Goat', 'Other Goat', 'Chicken -Indigenous',
                             'Chicken -Broilers', 'Chicken -Layers', 'Highest Level of Formal Education',
                             'Maize food crop', "Beans", 'Cassava', 'Sorghum', 'Potatoes', 'Cowpeas']
-
-            dataset_file_object = DatasetV2File.objects.get(id=pk)
-            dataset_file = str(dataset_file_object.file)
+            # if role_id == str(1):
+            #     dataset_file = get_consolidated_file("kiamis")
             try:
                 if dataset_file.endswith(".xlsx") or dataset_file.endswith(".xls"):
                     df = pd.read_excel(os.path.join(settings.DATASET_FILES_URL, dataset_file))
@@ -2631,8 +2645,6 @@ class DatasetV2View(GenericViewSet):
                     f"Something went wrong, please try again. {e}",
                     status=status.HTTP_400_BAD_REQUEST,
                 )
-            cache.set(hash_key, data, 86400)
-            LOGGER.info("Dashboard details added to cache", exc_info=True)
             return Response(
                 data,
                 status=status.HTTP_200_OK,
@@ -2643,7 +2655,31 @@ class DatasetV2View(GenericViewSet):
                 "No dataset file for the provided id.",
                 status=status.HTTP_404_NOT_FOUND,
             )
-
+        # except Exception as e:
+        #     print(e)
+        #     return Response(e.detail,
+        #         status=status.HTTP_404_NOT_FOUND,
+        #     )
+    
+    def get_consolidated_file(self, name):
+        consolidated_file = f"consolidated_{name}.csv" 
+        if os.path.exists(os.path.join(settings.DATASET_FILES_URL, consolidated_busia)):
+            logging.info("Consolidated Busia file available")
+        else:
+            dataset_file_objects = (
+                DatasetV2File.objects
+                .select_related("dataset")
+                .filter(dataset__name__icontains=name, file__iendswith=".csv")
+                .values_list('file', flat=True)  # Flatten the list of values
+            )
+            for csv_file in dataset_file_objects:
+                file_path = os.path.join(settings.DATASET_FILES_URL,  csv_file)
+                df = pd.read_csv(file_path)
+                combined_df = combined_df.concat(df, ignore_index=True)
+                # Save the combined DataFrame to a new CSV file
+            combined_df.to_csv(os.path.join(settings.DATASET_FILES_URL, consolidated_busia), index=False)
+            logging.info("Consolidated Busia file created")
+        return consolidated_file
 
 class DatasetFileV2View(GenericViewSet):
     queryset = DatasetV2File.objects.all()
@@ -2688,43 +2724,46 @@ class DatasetFileV2View(GenericViewSet):
             # )
             config = request.data.get("config")
             file_path = str(instance.file)
+            if standardised_configuration:
+                if file_path.endswith(".xlsx") or file_path.endswith(".xls"):
+                    df = pd.read_excel(os.path.join(settings.DATASET_FILES_URL, file_path), index_col=None)
+                else:
+                    df = pd.read_csv(os.path.join(settings.DATASET_FILES_URL, file_path), index_col=False)
 
-            if file_path.endswith(".xlsx") or file_path.endswith(".xls"):
-                df = pd.read_excel(os.path.join(settings.DATASET_FILES_URL, file_path), index_col=None)
+                df.rename(columns=standardised_configuration, inplace=True)
+                df.columns = df.columns.astype(str)
+                df = df.drop(df.filter(regex="Unnamed").columns, axis=1)
+
+                if not os.path.exists(os.path.join(settings.DATASET_FILES_URL, instance.dataset.name, instance.source)):
+                    os.makedirs(os.path.join(settings.DATASET_FILES_URL, instance.dataset.name, instance.source))
+
+                file_name = os.path.basename(file_path).replace(".", "_standerdise.")
+                if file_path.endswith(".csv"):
+                    df.to_csv(
+                        os.path.join(
+                            settings.DATASET_FILES_URL,
+                            instance.dataset.name,
+                            instance.source,
+                            file_name,
+                        )
+                    )  # type: ignore
+                else:
+                    df.to_excel(
+                        os.path.join(
+                            settings.DATASET_FILES_URL,
+                            instance.dataset.name,
+                            instance.source,
+                            file_name,
+                        )
+                    )  # type: ignore
+                # data = request.data
+                standardised_file_path = os.path.join(instance.dataset.name, instance.source, file_name)
+                data["file_size"] = os.path.getsize(os.path.join(settings.DATASET_FILES_URL, str(standardised_file_path)))
             else:
-                df = pd.read_csv(os.path.join(settings.DATASET_FILES_URL, file_path), index_col=False)
-
-            df.rename(columns=standardised_configuration, inplace=True)
-            df.columns = df.columns.astype(str)
-            df = df.drop(df.filter(regex="Unnamed").columns, axis=1)
-
-            if not os.path.exists(os.path.join(settings.DATASET_FILES_URL, instance.dataset.name, instance.source)):
-                os.makedirs(os.path.join(settings.DATASET_FILES_URL, instance.dataset.name, instance.source))
-
-            file_name = os.path.basename(file_path).replace(".", "_standerdise.")
-            if file_path.endswith(".csv"):
-                df.to_csv(
-                    os.path.join(
-                        settings.DATASET_FILES_URL,
-                        instance.dataset.name,
-                        instance.source,
-                        file_name,
-                    )
-                )  # type: ignore
-            else:
-                df.to_excel(
-                    os.path.join(
-                        settings.DATASET_FILES_URL,
-                        instance.dataset.name,
-                        instance.source,
-                        file_name,
-                    )
-                )  # type: ignore
-
-            # data = request.data
-            standardised_file_path = os.path.join(instance.dataset.name, instance.source, file_name)
+                file_name = os.path.basename(file_path)
+                standardised_file_path = os.path.join(instance.dataset.name, instance.source, file_name)
+                # data["file_size"] = os.path.getsize(os.path.join(settings.DATASET_FILES_URL, str(standardised_file_path)))
             data["standardised_configuration"] = config
-            data["file_size"] = os.path.getsize(os.path.join(settings.DATASET_FILES_URL, str(standardised_file_path)))
             serializer = self.get_serializer(instance, data=data, partial=True)
             serializer.is_valid(raise_exception=True)
             serializer.save()

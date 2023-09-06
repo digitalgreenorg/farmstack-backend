@@ -74,7 +74,7 @@
       .topLine {
         /* border-radius: 10px 10px 0px 0px; */
         /* border: none; */
-        background: #00ab55;
+        background: #00a94f;
         height: 11px;
       }
       .contentBox {
@@ -88,7 +88,7 @@
         margin-bottom: 5px;
       }
       .yelloHead {
-        color: #00ab55;
+        color: #00a94f;
         font-weight: 700;
         font-size: 14px;
         line-height: 16.64px;
@@ -109,7 +109,7 @@
       .bottomLine {
         /* border-radius: 0px 0px 10px 10px; */
         /* border: none; */
-        background: #00ab55;
+        background: #00a94f;
         height: 11px;
         /* margin-bottom: 53px; */
       }
@@ -128,7 +128,7 @@
         margin-bottom: 33px;
       }
       .yellowButton {
-        background-color: #00ab55;
+        background-color: #00a94f;
         /* height: 35px; */
         padding: 10px;
         color: white !important;
@@ -142,8 +142,8 @@
         /* height: 35px; */
       }
       .whiteButton {
-        border: 1px solid #00ab55;
-        color: #00ab55;
+        border: 1px solid #00a94f;
+        color: #00a94f;
         padding: 10px;
         font-weight: 400;
         font-size: 12px;
@@ -155,10 +155,11 @@
         margin: 33px auto;
         /* width: 400px; */
         /* border: 1px solid red; */
+        width: 50px; 
       }
       .bottomMostLine {
         height: 11px;
-        background-color: #00ab55;
+        background-color: #00a94f;
         /* min-width: 564px; */
         min-width: 400px;
         margin: auto;
@@ -205,6 +206,23 @@
           padding: 2px 2px 0 2px;
         }
       }
+      .image-container {
+        text-align: center; 
+        display: flex; 
+        flex-direction: column; 
+        align-items: center; 
+      }
+      .image-container img {
+        max-width: 100%; 
+        display: block; 
+        margin: 0 auto; 
+      }
+      .image-text {
+        font-size: 10px; 
+        color: #333; 
+        white-space: nowrap; 
+        margin-top: 10px; 
+      }
     </style>
   </head>
   <body>
@@ -243,8 +261,8 @@
                           123123
                         </div> -->
                         <div style='
-                            border: 1px solid #00ab55;
-                            color: #00ab55;
+                            border: 1px solid #00a94f;
+                            color: #00a94f;
                             background: white;
                             width: 130px;
                             margin: 33px auto;
@@ -269,12 +287,12 @@
                 </div>
                 <div class='bottomLine'></div>
               </div>
-              <div class='logo'>
-                <img
-                  src="new_farmstack_main_logo.svg"
-                  alt='FarmStack'
-                />
+
+              <div class="logo image-container">
+                <img src="datahub-api/accounts/templates/kalro_logo.png" alt="Powered by FarmStack" />
+                <span class="image-text">Powered by FarmStack</span>
               </div>
+
             </td>
           </tr>
           <tr style='background-color: #eaeff2'>
