@@ -2536,7 +2536,7 @@ class DatasetV2View(GenericViewSet):
             #         status=status.HTTP_200_OK,
             #     )
             # role_id = request.META.get("role_id")
-            hash_key = generate_hash_key_for_dashboard(pk, request.data, role_id)
+            hash_key = generate_hash_key_for_dashboard(pk, request.data, True)
             cache_data = cache.get(hash_key, {})
             if cache_data:
                 LOGGER.info("Dashboard details found in cache", exc_info=True)
@@ -2547,11 +2547,11 @@ class DatasetV2View(GenericViewSet):
             dataset_file_object = DatasetV2File.objects.get(id=pk)
             dataset_file = str(dataset_file_object.file)
             if "omfp" in dataset_file.lower():
-                return  generate_omfp_dashboard(file, request.data, hash_key)
+                return  generate_omfp_dashboard(dataset_file, request.data, hash_key)
             if "fsp" in dataset_file.lower():
-                return generate_fsp_dashboard(file, request.data, hash_key)
+                return generate_fsp_dashboard(dataset_file, request.data, hash_key)
             if "knfd" in dataset_file.lower():
-                return generate_knfd_dashboard(file, request.data, hash_key)
+                return generate_knfd_dashboard(dataset_file, request.data, hash_key)
             if not "kiamis" in dataset_file.lower():
                  return Response(
                     "Requested resource is currently unavailable. Please try again later.",
@@ -2655,11 +2655,11 @@ class DatasetV2View(GenericViewSet):
                 "No dataset file for the provided id.",
                 status=status.HTTP_404_NOT_FOUND,
             )
-        except Exception as e:
-            print(e)
-            return Response(e.detail,
-                status=status.HTTP_404_NOT_FOUND,
-            )
+        # except Exception as e:
+        #     print(e)
+        #     return Response(e.detail,
+        #         status=status.HTTP_404_NOT_FOUND,
+        #     )
     
     def get_consolidated_file(self, name):
         consolidated_file = f"consolidated_{name}.csv" 
