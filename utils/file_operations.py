@@ -227,7 +227,7 @@ def check_file_name_length(incoming_file_name: str, accepted_file_name_size: int
     return valid
 
 
-def filter_dataframe_for_dashboard_counties(df: Any, counties: [], sub_counties: [], gender: [], value_chain: [], hash_key: str):
+def filter_dataframe_for_dashboard_counties(df: Any, counties: [], sub_counties: [], gender: [], value_chain: [], hash_key: str, microsite=False):
     obj = {}
     df['Gender'] = df['Gender'].map({1: 'Male', 2: 'Female'})
     df['Highest Level of Formal Education'] = df['Highest Level of Formal Education'].map(
@@ -332,6 +332,18 @@ def filter_dataframe_for_dashboard_counties(df: Any, counties: [], sub_counties:
     obj["counties"] = np.unique(filtered_by_counties["County"]).size
     obj["constituencies"] = filtered_by_counties["Constituency"].nunique()
     obj["sub_counties"] = np.unique(filtered_by_counties['Sub County']).size
+    if not microsite:
+        convert_columns = ['County', 'Sub County', "Gender"]
+        df[convert_columns] = df[convert_columns].astype(str)
+
+        obj["filters"]= {
+                "county": df['County'].unique().tolist(),
+                "sub_county": df['Sub County'].unique().tolist(),
+                # "constituencies": df['Constituency'].unique().tolist(),
+                "gender": df['Gender'].unique().tolist()
+                }
+    else:
+        obj["filters"]={}
     obj["type"] = "kiamis"
     cache.set(hash_key, obj, 86400)
     LOGGER.info("Dashboard details added to cache", exc_info=True)
