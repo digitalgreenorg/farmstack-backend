@@ -234,16 +234,18 @@ def generate_api_key(length=32):
     api_key = secrets.token_hex(length)
     return api_key
 
-def generate_hash_key_for_dashboard(pk, data):
+def generate_hash_key_for_dashboard(pk, data, role_id=3, logged=False):
     data["pk"] = pk
-    print(data)
+    data["role_id"] = role_id
+    data["logged"] = logged
     data_string = json.dumps(data)
     # Create a hashlib SHA-256 hash object
-    hash_obj = hashlib.sha256()
-    # Update the hash object with the data as bytes
-    hash_obj.update(data_string.encode('utf-8'))
-
-    # Get the hexadecimal representation of the hash
-    hash_key = hash_obj.hexdigest()
+    # hash_obj = hashlib.sha256()
+    # # Update the hash object with the data as bytes
+    # hash_obj.update(data_string.encode('utf-8'))
+    # # Get the hexadecimal representation of the hash
+    # hash_key = hash_obj.hexdigest()
+    hash_key = hash(data_string)
+    print(hash_key)
     return hash_key
 
