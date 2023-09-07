@@ -415,11 +415,11 @@ class DatasetsMicrositeViewSet(GenericViewSet):
             dataset_file = str(dataset_file_object.file)
 
             if "omfp" in dataset_file.lower():
-                return generate_omfp_dashboard(dataset_file, request.data, hash_key, True)
+                return generate_omfp_dashboard(dataset_file, request.data, hash_key, False)
             if "fsp" in dataset_file.lower():
-                return generate_fsp_dashboard(dataset_file, request.data, hash_key, True)
+                return generate_fsp_dashboard(dataset_file, request.data, hash_key, False)
             if "knfd" in dataset_file.lower():
-                return generate_knfd_dashboard(dataset_file, request.data, hash_key, True)
+                return generate_knfd_dashboard(dataset_file, request.data, hash_key, False)
             if not "kiamis" in dataset_file.lower():
                  return Response(
                     "Requested resource is currently unavailable. Please try again later.",
