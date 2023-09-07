@@ -2540,31 +2540,64 @@ class DatasetV2View(GenericViewSet):
     @action(detail=True, methods=["post"])
     def get_dashboard_chart_data(self, request, pk, *args, **kwargs):
         try:
+            filters = True
             role_id = request.META.get("role_id")
-            hash_key = generate_hash_key_for_dashboard(pk, request.data, role_id, True)
-            cache_data = cache.get(hash_key, {})
-            if cache_data:
-                LOGGER.info("Dashboard details found in cache", exc_info=True)
+            map_id = request.META.get("map_id")
+            dataset_file_obj = DatasetV2File.objects.get(id=pk)
+            dataset_file = str(dataset_file_obj.file)
+            if role_id != str(1):
+                usage_policy = UsagePolicy.objects.filter(
+                                                user_organization_map=map_id,
+                                                dataset_file_id=pk,
+                                                approval_status="approved"
+                                            ).order_by("-updated_at").first()
+                filters =  True if usage_policy else False
+
+
+            # Create a dictionary mapping dataset types to dashboard generation functions
+            dataset_type_to_dashboard_function = {
+                "omfp": generate_omfp_dashboard,
+                "fsp": generate_fsp_dashboard,
+                "knfd": generate_knfd_dashboard,
+                "kiamis": "generate_kiamis_dashboard",
+            }
+
+            # Determine the dataset type based on the filename
+            dataset_type = None
+            for key in dataset_type_to_dashboard_function:
+                if key in dataset_file.lower():
+                    dataset_type = key
+                    break
+
+            # If dataset_type is not found, return an error response
+            if dataset_type is None:
                 return Response(
-                cache_data,
-                status=status.HTTP_200_OK,
-                )
-            dataset_file_object = DatasetV2File.objects.get(id=pk)
-            dataset_file = str(dataset_file_object.file)
-            if "omfp" in dataset_file.lower():
-                return (generate_omfp_dashboard(self.get_consolidated_file("omfp"), request.data, hash_key) 
-                            if role_id == str(1) else generate_omfp_dashboard(dataset_file, request.data, hash_key))
-            if "fsp" in dataset_file.lower():
-                return (generate_fsp_dashboard(self.get_consolidated_file("fsp"), request.data, hash_key) 
-                            if role_id == str(1) else generate_fsp_dashboard(dataset_file, request.data, hash_key))
-            if "knfd" in dataset_file.lower():
-                return (generate_knfd_dashboard(self.get_consolidated_file("knfd"), request.data, hash_key) 
-                            if role_id == str(1) else generate_knfd_dashboard(dataset_file, request.data, hash_key))
-            if not "kiamis" in dataset_file.lower():
-                 return Response(
                     "Requested resource is currently unavailable. Please try again later.",
                     status=status.HTTP_200_OK,
                 )
+
+            # Generate the base hash key
+            hash_key = generate_hash_key_for_dashboard(
+                dataset_type if role_id == str(1) else pk,
+                request.data, role_id, filters
+            )
+
+            # Check if the data is already cached
+            cache_data = cache.get(hash_key, {})
+            if cache_data:
+                LOGGER.info("Dashboard details found in cache", exc_info=True)
+                return Response(cache_data, status=status.HTTP_200_OK)
+
+            # Get the appropriate dashboard generation function
+            dashboard_generator = dataset_type_to_dashboard_function.get(dataset_type)
+
+            if dashboard_generator and dataset_type != 'kiamis':
+                # Generate the dashboard data using the selected function
+                return dashboard_generator(
+                    dataset_file if role_id != str(1) else self.get_consolidated_file(dataset_type),
+                    request.data, hash_key, filters
+                )
+
             # serializer = DatahubDatasetFileDashboardFilterSerializer(data=request.data)
             # serializer.is_valid(raise_exception=True)
             counties = []
@@ -2645,7 +2678,8 @@ class DatasetV2View(GenericViewSet):
                     sub_counties=sub_counties if sub_counties else [],
                     gender=gender if gender else [],
                     value_chain=value_chain if value_chain else [],
-                    hash_key=hash_key
+                    hash_key=hash_key,
+                    microsite=filters
                 )
             except Exception as e:
                 logging.error(e, exc_info=True)
@@ -2670,6 +2704,7 @@ class DatasetV2View(GenericViewSet):
                 f"Something went wrong, please try again. {e}",
                 status=status.HTTP_400_BAD_REQUEST,
             )
+    
     def get_consolidated_file(self, name):
         consolidated_file = f"consolidated_{name}.csv" 
         dataframes = []
@@ -2684,16 +2719,22 @@ class DatasetV2View(GenericViewSet):
                     DatasetV2File.objects
                     .select_related("dataset")
                     .filter(dataset__name__icontains=name, file__iendswith=".csv")
-                    .values_list('file', flat=True).all()  # Flatten the list of values
+                    .values_list('file', flat=True).distinct()  # Flatten the list of values
                 )
                 def read_csv_file(file_path):
+                    chunk_size = 50000
+                    chunk_df = pd.DataFrame([])
+                    chunks = 0
                     try:
                         logging.info(f"{file_path} Consolidation started")
-                        df = pd.read_csv(file_path)
-                        dataframes.append(df)
+                        for chunk in pd.read_csv(file_path, chunksize=chunk_size):
+                            # Append the processed chunk to the combined DataFrame
+                            chunk_df = pd.concat([chunk_df, chunk], ignore_index=True)
+                            chunks = chunks+1
+                        logging.info(f"{file_path} Consolidated {chunks} chunks")
+                        dataframes.append(chunk_df)
                     except Exception as e:
                         logging.error(f"Error reading CSV file {file_path}", exc_info=True)
-
                 for csv_file in dataset_file_objects:
                     file_path = os.path.join(settings.DATASET_FILES_URL, csv_file)
                     thread = threading.Thread(target=read_csv_file, args=(file_path,))
