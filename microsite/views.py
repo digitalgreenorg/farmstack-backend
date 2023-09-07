@@ -1,15 +1,16 @@
 import datetime
+import gzip
 import json
 import logging
 import math
 import operator
 import os
-import gzip
 import pickle
 from functools import reduce
 
 import pandas as pd
 from django.conf import settings
+from django.core.cache import cache
 from django.core.paginator import Paginator
 from django.db.models import Q
 from django.http import FileResponse, HttpResponse, HttpResponseNotFound, JsonResponse
@@ -31,8 +32,8 @@ from core.utils import (
     Utils,
     csv_and_xlsx_file_validatation,
     date_formater,
+    generate_hash_key_for_dashboard,
     read_contents_from_csv_or_xlsx_file,
-    generate_hash_key_for_dashboard
 )
 from datahub.models import (
     DatahubDocuments,
@@ -69,12 +70,11 @@ from utils import custom_exceptions, file_operations
 from utils.file_operations import (
     check_file_name_length,
     filter_dataframe_for_dashboard_counties,
-    generate_omfp_dashboard,
     generate_fsp_dashboard,
-    generate_knfd_dashboard
+    generate_knfd_dashboard,
+    generate_omfp_dashboard,
 )
 from utils.jwt_services import http_request_mutation
-from django.core.cache import cache
 
 LOGGER = logging.getLogger(__name__)
 
@@ -506,7 +506,7 @@ class DatasetsMicrositeViewSet(GenericViewSet):
                     gender=gender if gender else [],
                     value_chain=value_chain if value_chain else [],
                     hash_key=hash_key,
-                    microsite=True
+                    filters=True
                 )
             except Exception as e:
                 print(e)

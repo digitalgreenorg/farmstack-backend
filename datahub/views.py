@@ -2681,7 +2681,7 @@ class DatasetV2View(GenericViewSet):
                     gender=gender if gender else [],
                     value_chain=value_chain if value_chain else [],
                     hash_key=hash_key,
-                    microsite=filters
+                    filters=filters
                 )
             except Exception as e:
                 logging.error(e, exc_info=True)
