@@ -231,7 +231,7 @@ def check_file_name_length(incoming_file_name: str, accepted_file_name_size: int
     return valid
 
 
-def filter_dataframe_for_dashboard_counties(df: Any, counties: [], sub_counties: [], gender: [], value_chain: [], hash_key: str, microsite=False):
+def filter_dataframe_for_dashboard_counties(df: Any, counties: [], sub_counties: [], gender: [], value_chain: [], hash_key: str, filters=False):
     obj = {}
     df['Gender'] = df['Gender'].map({1: 'MALE', 2: 'FEMALE'})
     df['Highest Level of Formal Education'] = df['Highest Level of Formal Education'].map(
@@ -336,7 +336,7 @@ def filter_dataframe_for_dashboard_counties(df: Any, counties: [], sub_counties:
     obj["counties"] = np.unique(filtered_by_counties["County"]).size
     obj["constituencies"] = filtered_by_counties["Constituency"].nunique()
     obj["sub_counties"] = np.unique(filtered_by_counties['Sub County']).size
-    if not microsite:
+    if filters:
         convert_columns = ['County', 'Sub County', "Gender"]
         df[convert_columns] = df[convert_columns].astype(str)
         obj["filters"]= {
@@ -352,7 +352,7 @@ def filter_dataframe_for_dashboard_counties(df: Any, counties: [], sub_counties:
     LOGGER.info("Dashboard details added to cache", exc_info=True)
     return obj
 
-def generate_omfp_dashboard(dataset_file, data, hash_key, microsite=False):
+def generate_omfp_dashboard(dataset_file, data, hash_key, filters=False):
     if dataset_file.endswith(".xlsx") or dataset_file.endswith(".xls"):
         df = pd.read_excel(os.path.join(settings.DATASET_FILES_URL, dataset_file))
     elif dataset_file.endswith(".csv"):
@@ -375,7 +375,7 @@ def generate_omfp_dashboard(dataset_file, data, hash_key, microsite=False):
                     "cohort": unique_values_size.get("Cohort", {}),
                     "county": unique_values_size.get("County", {}),
                     "sub_county": unique_values_size.get("Sub County", {}),
-                    "gender": unique_values_size.get("Gender", {})} if not microsite else {}
+                    "gender": unique_values_size.get("Gender", {})} if filters else {}
         county_filters = data.get("county", []) 
         filtered_df = df[df['County'].isin(county_filters)] if county_filters else df
         sub_county_filters = data.get("sub_county", [])
@@ -413,7 +413,7 @@ def generate_omfp_dashboard(dataset_file, data, hash_key, microsite=False):
             status=200
         )
 
-def generate_fsp_dashboard(dataset_file, data, hash_key, microsite=False):
+def generate_fsp_dashboard(dataset_file, data, hash_key, filters=False):
     if dataset_file.endswith(".xlsx") or dataset_file.endswith(".xls"):
         df = pd.read_excel(os.path.join(settings.DATASET_FILES_URL, dataset_file))
     elif dataset_file.endswith(".csv"):
@@ -433,7 +433,7 @@ def generate_fsp_dashboard(dataset_file, data, hash_key, microsite=False):
         filters = {
             "county": unique_values_size.get("County", {}),
             "sub_county": unique_values_size.get("Subcounty", {}),
-            "gender": unique_values_size.get("Farmer_Sex", {})} if not microsite else {}
+            "gender": unique_values_size.get("Farmer_Sex", {})} if filters else {}
         county_filters = data.get("county", []) 
         filtered_df = df[df['County'].isin(county_filters)] if county_filters else df
         sub_county_filters = data.get("sub_county", [])
@@ -483,7 +483,7 @@ def generate_fsp_dashboard(dataset_file, data, hash_key, microsite=False):
             status=200
         )
 
-def generate_knfd_dashboard(dataset_file, data, hash_key, microsite=False):
+def generate_knfd_dashboard(dataset_file, data, hash_key, filters=False):
     if dataset_file.endswith(".xlsx") or dataset_file.endswith(".xls"):
         df = pd.read_excel(os.path.join(settings.DATASET_FILES_URL, dataset_file))
     elif dataset_file.endswith(".csv"):
@@ -504,7 +504,7 @@ def generate_knfd_dashboard(dataset_file, data, hash_key, microsite=False):
         filters = {
             "county": unique_values_size.get("County", {}),
             "sub_county": unique_values_size.get("Sub-County", {}),
-            "gender": unique_values_size.get("Gender", {})} if not microsite else {}
+            "gender": unique_values_size.get("Gender", {})} if filters else {}
         county_filters = data.get("county", [])
         filtered_df = df[df['County'].isin(county_filters)] if county_filters else df
         sub_county_filters = data.get("sub_county", [])
