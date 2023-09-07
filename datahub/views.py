@@ -2546,14 +2546,16 @@ class DatasetV2View(GenericViewSet):
             dataset_file_obj = DatasetV2File.objects.get(id=pk)
             dataset_file = str(dataset_file_obj.file)
             if role_id != str(1):
-                usage_policy = UsagePolicy.objects.filter(
+                if UsagePolicy.objects.filter(
                                                 user_organization_map=map_id,
                                                 dataset_file_id=pk,
                                                 approval_status="approved"
-                                            ).order_by("-updated_at").first()
-                filters =  True if usage_policy else False
-
-
+                                            ).order_by("-updated_at").first():
+                    filters=True
+                elif DatasetV2File.objects.select_related("dataset").filter(id=pk, dataset__user_map_id=map_id).first():
+                    filters =  True
+                else:
+                    filters = False
             # Create a dictionary mapping dataset types to dashboard generation functions
             dataset_type_to_dashboard_function = {
                 "omfp": generate_omfp_dashboard,
@@ -2583,10 +2585,10 @@ class DatasetV2View(GenericViewSet):
             )
 
             # Check if the data is already cached
-            cache_data = cache.get(hash_key, {})
-            if cache_data:
-                LOGGER.info("Dashboard details found in cache", exc_info=True)
-                return Response(cache_data, status=status.HTTP_200_OK)
+            # cache_data = cache.get(hash_key, {})
+            # if cache_data:
+            #     LOGGER.info("Dashboard details found in cache", exc_info=True)
+            #     return Response(cache_data, status=status.HTTP_200_OK)
 
             # Get the appropriate dashboard generation function
             dashboard_generator = dataset_type_to_dashboard_function.get(dataset_type)
