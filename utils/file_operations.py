@@ -3,6 +3,7 @@ import logging
 import os
 import re
 import shutil
+import threading
 from typing import Any
 
 import cssutils
@@ -365,25 +366,35 @@ def generate_omfp_dashboard(dataset_file, data, hash_key, microsite=False):
     convert_columns = ['County', 'Sub County', 'Telephone', "Gender", "Primary Value Chain"]
     df[convert_columns] = df[convert_columns].astype(str)
     df["Gender"] = df["Gender"].str.upper().str.strip()
-    df["Sub County"] = df["Sub County"].str.upper().str.strip()
-    df["County"] = df["County"].str.upper().str.strip()
+    df["Sub County"] = df["Sub County"].str.strip()
+    df["County"] = df["County"]
+    columns_to_find_unique = ["Cohort", "County", 'Sub County', 'Gender']
+    unique_values_size = find_unique_values_concurrently(df, columns_to_find_unique)
     try:
-        filters = {"cohort":np.unique(df['Cohort']),
-                    "county": np.unique(df['County']),
-                    "sub_county": np.unique(df['Sub County']),
-                    "gender": np.unique(df['Gender'])} if not microsite else {}
+        filters = {
+                    "cohort": unique_values_size.get("Cohort", {}),
+                    "county": unique_values_size.get("County", {}),
+                    "sub_county": unique_values_size.get("Sub County", {}),
+                    "gender": unique_values_size.get("Gender", {})} if not microsite else {}
         county_filters = data.get("county", []) 
         filtered_df = df[df['County'].isin(county_filters)] if county_filters else df
         sub_county_filters = data.get("sub_county", [])
         filtered_df = filtered_df[filtered_df['Sub County'].isin(sub_county_filters)] if sub_county_filters else filtered_df
+        columns_to_find_size = ["County", "Sub County", "Telephone"]
+
+        # Create a copy of filtered_df to avoid modifying the original DataFrame
+        # filtered_df_copy = filtered_df.copy()
+
+        # Find the number of unique values for the specified columns concurrently
+        unique_values_size = find_size_concurrently(filtered_df, columns_to_find_size)
         dashboard_details = {
             "total_number_of_records": len(filtered_df),
-            "counties": np.unique(filtered_df["County"]).size,
-            "sub_counties":np.unique(filtered_df['Sub County']).size,
+            "counties": unique_values_size.get("County", {}),
+            "sub_counties":unique_values_size.get("Sub County", {}),
             "filters":filters,
             "male_count": filtered_df['Gender'].value_counts().get('MALE', 0),
             "female_count": filtered_df['Gender'].value_counts().get('FEMALE', 0),
-            "farmer_mobile_numbers": np.unique(filtered_df['Telephone']).size,
+            "farmer_mobile_numbers": unique_values_size.get("Telephone", {}),
         }
         dashboard_details["gender_by_sub_county"] =filtered_df.groupby(['Sub County', 'Gender'])['Gender'].count().unstack().fillna(0).astype(int).to_dict(orient='index')
 
@@ -406,41 +417,58 @@ def generate_fsp_dashboard(dataset_file, data, hash_key, microsite=False):
     if dataset_file.endswith(".xlsx") or dataset_file.endswith(".xls"):
         df = pd.read_excel(os.path.join(settings.DATASET_FILES_URL, dataset_file))
     elif dataset_file.endswith(".csv"):
-        df = pd.read_csv(os.path.join(settings.DATASET_FILES_URL, dataset_file),low_memory=False)
+        df = pd.read_csv(os.path.join(settings.DATASET_FILES_URL, dataset_file), low_memory=False)
     else:
         return Response(
             "Unsupported file please use .xls or .csv.",
             status=status.HTTP_400_BAD_REQUEST,
         )
-    df['Farmer_Sex'] = df['Farmer_Sex'].map({1: 'MALE', 2: 'FEMALE'})
-    convert_columns = ['County', 'Subcounty', 'Farmer_TelephoneNumebr', "Farmer_Sex", "vc", "vc_two", "vc_three"]
+    df['Farmer_Sex'] = df['Farmer_Sex'].astype(str).map({'1': 'MALE', '2': 'FEMALE'}).fillna('')
+    convert_columns = ['County', 'Subcounty', 'Farmer_TelephoneNumebr', "vc", "vc_two", "vc_three"]
     df[convert_columns] = df[convert_columns].astype(str)
-    df["Subcounty"] = df["Subcounty"].str.upper().str.strip()
-    df["Farmer_Sex"] = df["Farmer_Sex"].str.strip()
-    df["County"] = df["County"].str.upper().str.strip()
-    dashboard_details={}
+    df["Subcounty"] = df["Subcounty"].str.strip()
+    columns_to_find_unique = ["County", 'Subcounty', 'Farmer_Sex']
+    unique_values_size = find_unique_values_concurrently(df, columns_to_find_unique)
     try:
         filters = {
-            "county": np.unique(df['County']),
-            "sub_county": np.unique(df['Subcounty']),
-            "gender": np.unique(df['Farmer_Sex'])} if not microsite else {}
+            "county": unique_values_size.get("County", {}),
+            "sub_county": unique_values_size.get("Subcounty", {}),
+            "gender": unique_values_size.get("Farmer_Sex", {})} if not microsite else {}
         county_filters = data.get("county", []) 
         filtered_df = df[df['County'].isin(county_filters)] if county_filters else df
         sub_county_filters = data.get("sub_county", [])
         filtered_df = filtered_df[filtered_df['Subcounty'].isin(sub_county_filters)] if sub_county_filters else filtered_df
+        columns_to_find_size = ["County", "Subcounty", "Farmer_TelephoneNumebr"]
+
+        # Create a copy of filtered_df to avoid modifying the original DataFrame
+        # filtered_df_copy = filtered_df.copy()
+
+        # Find the number of unique values for the specified columns concurrently
+        unique_values_size = find_size_concurrently(filtered_df, columns_to_find_size)
         dashboard_details = {
             "total_number_of_records": len(filtered_df),
-            "counties":np.unique(filtered_df["County"]).size,
-            "sub_counties":np.unique(filtered_df['Subcounty']).size,
+            "counties":unique_values_size.get("County", {}),
+            "sub_counties":unique_values_size.get("Subcounty", {}),
             "filters":filters,
             "male_count": filtered_df['Farmer_Sex'].value_counts().get('MALE', 0),
             "female_count": filtered_df['Farmer_Sex'].value_counts().get('FEMALE', 0),
-            "farmer_mobile_numbers": np.unique(filtered_df['Farmer_TelephoneNumebr']).size,
+            "farmer_mobile_numbers": unique_values_size.get("Farmer_TelephoneNumebr", {}),
         }
         dashboard_details["gender_by_sub_county"] =filtered_df.groupby(['Subcounty', 'Farmer_Sex'])['Farmer_Sex'].count().unstack().fillna(0).astype(int).to_dict(orient='index')
-        dashboard_details["primary_value_chain_by_sub_county"] = process_column(filtered_df, "vc", "Subcounty")
-        dashboard_details["second_value_chain_by_sub_county"] = process_column(filtered_df, "vc_two", "Subcounty")
-        dashboard_details["third_value_chain_by_sub_county"] =  process_column(filtered_df, "vc_three", "Subcounty")
+        
+        columns_to_process = ["vc", "vc_two", "vc_three"]
+        group_by_column = "Subcounty"
+
+        # Create a copy of filtered_df to avoid modifying the original DataFrame
+        # filtered_df_copy = filtered_df.copy()
+
+        # Process the columns concurrently
+        result_details = process_columns_concurrently(filtered_df, columns_to_process, group_by_column)
+
+        # Update dashboard_details with the results
+        dashboard_details["primary_value_chain_by_sub_county"] = result_details.get("vc", {})
+        dashboard_details["second_value_chain_by_sub_county"] = result_details.get("vc_two", {})
+        dashboard_details["third_value_chain_by_sub_county"] = result_details.get("vc_three", {})
         dashboard_details["type"] = "fsp"
     except Exception as e:
         logging.error(e)
@@ -467,27 +495,36 @@ def generate_knfd_dashboard(dataset_file, data, hash_key, microsite=False):
         )
     convert_columns = ['County', 'Sub-County', 'Telephone', "Gender", "PrimaryValueChain"]
     df[convert_columns] = df[convert_columns].astype(str)
-    df["Sub-County"] = df["Sub-County"].str.upper()
+    df["Sub-County"] = df["Sub-County"].str.strip()
     df["Gender"] = df["Gender"].str.upper().str.strip()
-    df["County"] = df["County"].str.upper().str.strip()
     dashboard_details={}
+    columns_to_find_unique = ["County", 'Sub-County', 'Gender']
+    unique_values_size = find_unique_values_concurrently(df, columns_to_find_unique)
     try:
         filters = {
-            "county": np.unique(df['County']),
-            "sub_county": np.unique(df['Sub-County']),
-            "gender": np.unique(df['Gender'])} if not microsite else {}
+            "county": unique_values_size.get("County", {}),
+            "sub_county": unique_values_size.get("Sub-County", {}),
+            "gender": unique_values_size.get("Gender", {})} if not microsite else {}
         county_filters = data.get("county", [])
         filtered_df = df[df['County'].isin(county_filters)] if county_filters else df
         sub_county_filters = data.get("sub_county", [])
         filtered_df = filtered_df[filtered_df['Sub-County'].isin(sub_county_filters)] if sub_county_filters else filtered_df
+        columns_to_find_size = ["County", "Sub-County", "Telephone"]
+
+        # Create a copy of filtered_df to avoid modifying the original DataFrame
+        # filtered_df_copy = filtered_df.copy()
+
+        # Find the number of unique values for the specified columns concurrently
+        unique_values_size = find_size_concurrently(filtered_df, columns_to_find_size)
+
         dashboard_details = {
             "total_number_of_records": len(filtered_df),
-            "counties":np.unique(filtered_df["County"]).size,
-            "sub_counties": np.unique(filtered_df['Sub-County']).size,
+            "counties": unique_values_size.get("County", 0),
+            "sub_counties": unique_values_size.get("Sub-County", 0),
             "filters": filters,
             "male_count": filtered_df['Gender'].value_counts().get('MALE', 0),
             "female_count": filtered_df['Gender'].value_counts().get('FEMALE', 0),
-            "farmer_mobile_numbers": np.unique(filtered_df['Telephone']).size,
+            "farmer_mobile_numbers": unique_values_size.get("Telephone", 0),
         }
         dashboard_details["gender_by_sub_county"] =filtered_df.groupby(['Sub-County', 'Gender'])['Gender'].count().unstack().fillna(0).astype(int).to_dict(orient='index')
         dashboard_details["primary_value_chain_by_sub_county"] = process_column(filtered_df, "PrimaryValueChain", 'Sub-County')
@@ -521,4 +558,82 @@ def process_column(df, column_name, sub_county):
         .to_dict()
     )
 
+    return result_dict
+
+def process_column_threaded(df, column_name, sub_county, result_dict):
+    df[column_name].replace(['nan', 'N/A', 'NA', 'NAN', np.nan], 'NaN', inplace=True)
+    try:
+        # Group by 'Sub County' and the specified column, count occurrences, and create a nested dictionary
+        result = (
+            df[df[column_name] != 'NaN']
+            .groupby([sub_county, column_name])[column_name]
+            .count()
+            .unstack(fill_value=0)
+            .astype(int)
+            .apply(lambda x: {k: v for k, v in x.items() if v > 0}, axis=1)
+            .to_dict()
+        )
+        logging.info(f"Value chain manipulation completed {column_name}")
+        result_dict[column_name] = result
+    except Exception as e:
+        logging.error(f"Error {e} during value chain, column:{column_name}")
+    # return result_dict    
+
+def process_columns_concurrently(df, column_names, group_by_column):
+    threads = []
+    result_dict = {}
+    
+    for column_name in column_names:
+        thread = threading.Thread(target=process_column_threaded, args=(df, column_name, group_by_column, result_dict))
+        threads.append(thread)
+        thread.start()
+    
+    # Wait for all threads to finish
+    for thread in threads:
+        thread.join()
+    
+    return result_dict
+
+def find_size_threaded(df, column_name, result_dict):
+    try:
+        unique_values_count = np.unique(df[column_name]).size
+        result_dict[column_name] = unique_values_count
+    except Exception as e:
+        logging.error(f"Error {e} during find size, column:{column_name}")
+
+def find_size_concurrently(df, column_names):
+    threads = []
+    result_dict = {}
+    
+    for column_name in column_names:
+        thread = threading.Thread(target=find_size_threaded, args=(df, column_name, result_dict))
+        threads.append(thread)
+        thread.start()
+    
+    # Wait for all threads to finish
+    for thread in threads:
+        thread.join()
+    
+    return result_dict
+
+def find_unique_threaded(df, column_name, result_dict):
+    try:
+        unique_values_count = np.unique(df[column_name])
+        result_dict[column_name] = unique_values_count
+    except Exception as e:
+        logging.error(f"Error {e} during find unique, column:{column_name}")
+
+def find_unique_values_concurrently(df, column_names):
+    threads = []
+    result_dict = {}
+    
+    for column_name in column_names:
+        thread = threading.Thread(target=find_unique_threaded, args=(df, column_name, result_dict))
+        threads.append(thread)
+        thread.start()
+    
+    # Wait for all threads to finish
+    for thread in threads:
+        thread.join()
+    
     return result_dict

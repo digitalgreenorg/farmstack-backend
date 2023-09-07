@@ -1,26 +1,29 @@
 import ast
 import csv
+import gzip
 import json
 import logging
 import operator
 import os
+import pickle
 import re
 import shutil
-import numpy as np
 import sys
+import threading
 from calendar import c
 from functools import reduce
 from pickle import TRUE
 from urllib.parse import unquote
-import json
+
 import django
-from jsonschema import ValidationError
+import numpy as np
 import pandas as pd
 from django.conf import settings
 from django.contrib.admin.utils import get_model_from_relation
+from django.core.cache import cache
 from django.core.files.base import ContentFile
 from django.db import transaction
-from rest_framework.exceptions import ValidationError
+
 # from django.http import HttpResponse
 from django.db.models import (
     DEFERRED,
@@ -35,23 +38,24 @@ from django.db.models import (
     Value,
 )
 from django.db.models.functions import Concat
-from rest_framework.exceptions import ValidationError
 
 # from django.db.models.functions import Index, Substr
 from django.http import JsonResponse
 from django.shortcuts import render
 from drf_braces.mixins import MultipleSerializersViewMixin
+from jsonschema import ValidationError
 from psycopg2 import connect
 from psycopg2.extensions import ISOLATION_LEVEL_AUTOCOMMIT
 from python_http_client import exceptions
 from rest_framework import generics, pagination, status
 from rest_framework.decorators import action
+from rest_framework.exceptions import ValidationError
 from rest_framework.parsers import JSONParser, MultiPartParser
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.viewsets import GenericViewSet, ViewSet
 from uritemplate import partial
-from core.serializer_validation import OrganizationSerializerValidator,UserCreateSerializerValidator
+
 from accounts.models import User, UserRole
 from accounts.serializers import (
     UserCreateSerializer,
@@ -61,14 +65,19 @@ from accounts.serializers import (
 from connectors.models import Connectors
 from connectors.serializers import ConnectorsListSerializer
 from core.constants import Constants, NumericalConstants
+from core.serializer_validation import (
+    OrganizationSerializerValidator,
+    UserCreateSerializerValidator,
+)
 from core.settings import BASE_DIR
 from core.utils import (
     CustomPagination,
     Utils,
     csv_and_xlsx_file_validatation,
     date_formater,
+    generate_api_key,
+    generate_hash_key_for_dashboard,
     read_contents_from_csv_or_xlsx_file,
-    generate_hash_key_for_dashboard
 )
 from datahub.models import (
     DatahubDocuments,
@@ -76,12 +85,12 @@ from datahub.models import (
     DatasetV2,
     DatasetV2File,
     Organization,
+    Resource,
     StandardisationTemplate,
     UserOrganizationMap,
-    Resource,
 )
 from datahub.serializers import (
-    UsageUpdatePolicySerializer,
+    DatahubDatasetFileDashboardFilterSerializer,
     DatahubDatasetsSerializer,
     DatahubDatasetsV2Serializer,
     DatahubThemeSerializer,
@@ -100,15 +109,16 @@ from datahub.serializers import (
     PolicyDocumentSerializer,
     RecentDatasetListSerializer,
     RecentSupportTicketSerializer,
+    ResourceSerializer,
     StandardisationTemplateUpdateSerializer,
     StandardisationTemplateViewSerializer,
     TeamMemberCreateSerializer,
     TeamMemberDetailsSerializer,
     TeamMemberListSerializer,
     TeamMemberUpdateSerializer,
+    UsageUpdatePolicySerializer,
     UserOrganizationCreateSerializer,
     UserOrganizationMapSerializer,
-    ResourceSerializer, DatahubDatasetFileDashboardFilterSerializer,
 )
 from participant.models import SupportTicket
 from participant.serializers import (
@@ -117,24 +127,24 @@ from participant.serializers import (
 )
 from utils import custom_exceptions, file_operations, string_functions, validators
 from utils.authentication_services import authenticate_user
-from utils.file_operations import (check_file_name_length, filter_dataframe_for_dashboard_counties,
-    generate_omfp_dashboard,
+from utils.file_operations import (
+    check_file_name_length,
+    filter_dataframe_for_dashboard_counties,
     generate_fsp_dashboard,
-    generate_knfd_dashboard)
+    generate_knfd_dashboard,
+    generate_omfp_dashboard,
+)
 from utils.jwt_services import http_request_mutation
 
 from .models import Policy, ResourceFile, UsagePolicy
 from .serializers import (
+    APIBuilderSerializer,
     PolicySerializer,
     ResourceFileSerializer,
     UsagePolicyDetailSerializer,
     UsagePolicySerializer,
-    APIBuilderSerializer,
 )
-from core.utils import generate_api_key
-from django.core.cache import cache
-import gzip
-import pickle
+
 LOGGER = logging.getLogger(__name__)
 
 con = None
@@ -2533,12 +2543,13 @@ class DatasetV2View(GenericViewSet):
             role_id = request.META.get("role_id")
             hash_key = generate_hash_key_for_dashboard(pk, request.data, role_id, True)
             cache_data = cache.get(hash_key, {})
-            if cache_data:
-                LOGGER.info("Dashboard details found in cache", exc_info=True)
-                return Response(
-                cache_data,
-                status=status.HTTP_200_OK,
-                )
+            # if cache_data:
+            #     LOGGER.info("Dashboard details found in cache", exc_info=True)
+            #     return Response(
+            #     cache_data,
+            #     status=status.HTTP_200_OK,
+            #     )
+            # return generate_fsp_dashboard("FSP_NAKURU_standerdise.csv", request.data, hash_key)
             dataset_file_object = DatasetV2File.objects.get(id=pk)
             dataset_file = str(dataset_file_object.file)
             if "omfp" in dataset_file.lower():
@@ -2662,11 +2673,13 @@ class DatasetV2View(GenericViewSet):
             )
     def get_consolidated_file(self, name):
         consolidated_file = f"consolidated_{name}.csv" 
+        dataframes = []
+        thread_list = []
+        combined_df = pd.DataFrame([])
         try:
-            combined_df = pd.DataFrame([])
-            dataframes= []
             if os.path.exists(os.path.join(settings.DATASET_FILES_URL, consolidated_file)):
                 logging.info(f"{consolidated_file} file available")
+                return consolidated_file
             else:
                 dataset_file_objects = (
                     DatasetV2File.objects
@@ -2674,14 +2687,26 @@ class DatasetV2View(GenericViewSet):
                     .filter(dataset__name__icontains=name, file__iendswith=".csv")
                     .values_list('file', flat=True).all()  # Flatten the list of values
                 )
+                def read_csv_file(file_path):
+                    try:
+                        logging.info(f"{file_path} Consolidation started")
+                        df = pd.read_csv(file_path)
+                        dataframes.append(df)
+                    except Exception as e:
+                        logging.error(f"Error reading CSV file {file_path}", exc_info=True)
+
                 for csv_file in dataset_file_objects:
-                    file_path = os.path.join(settings.DATASET_FILES_URL,  csv_file)
-                    df = pd.read_csv(file_path)
-                    dataframes.append(df)
-                combined_df = pd.concat(dataframes, ignore_index=True)
-                # Save the combined DataFrame to a new CSV file
-                combined_df.to_csv(os.path.join(settings.DATASET_FILES_URL, consolidated_file), index=False)
-                logging.info(f"{consolidated_file} file created")
+                    file_path = os.path.join(settings.DATASET_FILES_URL, csv_file)
+                    thread = threading.Thread(target=read_csv_file, args=(file_path,))
+                    thread_list.append(thread)
+                    thread.start()
+
+                # Wait for all threads to complete
+                for thread in thread_list:
+                    thread.join()
+            combined_df = pd.concat(dataframes, ignore_index=True)
+            combined_df.to_csv(os.path.join(settings.DATASET_FILES_URL, consolidated_file), index=False)
+            logging.info(f"{consolidated_file} file created")
             return consolidated_file
         except Exception as e:
             logging.error(f"Error occoured while creating {consolidated_file}", exc_info=True)
