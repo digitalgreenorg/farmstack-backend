@@ -146,7 +146,6 @@ from .serializers import (
 )
 
 LOGGER = logging.getLogger(__name__)
-
 con = None
 
 
@@ -1033,7 +1032,7 @@ class SupportViewSet(GenericViewSet):
                 .all()
             )
         except django.core.exceptions.FieldError as error:  # type: ignore
-            logging.error(f"Error while filtering the ticketd ERROR: {error}")
+            LOGGER.error(f"Error while filtering the ticketd ERROR: {error}")
             return Response(f"Invalid filter fields: {list(request.data.keys())}", status=400)
 
         page = self.paginate_queryset(data)
@@ -1349,7 +1348,7 @@ class DatahubDatasetsViewSet(GenericViewSet):
                     .all()
                 )
         except Exception as error:  # type: ignore
-            logging.error("Error while filtering the datasets. ERROR: %s", error)
+            LOGGER.error("Error while filtering the datasets. ERROR: %s", error)
             return Response(f"Invalid filter fields: {list(request.data.keys())}", status=500)
 
         page = self.paginate_queryset(data)
@@ -1405,7 +1404,7 @@ class DatahubDatasetsViewSet(GenericViewSet):
                 else:
                     category_detail = []
             except Exception as error:  # type: ignore
-                logging.error("Error while filtering the datasets. ERROR: %s", error)
+                LOGGER.error("Error while filtering the datasets. ERROR: %s", error)
                 return Response(f"Invalid filter fields: {list(request.data.keys())}", status=500)
             return Response(
                 {
@@ -1460,7 +1459,7 @@ class DatahubDatasetsViewSet(GenericViewSet):
                 .all()
             )
         except Exception as error:  # type: ignore
-            logging.error("Error while filtering the datasets. ERROR: %s", error)
+            LOGGER.error("Error while filtering the datasets. ERROR: %s", error)
             return Response(
                 f"Invalid filter fields: {list(request.data.keys())}",
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -1996,7 +1995,7 @@ class DatasetV2ViewSet(GenericViewSet):
                         else data
                     )
         except Exception as error:  # type: ignore
-            logging.error("Error while filtering the datasets. ERROR: %s", error, exc_info=True)
+            LOGGER.error("Error while filtering the datasets. ERROR: %s", error, exc_info=True)
             return Response(f"Invalid filter fields: {list(request.data.keys())}", status=500)
         page = self.paginate_queryset(data)
         participant_serializer = DatahubDatasetsV2Serializer(page, many=True)
@@ -2048,7 +2047,7 @@ class DatasetV2ViewSet(GenericViewSet):
             else:
                 category_detail = []
         except Exception as error:  # type: ignore
-            logging.error("Error while filtering the datasets. ERROR: %s", error)
+            LOGGER.error("Error while filtering the datasets. ERROR: %s", error)
             return Response(f"Invalid filter fields: {list(request.data.keys())}", status=500)
         return Response({"geography": geography, "category_detail": category_detail}, status=200)
 
@@ -2090,7 +2089,7 @@ class DatasetV2ViewSet(GenericViewSet):
     #         participant_serializer = DatahubDatasetsV2Serializer(page, many=True)
     #         return self.get_paginated_response(participant_serializer.data)
     #     except Exception as error:  # type: ignore
-    #         logging.error("Error while filtering the datasets. ERROR: %s", error)
+    #         LOGGER.error("Error while filtering the datasets. ERROR: %s", error)
     #         return Response(
     #             f"Invalid filter fields: {list(request.data.keys())}",
     #             status=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -2257,7 +2256,7 @@ class DatasetV2ViewSetOps(GenericViewSet):
             return Response(result.to_json(orient="records", index=False), status=status.HTTP_200_OK)
 
         except Exception as e:
-            logging.error(str(e), exc_info=True)
+            LOGGER.error(str(e), exc_info=True)
             return Response({"error": str(e)}, status=500)
 
     @action(detail=False, methods=["get"])
@@ -2684,7 +2683,7 @@ class DatasetV2View(GenericViewSet):
                     filters=filters
                 )
             except Exception as e:
-                logging.error(e, exc_info=True)
+                LOGGER.error(e, exc_info=True)
                 return Response(
                     f"Something went wrong, please try again. {e}",
                     status=status.HTTP_400_BAD_REQUEST,
@@ -2695,13 +2694,13 @@ class DatasetV2View(GenericViewSet):
             )
 
         except DatasetV2File.DoesNotExist as e:
-            logging.error(e, exc_info=True)
+            LOGGER.error(e, exc_info=True)
             return Response(
                 "No dataset file for the provided id.",
                 status=status.HTTP_404_NOT_FOUND,
             )
         except Exception as e:
-            logging.error(e, exc_info=True)
+            LOGGER.error(e, exc_info=True)
             return Response(
                 f"Something went wrong, please try again. {e}",
                 status=status.HTTP_400_BAD_REQUEST,
@@ -2714,7 +2713,7 @@ class DatasetV2View(GenericViewSet):
         combined_df = pd.DataFrame([])
         try:
             if os.path.exists(os.path.join(settings.DATASET_FILES_URL, consolidated_file)):
-                logging.info(f"{consolidated_file} file available")
+                LOGGER.info(f"{consolidated_file} file available")
                 return consolidated_file
             else:
                 dataset_file_objects = (
@@ -2728,15 +2727,15 @@ class DatasetV2View(GenericViewSet):
                     chunk_df = pd.DataFrame([])
                     chunks = 0
                     try:
-                        logging.info(f"{file_path} Consolidation started")
+                        LOGGER.info(f"{file_path} Consolidation started")
                         for chunk in pd.read_csv(file_path, chunksize=chunk_size):
                             # Append the processed chunk to the combined DataFrame
                             chunk_df = pd.concat([chunk_df, chunk], ignore_index=True)
                             chunks = chunks+1
-                        logging.info(f"{file_path} Consolidated {chunks} chunks")
+                        LOGGER.info(f"{file_path} Consolidated {chunks} chunks")
                         dataframes.append(chunk_df)
                     except Exception as e:
-                        logging.error(f"Error reading CSV file {file_path}", exc_info=True)
+                        LOGGER.error(f"Error reading CSV file {file_path}", exc_info=True)
                 for csv_file in dataset_file_objects:
                     file_path = os.path.join(settings.DATASET_FILES_URL, csv_file)
                     thread = threading.Thread(target=read_csv_file, args=(file_path,))
@@ -2748,10 +2747,10 @@ class DatasetV2View(GenericViewSet):
                     thread.join()
             combined_df = pd.concat(dataframes, ignore_index=True)
             combined_df.to_csv(os.path.join(settings.DATASET_FILES_URL, consolidated_file), index=False)
-            logging.info(f"{consolidated_file} file created")
+            LOGGER.info(f"{consolidated_file} file created")
             return consolidated_file
         except Exception as e:
-            logging.error(f"Error occoured while creating {consolidated_file}", exc_info=True)
+            LOGGER.error(f"Error occoured while creating {consolidated_file}", exc_info=True)
             return Response(
                     "Requested resource is currently unavailable. Please try again later.",
                     status=status.HTTP_200_OK,
@@ -2962,10 +2961,10 @@ class DatahubNewDashboard(GenericViewSet):
                     )
                     .count()
                 )
-            logging.info("Participants Metrics completed")
+            LOGGER.info("Participants Metrics completed")
             return result
         except Exception as error:  # type: ignore
-            logging.error(
+            LOGGER.error(
                 "Error while filtering the participants. ERROR: %s",
                 error,
                 exc_info=True,
@@ -2994,10 +2993,10 @@ class DatahubNewDashboard(GenericViewSet):
                 )
             else:
                 query = query.filter(user_map__user__on_boarded_by=None).exclude(user_map__user__role_id=6)
-            logging.info("Datasets Metrics completed")
+            LOGGER.info("Datasets Metrics completed")
             return query
         except Exception as error:  # type: ignore
-            logging.error("Error while filtering the datasets. ERROR: %s", error, exc_info=True)
+            LOGGER.error("Error while filtering the datasets. ERROR: %s", error, exc_info=True)
             raise Exception(str(error))
 
     def connector_metrics(self, data, dataset_query, request):

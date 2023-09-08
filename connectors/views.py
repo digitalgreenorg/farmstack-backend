@@ -147,10 +147,10 @@ class ConnectorsViewSet(GenericViewSet):
             return Response({"message": "File Updated Sucessfully",
                              "file_path":edited_file_path}, status=200)
         except ObjectDoesNotExist as e:
-            logging.error(str(e), exc_info=True)
+            LOGGER.error(str(e), exc_info=True)
             return Response({"message":"connector details not found"}, 400)
         except Exception as e:
-            logging.error(str(e), exc_info=True)
+            LOGGER.error(str(e), exc_info=True)
             return Response({"message": str(e)}, status=400)
 
 
@@ -238,5 +238,5 @@ class ConnectorsViewSet(GenericViewSet):
                              "no_of_records": result_length},
                             status=status.HTTP_200_OK)
         except Exception as e:
-            logging.error(str(e), exc_info=True)
+            LOGGER.error(str(e), exc_info=True)
             return Response({"message": f"{str(e)}"}, status=400)

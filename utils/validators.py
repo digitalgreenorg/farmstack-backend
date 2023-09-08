@@ -1,8 +1,12 @@
-from core.constants import Constants
+import logging
+
+import phonenumbers
 from django.conf import settings
 from django.core.exceptions import ValidationError
-import phonenumbers
 
+from core.constants import Constants
+
+LOGGER = logging.getLogger(__name__)
 
 def validate_file_size(value):
     """
