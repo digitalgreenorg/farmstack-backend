@@ -2585,10 +2585,10 @@ class DatasetV2View(GenericViewSet):
             )
 
             # Check if the data is already cached
-            # cache_data = cache.get(hash_key, {})
-            # if cache_data:
-            #     LOGGER.info("Dashboard details found in cache", exc_info=True)
-            #     return Response(cache_data, status=status.HTTP_200_OK)
+            cache_data = cache.get(hash_key, {})
+            if cache_data:
+                LOGGER.info("Dashboard details found in cache", exc_info=True)
+                return Response(cache_data, status=status.HTTP_200_OK)
 
             # Get the appropriate dashboard generation function
             dashboard_generator = dataset_type_to_dashboard_function.get(dataset_type)
