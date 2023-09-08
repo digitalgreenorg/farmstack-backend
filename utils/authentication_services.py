@@ -1,5 +1,5 @@
+import logging
 from functools import wraps
-
 from rest_framework import status
 from rest_framework.response import Response
 
@@ -7,6 +7,7 @@ from connectors.models import Connectors
 from core.constants import Constants
 from datahub.models import Datasets, DatasetV2, DatasetV2File, Organization, UsagePolicy
 from utils.jwt_services import JWTServices
+LOGGER = logging.getLogger(__name__)
 
 
 def authenticate_user(model):
@@ -14,13 +15,13 @@ def authenticate_user(model):
         @wraps(view_func)
         def wrapper(self, request, *args, **kwargs):
             payload = JWTServices.extract_information_from_token(request=request)
-
             if model == DatasetV2File:
                 query_id = kwargs.get("pk")
                 dsv = DatasetV2File.objects.filter(
                     id=query_id, dataset__user_map_id=payload.get("map_id")
                 )
                 if not dsv:
+                    LOGGER.info(f"user_map: {payload.get('map_id')} hot have access")
                     return Response(
                         {"message": "Authorization Failed"},
                         status=status.HTTP_403_FORBIDDEN,
@@ -28,10 +29,12 @@ def authenticate_user(model):
                     
             elif model == UsagePolicy:
                 query_id = kwargs.get("pk")
+                
                 dsv = UsagePolicy.objects.filter(
                     id=query_id, dataset_file__dataset__user_map_id=payload.get("map_id")
                 )
                 if not dsv:
+                    LOGGER.info(f"user_map: {payload.get('map_id')} hot have access")
                     return Response(
                         {"message": "Authorization Failed"},
                         status=status.HTTP_403_FORBIDDEN,
@@ -43,6 +46,7 @@ def authenticate_user(model):
                     id=query_id, user_map_id=payload.get("map_id")
                 )
                 if not dsv:
+                    LOGGER.info(f"user_map: {payload.get('map_id')} hot have access")
                     return Response(
                         {"message": "Authorization Failed"},
                         status=status.HTTP_403_FORBIDDEN,
@@ -54,6 +58,7 @@ def authenticate_user(model):
                     id=query_id, user_id=payload.get("user_id")
                 )
                 if not con:
+                    LOGGER.info(f"user_map: {payload.get('map_id')} hot have access")
                     return Response(
                         {"message": "Authorization Failed"},
                         status=status.HTTP_403_FORBIDDEN,
@@ -69,6 +74,7 @@ def authenticate_user(model):
                     pass
 
                 else:
+                    LOGGER.info(f"user_map: {payload.get('map_id')} hot have access")
                     return Response(
                         {"message": "No resource found."},
                         status=status.HTTP_400_BAD_REQUEST,

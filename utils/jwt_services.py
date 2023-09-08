@@ -1,3 +1,4 @@
+import logging
 from functools import wraps
 
 from rest_framework import status
@@ -5,6 +6,7 @@ from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework_simplejwt.authentication import JWTAuthentication
 
+LOGGER = logging.getLogger(__name__)
 
 class JWTServices:
     @classmethod
@@ -39,7 +41,7 @@ def http_request_mutation(view_func):
 
             return view_func(self, request, *args, **kwargs)
         except Exception as e:
-            print(e)
+            LOGGER.error(f"Error during http http_request_mutation ERROR: {e}")
             return Response(
                 {
                     "message" : "Invalid auth credentials provided."

@@ -553,7 +553,7 @@ class ParticipantDatasetsViewSet(GenericViewSet):
                     .all()
                 )
         except Exception as error:  # type: ignore
-            logging.error(
+            LOGGER.error(
                 "Error while filtering the datasets. ERROR: %s", error)
             return Response(f"Invalid filter fields: {list(request.data.keys())}", status=500)
 
@@ -606,7 +606,7 @@ class ParticipantDatasetsViewSet(GenericViewSet):
             with open(Constants.CATEGORIES_FILE, "r") as json_obj:
                 category_detail = json.loads(json_obj.read())
         except Exception as error:  # type: ignore
-            logging.error(
+            LOGGER.error(
                 "Error while filtering the datasets. ERROR: %s", error)
             return Response(f"Invalid filter fields: {list(request.data.keys())}", status=500)
         return Response(
@@ -667,7 +667,7 @@ class ParticipantDatasetsViewSet(GenericViewSet):
                 .all()
             )
         except Exception as error:  # type: ignore
-            logging.error(
+            LOGGER.error(
                 "Error while filtering the datasets. ERROR: %s", error)
             return Response(
                 f"Invalid filter fields: {list(request.data.keys())}",
@@ -751,7 +751,7 @@ class ParticipantConnectorsViewSet(GenericViewSet):
                     for image in images if image.get("architecture") == "amd64"]
             data[Constants.USAGE_POLICY] = hash[0].split(":")[1].strip()
         except Exception as error:
-            logging.error(
+            LOGGER.error(
                 "Error while fetching the hash value. ERROR: %s", error)
             return Response(
                 {Constants.DOCKER_IMAGE_URL: [
@@ -898,7 +898,7 @@ class ParticipantConnectorsViewSet(GenericViewSet):
                     "architecture") == "amd64"]
                 data[Constants.USAGE_POLICY] = hash[0].split(":")[1].strip()
             except Exception as error:
-                logging.error(
+                LOGGER.error(
                     "Error while fetching the hash value. ERROR: %s", error)
                 return Response(
                     {Constants.DOCKER_IMAGE_URL: [
@@ -991,7 +991,7 @@ class ParticipantConnectorsViewSet(GenericViewSet):
                 .all()
             )
         except Exception as error:  # type: ignore
-            logging.error(
+            LOGGER.error(
                 "Error while filtering the datasets. ERROR: %s", error)
             return Response(f"Invalid filter fields: {list(request.data.keys())}", status=500)
 
@@ -1033,7 +1033,7 @@ class ParticipantConnectorsViewSet(GenericViewSet):
             )
             is_datset_present = True if datasests else False
         except Exception as error:  # type: ignore
-            logging.error(
+            LOGGER.error(
                 "Error while filtering the datasets. ERROR: %s", error)
             return Response(f"Invalid filter fields: {list(request.data.keys())}", status=500)
         return Response(
