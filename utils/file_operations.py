@@ -233,7 +233,8 @@ def check_file_name_length(incoming_file_name: str, accepted_file_name_size: int
 
 def filter_dataframe_for_dashboard_counties(df: Any, counties: [], sub_counties: [], gender: [], value_chain: [], hash_key: str, filters=False):
     obj = {}
-    df['Gender'] = df['Gender'].map({1: 'MALE', 2: 'FEMALE'})
+    gender_changes = {'1': 'MALE', '2': 'FEMALE', '1.0': 'MALE', '2.0': 'FEMALE'}
+    df['Gender'] = df['Gender'].map(gender_changes)
     df['Highest Level of Formal Education'] = df['Highest Level of Formal Education'].map(
         {1: 'None', 2: 'Primary', 3: 'Secondary', 4: 'Certificate', 5: 'Diploma', 6: 'University Degree',
          7: "Post Graduate Degree,Masters and Above"})
@@ -423,7 +424,8 @@ def generate_fsp_dashboard(dataset_file, data, hash_key, filters=False):
             "Unsupported file please use .xls or .csv.",
             status=status.HTTP_400_BAD_REQUEST,
         )
-    df['Farmer_Sex'] = df['Farmer_Sex'].astype(str).map({'1': 'MALE', '2': 'FEMALE'}).fillna('')
+    gender_changes = {'1': 'MALE', '2': 'FEMALE', '1.0': 'MALE', '2.0': 'FEMALE'}
+    df['Farmer_Sex'] = df['Farmer_Sex'].astype(str).map(gender_changes).fillna('') # type: ignore
     convert_columns = ['County', 'Subcounty', 'Farmer_TelephoneNumebr', "vc", "vc_two", "vc_three"]
     df[convert_columns] = df[convert_columns].astype(str)
     df["Subcounty"] = df["Subcounty"].str.strip()
