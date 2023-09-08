@@ -234,7 +234,7 @@ def check_file_name_length(incoming_file_name: str, accepted_file_name_size: int
 def filter_dataframe_for_dashboard_counties(df: Any, counties: [], sub_counties: [], gender: [], value_chain: [], hash_key: str, filters=False):
     obj = {}
     gender_changes = {'1': 'MALE', '2': 'FEMALE', '1.0': 'MALE', '2.0': 'FEMALE'}
-    df['Gender'] = df['Gender'].map(gender_changes)
+    df['Gender'] = df['Gender'].astype(str).map(gender_changes)
     df['Highest Level of Formal Education'] = df['Highest Level of Formal Education'].map(
         {1: 'None', 2: 'Primary', 3: 'Secondary', 4: 'Certificate', 5: 'Diploma', 6: 'University Degree',
          7: "Post Graduate Degree,Masters and Above"})
@@ -402,7 +402,7 @@ def generate_omfp_dashboard(dataset_file, data, hash_key, filters=False):
         dashboard_details["primary_value_chain_by_sub_county"] = process_column(filtered_df, 'Primary Value Chain', 'Sub County')
         dashboard_details["type"] = "omfp"
     except Exception as e:
-        logging.error(e)
+        LOGGER.error(e)
         return Response(
             f"Something went wrong, please try again. {e}",
             status=status.HTTP_400_BAD_REQUEST,
@@ -473,7 +473,7 @@ def generate_fsp_dashboard(dataset_file, data, hash_key, filters=False):
         dashboard_details["third_value_chain_by_sub_county"] = result_details.get("vc_three", {})
         dashboard_details["type"] = "fsp"
     except Exception as e:
-        logging.error(e)
+        LOGGER.error(e)
         return Response(
             f"Something went wrong, please try again. {e}",
             status=status.HTTP_400_BAD_REQUEST,
@@ -532,7 +532,7 @@ def generate_knfd_dashboard(dataset_file, data, hash_key, filters=False):
         dashboard_details["primary_value_chain_by_sub_county"] = process_column(filtered_df, "PrimaryValueChain", 'Sub-County')
         dashboard_details["type"] = "knfd"
     except Exception as e:
-        logging.error(e)
+        LOGGER.error(e)
         return Response(
             f"Something went wrong, please try again. {e}",
             status=status.HTTP_400_BAD_REQUEST,
@@ -575,10 +575,12 @@ def process_column_threaded(df, column_name, sub_county, result_dict):
             .apply(lambda x: {k: v for k, v in x.items() if v > 0}, axis=1)
             .to_dict()
         )
-        logging.info(f"Value chain manipulation completed {column_name}")
+        LOGGER.info(f"Value chain manipulation completed {column_name}")
         result_dict[column_name] = result
     except Exception as e:
-        logging.error(f"Error {e} during value chain, column:{column_name}")
+        LOGGER.error(f"Error {e} during value chain, column:{column_name}")
+        result_dict[column_name] = ""
+
     # return result_dict    
 
 def process_columns_concurrently(df, column_names, group_by_column):
@@ -601,7 +603,8 @@ def find_size_threaded(df, column_name, result_dict):
         unique_values_count = np.unique(df[column_name]).size
         result_dict[column_name] = unique_values_count
     except Exception as e:
-        logging.error(f"Error {e} during find size, column:{column_name}")
+        LOGGER.error(f"Error {e} during find size, column:{column_name}")
+        result_dict[column_name] = 0
 
 def find_size_concurrently(df, column_names):
     threads = []
@@ -623,7 +626,8 @@ def find_unique_threaded(df, column_name, result_dict):
         unique_values_count = np.unique(df[column_name])
         result_dict[column_name] = unique_values_count
     except Exception as e:
-        logging.error(f"Error {e} during find unique, column:{column_name}")
+        LOGGER.error(f"Error {e} during find unique, column:{column_name}")
+        result_dict[column_name] = []
 
 def find_unique_values_concurrently(df, column_names):
     threads = []

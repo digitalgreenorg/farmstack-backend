@@ -117,7 +117,7 @@ class OrganizationMicrositeViewSet(GenericViewSet):
             return Response(data, status=status.HTTP_200_OK)
 
         except Exception as error:
-            LOGGER.error(error, exc_info=True)
+            LOGGER.error(f"Error occured in OrganizationMicrositeViewSet admin_organization ERROR: {error}", exc_info=True)
             return Response({}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
@@ -149,7 +149,7 @@ class DatahubThemeMicrositeViewSet(GenericViewSet):
             return Response(data, status=status.HTTP_200_OK)
 
         except Exception as e:
-            LOGGER.error(e)
+            LOGGER.error(f"Error occured in DatahubThemeMicrositeViewSet theme ERROR: {e}", exc_info=True)
 
         return Response({}, status=status.HTTP_400_BAD_REQUEST)
 
@@ -179,7 +179,7 @@ class DatasetsMicrositeViewSet(GenericViewSet):
                 return self.get_paginated_response(serializer.data)
             return Response([], status=status.HTTP_404_NOT_FOUND)
         except Exception as error:
-            LOGGER.error(error, exc_info=True)
+            LOGGER.error(f"Error occured in DatasetsMicrositeViewSet list ERROR: {error}", exc_info=True)
             return Response(str(error), status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     def retrieve(self, request, pk=None, *args, **kwargs):
@@ -248,10 +248,10 @@ class DatasetsMicrositeViewSet(GenericViewSet):
             'data': df.to_dict(orient='records')
             }, safe=False,status=200)       
         except pd.errors.EmptyDataError:
-            logging.info("The file is empty or Reached end of file.")
+            LOGGER.info("The file is empty or Reached end of file.")
             return Response(str("Table is Empty or Reached End of the table"), status=400)
         except Exception as error:
-            LOGGER.error(error, exc_info=True)
+            LOGGER.error(f"Error occured in DatasetsMicrositeViewSet get_json_response ERROR: {error}", exc_info=True)
             return Response(str(error), status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         
 
@@ -302,7 +302,7 @@ class DatasetsMicrositeViewSet(GenericViewSet):
                     .all()
                 )
         except Exception as error:  # type: ignore
-            logging.error("Error while filtering the datasets. ERROR: %s", error)
+            LOGGER.error(f"Error occured in DatasetsMicrositeViewSet dataset_filters ERROR: {error}", exc_info=True)
             return Response(f"Invalid filter fields: {list(request.data.keys())}", status=500)
 
         page = self.paginate_queryset(data)
@@ -349,7 +349,7 @@ class DatasetsMicrositeViewSet(GenericViewSet):
             else:
                 category_detail = []
         except Exception as error:  # type: ignore
-            logging.error("Error while filtering the datasets. ERROR: %s", error)
+            LOGGER.error(f"Error occured in DatasetsMicrositeViewSet filters_data ERROR: {error}", exc_info=True)
             return Response(f"Invalid filter fields: {list(request.data.keys())}", status=500)
         return Response({"geography": geography, "category_detail": category_detail}, status=200)
 
@@ -370,7 +370,7 @@ class DatasetsMicrositeViewSet(GenericViewSet):
                     data = json.loads(json_obj.read())
                 return Response(data, status=status.HTTP_200_OK)
             except Exception as error:
-                LOGGER.error(error, exc_info=True)
+                LOGGER.error(f"Error occured in DatasetsMicrositeViewSet category ERROR: {error}", exc_info=True)
                 raise custom_exceptions.NotFoundException(detail="Categories not found")
 
     @action(detail=False, methods=["post"])
@@ -394,7 +394,7 @@ class DatasetsMicrositeViewSet(GenericViewSet):
             participant_serializer = DatahubDatasetsV2Serializer(page, many=True)
             return self.get_paginated_response(participant_serializer.data)
         except Exception as error:  # type: ignore
-            logging.error("Error while filtering the datasets. ERROR: %s", error)
+            LOGGER.error(f"Error occured in DatasetsMicrositeViewSet search_datasets ERROR: {error}", exc_info=True)
             return Response(
                 f"Invalid filter fields: {list(request.data.keys())}",
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -509,7 +509,7 @@ class DatasetsMicrositeViewSet(GenericViewSet):
                     filters=True
                 )
             except Exception as e:
-                print(e)
+                LOGGER.error(f"Error occured in kiamis dashboard generation ERROR: {e}", exc_info=True)
                 return Response(
                     f"Something went wrong, please try again. {e}",
                     status=status.HTTP_400_BAD_REQUEST,
@@ -555,7 +555,7 @@ class ContactFormViewSet(GenericViewSet):
             )
 
         except Exception as error:
-            LOGGER.error(error, exc_info=True)
+            LOGGER.error(f"Error occured in ContactFormViewSet create ERROR: {error}", exc_info=True)
             return Response({}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
@@ -603,7 +603,7 @@ class DocumentsMicrositeViewSet(GenericViewSet):
                 return Response(data, status=status.HTTP_200_OK)
 
         except Exception as error:
-            LOGGER.error(error, exc_info=True)
+            LOGGER.error(f"Error occured in DocumentsMicrositeViewSet legal_documents ERROR: {error}", exc_info=True)
             return Response({}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
@@ -661,7 +661,7 @@ class ParticipantMicrositeViewSet(GenericViewSet):
             participant_serializer = ParticipantSerializer(page, many=True)
             return self.get_paginated_response(participant_serializer.data)
         except Exception as error:
-            LOGGER.error(error, exc_info=True)
+            LOGGER.error(f"Error occured in ParticipantMicrositeViewSet list ERROR: {error}", exc_info=True)
             return Response(str(error.__context__), status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     def retrieve(self, request, pk):
@@ -677,7 +677,7 @@ class ParticipantMicrositeViewSet(GenericViewSet):
                 return Response(participant_serializer.data[0], status=status.HTTP_200_OK)
             return Response([], status=status.HTTP_200_OK)
         except Exception as error:
-            LOGGER.error(error, exc_info=True)
+            LOGGER.error(f"Error occured in ParticipantMicrositeViewSet retrive ERROR: {error}", exc_info=True)
             return Response(str(error), status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     @action(detail=False, methods=["get"])
@@ -701,7 +701,7 @@ class ParticipantMicrositeViewSet(GenericViewSet):
             participant_serializer = micrositeOrganizationSerializer(page, many=True)
             return self.get_paginated_response(participant_serializer.data)
         except Exception as error:
-            LOGGER.error(error, exc_info=True)
+            LOGGER.error(f"Error occured in ParticipantMicrositeViewSet organizations ERROR: {error}", exc_info=True)
             return Response(str(error), status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
@@ -763,10 +763,10 @@ class APIResponseViewSet(GenericViewSet):
             'data': df.to_dict(orient='records')
             }, safe=False,status=200)       
         except pd.errors.EmptyDataError:
-            logging.info("The file is empty or Reached end of file.")
+            LOGGER.info("The file is empty or Reached end of file.")
             return Response(str("File is Empty or Reached End of the file"), status=400)
         except Exception as error:
-            LOGGER.error(error, exc_info=True)
+            LOGGER.error(f"Error occured in APIResponseViewSet api ERROR: {error}", exc_info=True)
             return Response(str(error), status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
@@ -786,7 +786,7 @@ class UserDataMicrositeViewSet(GenericViewSet):
             return Response(serializer.data, status=status.HTTP_200_OK)
 
         except Exception as error:
-            LOGGER.error(error, exc_info=True)
+            LOGGER.error(f"Error occured in UserDataMicrositeViewSet use_data ERROR: {error}", exc_info=True)
             return Response({}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
@@ -813,7 +813,7 @@ def microsite_media_view(request):
 
         return response
     except Exception as error:
-        LOGGER.error(error, exc_info=True)
+        LOGGER.error(f"Error occured in microsite_media_view ERROR: {error}", exc_info=True)
         return Response({str(error)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
@@ -837,6 +837,7 @@ class ConnectorMicrositeViewSet(GenericViewSet):
             serializer = ConnectorsRetriveSerializer(instance=instance)
             return Response(serializer.data, status=status.HTTP_200_OK)
         except Exception as error:
+            LOGGER.error(f"Error occured in ConnectorMicrositeViewSet list ERROR: {error}", exc_info=True)
             return Response(str(error), status=status.HTTP_400_BAD_REQUEST)
 
 
@@ -855,7 +856,7 @@ class ResourceMicrositeViewSet(GenericViewSet):
         except ValidationError as e:
             return Response(e.detail, status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
-            LOGGER.error(e)
+            LOGGER.error(f"Error occured in ResourceMicrositeViewSet list ERROR: {error}", exc_info=True)
             return Response(str(e), status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     def retrieve(self, request, *args, **kwargs):
@@ -884,5 +885,5 @@ class ResourceMicrositeViewSet(GenericViewSet):
         except ValidationError as e:
             return Response(e.detail, status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
-            LOGGER.error(e)
+            LOGGER.error(f"Error occured in ResourceMicrositeViewSet resources_filter ERROR: {e}", exc_info=True)
             return Response(str(e), status=status.HTTP_500_INTERNAL_SERVER_ERROR)

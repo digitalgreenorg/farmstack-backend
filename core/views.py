@@ -1,4 +1,5 @@
 
+import logging
 import mimetypes
 import os
 from tokenize import TokenError
@@ -15,6 +16,7 @@ from django.http import (
 )
 from django.shortcuts import get_object_or_404
 from jsonschema import ValidationError
+LOGGER = logging.getLogger(__name__)
 
 # from requests import Response
 from rest_framework.response import Response
@@ -43,10 +45,10 @@ def protected_media_view(request):
             usage_policy = UsagePolicy.objects.select_related("user_organization_map").filter(
                         user_organization_map__user_id=user_id, dataset_file_id=file.id).order_by("-updated_at").first()
             if usage_policy and usage_policy.approval_status == Constants.APPROVED:
-                print("User has the acces to download file")
+                LOGGER.info("User has the acces to download file")
                 file_path = str(file.standardised_file)
             elif DatasetV2File.objects.select_related("dataset").filter(id=request.GET.get("id")).filter(dataset__user_map__user_id=user_id).first():
-                print("Owner of the dataset requested the file")
+                LOGGER.info("Owner of the dataset requested the file")
                 file_path = str(file.standardised_file)
             else:
                 return HttpResponse(f"You don't have access to download this private file, Your request status is"\
@@ -64,7 +66,7 @@ def protected_media_view(request):
             response['Content-Type'] = mime_type
         return response
     except Exception as e:
-        logger.error("Error while downloading the file", exc_info=True)
+        LOGGER.error("Error while downloading the file in protected_media_view", exc_info=True)
         return Response("Error while downloading the file", 500)
 
 
