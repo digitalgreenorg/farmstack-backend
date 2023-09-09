@@ -498,8 +498,8 @@ def generate_knfd_dashboard(dataset_file, data, hash_key, filters=False):
         )
     convert_columns = ['County', 'Sub-County', 'Telephone', "Gender", "PrimaryValueChain"]
     df[convert_columns] = df[convert_columns].applymap(str)
-    df["Sub-County"] = df["Sub-County"].str.upper().str.strip()
-    df["County"] = df["County"].str.upper().str.strip()
+    # df["Sub-County"] = df["Sub-County"].str.upper().str.strip()
+    # df["County"] = df["County"].str.upper().str.strip()
     df["Gender"] = df["Gender"].str.upper().str.strip()
     dashboard_details={}
     columns_to_find_unique = ["County", 'Sub-County', 'Gender']
