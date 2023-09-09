@@ -234,7 +234,7 @@ def check_file_name_length(incoming_file_name: str, accepted_file_name_size: int
 def filter_dataframe_for_dashboard_counties(df: Any, counties: [], sub_counties: [], gender: [], value_chain: [], hash_key: str, filters=False):
     obj = {}
     gender_changes = {'1': 'MALE', '2': 'FEMALE', '1.0': 'MALE', '2.0': 'FEMALE'}
-    df['Gender'] = df['Gender'].astype(str).applymap(gender_changes)
+    df['Gender'] = df['Gender'].astype(str).map(gender_changes)
     df['Highest Level of Formal Education'] = df['Highest Level of Formal Education'].map(
         {1: 'None', 2: 'Primary', 3: 'Secondary', 4: 'Certificate', 5: 'Diploma', 6: 'University Degree',
          7: "Post Graduate Degree,Masters and Above"})
@@ -349,7 +349,7 @@ def filter_dataframe_for_dashboard_counties(df: Any, counties: [], sub_counties:
     else:
         obj["filters"]={}
     obj["type"] = "kiamis"
-    cache.set(hash_key, obj, 86400)
+    cache.set(hash_key, obj, 172800)
     LOGGER.info("Dashboard details added to cache", exc_info=True)
     return obj
 
@@ -365,7 +365,7 @@ def generate_omfp_dashboard(dataset_file, data, hash_key, filters=False):
         )
     dashboard_details={}
     convert_columns = ['County', 'Sub County', 'Telephone', "Gender", "Primary Value Chain"]
-    df[convert_columns] = df[convert_columns].applymap(str) # type: ignore
+    df[convert_columns] = df[convert_columns].map(str) # type: ignore
     df["Gender"] = df["Gender"].str.upper().str.strip()
     df["Sub County"] = df["Sub County"].str.upper().str.strip()
     df["County"] = df["County"].str.upper().str.strip()
@@ -413,7 +413,7 @@ def generate_omfp_dashboard(dataset_file, data, hash_key, filters=False):
             f"Something went wrong, please try again. {e}",
             status=status.HTTP_400_BAD_REQUEST,
         )
-    cache.set(hash_key, dashboard_details, 86400)
+    cache.set(hash_key, dashboard_details, 172800)
     LOGGER.info("Dashboard details added to cache", exc_info=True) 
     return Response(
             dashboard_details,
@@ -431,9 +431,9 @@ def generate_fsp_dashboard(dataset_file, data, hash_key, filters=False):
             status=status.HTTP_400_BAD_REQUEST,
         )
     gender_changes = {'1': 'MALE', '2': 'FEMALE', '1.0': 'MALE', '2.0': 'FEMALE'}
-    df['Farmer_Sex'] = df['Farmer_Sex'].astype(str).applymap(gender_changes).fillna('') # type: ignore
+    df['Farmer_Sex'] = df['Farmer_Sex'].astype(str).map(gender_changes).fillna('') # type: ignore
     convert_columns = ['County', 'Subcounty', 'Farmer_TelephoneNumebr', "vc", "vc_two", "vc_three"]
-    df[convert_columns] = df[convert_columns].applymap(str) # type: ignore
+    df[convert_columns] = df[convert_columns].map(str) # type: ignore
     df["Subcounty"] = df["Subcounty"].str.upper().str.strip()
     df["County"] = df["County"].str.upper().str.strip()
     columns_to_find_unique = ["County", 'Subcounty', 'Farmer_Sex']
@@ -492,7 +492,7 @@ def generate_fsp_dashboard(dataset_file, data, hash_key, filters=False):
             f"Something went wrong, please try again. {e}",
             status=status.HTTP_400_BAD_REQUEST,
         )
-    cache.set(hash_key, dashboard_details, 86400)
+    cache.set(hash_key, dashboard_details, 172800)
     LOGGER.info("Dashboard details added to cache", exc_info=True) 
     return Response(
             dashboard_details,
@@ -510,7 +510,7 @@ def generate_knfd_dashboard(dataset_file, data, hash_key, filters=False):
             status=status.HTTP_400_BAD_REQUEST,
         )
     convert_columns = ['County', 'Sub-County', 'Telephone', "Gender", "PrimaryValueChain"]
-    df[convert_columns] = df[convert_columns].applymap(str) # type: ignore
+    df[convert_columns] = df[convert_columns].map(str) # type: ignore
     df["Gender"] = df["Gender"].str.upper().str.strip()
     dashboard_details={}
     columns_to_find_unique = ["County", 'Sub-County', 'Gender']
@@ -558,7 +558,7 @@ def generate_knfd_dashboard(dataset_file, data, hash_key, filters=False):
             f"Something went wrong, please try again. {e}",
             status=status.HTTP_400_BAD_REQUEST,
         )
-    cache.set(hash_key, dashboard_details, 86400)
+    cache.set(hash_key, dashboard_details, 172800)
     LOGGER.info("Dashboard details added to cache", exc_info=True) 
     return Response(
             dashboard_details,
