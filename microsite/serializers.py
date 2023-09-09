@@ -188,6 +188,7 @@ class ConnectorsRetriveSerializer(serializers.ModelSerializer):
         datasets.extend(list(query.values_list("right_dataset_file__dataset").distinct()))
         dataset_data = DatasetV2.objects.all().filter(id__in = datasets)
         dataset_searilezer = DatasetsSerializer(dataset_data, many=True)
+        
         return {"organizations": searilezer.data, "datasets": dataset_searilezer.data}
       
 class DatahubDatasetFileDashboardFilterSerializer(serializers.Serializer):
