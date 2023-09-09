@@ -365,10 +365,10 @@ def generate_omfp_dashboard(dataset_file, data, hash_key, filters=False):
         )
     dashboard_details={}
     convert_columns = ['County', 'Sub County', 'Telephone', "Gender", "Primary Value Chain"]
-    df[convert_columns] = df[convert_columns].astype(str)
+    df[convert_columns] = df[convert_columns].applymap(str)
     df["Gender"] = df["Gender"].str.upper().str.strip()
-    df["Sub County"] = df["Sub County"].str.strip()
-    df["County"] = df["County"]
+    df["Sub County"] = df["Sub County"].str.upper().str.strip()
+    df["County"] = df["County"].str.upper().str.strip()
     columns_to_find_unique = ["Cohort", "County", 'Sub County', 'Gender']
     unique_values_size = find_unique_values_concurrently(df, columns_to_find_unique)
     try:
@@ -377,10 +377,16 @@ def generate_omfp_dashboard(dataset_file, data, hash_key, filters=False):
                     "county": unique_values_size.get("County", {}),
                     "sub_county": unique_values_size.get("Sub County", {}),
                     "gender": unique_values_size.get("Gender", {})} if filters else {}
-        county_filters = data.get("county", []) 
-        filtered_df = df[df['County'].isin(county_filters)] if county_filters else df
+        county_filters = data.get("county", [])
         sub_county_filters = data.get("sub_county", [])
-        filtered_df = filtered_df[filtered_df['Sub County'].isin(sub_county_filters)] if sub_county_filters else filtered_df
+        gender_filters = data.get("gender", [])
+
+        county_mask = df['County'].isin(county_filters) if county_filters else True
+        sub_county_mask = df['Sub County'].isin(sub_county_filters) if sub_county_filters else True
+        gender_mask = df['Gender'].isin(gender_filters) if gender_filters else True
+
+        # Apply filters
+        filtered_df = df[county_mask & sub_county_mask & gender_mask]
         columns_to_find_size = ["County", "Sub County", "Telephone"]
 
         # Create a copy of filtered_df to avoid modifying the original DataFrame
@@ -427,8 +433,9 @@ def generate_fsp_dashboard(dataset_file, data, hash_key, filters=False):
     gender_changes = {'1': 'MALE', '2': 'FEMALE', '1.0': 'MALE', '2.0': 'FEMALE'}
     df['Farmer_Sex'] = df['Farmer_Sex'].astype(str).map(gender_changes).fillna('') # type: ignore
     convert_columns = ['County', 'Subcounty', 'Farmer_TelephoneNumebr', "vc", "vc_two", "vc_three"]
-    df[convert_columns] = df[convert_columns].astype(str)
-    df["Subcounty"] = df["Subcounty"].str.strip()
+    df[convert_columns] = df[convert_columns].applymap(str)
+    df["Subcounty"] = df["Subcounty"].str.upper().str.strip()
+    df["County"] = df["County"].str.upper().str.strip()
     columns_to_find_unique = ["County", 'Subcounty', 'Farmer_Sex']
     unique_values_size = find_unique_values_concurrently(df, columns_to_find_unique)
     try:
@@ -436,10 +443,17 @@ def generate_fsp_dashboard(dataset_file, data, hash_key, filters=False):
             "county": unique_values_size.get("County", {}),
             "sub_county": unique_values_size.get("Subcounty", {}),
             "gender": unique_values_size.get("Farmer_Sex", {})} if filters else {}
-        county_filters = data.get("county", []) 
-        filtered_df = df[df['County'].isin(county_filters)] if county_filters else df
+        
+        county_filters = data.get("county", [])
         sub_county_filters = data.get("sub_county", [])
-        filtered_df = filtered_df[filtered_df['Subcounty'].isin(sub_county_filters)] if sub_county_filters else filtered_df
+        gender_filters = data.get("gender", [])
+
+        county_mask = df['County'].isin(county_filters) if county_filters else True
+        sub_county_mask = df['Subcounty'].isin(sub_county_filters) if sub_county_filters else True
+        gender_mask = df['Farmer_Sex'].isin(gender_filters) if gender_filters else True
+
+        # Apply filters
+        filtered_df = df[county_mask & sub_county_mask & gender_mask]
         columns_to_find_size = ["County", "Subcounty", "Farmer_TelephoneNumebr"]
 
         # Create a copy of filtered_df to avoid modifying the original DataFrame
@@ -496,8 +510,7 @@ def generate_knfd_dashboard(dataset_file, data, hash_key, filters=False):
             status=status.HTTP_400_BAD_REQUEST,
         )
     convert_columns = ['County', 'Sub-County', 'Telephone', "Gender", "PrimaryValueChain"]
-    df[convert_columns] = df[convert_columns].astype(str)
-    df["Sub-County"] = df["Sub-County"].str.strip()
+    df[convert_columns] = df[convert_columns].applymap(str)
     df["Gender"] = df["Gender"].str.upper().str.strip()
     dashboard_details={}
     columns_to_find_unique = ["County", 'Sub-County', 'Gender']
@@ -508,9 +521,16 @@ def generate_knfd_dashboard(dataset_file, data, hash_key, filters=False):
             "sub_county": unique_values_size.get("Sub-County", {}),
             "gender": unique_values_size.get("Gender", {})} if filters else {}
         county_filters = data.get("county", [])
-        filtered_df = df[df['County'].isin(county_filters)] if county_filters else df
         sub_county_filters = data.get("sub_county", [])
-        filtered_df = filtered_df[filtered_df['Sub-County'].isin(sub_county_filters)] if sub_county_filters else filtered_df
+        gender_filters = data.get("gender", [])
+
+        county_mask = df['County'].isin(county_filters) if county_filters else True
+        sub_county_mask = df['Sub-County'].isin(sub_county_filters) if sub_county_filters else True
+        gender_mask = df['Gender'].isin(gender_filters) if gender_filters else True
+
+        # Apply filters
+        filtered_df = df[county_mask & sub_county_mask & gender_mask]
+        
         columns_to_find_size = ["County", "Sub-County", "Telephone"]
 
         # Create a copy of filtered_df to avoid modifying the original DataFrame
