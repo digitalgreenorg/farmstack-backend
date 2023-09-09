@@ -151,12 +151,6 @@
       .yellowButton:hover{
         cursor: pointer;
       }
-      .logo {
-        margin: 33px auto;
-        /* width: 400px; */
-        /* border: 1px solid red; */
-        width: 50px; 
-      }
       .bottomMostLine {
         height: 11px;
         background-color: #00a94f;
@@ -206,23 +200,22 @@
           padding: 2px 2px 0 2px;
         }
       }
-      .image-container {
-        text-align: center; 
-        display: flex; 
-        flex-direction: column; 
-        align-items: center; 
+      .logo {
+        text-align: center;
+        margin: 15px auto;
       }
-      .image-container img {
-        max-width: 100%; 
-        display: block; 
-        margin: 0 auto; 
+      .logo img {
+        max-width: 100%;
+        display: block;
+        margin: 0 auto;
+        width: 55px;
       }
       .image-text {
-        font-size: 10px; 
-        color: #333; 
-        white-space: nowrap; 
-        margin-top: 10px; 
-      }
+        font-size: 10px;
+        color: #333;
+        white-space: nowrap;
+        margin-top: 5px; /* Adjust the margin-top as needed */
+      }      
     </style>
   </head>
   <body>
@@ -288,11 +281,19 @@
                 <div class='bottomLine'></div>
               </div>
 
-              <div class="logo image-container">
-                <img src="datahub-api/accounts/templates/kalro_logo.png" alt="Powered by FarmStack" />
-                <span class="image-text">Powered by FarmStack</span>
-              </div>
-
+              <table class="logo">
+                <tr>
+                  <td>
+                    <img src="https://res.cloudinary.com/dhlck4tsv/image/upload/v1694079862/Farmstack/xbmx25tmpol9srkerdmj.png" alt="Powered by FarmStack" />
+                  </td>
+                </tr>
+                <tr>
+                  <td>
+                    <div class="image-text">Powered by FarmStack</div>
+                  </td>
+                </tr>
+              </table>
+              
             </td>
           </tr>
           <tr style='background-color: #eaeff2'>
