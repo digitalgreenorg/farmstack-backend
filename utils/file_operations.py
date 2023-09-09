@@ -365,10 +365,10 @@ def generate_omfp_dashboard(dataset_file, data, hash_key, filters=False):
         )
     dashboard_details={}
     convert_columns = ['County', 'Sub County', 'Telephone', "Gender", "Primary Value Chain"]
-    df[convert_columns] = df[convert_columns].astype(str)
+    df[convert_columns] = df[convert_columns].applymap(str)
     df["Gender"] = df["Gender"].str.upper().str.strip()
-    df["Sub County"] = df["Sub County"].str.strip()
-    df["County"] = df["County"]
+    df["Sub County"] = df["Sub County"].str.upper().str.strip()
+    df["County"] = df["County"].str.upper().str.strip()
     columns_to_find_unique = ["Cohort", "County", 'Sub County', 'Gender']
     unique_values_size = find_unique_values_concurrently(df, columns_to_find_unique)
     try:
@@ -427,8 +427,9 @@ def generate_fsp_dashboard(dataset_file, data, hash_key, filters=False):
     gender_changes = {'1': 'MALE', '2': 'FEMALE', '1.0': 'MALE', '2.0': 'FEMALE'}
     df['Farmer_Sex'] = df['Farmer_Sex'].astype(str).map(gender_changes).fillna('') # type: ignore
     convert_columns = ['County', 'Subcounty', 'Farmer_TelephoneNumebr', "vc", "vc_two", "vc_three"]
-    df[convert_columns] = df[convert_columns].astype(str)
-    df["Subcounty"] = df["Subcounty"].str.strip()
+    df[convert_columns] = df[convert_columns].applymap(str)
+    df["Subcounty"] = df["Subcounty"].str.upper().str.strip()
+    df["County"] = df["County"].str.upper().str.strip()
     columns_to_find_unique = ["County", 'Subcounty', 'Farmer_Sex']
     unique_values_size = find_unique_values_concurrently(df, columns_to_find_unique)
     try:
@@ -496,8 +497,9 @@ def generate_knfd_dashboard(dataset_file, data, hash_key, filters=False):
             status=status.HTTP_400_BAD_REQUEST,
         )
     convert_columns = ['County', 'Sub-County', 'Telephone', "Gender", "PrimaryValueChain"]
-    df[convert_columns] = df[convert_columns].astype(str)
-    df["Sub-County"] = df["Sub-County"].str.strip()
+    df[convert_columns] = df[convert_columns].applymap(str)
+    df["Sub-County"] = df["Sub-County"].str.upper().str.strip()
+    df["County"] = df["County"].str.upper().str.strip()
     df["Gender"] = df["Gender"].str.upper().str.strip()
     dashboard_details={}
     columns_to_find_unique = ["County", 'Sub-County', 'Gender']
