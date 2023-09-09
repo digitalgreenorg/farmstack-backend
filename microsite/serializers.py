@@ -166,23 +166,29 @@ class ConnectorsRetriveSerializer(serializers.ModelSerializer):
 
     dataset_and_organizations = serializers.SerializerMethodField(method_name="datasets_data") # type: ignore
 
-    def datasets_data(self, organizations):
-        organizations_query = ConnectorsMap.objects.filter(connectors_id=organizations.id).select_related(
-            'left_dataset_file__dataset__user_map__organization',
-            'right_dataset_file__dataset__user_map__organization'
-        )
-        datasets =  organizations_query.values_list(
-            'left_dataset_file__dataset',
-            'right_dataset_file__dataset'
-        ).distinct()
-        organizations = organizations_query.values_list(
-            'left_dataset_file__dataset__user_map__organization',
-            'right_dataset_file__dataset__user_map__organization'
-        ).distinct()
-        data = UserOrganizationMap.objects.select_related("user", "organization").all().filter(organization_id__in = organizations[0])
+    def datasets_data(self, connectors):
+        query = ConnectorsMap.objects.select_related('left_dataset_file__dataset', 'right_dataset_file__dataset').filter(connectors=connectors.id)
+
+        # organizations_query = ConnectorsMap.objects.filter(connectors_id=organizations.id).select_related(
+        #     'left_dataset_file__dataset__user_map__organization',
+        #     'right_dataset_file__dataset__user_map__organization'
+        # )
+        # datasets =  organizations_query.values_list(
+        #     'left_dataset_file__dataset',
+        #     'right_dataset_file__dataset'
+        # ).distinct()
+        
+        user_map_ids = list(query.values_list("left_dataset_file_id__dataset__user_map").distinct())
+        user_map_ids.extend(list(query.values_list("right_dataset_file_id__dataset__user_map").distinct()))
+       
+        data = UserOrganizationMap.objects.select_related("user", "organization").all().filter(organization_id__in = user_map_ids)
         searilezer = ParticipantSerializer(data, many=True)
-        dataset_data = DatasetV2.objects.all().filter(id__in = datasets[0])
+        
+        datasets = list(query.values_list("left_dataset_file__dataset").distinct())
+        datasets.extend(list(query.values_list("right_dataset_file__dataset").distinct()))
+        dataset_data = DatasetV2.objects.all().filter(id__in = datasets)
         dataset_searilezer = DatasetsSerializer(dataset_data, many=True)
+        
         return {"organizations": searilezer.data, "datasets": dataset_searilezer.data}
       
 class DatahubDatasetFileDashboardFilterSerializer(serializers.Serializer):

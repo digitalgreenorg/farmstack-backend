@@ -92,21 +92,11 @@ class ConnectorsListSerializer(serializers.ModelSerializer):
         return  count+1 if count else 0
     
     def get_providers_count(self, connectors):
-        if settings.DATABASES.get("default", {}).get("ENGINE","") == "django.db.backends.sqlite3":
-            subquery = ConnectorsMap.objects.filter(connectors=connectors.id).values(
-            "left_dataset_file_id__dataset__user_map", "right_dataset_file_id__dataset__user_map"
-            ).annotate(min_id=Min("id")).values("min_id")
-
-            query = ConnectorsMap.objects.filter(id__in=Subquery(subquery)).select_related(
-                "left_dataset_file_id__dataset", "right_dataset_file_id__dataset"
-            )
-            return query.count()
-        else:
-            query = ConnectorsMap.objects.select_related('left_dataset_file__dataset', 'right_dataset_file__dataset').filter(connectors=connectors.id)
-            user_map_ids = list(query.values_list("left_dataset_file_id__dataset__user_map").distinct())
-            user_map_ids.extend(list(query.values_list("right_dataset_file_id__dataset__user_map").distinct()))
-            count= len(set(user_map_ids))
-            return count
+        query = ConnectorsMap.objects.select_related('left_dataset_file__dataset', 'right_dataset_file__dataset').filter(connectors=connectors.id)
+        user_map_ids = list(query.values_list("left_dataset_file_id__dataset__user_map").distinct())
+        user_map_ids.extend(list(query.values_list("right_dataset_file_id__dataset__user_map").distinct()))
+        count= len(set(user_map_ids))
+        return count
 
 class ConnectorsRetriveSerializer(serializers.ModelSerializer):
     maps = ConnectorsMapSerializer(many=True, source='connectorsmap_set')

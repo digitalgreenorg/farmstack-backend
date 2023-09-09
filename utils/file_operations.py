@@ -365,7 +365,7 @@ def generate_omfp_dashboard(dataset_file, data, hash_key, filters=False):
         )
     dashboard_details={}
     convert_columns = ['County', 'Sub County', 'Telephone', "Gender", "Primary Value Chain"]
-    df[convert_columns] = df[convert_columns].applymap(str)
+    df[convert_columns] = df[convert_columns].map(str) # type: ignore
     df["Gender"] = df["Gender"].str.upper().str.strip()
     df["Sub County"] = df["Sub County"].str.upper().str.strip()
     df["County"] = df["County"].str.upper().str.strip()
@@ -380,11 +380,11 @@ def generate_omfp_dashboard(dataset_file, data, hash_key, filters=False):
         county_filters = data.get("county", [])
         sub_county_filters = data.get("sub_county", [])
         gender_filters = data.get("gender", [])
+        default_mask = pd.Series(True, index=df.index)
 
-        county_mask = df['County'].isin(county_filters) if county_filters else True
-        sub_county_mask = df['Sub County'].isin(sub_county_filters) if sub_county_filters else True
-        gender_mask = df['Gender'].isin(gender_filters) if gender_filters else True
-
+        county_mask = df['County'].isin(county_filters) if county_filters else default_mask
+        sub_county_mask = df['Sub County'].isin(sub_county_filters) if sub_county_filters else default_mask
+        gender_mask = df['Gender'].isin(gender_filters) if gender_filters else default_mask
         # Apply filters
         filtered_df = df[county_mask & sub_county_mask & gender_mask]
         columns_to_find_size = ["County", "Sub County", "Telephone"]
@@ -408,7 +408,7 @@ def generate_omfp_dashboard(dataset_file, data, hash_key, filters=False):
         dashboard_details["primary_value_chain_by_sub_county"] = process_column(filtered_df, 'Primary Value Chain', 'Sub County')
         dashboard_details["type"] = "omfp"
     except Exception as e:
-        LOGGER.error(e)
+        LOGGER.error(e, exc_info=True)
         return Response(
             f"Something went wrong, please try again. {e}",
             status=status.HTTP_400_BAD_REQUEST,
@@ -433,7 +433,7 @@ def generate_fsp_dashboard(dataset_file, data, hash_key, filters=False):
     gender_changes = {'1': 'MALE', '2': 'FEMALE', '1.0': 'MALE', '2.0': 'FEMALE'}
     df['Farmer_Sex'] = df['Farmer_Sex'].astype(str).map(gender_changes).fillna('') # type: ignore
     convert_columns = ['County', 'Subcounty', 'Farmer_TelephoneNumebr', "vc", "vc_two", "vc_three"]
-    df[convert_columns] = df[convert_columns].applymap(str)
+    df[convert_columns] = df[convert_columns].map(str) # type: ignore
     df["Subcounty"] = df["Subcounty"].str.upper().str.strip()
     df["County"] = df["County"].str.upper().str.strip()
     columns_to_find_unique = ["County", 'Subcounty', 'Farmer_Sex']
@@ -447,10 +447,10 @@ def generate_fsp_dashboard(dataset_file, data, hash_key, filters=False):
         county_filters = data.get("county", [])
         sub_county_filters = data.get("sub_county", [])
         gender_filters = data.get("gender", [])
-
-        county_mask = df['County'].isin(county_filters) if county_filters else True
-        sub_county_mask = df['Subcounty'].isin(sub_county_filters) if sub_county_filters else True
-        gender_mask = df['Farmer_Sex'].isin(gender_filters) if gender_filters else True
+        default_mask = pd.Series(True, index=df.index)
+        county_mask = df['County'].isin(county_filters) if county_filters else default_mask
+        sub_county_mask = df['Subcounty'].isin(sub_county_filters) if sub_county_filters else default_mask
+        gender_mask = df['Farmer_Sex'].isin(gender_filters) if gender_filters else default_mask
 
         # Apply filters
         filtered_df = df[county_mask & sub_county_mask & gender_mask]
@@ -487,7 +487,7 @@ def generate_fsp_dashboard(dataset_file, data, hash_key, filters=False):
         dashboard_details["third_value_chain_by_sub_county"] = result_details.get("vc_three", {})
         dashboard_details["type"] = "fsp"
     except Exception as e:
-        LOGGER.error(e)
+        LOGGER.error(e, exc_info=True)
         return Response(
             f"Something went wrong, please try again. {e}",
             status=status.HTTP_400_BAD_REQUEST,
@@ -510,7 +510,7 @@ def generate_knfd_dashboard(dataset_file, data, hash_key, filters=False):
             status=status.HTTP_400_BAD_REQUEST,
         )
     convert_columns = ['County', 'Sub-County', 'Telephone', "Gender", "PrimaryValueChain"]
-    df[convert_columns] = df[convert_columns].applymap(str)
+    df[convert_columns] = df[convert_columns].map(str) # type: ignore
     df["Gender"] = df["Gender"].str.upper().str.strip()
     dashboard_details={}
     columns_to_find_unique = ["County", 'Sub-County', 'Gender']
@@ -523,10 +523,11 @@ def generate_knfd_dashboard(dataset_file, data, hash_key, filters=False):
         county_filters = data.get("county", [])
         sub_county_filters = data.get("sub_county", [])
         gender_filters = data.get("gender", [])
+        default_mask = pd.Series(True, index=df.index)
 
-        county_mask = df['County'].isin(county_filters) if county_filters else True
-        sub_county_mask = df['Sub-County'].isin(sub_county_filters) if sub_county_filters else True
-        gender_mask = df['Gender'].isin(gender_filters) if gender_filters else True
+        county_mask = df['County'].isin(county_filters) if county_filters else default_mask
+        sub_county_mask = df['Sub-County'].isin(sub_county_filters) if sub_county_filters else default_mask
+        gender_mask = df['Gender'].isin(gender_filters) if gender_filters else default_mask
 
         # Apply filters
         filtered_df = df[county_mask & sub_county_mask & gender_mask]
@@ -552,7 +553,7 @@ def generate_knfd_dashboard(dataset_file, data, hash_key, filters=False):
         dashboard_details["primary_value_chain_by_sub_county"] = process_column(filtered_df, "PrimaryValueChain", 'Sub-County')
         dashboard_details["type"] = "knfd"
     except Exception as e:
-        LOGGER.error(e)
+        LOGGER.error(e, exc_info=True)
         return Response(
             f"Something went wrong, please try again. {e}",
             status=status.HTTP_400_BAD_REQUEST,
