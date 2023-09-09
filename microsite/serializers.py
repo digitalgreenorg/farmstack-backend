@@ -168,6 +168,8 @@ class ConnectorsRetriveSerializer(serializers.ModelSerializer):
 
     def datasets_data(self, organizations):
         organizations_query = ConnectorsMap.objects.filter(connectors_id=organizations.id).select_related(
+            'left_dataset_file__dataset',
+            'right_dataset_file__dataset',
             'left_dataset_file__dataset__user_map__organization',
             'right_dataset_file__dataset__user_map__organization'
         )
@@ -179,9 +181,9 @@ class ConnectorsRetriveSerializer(serializers.ModelSerializer):
             'left_dataset_file__dataset__user_map__organization',
             'right_dataset_file__dataset__user_map__organization'
         ).distinct()
-        data = UserOrganizationMap.objects.select_related("user", "organization").all().filter(organization_id__in = organizations[0])
+        data = UserOrganizationMap.objects.select_related("user", "organization").all().filter(organization_id__in = list(organizations[0]))
         searilezer = ParticipantSerializer(data, many=True)
-        dataset_data = DatasetV2.objects.all().filter(id__in = datasets[0])
+        dataset_data = DatasetV2.objects.all().filter(id__in = list(datasets[0]))
         dataset_searilezer = DatasetsSerializer(dataset_data, many=True)
         return {"organizations": searilezer.data, "datasets": dataset_searilezer.data}
       
