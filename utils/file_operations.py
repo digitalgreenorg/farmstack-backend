@@ -380,32 +380,44 @@ def generate_omfp_dashboard(dataset_file, data, hash_key, filters=False):
         county_filters = data.get("county", [])
         sub_county_filters = data.get("sub_county", [])
         gender_filters = data.get("gender", [])
-        default_mask = pd.Series(True, index=df.index)
+        cohort_filters = data.get("cohort", [])
 
-        county_mask = df['County'].isin(county_filters) if county_filters else default_mask
-        sub_county_mask = df['Sub County'].isin(sub_county_filters) if sub_county_filters else default_mask
-        gender_mask = df['Gender'].isin(gender_filters) if gender_filters else default_mask
-        # Apply filters
-        filtered_df = df[county_mask & sub_county_mask & gender_mask]
+        # default_mask = pd.Series(True, index=df.index)
+        if cohort_filters:
+            df = df[df['Cohort'].isin(cohort_filters)] 
+        if county_filters:
+            df = df[df['County'].isin(county_filters)]
+        if sub_county_filters:
+            df = df['Sub County'].isin(sub_county_filters)
+        if gender_filters:
+            df = df[df['Gender'].isin(gender_filters)]
+
+        # county_mask = df['County'].isin(county_filters) if county_filters else default_mask
+        # sub_county_mask = df['Sub County'].isin(sub_county_filters) if sub_county_filters else default_mask
+        # gender_mask = df['Gender'].isin(gender_filters) if gender_filters else default_mask
+        # cohort_mask = df['Cohort'].isin(cohort_filters) if cohort_filters else default_mask
+
+        # # Apply filters
+        # filtered_df = df[cohort_mask & county_mask & sub_county_mask & gender_mask & cohort_mask]
         columns_to_find_size = ["County", "Sub County", "Telephone"]
 
         # Create a copy of filtered_df to avoid modifying the original DataFrame
         # filtered_df_copy = filtered_df.copy()
 
         # Find the number of unique values for the specified columns concurrently
-        unique_values_size = find_size_concurrently(filtered_df, columns_to_find_size)
+        unique_values_size = find_size_concurrently(df, columns_to_find_size)
         dashboard_details = {
-            "total_number_of_records": len(filtered_df),
+            "total_number_of_records": len(df),
             "counties": unique_values_size.get("County", {}),
             "sub_counties":unique_values_size.get("Sub County", {}),
             "filters":filters,
-            "male_count": filtered_df['Gender'].value_counts().get('MALE', 0),
-            "female_count": filtered_df['Gender'].value_counts().get('FEMALE', 0),
+            "male_count": df['Gender'].value_counts().get('MALE', 0),
+            "female_count": df['Gender'].value_counts().get('FEMALE', 0),
             "farmer_mobile_numbers": unique_values_size.get("Telephone", {}),
         }
-        dashboard_details["gender_by_sub_county"] =filtered_df.groupby(['Sub County', 'Gender'])['Gender'].count().unstack().fillna(0).astype(int).to_dict(orient='index')
+        dashboard_details["gender_by_sub_county"] =df.groupby(['Sub County', 'Gender'])['Gender'].count().unstack().fillna(0).astype(int).to_dict(orient='index')
 
-        dashboard_details["primary_value_chain_by_sub_county"] = process_column(filtered_df, 'Primary Value Chain', 'Sub County')
+        dashboard_details["primary_value_chain_by_sub_county"] = process_column(df, 'Primary Value Chain', 'Sub County')
         dashboard_details["type"] = "omfp"
     except Exception as e:
         LOGGER.error(e, exc_info=True)
@@ -447,30 +459,38 @@ def generate_fsp_dashboard(dataset_file, data, hash_key, filters=False):
         county_filters = data.get("county", [])
         sub_county_filters = data.get("sub_county", [])
         gender_filters = data.get("gender", [])
-        default_mask = pd.Series(True, index=df.index)
-        county_mask = df['County'].isin(county_filters) if county_filters else default_mask
-        sub_county_mask = df['Subcounty'].isin(sub_county_filters) if sub_county_filters else default_mask
-        gender_mask = df['Farmer_Sex'].isin(gender_filters) if gender_filters else default_mask
 
-        # Apply filters
-        filtered_df = df[county_mask & sub_county_mask & gender_mask]
+        if county_filters:
+            df = df[df['County'].isin(county_filters)]
+        if sub_county_filters:
+            df = df['Subcounty'].isin(sub_county_filters)
+        if gender_filters:
+            df = df[df['Farmer_Sex'].isin(gender_filters)]
+
+        # default_mask = pd.Series(True, index=df.index)
+        # county_mask = df['County'].isin(county_filters) if county_filters else default_mask
+        # sub_county_mask = df['Subcounty'].isin(sub_county_filters) if sub_county_filters else default_mask
+        # gender_mask = df['Farmer_Sex'].isin(gender_filters) if gender_filters else default_mask
+
+        # # Apply filters
+        # filtered_df = df[county_mask & sub_county_mask & gender_mask]
         columns_to_find_size = ["County", "Subcounty", "Farmer_TelephoneNumebr"]
 
         # Create a copy of filtered_df to avoid modifying the original DataFrame
         # filtered_df_copy = filtered_df.copy()
 
         # Find the number of unique values for the specified columns concurrently
-        unique_values_size = find_size_concurrently(filtered_df, columns_to_find_size)
+        unique_values_size = find_size_concurrently(df, columns_to_find_size)
         dashboard_details = {
-            "total_number_of_records": len(filtered_df),
+            "total_number_of_records": len(df),
             "counties":unique_values_size.get("County", {}),
             "sub_counties":unique_values_size.get("Subcounty", {}),
             "filters":filters,
-            "male_count": filtered_df['Farmer_Sex'].value_counts().get('MALE', 0),
-            "female_count": filtered_df['Farmer_Sex'].value_counts().get('FEMALE', 0),
+            "male_count": df['Farmer_Sex'].value_counts().get('MALE', 0),
+            "female_count": df['Farmer_Sex'].value_counts().get('FEMALE', 0),
             "farmer_mobile_numbers": unique_values_size.get("Farmer_TelephoneNumebr", {}),
         }
-        dashboard_details["gender_by_sub_county"] =filtered_df.groupby(['Subcounty', 'Farmer_Sex'])['Farmer_Sex'].count().unstack().fillna(0).astype(int).to_dict(orient='index')
+        dashboard_details["gender_by_sub_county"] =df.groupby(['Subcounty', 'Farmer_Sex'])['Farmer_Sex'].count().unstack().fillna(0).astype(int).to_dict(orient='index')
         
         columns_to_process = ["vc", "vc_two", "vc_three"]
         group_by_column = "Subcounty"
@@ -479,7 +499,7 @@ def generate_fsp_dashboard(dataset_file, data, hash_key, filters=False):
         # filtered_df_copy = filtered_df.copy()
 
         # Process the columns concurrently
-        result_details = process_columns_concurrently(filtered_df, columns_to_process, group_by_column)
+        result_details = process_columns_concurrently(df, columns_to_process, group_by_column)
 
         # Update dashboard_details with the results
         dashboard_details["primary_value_chain_by_sub_county"] = result_details.get("vc", {})
@@ -523,14 +543,22 @@ def generate_knfd_dashboard(dataset_file, data, hash_key, filters=False):
         county_filters = data.get("county", [])
         sub_county_filters = data.get("sub_county", [])
         gender_filters = data.get("gender", [])
-        default_mask = pd.Series(True, index=df.index)
 
-        county_mask = df['County'].isin(county_filters) if county_filters else default_mask
-        sub_county_mask = df['Sub-County'].isin(sub_county_filters) if sub_county_filters else default_mask
-        gender_mask = df['Gender'].isin(gender_filters) if gender_filters else default_mask
+        if county_filters:
+            df = df[df['County'].isin(county_filters)]
+        if sub_county_filters:
+            df = df['Sub-County'].isin(sub_county_filters)
+        if gender_filters:
+            df = df[df['Gender'].isin(gender_filters)]
 
-        # Apply filters
-        filtered_df = df[county_mask & sub_county_mask & gender_mask]
+        # default_mask = pd.Series(True, index=df.index)
+
+        # county_mask = df['County'].isin(county_filters) if county_filters else default_mask
+        # sub_county_mask = df['Sub-County'].isin(sub_county_filters) if sub_county_filters else default_mask
+        # gender_mask = df['Gender'].isin(gender_filters) if gender_filters else default_mask
+
+        # # Apply filters
+        # filtered_df = df[county_mask & sub_county_mask & gender_mask]
         
         columns_to_find_size = ["County", "Sub-County", "Telephone"]
 
@@ -538,19 +566,19 @@ def generate_knfd_dashboard(dataset_file, data, hash_key, filters=False):
         # filtered_df_copy = filtered_df.copy()
 
         # Find the number of unique values for the specified columns concurrently
-        unique_values_size = find_size_concurrently(filtered_df, columns_to_find_size)
+        unique_values_size = find_size_concurrently(df, columns_to_find_size)
 
         dashboard_details = {
-            "total_number_of_records": len(filtered_df),
+            "total_number_of_records": len(df),
             "counties": unique_values_size.get("County", 0),
             "sub_counties": unique_values_size.get("Sub-County", 0),
             "filters": filters,
-            "male_count": filtered_df['Gender'].value_counts().get('MALE', 0),
-            "female_count": filtered_df['Gender'].value_counts().get('FEMALE', 0),
+            "male_count": df['Gender'].value_counts().get('MALE', 0),
+            "female_count": df['Gender'].value_counts().get('FEMALE', 0),
             "farmer_mobile_numbers": unique_values_size.get("Telephone", 0),
         }
-        dashboard_details["gender_by_sub_county"] =filtered_df.groupby(['Sub-County', 'Gender'])['Gender'].count().unstack().fillna(0).astype(int).to_dict(orient='index')
-        dashboard_details["primary_value_chain_by_sub_county"] = process_column(filtered_df, "PrimaryValueChain", 'Sub-County')
+        dashboard_details["gender_by_sub_county"] =df.groupby(['Sub-County', 'Gender'])['Gender'].count().unstack().fillna(0).astype(int).to_dict(orient='index')
+        dashboard_details["primary_value_chain_by_sub_county"] = process_column(df, "PrimaryValueChain", 'Sub-County')
         dashboard_details["type"] = "knfd"
     except Exception as e:
         LOGGER.error(e, exc_info=True)

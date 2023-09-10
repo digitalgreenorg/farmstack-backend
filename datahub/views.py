@@ -2753,7 +2753,7 @@ class DatasetV2View(GenericViewSet):
             LOGGER.error(f"Error occoured while creating {consolidated_file}", exc_info=True)
             return Response(
                     "Requested resource is currently unavailable. Please try again later.",
-                    status=status.HTTP_200_OK,
+                    status=500,
                 )
 
 class DatasetFileV2View(GenericViewSet):
