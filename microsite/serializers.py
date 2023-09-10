@@ -166,24 +166,25 @@ class ConnectorsRetriveSerializer(serializers.ModelSerializer):
 
     dataset_and_organizations = serializers.SerializerMethodField(method_name="datasets_data") # type: ignore
 
-    def datasets_data(self, organizations):
-        organizations_query = ConnectorsMap.objects.filter(connectors_id=organizations.id).select_related(
+    def datasets_data(self, connoctors):
+        dastaset_query = ConnectorsMap.objects.filter(connectors_id=connoctors.id).select_related(
             'left_dataset_file__dataset',
             'right_dataset_file__dataset',
-            'left_dataset_file__dataset__user_map__organization',
-            'right_dataset_file__dataset__user_map__organization'
         )
-        datasets =  organizations_query.values_list(
+        datasets =  dastaset_query.values_list(
             'left_dataset_file__dataset',
             'right_dataset_file__dataset'
         ).distinct()
-        organizations = organizations_query.values_list(
+        organizations = dastaset_query.values_list(
             'left_dataset_file__dataset__user_map__organization',
             'right_dataset_file__dataset__user_map__organization'
         ).distinct()
-        data = UserOrganizationMap.objects.select_related("user", "organization").all().filter(organization_id__in = list(organizations[0]))
+        organization_ids = list(set([id for tuples in organizations for id in tuples]))
+        dataset_ids = list(set([id for tuples in datasets for id in tuples]))
+
+        data = UserOrganizationMap.objects.select_related("user", "organization").all().filter(organization_id__in=organization_ids).distinct()
         searilezer = ParticipantSerializer(data, many=True)
-        dataset_data = DatasetV2.objects.all().filter(id__in = list(datasets[0]))
+        dataset_data = DatasetV2.objects.all().filter(id__in = dataset_ids).distinct()
         dataset_searilezer = DatasetsSerializer(dataset_data, many=True)
         return {"organizations": searilezer.data, "datasets": dataset_searilezer.data}
       
