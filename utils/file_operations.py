@@ -388,7 +388,7 @@ def generate_omfp_dashboard(dataset_file, data, hash_key, filters=False):
         if county_filters:
             df = df[df['County'].isin(county_filters)]
         if sub_county_filters:
-            df = df['Sub County'].isin(sub_county_filters)
+            df = df[df['Sub County'].isin(sub_county_filters)]
         if gender_filters:
             df = df[df['Gender'].isin(gender_filters)]
 
@@ -463,7 +463,7 @@ def generate_fsp_dashboard(dataset_file, data, hash_key, filters=False):
         if county_filters:
             df = df[df['County'].isin(county_filters)]
         if sub_county_filters:
-            df = df['Subcounty'].isin(sub_county_filters)
+            df = df[df['Subcounty'].isin(sub_county_filters)]
         if gender_filters:
             df = df[df['Farmer_Sex'].isin(gender_filters)]
 
@@ -547,7 +547,7 @@ def generate_knfd_dashboard(dataset_file, data, hash_key, filters=False):
         if county_filters:
             df = df[df['County'].isin(county_filters)]
         if sub_county_filters:
-            df = df['Sub-County'].isin(sub_county_filters)
+            df = df[df['Sub-County'].isin(sub_county_filters)]
         if gender_filters:
             df = df[df['Gender'].isin(gender_filters)]
 
