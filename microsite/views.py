@@ -1,22 +1,30 @@
 import datetime
+import gzip
 import json
 import logging
+import math
 import operator
 import os
+import pickle
 from functools import reduce
 
+import pandas as pd
 from django.conf import settings
+from django.core.cache import cache
+from django.core.paginator import Paginator
 from django.db.models import Q
 from django.http import FileResponse, HttpResponse, HttpResponseNotFound, JsonResponse
 from django.shortcuts import get_object_or_404, render
 from python_http_client import exceptions
 from rest_framework import generics, permissions, status, viewsets
 from rest_framework.decorators import action
+from rest_framework.exceptions import ValidationError
 from rest_framework.response import Response
 from rest_framework.viewsets import GenericViewSet
 
 from accounts.models import User, UserRole
 from accounts.serializers import UserCreateSerializer
+from connectors.models import Connectors
 from core.constants import Constants
 from core.utils import (
     CustomPagination,
@@ -24,6 +32,7 @@ from core.utils import (
     Utils,
     csv_and_xlsx_file_validatation,
     date_formater,
+    generate_hash_key_for_dashboard,
     read_contents_from_csv_or_xlsx_file,
 )
 from datahub.models import (
@@ -33,6 +42,7 @@ from datahub.models import (
     DatasetV2File,
     Organization,
     Policy,
+    Resource,
     UsagePolicy,
     UserOrganizationMap,
 )
@@ -41,10 +51,14 @@ from datahub.serializers import (
     DatasetV2Serializer,
     OrganizationSerializer,
     ParticipantSerializer,
+    ResourceSerializer,
     micrositeOrganizationSerializer,
 )
 from microsite.serializers import (
+    ConnectorsListSerializer,
+    ConnectorsRetriveSerializer,
     ContactFormSerializer,
+    DatahubDatasetFileDashboardFilterSerializer,
     DatasetsMicrositeSerializer,
     LegalDocumentSerializer,
     OrganizationMicrositeSerializer,
@@ -53,6 +67,13 @@ from microsite.serializers import (
     UserSerializer,
 )
 from utils import custom_exceptions, file_operations
+from utils.file_operations import (
+    check_file_name_length,
+    filter_dataframe_for_dashboard_counties,
+    generate_fsp_dashboard,
+    generate_knfd_dashboard,
+    generate_omfp_dashboard,
+)
 from utils.jwt_services import http_request_mutation
 
 LOGGER = logging.getLogger(__name__)
@@ -70,8 +91,7 @@ class OrganizationMicrositeViewSet(GenericViewSet):
             datahub_admin = User.objects.filter(role_id=1)
 
             if not datahub_admin:
-                data = {Constants.USER: None, "message": [
-                    "Datahub admin not Found."]}
+                data = {Constants.USER: None, "message": ["Datahub admin not Found."]}
                 return Response(data, status=status.HTTP_200_OK)
 
             user_queryset = datahub_admin.first()
@@ -88,8 +108,7 @@ class OrganizationMicrositeViewSet(GenericViewSet):
                 }
                 return Response(data, status=status.HTTP_200_OK)
 
-            org_obj = Organization.objects.get(
-                id=user_org_queryset.first().organization_id)
+            org_obj = Organization.objects.get(id=user_org_queryset.first().organization_id)
             org_seriliazer = OrganizationMicrositeSerializer(org_obj)
             data = {
                 Constants.USER: user_serializer.data,
@@ -98,7 +117,7 @@ class OrganizationMicrositeViewSet(GenericViewSet):
             return Response(data, status=status.HTTP_200_OK)
 
         except Exception as error:
-            LOGGER.error(error, exc_info=True)
+            LOGGER.error(f"Error occured in OrganizationMicrositeViewSet admin_organization ERROR: {error}", exc_info=True)
             return Response({}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
@@ -113,16 +132,14 @@ class DatahubThemeMicrositeViewSet(GenericViewSet):
         data = {}
 
         try:
-            css_attribute = file_operations.get_css_attributes(
-                css_path, "background-color")
+            css_attribute = file_operations.get_css_attributes(css_path, "background-color")
 
             if not css_path and not file_paths:
                 data = {"hero_image": None, "css": None}
             elif not css_path:
                 data = {"hero_image": file_paths, "css": None}
             elif css_path and not file_paths:
-                data = {"hero_image": None, "css": {
-                    "btnBackground": css_attribute}}
+                data = {"hero_image": None, "css": {"btnBackground": css_attribute}}
             elif css_path and file_paths:
                 data = {
                     "hero_image": file_paths,
@@ -132,7 +149,7 @@ class DatahubThemeMicrositeViewSet(GenericViewSet):
             return Response(data, status=status.HTTP_200_OK)
 
         except Exception as e:
-            LOGGER.error(e)
+            LOGGER.error(f"Error occured in DatahubThemeMicrositeViewSet theme ERROR: {e}", exc_info=True)
 
         return Response({}, status=status.HTTP_400_BAD_REQUEST)
 
@@ -162,7 +179,7 @@ class DatasetsMicrositeViewSet(GenericViewSet):
                 return self.get_paginated_response(serializer.data)
             return Response([], status=status.HTTP_404_NOT_FOUND)
         except Exception as error:
-            LOGGER.error(error, exc_info=True)
+            LOGGER.error(f"Error occured in DatasetsMicrositeViewSet list ERROR: {error}", exc_info=True)
             return Response(str(error), status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     def retrieve(self, request, pk=None, *args, **kwargs):
@@ -179,20 +196,18 @@ class DatasetsMicrositeViewSet(GenericViewSet):
         dataset_file_obj = DatasetV2File.objects.filter(dataset_id=obj.id)
         data = []
         for file in dataset_file_obj:
-            path_ = os.path.join(settings.DATASET_FILES_URL,
-                                 str(file.standardised_file))
+            path_ = os.path.join(settings.DATASET_FILES_URL, str(file.standardised_file))
             file_path = {}
-            file_path["content"] = read_contents_from_csv_or_xlsx_file(path_)
+            file_path["content"] = read_contents_from_csv_or_xlsx_file(path_, file.standardised_configuration)
             # Omitted the actual name of the file so the user can't manually download the file
             # Added file name : As they need to show the file name in frontend.
-            file_path["id"] = file.id if file.accessibility == Constants.PUBLIC else None
+            file_path["id"] = file.id
             file_path["file"] = path_.split("/")[-1]
             file_path["source"] = file.source
             file_path["file_size"] = file.file_size
             file_path["accessibility"] = file.accessibility
             file_path["standardised_file"] = (
-                os.path.join(settings.DATASET_FILES_URL,
-                             str(file.standardised_file))
+                os.path.join(settings.DATASET_FILES_URL, str(file.standardised_file))
                 if file.accessibility == Constants.PUBLIC
                 else None
             )
@@ -200,6 +215,45 @@ class DatasetsMicrositeViewSet(GenericViewSet):
 
         serializer["datasets"] = data
         return Response(serializer, status=status.HTTP_200_OK)
+    
+    @action(detail=False, methods=["get"])
+    def get_json_response(self, request, *args, **kwargs):
+        try:
+            next = False
+            file_path = request.GET.get('file_path')
+            page = int(request.GET.get('page', 1))
+            start_index = 0  + 50*(page-1)  # Adjust the start index as needed
+            end_index = 50*page
+            if file_path.endswith(".xlsx") or file_path.endswith(".xls"):
+                df_headers = pd.read_excel(file_path, nrows=1, header=None)
+                df = pd.read_excel(file_path, index_col=None, skiprows=range(0, start_index), nrows=end_index - start_index+1)
+            else:
+                df_headers = pd.read_csv(file_path, nrows=1, header=None)
+                df = pd.read_csv(file_path, index_col=False, skiprows=range(0, start_index), nrows=end_index - start_index+1)       
+            if df.empty  :
+                raise pd.errors.EmptyDataError("The file is empty or Reached end of file.")     
+            for i, value in enumerate(df_headers.iloc[0]):
+                df_headers[i] = str(value)
+            df.columns = df_headers.iloc[0]
+            df=df.fillna("")
+            next, df = (True, df[0:-1]) if len(df) > 50 else (False,df)
+            column = {
+            "ellipsis": True,
+            "width": 200
+            }
+            return JsonResponse({
+            'columns': [{**column,"title": col.replace("_", " ").strip(), "dataIndex": col } for col in df.columns.to_list()],
+            'next': next,
+            'current_page': page,
+            'data': df.to_dict(orient='records')
+            }, safe=False,status=200)       
+        except pd.errors.EmptyDataError:
+            LOGGER.info("The file is empty or Reached end of file.")
+            return Response(str("Table is Empty or Reached End of the table"), status=400)
+        except Exception as error:
+            LOGGER.error(f"Error occured in DatasetsMicrositeViewSet get_json_response ERROR: {error}", exc_info=True)
+            return Response(str(error), status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        
 
     @action(detail=False, methods=["post"])
     def dataset_filters(self, request, *args, **kwargs):
@@ -211,11 +265,9 @@ class DatasetsMicrositeViewSet(GenericViewSet):
         user_id = data.pop(Constants.USER_ID, "")
         exclude, filters = {}, {}
         if others:
-            exclude = {
-                Constants.USER_MAP_ORGANIZATION: org_id} if org_id else {}
+            exclude = {Constants.USER_MAP_ORGANIZATION: org_id} if org_id else {}
         else:
-            filters = {
-                Constants.USER_MAP_ORGANIZATION: org_id} if org_id else {}
+            filters = {Constants.USER_MAP_ORGANIZATION: org_id} if org_id else {}
         try:
             if categories is not None:
                 data = (
@@ -250,8 +302,7 @@ class DatasetsMicrositeViewSet(GenericViewSet):
                     .all()
                 )
         except Exception as error:  # type: ignore
-            logging.error(
-                "Error while filtering the datasets. ERROR: %s", error)
+            LOGGER.error(f"Error occured in DatasetsMicrositeViewSet dataset_filters ERROR: {error}", exc_info=True)
             return Response(f"Invalid filter fields: {list(request.data.keys())}", status=500)
 
         page = self.paginate_queryset(data)
@@ -267,12 +318,10 @@ class DatasetsMicrositeViewSet(GenericViewSet):
         user_id = data.pop(Constants.USER_ID, "")
         exclude, filters = {}, {}
         if others:
-            exclude = {
-                Constants.USER_MAP_ORGANIZATION: org_id} if org_id else {}
+            exclude = {Constants.USER_MAP_ORGANIZATION: org_id} if org_id else {}
             # filters = {Constants.APPROVAL_STATUS: Constants.APPROVED}
         else:
-            filters = {
-                Constants.USER_MAP_ORGANIZATION: org_id} if org_id else {}
+            filters = {Constants.USER_MAP_ORGANIZATION: org_id} if org_id else {}
         try:
             geography = (
                 DatasetV2.objects.values_list(Constants.GEOGRAPHY, flat=True)
@@ -300,8 +349,7 @@ class DatasetsMicrositeViewSet(GenericViewSet):
             else:
                 category_detail = []
         except Exception as error:  # type: ignore
-            logging.error(
-                "Error while filtering the datasets. ERROR: %s", error)
+            LOGGER.error(f"Error occured in DatasetsMicrositeViewSet filters_data ERROR: {error}", exc_info=True)
             return Response(f"Invalid filter fields: {list(request.data.keys())}", status=500)
         return Response({"geography": geography, "category_detail": category_detail}, status=200)
 
@@ -322,16 +370,14 @@ class DatasetsMicrositeViewSet(GenericViewSet):
                     data = json.loads(json_obj.read())
                 return Response(data, status=status.HTTP_200_OK)
             except Exception as error:
-                LOGGER.error(error, exc_info=True)
-                raise custom_exceptions.NotFoundException(
-                    detail="Categories not found")
+                LOGGER.error(f"Error occured in DatasetsMicrositeViewSet category ERROR: {error}", exc_info=True)
+                raise custom_exceptions.NotFoundException(detail="Categories not found")
 
     @action(detail=False, methods=["post"])
     def search_datasets(self, request, *args, **kwargs):
         data = request.data
         search_pattern = data.pop(Constants.SEARCH_PATTERNS, "")
-        filters = {
-            Constants.NAME_ICONTAINS: search_pattern} if search_pattern else {}
+        filters = {Constants.NAME_ICONTAINS: search_pattern} if search_pattern else {}
         try:
             data = (
                 DatasetV2.objects.select_related(
@@ -345,15 +391,137 @@ class DatasetsMicrositeViewSet(GenericViewSet):
                 .all()
             )
             page = self.paginate_queryset(data)
-            participant_serializer = DatahubDatasetsV2Serializer(
-                page, many=True)
+            participant_serializer = DatahubDatasetsV2Serializer(page, many=True)
             return self.get_paginated_response(participant_serializer.data)
         except Exception as error:  # type: ignore
-            logging.error(
-                "Error while filtering the datasets. ERROR: %s", error)
+            LOGGER.error(f"Error occured in DatasetsMicrositeViewSet search_datasets ERROR: {error}", exc_info=True)
             return Response(
                 f"Invalid filter fields: {list(request.data.keys())}",
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+
+    @action(detail=True, methods=["post"])
+    def get_dashboard_chart_data(self, request, pk, *args, **kwargs):
+        try:
+            hash_key = generate_hash_key_for_dashboard(pk, request.data)
+            cache_data = cache.get(hash_key, {})
+            if cache_data:
+                LOGGER.info("Dashboard details found in cache", exc_info=True)
+                return Response(
+                cache_data,
+                status=status.HTTP_200_OK,
+                )
+            dataset_file_object = DatasetV2File.objects.get(id=pk)
+            dataset_file = str(dataset_file_object.file)
+
+            if "omfp" in dataset_file.lower():
+                return generate_omfp_dashboard(dataset_file, request.data, hash_key, False)
+            if "fsp" in dataset_file.lower():
+                return generate_fsp_dashboard(dataset_file, request.data, hash_key, False)
+            if "knfd" in dataset_file.lower():
+                return generate_knfd_dashboard(dataset_file, request.data, hash_key, False)
+            if not "kiamis" in dataset_file.lower():
+                 return Response(
+                    "Requested resource is currently unavailable. Please try again later.",
+                    status=status.HTTP_200_OK,
+                )
+            # serializer = DatahubDatasetFileDashboardFilterSerializer(data=request.data)
+            # serializer.is_valid(raise_exception=True)
+
+            counties = []
+            sub_counties = []
+            gender = []
+            value_chain = []
+
+        # if serializer.data.get("county"):
+            counties = request.data.get("county")
+
+        # if serializer.data.get("sub_county"):
+            sub_counties = request.data.get("sub_county")
+
+        # if serializer.data.get("gender"):
+            gender = request.data.get("gender")
+
+        # if serializer.data.get("value_chain"):
+            value_chain = request.data.get("value_chain")
+
+            cols_to_read = ['Gender', 'Constituency', 'Millet', 'County', 'Sub County', 'Crop Production',
+                            'farmer_mobile_number',
+                            'Livestock Production', 'Ducks', 'Other Sheep', 'Total Area Irrigation', 'Family',
+                            'Ward',
+                            'Other Money Lenders', 'Micro-finance institution', 'Self (Salary or Savings)',
+                            "Natural rivers and stream", "Water Pan",
+                            'NPK', 'Superphosphate', 'CAN',
+                            'Urea', 'Other', 'Do you insure your crops?',
+                            'Do you insure your farm buildings and other assets?', 'Other Dual Cattle',
+                            'Cross breed Cattle', 'Cattle boma',
+                            'Small East African Goats', 'Somali Goat', 'Other Goat', 'Chicken -Indigenous',
+                            'Chicken -Broilers', 'Chicken -Layers', 'Highest Level of Formal Education',
+                            'Maize food crop', "Beans", 'Cassava', 'Sorghum', 'Potatoes', 'Cowpeas']
+            try:
+                if dataset_file.endswith(".xlsx") or dataset_file.endswith(".xls"):
+                    df = pd.read_excel(os.path.join(settings.DATASET_FILES_URL, dataset_file))
+                elif dataset_file.endswith(".csv"):
+                    df = pd.read_csv(os.path.join(settings.DATASET_FILES_URL, dataset_file), usecols=cols_to_read,
+                                     low_memory=False)
+                    # df.columns = df.columns.str.strip()
+                else:
+                    return Response(
+                        "Unsupported file please use .xls or .csv.",
+                        status=status.HTTP_400_BAD_REQUEST,
+                    )
+                df['Ducks'] = pd.to_numeric(df['Ducks'], errors='coerce')
+                df['Other Sheep'] = pd.to_numeric(df['Other Sheep'], errors='coerce')
+                df['Family'] = pd.to_numeric(df['Family'], errors='coerce')
+                df['Other Money Lenders'] = pd.to_numeric(df['Other Money Lenders'], errors='coerce')
+                df['Micro-finance institution'] = pd.to_numeric(df['Micro-finance institution'], errors='coerce')
+                df['Self (Salary or Savings)'] = pd.to_numeric(df['Self (Salary or Savings)'], errors='coerce')
+                df['Natural rivers and stream'] = pd.to_numeric(df['Natural rivers and stream'], errors='coerce')
+                df["Water Pan"] = pd.to_numeric(df["Water Pan"], errors='coerce')
+                df['Total Area Irrigation'] = pd.to_numeric(df['Total Area Irrigation'], errors='coerce')
+                df['NPK'] = pd.to_numeric(df['NPK'], errors='coerce')
+                df['Superphosphate'] = pd.to_numeric(df['Superphosphate'], errors='coerce')
+                df['CAN'] = pd.to_numeric(df['CAN'], errors='coerce')
+                df['Urea'] = pd.to_numeric(df['Urea'], errors='coerce')
+                df['Other'] = pd.to_numeric(df['Other'], errors='coerce')
+                df['Other Dual Cattle'] = pd.to_numeric(df['Other Dual Cattle'], errors='coerce')
+                df['Cross breed Cattle'] = pd.to_numeric(df['Cross breed Cattle'], errors='coerce')
+                df['Cattle boma'] = pd.to_numeric(df['Cattle boma'], errors='coerce')
+                df['Small East African Goats'] = pd.to_numeric(df['Small East African Goats'], errors='coerce')
+                df['Somali Goat'] = pd.to_numeric(df['Somali Goat'], errors='coerce')
+                df['Other Goat'] = pd.to_numeric(df['Other Goat'], errors='coerce')
+                df['Chicken -Indigenous'] = pd.to_numeric(df['Chicken -Indigenous'], errors='coerce')
+                df['Chicken -Broilers'] = pd.to_numeric(df['Chicken -Broilers'], errors='coerce')
+                df['Chicken -Layers'] = pd.to_numeric(df['Chicken -Layers'], errors='coerce')
+                df['Do you insure your crops?'] = pd.to_numeric(df['Do you insure your crops?'], errors='coerce')
+                df['Highest Level of Formal Education'] = pd.to_numeric(df['Highest Level of Formal Education'],
+                                                                        errors='coerce')
+                df['Do you insure your farm buildings and other assets?'] = pd.to_numeric(
+                    df['Do you insure your farm buildings and other assets?'], errors='coerce')
+
+                data = filter_dataframe_for_dashboard_counties(
+                    df=df,
+                    counties=counties if counties else [],
+                    sub_counties=sub_counties if sub_counties else [],
+                    gender=gender if gender else [],
+                    value_chain=value_chain if value_chain else [],
+                    hash_key=hash_key,
+                    filters=True
+                )
+            except Exception as e:
+                LOGGER.error(f"Error occured in kiamis dashboard generation ERROR: {e}", exc_info=True)
+                return Response(
+                    f"Something went wrong, please try again. {e}",
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            return Response(
+                data,
+                status=status.HTTP_200_OK,
+            )
+        except DatasetV2File.DoesNotExist:
+            return Response(
+                "No dataset file for the provided id.",
+                status=status.HTTP_404_NOT_FOUND,
             )
 
 
@@ -370,15 +538,11 @@ class ContactFormViewSet(GenericViewSet):
         print(serializer)
         serializer.is_valid(raise_exception=True)
         try:
-
             date = datetime.datetime.now().strftime("%d-%m-%Y")
             data = serializer.data
             data.update({"date": date})
-            print(data)
-
             # render email from query_email template
-            email_render = render(
-                request, "user_fills_in_contact_form.html", data)
+            email_render = render(request, "user_fills_in_contact_form.html", data)
             mail_body = email_render.content.decode("utf-8")
             Utils().send_email(
                 to_email=[datahub_admin.email],
@@ -391,7 +555,7 @@ class ContactFormViewSet(GenericViewSet):
             )
 
         except Exception as error:
-            LOGGER.error(error, exc_info=True)
+            LOGGER.error(f"Error occured in ContactFormViewSet create ERROR: {error}", exc_info=True)
             return Response({}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
@@ -439,7 +603,7 @@ class DocumentsMicrositeViewSet(GenericViewSet):
                 return Response(data, status=status.HTTP_200_OK)
 
         except Exception as error:
-            LOGGER.error(error, exc_info=True)
+            LOGGER.error(f"Error occured in DocumentsMicrositeViewSet legal_documents ERROR: {error}", exc_info=True)
             return Response({}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
@@ -462,8 +626,7 @@ class ParticipantMicrositeViewSet(GenericViewSet):
         try:
             if on_boarded_by:
                 roles = (
-                    UserOrganizationMap.objects.select_related(
-                        Constants.USER, Constants.ORGANIZATION)
+                    UserOrganizationMap.objects.select_related(Constants.USER, Constants.ORGANIZATION)
                     .filter(
                         user__status=True,
                         user__on_boarded_by=on_boarded_by,
@@ -476,16 +639,14 @@ class ParticipantMicrositeViewSet(GenericViewSet):
                 )
             elif co_steward:
                 roles = (
-                    UserOrganizationMap.objects.select_related(
-                        Constants.USER, Constants.ORGANIZATION)
+                    UserOrganizationMap.objects.select_related(Constants.USER, Constants.ORGANIZATION)
                     .filter(user__status=True, user__role=6, **filter)
                     .order_by("-user__updated_at")
                     .all()
                 )
             else:
                 roles = (
-                    UserOrganizationMap.objects.select_related(
-                        Constants.USER, Constants.ORGANIZATION)
+                    UserOrganizationMap.objects.select_related(Constants.USER, Constants.ORGANIZATION)
                     .filter(
                         user__status=True,
                         user__role=3,
@@ -500,14 +661,13 @@ class ParticipantMicrositeViewSet(GenericViewSet):
             participant_serializer = ParticipantSerializer(page, many=True)
             return self.get_paginated_response(participant_serializer.data)
         except Exception as error:
-            LOGGER.error(error, exc_info=True)
+            LOGGER.error(f"Error occured in ParticipantMicrositeViewSet list ERROR: {error}", exc_info=True)
             return Response(str(error.__context__), status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     def retrieve(self, request, pk):
         """GET method: retrieve an object or instance of the Product model"""
         roles = (
-            UserOrganizationMap.objects.prefetch_related(
-                Constants.USER, Constants.ORGANIZATION)
+            UserOrganizationMap.objects.prefetch_related(Constants.USER, Constants.ORGANIZATION)
             .filter(user__status=True, user=pk)
             .all()
         )
@@ -517,7 +677,7 @@ class ParticipantMicrositeViewSet(GenericViewSet):
                 return Response(participant_serializer.data[0], status=status.HTTP_200_OK)
             return Response([], status=status.HTTP_200_OK)
         except Exception as error:
-            LOGGER.error(error, exc_info=True)
+            LOGGER.error(f"Error occured in ParticipantMicrositeViewSet retrive ERROR: {error}", exc_info=True)
             return Response(str(error), status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     @action(detail=False, methods=["get"])
@@ -527,24 +687,21 @@ class ParticipantMicrositeViewSet(GenericViewSet):
         try:
             if co_steward:
                 roles = (
-                    UserOrganizationMap.objects.select_related(
-                        Constants.ORGANIZATION)
+                    UserOrganizationMap.objects.select_related(Constants.ORGANIZATION)
                     .filter(user__status=True, user__role=6)
                     .all()
                 )
             else:
                 roles = (
-                    UserOrganizationMap.objects.select_related(
-                        Constants.USER, Constants.ORGANIZATION)
+                    UserOrganizationMap.objects.select_related(Constants.USER, Constants.ORGANIZATION)
                     .filter((Q(user__role=3) | Q(user__role=1)), user__status=True)
                     .all()
                 )
             page = self.paginate_queryset(roles)
-            participant_serializer = micrositeOrganizationSerializer(
-                page, many=True)
+            participant_serializer = micrositeOrganizationSerializer(page, many=True)
             return self.get_paginated_response(participant_serializer.data)
         except Exception as error:
-            LOGGER.error(error, exc_info=True)
+            LOGGER.error(f"Error occured in ParticipantMicrositeViewSet organizations ERROR: {error}", exc_info=True)
             return Response(str(error), status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
@@ -557,11 +714,60 @@ class PolicyAPIView(GenericViewSet):
         queryset = self.get_queryset()
         serializer = self.get_serializer(queryset, many=True)
         return Response(serializer.data)
-    
+
     def retrieve(self, request, *args, **kwargs):
         instance = self.get_object()
         serializer = self.get_serializer(instance)
         return Response(serializer.data)
+
+class APIResponseViewSet(GenericViewSet):
+    permission_classes = []
+
+    @action(detail=False, methods=["get"])
+    def api(self, request, *args, **kwargs):
+        try:
+            get_api_key = request.META.get("HTTP_API_KEY", None)
+            page = int(request.GET.get('page', 1))
+            file_path_query_set=UsagePolicy.objects.select_related('dataset_file').filter(api_key=get_api_key).values('dataset_file__standardised_file', 'configs')
+            if get_api_key is None or not file_path_query_set:
+                return Response(
+                {
+                    "message" : "Invalid auth credentials provided."
+                },
+                status=status.HTTP_401_UNAUTHORIZED
+            )          
+            file_path = file_path_query_set[0]["dataset_file__standardised_file"]
+            configs = file_path_query_set[0]["configs"]
+            protected_file_path = os.path.join(settings.DATASET_FILES_URL, str(file_path))
+            next=False
+            start_index = 0  + 50*(page-1) 
+            end_index = 50*page  
+            if protected_file_path.endswith(".xlsx") or protected_file_path.endswith(".xls"):
+                df_header = pd.read_excel(protected_file_path, nrows=1, header=None)                       
+                df = pd.read_excel(protected_file_path, index_col=None,  header=0, skiprows=range(0, start_index), nrows=end_index - start_index+1)
+            else:
+                df_header = pd.read_csv(protected_file_path, nrows=1, header=None)
+                df = pd.read_csv(protected_file_path, index_col=False, header=0, skiprows=range(0, start_index), nrows=end_index - start_index+1)
+            if df.empty  :
+                raise pd.errors.EmptyDataError("The file is empty or Reached end of file.")      
+            for i, value in enumerate(df_header.iloc[0]):
+                df_header[i] = str(value)
+            df.columns = df_header.iloc[0]
+            df=df[configs.get('columns')] if configs.get('columns', []) else df
+            df=df.fillna("")
+            next, df = (True, df[0:-1]) if len(df) > 50 else (False,df)   
+            return JsonResponse(
+            {
+            'next': next,
+            'current_page': page,
+            'data': df.to_dict(orient='records')
+            }, safe=False,status=200)       
+        except pd.errors.EmptyDataError:
+            LOGGER.info("The file is empty or Reached end of file.")
+            return Response(str("File is Empty or Reached End of the file"), status=400)
+        except Exception as error:
+            LOGGER.error(f"Error occured in APIResponseViewSet api ERROR: {error}", exc_info=True)
+            return Response(str(error), status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 class UserDataMicrositeViewSet(GenericViewSet):
@@ -573,15 +779,14 @@ class UserDataMicrositeViewSet(GenericViewSet):
     def user_data(self, request):
         """GET method: retrieve an object of Organization using User ID of the User (IMPORTANT: Using USER ID instead of Organization ID)"""
         try:
-            datahub_admin = User.objects.get(
-                id=request.GET.get("user_id", ""))
+            datahub_admin = User.objects.get(id=request.GET.get("user_id", ""))
             print(datahub_admin, "datahub_admin")
 
             serializer = UserDataMicrositeSerializer(datahub_admin)
             return Response(serializer.data, status=status.HTTP_200_OK)
 
         except Exception as error:
-            LOGGER.error(error, exc_info=True)
+            LOGGER.error(f"Error occured in UserDataMicrositeViewSet use_data ERROR: {error}", exc_info=True)
             return Response({}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
@@ -590,20 +795,95 @@ class UserDataMicrositeViewSet(GenericViewSet):
 #     queryset = Policy.objects.all()
 #     serializer_class = PolicySerializer
 
+
 def microsite_media_view(request):
     file = get_object_or_404(DatasetV2File, id=request.GET.get("id"))
-    file_path = ''
+    file_path = ""
     try:
         if file.accessibility == Constants.PUBLIC:
             file_path = str(file.file)
             file_path = os.path.join(settings.DATASET_FILES_URL, file_path)
             if not os.path.exists(file_path):
-                return HttpResponseNotFound('File not found', 404)
-            response = FileResponse(open(file_path, 'rb'))
+                return HttpResponseNotFound("File not found", 404)
+            response = FileResponse(open(file_path, "rb"))
         else:
-            return HttpResponse(f"You don't have access to download this private file, Your request status is", status=403)
+            return HttpResponse(
+                f"You don't have access to download this private file, Your request status is", status=403
+            )
 
         return response
     except Exception as error:
-        LOGGER.error(error, exc_info=True)
+        LOGGER.error(f"Error occured in microsite_media_view ERROR: {error}", exc_info=True)
         return Response({str(error)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+class ConnectorMicrositeViewSet(GenericViewSet):
+    """Viewset for Product model"""
+
+    permission_classes = []
+    queryset = Connectors.objects.all()
+    pagination_class = CustomPagination
+
+    def list(self, request, *args, **kwargs):
+        data = Connectors.objects.all().order_by(Constants.UPDATED_AT).reverse()
+        page = self.paginate_queryset(data)
+        connectors_data = ConnectorsListSerializer(page, many=True)
+        return self.get_paginated_response(connectors_data.data)
+
+    def retrieve(self, request, pk):
+        """GET method: retrieve an object or instance of the Product model"""
+        try:
+            instance = self.get_object()
+            serializer = ConnectorsRetriveSerializer(instance=instance)
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        except Exception as error:
+            LOGGER.error(f"Error occured in ConnectorMicrositeViewSet list ERROR: {error}", exc_info=True)
+            return Response(str(error), status=status.HTTP_400_BAD_REQUEST)
+
+
+class ResourceMicrositeViewSet(GenericViewSet):
+    permission_classes = []
+    queryset = Resource.objects.all()
+    serializer_class = ResourceSerializer
+    pagination_class = CustomPagination
+
+    # @http_request_mutation
+    def list(self, request, *args, **kwargs):
+        try:
+            page = self.paginate_queryset(self.get_queryset().order_by("-updated_at"))
+            serializer = self.get_serializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
+        except ValidationError as e:
+            return Response(e.detail, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            LOGGER.error(f"Error occured in ResourceMicrositeViewSet list ERROR: {error}", exc_info=True)
+            return Response(str(e), status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    def retrieve(self, request, *args, **kwargs):
+        resource = self.get_object()
+        serializer = self.get_serializer(resource)
+        # serializer.is_valid(raise_exception=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+    
+    @action(detail=False, methods=["post"])
+    def resources_filter(self, request, *args, **kwargs):
+        try:
+            data =request.data
+            categories = data.pop(Constants.CATEGORY, None)
+            filters = {key: value for key, value in data.items() if value}
+            query_set = self.get_queryset().filter(**filters).order_by("-updated_at")
+            if categories:
+                query_set = query_set.filter(
+                    reduce(
+                        operator.or_,
+                        (Q(category__contains=cat) for cat in categories),
+                    )
+                )
+            page = self.paginate_queryset(query_set)
+            serializer = self.get_serializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
+        except ValidationError as e:
+            return Response(e.detail, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            LOGGER.error(f"Error occured in ResourceMicrositeViewSet resources_filter ERROR: {e}", exc_info=True)
+            return Response(str(e), status=status.HTTP_500_INTERNAL_SERVER_ERROR)

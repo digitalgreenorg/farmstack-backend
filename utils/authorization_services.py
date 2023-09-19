@@ -9,6 +9,9 @@ from rest_framework_simplejwt.authentication import JWTAuthentication
 from accounts.models import User
 from participant.models import Resolution, SupportTicketV2
 from utils.jwt_services import JWTServices
+import logging
+
+LOGGER = logging.getLogger(__name__)
 
 
 class AuthorizationServices:
@@ -32,7 +35,6 @@ def support_ticket_role_authorization(model_name):
         @wraps(view_func)
         def wrapper(self, request, *args, **kwargs):
             payload = JWTServices.extract_information_from_token(request=request)
-
             request.META["user_id"] = payload.get("user_id")
             request.META["org_id"] = payload.get("org_id")
             request.META["map_id"] = payload.get("map_id")
@@ -49,6 +51,7 @@ def support_ticket_role_authorization(model_name):
                     try:
                         primary_key = Resolution.objects.get(id=kwargs.get("pk")).ticket_id
                     except Resolution.DoesNotExist:
+                        LOGGER.info(f"user_map: {payload.get('map_id')} hot have access")
                         return Response(
                             {"message": "Invalid Resolution ID."},
                             status=status.HTTP_403_FORBIDDEN,
@@ -72,6 +75,7 @@ def support_ticket_role_authorization(model_name):
                 owner_details=owner_details,
             )
             if not validation:
+                LOGGER.info(f"user_map: {payload.get('map_id')} hot have access")
                 return Response(
                     {"message": "Authorization Failed. You do not have access to this resource."},
                     status=status.HTTP_403_FORBIDDEN,

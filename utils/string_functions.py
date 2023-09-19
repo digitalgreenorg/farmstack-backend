@@ -48,7 +48,7 @@ def check_special_chars(name: str):
         return False
 
     except Exception as error:
-        LOGGER.error(error, exc_info=True)
+        LOGGER.error(f"Error occured in check_special_chars ERROR: {error}", exc_info=True)
 
 
 def format_dir_name(directory: str, names: list):
