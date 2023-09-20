@@ -58,6 +58,7 @@ from microsite.serializers import (
     ConnectorsListSerializer,
     ConnectorsRetriveSerializer,
     ContactFormSerializer,
+    ContentSerializer,
     DatahubDatasetFileDashboardFilterSerializer,
     DatasetsMicrositeSerializer,
     LegalDocumentSerializer,
@@ -882,6 +883,51 @@ class ResourceMicrositeViewSet(GenericViewSet):
             page = self.paginate_queryset(query_set)
             serializer = self.get_serializer(page, many=True)
             return self.get_paginated_response(serializer.data)
+        except ValidationError as e:
+            return Response(e.detail, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            LOGGER.error(f"Error occured in ResourceMicrositeViewSet resources_filter ERROR: {e}", exc_info=True)
+            return Response(str(e), status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    @action(detail=False, methods=["post"])
+    def content_data(self, request, *args, **kwargs):
+        try:
+            data =request.data
+            categories = data.pop(Constants.CATEGORY, None)
+            filters = {key: value for key, value in data.items() if value}
+            query_set = self.get_queryset().filter(**filters).order_by("-updated_at")
+            if categories:
+                query_set = query_set.filter(
+                    reduce(
+                        operator.and_,
+                        (Q(category__contains=cat) for cat in categories),
+                    )
+                )
+            # page = self.paginate_queryset(query_set)
+            serializer = ContentSerializer(query_set, many=True)
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        except ValidationError as e:
+            return Response(e.detail, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            LOGGER.error(f"Error occured in ResourceMicrositeViewSet resources_filter ERROR: {e}", exc_info=True)
+            return Response(str(e), status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    @action(detail=False, methods=["get"])
+    def crops_list(self, request, *args, **kwargs):
+        try:
+            state =request.GET.get("state")
+            if state:
+                # Filter the queryset to get records with the desired state
+                records_with_state = Resource.objects.filter(category__States__contains=[state]).all()
+                print(records_with_state)
+                # Extract the crops from the filtered records
+                crops_list = [item for record in records_with_state 
+                              for item in record.category.get("Crops", [])]
+
+                return Response(crops_list, status=status.HTTP_200_OK)
+            else:
+                return Response("State value is required.", status=404)
+            
         except ValidationError as e:
             return Response(e.detail, status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:

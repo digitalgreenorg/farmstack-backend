@@ -15,6 +15,8 @@ from datahub.models import (
     DatasetV2,
     Organization,
     Policy,
+    Resource,
+    ResourceFile,
     UserOrganizationMap,
 )
 from datahub.serializers import DatasetV2FileSerializer
@@ -193,3 +195,15 @@ class DatahubDatasetFileDashboardFilterSerializer(serializers.Serializer):
     sub_county = serializers.ListField(allow_empty=False, required=False)
     gender = serializers.ListField(allow_empty=False, required=False)
     value_chain = serializers.ListField(allow_empty=False, required=False)
+
+
+class ContentFileSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ResourceFile
+        fields = ["id", "type", "url", "transcription", "updated_at"]
+
+class ContentSerializer(serializers.ModelSerializer):
+    resources = ContentFileSerializer(many=True, read_only=True)
+    class Meta:
+        model = Resource
+        fields = ["id", "title", "description", "category", "resources"]

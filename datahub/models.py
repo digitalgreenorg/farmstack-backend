@@ -4,6 +4,7 @@ from datetime import timedelta
 from email.mime import application
 
 from django.conf import settings
+from django.core.files.storage import Storage
 from django.db import models
 from django.utils import timezone
 
@@ -15,7 +16,6 @@ from utils.validators import (
     validate_file_size,
     validate_image_type,
 )
-from django.core.files.storage import Storage
 
 
 def auto_str(cls):
@@ -106,6 +106,10 @@ USAGE_POLICY_REQUEST_STATUS = (
 USAGE_POLICY_API_TYPE = (
     ("dataset_file", "dataset_file"),
     ("api", "api")
+)
+RESOURCE_URL_TYPE = (
+    ("youtube", "youtube"),
+    ("pdf", "pdf")
 )
 
 USAGE_POLICY_APPROVAL_STATUS = (
@@ -310,8 +314,11 @@ class ResourceFile(TimeStampMixin):
     """
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     resource = models.ForeignKey(Resource, on_delete=models.CASCADE, related_name="resources")
-    file = models.FileField(upload_to=settings.RESOURCES_URL)
+    file = models.FileField(upload_to=settings.RESOURCES_URL, null=True, blank=True)
     file_size = models.PositiveIntegerField(null=True, blank=True)
+    type = models.CharField(max_length=20, null=True, choices=RESOURCE_URL_TYPE)
+    url = models.CharField(max_length=200, null=True)
+    transcription = models.CharField(max_length=2500,null=True)
 
     def __str__(self) -> str:
         return self.file.name

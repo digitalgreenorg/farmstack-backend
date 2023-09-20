@@ -7,6 +7,7 @@ import shutil
 import plazy
 from django.conf import settings
 from django.core.exceptions import ObjectDoesNotExist, ValidationError
+from django.core.validators import URLValidator
 from django.utils.translation import gettext as _
 from rest_framework import serializers, status
 
@@ -24,10 +25,10 @@ from datahub.models import (
     DatasetV2,
     DatasetV2File,
     Organization,
+    Resource,
+    ResourceFile,
     StandardisationTemplate,
     UserOrganizationMap,
-    ResourceFile,
-    Resource,
 )
 from participant.models import Connectors, SupportTicket
 from utils.custom_exceptions import NotFoundException
@@ -42,8 +43,6 @@ from utils.validators import (
 )
 
 from .models import Policy, UsagePolicy
-from django.core.validators import URLValidator
-from django.core.exceptions import ValidationError
 
 LOGGER = logging.getLogger(__name__)
 
@@ -1006,7 +1005,7 @@ class ResourceSerializer(serializers.ModelSerializer):
             fields = ["id", "first_name", "last_name", "email", "role", "on_boarded_by"]
 
     resources = ResourceFileSerializer(many=True, read_only=True)
-    uploaded_files = serializers.ListField(child=serializers.FileField(), write_only=True)
+    uploaded_files = serializers.ListField(child=serializers.JSONField(), write_only=True)
     organization = OrganizationRetriveSerializer(
         allow_null=True, required=False, read_only=True, source="user_map.organization"
     )
@@ -1031,10 +1030,12 @@ class ResourceSerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         resource_files_data = validated_data.pop("uploaded_files")
         resource = Resource.objects.create(**validated_data)
-
         for file_data in resource_files_data:
-            file_size = file_data.size
-            ResourceFile.objects.create(resource=resource, file=file_data, file_size=file_size)
+            # file_size = file_data.size
+            ResourceFile.objects.create(resource=resource, **file_data)
+                                        # url=file_data.get("url", ""),
+                                        #  type=file_data.get("type", ""),
+                                        #  transcription=file_data.get("transcription", ""))
 
         return resource
 
@@ -1063,7 +1064,7 @@ class ResourceSerializer(serializers.ModelSerializer):
     #     return instance
 
 
-class ResourceFileSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = ResourceFile
-        fields = "__all__"
+# class ResourceFileSerializer(serializers.ModelSerializer):
+#     class Meta:
+#         model = ResourceFile
+#         fields = "__all__"
