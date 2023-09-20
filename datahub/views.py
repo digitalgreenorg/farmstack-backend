@@ -3132,7 +3132,7 @@ class ResourceManagementViewSet(GenericViewSet):
     def create(self, request, *args, **kwargs):
         try:
             user_map = request.META.get("map_id")
-            request.data._mutable = True
+            #request.data._mutable = True
             request.data["user_map"] = user_map
 
             serializer = self.get_serializer(data=request.data)
@@ -3230,8 +3230,8 @@ class ResourceFileManagementViewSet(GenericViewSet):
     @http_request_mutation
     def create(self, request, *args, **kwargs):
         try:
-            request.data._mutable = True
-            request.data["file_size"] = request.FILES.get("file").size
+            #request.data._mutable = True
+            #request.data["file_size"] = request.FILES.get("file").size
             serializer = self.get_serializer(data=request.data, partial=True)
             serializer.is_valid(raise_exception=True)
             serializer.save()
