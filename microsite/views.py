@@ -924,7 +924,7 @@ class ResourceMicrositeViewSet(GenericViewSet):
                 crops_list = [item for record in records_with_state 
                               for item in record.category.get("Crops", [])]
 
-                return Response(crops_list, status=status.HTTP_200_OK)
+                return Response(list(set(crops_list)), status=status.HTTP_200_OK)
             else:
                 return Response("State value is required.", status=404)
             
