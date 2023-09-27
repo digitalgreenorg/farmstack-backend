@@ -43,6 +43,7 @@ from datahub.models import (
     Organization,
     Policy,
     Resource,
+    ResourceFile,
     UsagePolicy,
     UserOrganizationMap,
 )
@@ -58,6 +59,7 @@ from microsite.serializers import (
     ConnectorsListSerializer,
     ConnectorsRetriveSerializer,
     ContactFormSerializer,
+    ContentFileSerializer,
     ContentSerializer,
     DatahubDatasetFileDashboardFilterSerializer,
     DatasetsMicrositeSerializer,
@@ -895,7 +897,8 @@ class ResourceMicrositeViewSet(GenericViewSet):
             data =request.data
             categories = data.pop(Constants.CATEGORY, None)
             filters = {key: value for key, value in data.items() if value}
-            query_set = self.get_queryset().filter(**filters).order_by("-updated_at")
+            file_filters = data.get("resources__updated_at__gt", None)
+            query_set = Resource.objects.filter(**filters).prefetch_related('resources')
             if categories:
                 query_set = query_set.filter(
                     reduce(
@@ -903,9 +906,18 @@ class ResourceMicrositeViewSet(GenericViewSet):
                         (Q(category__contains=cat) for cat in categories),
                     )
                 )
-            # page = self.paginate_queryset(query_set)
-            serializer = ContentSerializer(query_set, many=True)
-            return Response(serializer.data, status=status.HTTP_200_OK)
+            file_filters = {"updated_at__gt":datetime.datetime.fromisoformat(file_filters)} if file_filters else {} # type: ignore
+            if file_filters:
+                data = []
+                for resource in query_set.distinct():
+                    resources_data={"id": resource.id, "title": resource.title, "description": resource.description, "category": resource.category}
+                    files = ResourceFile.objects.filter(**file_filters, resource=resource.id).all()
+                    resources_data["resources"] = ContentFileSerializer(files, many=True).data
+                    data.append(resources_data)
+                return Response(data, status=status.HTTP_200_OK)
+            else:
+                serializer = ContentSerializer(query_set, many=True)
+                return Response(serializer.data, status=status.HTTP_200_OK)
         except ValidationError as e:
             return Response(e.detail, status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
