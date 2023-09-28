@@ -650,7 +650,7 @@ class ParticipantMicrositeViewSet(GenericViewSet):
                     .filter(
                         user__status=True,
                         user__role=3,
-                        user__on_boarded_by=None,
+                        # user__on_boarded_by=None,
                         user__approval_status=approval_status,
                         **filter,
                     )
