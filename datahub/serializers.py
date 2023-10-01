@@ -150,12 +150,16 @@ class ParticipantSerializer(serializers.ModelSerializer):
         exclude = Constants.EXCLUDE_DATES
 
     dataset_count = serializers.SerializerMethodField(method_name="get_dataset_count")
+    dataset_files_count = serializers.SerializerMethodField(method_name="get_dataset_files_count")
     connector_count = serializers.SerializerMethodField(method_name="get_connector_count")
     number_of_participants = serializers.SerializerMethodField()
 
     def get_dataset_count(self, user_org_map):
         return DatasetV2.objects.filter(user_map_id=user_org_map.id, is_temp=False).count()
-
+    
+    def get_dataset_files_count(self, user_org_map):
+        return DatasetV2File.objects.select_related("dataset").filter(dataset__user_map_id=user_org_map.id, is_temp=False).count()
+ 
     def get_connector_count(self, user_org_map):
         return Connectors.objects.filter(user_map_id=user_org_map.id).count()
 
