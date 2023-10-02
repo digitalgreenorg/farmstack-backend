@@ -8,6 +8,7 @@ import plazy
 from django.conf import settings
 from django.core.exceptions import ObjectDoesNotExist, ValidationError
 from django.core.validators import URLValidator
+from django.db.models import Q
 from django.utils.translation import gettext as _
 from rest_framework import serializers, status
 
@@ -1072,3 +1073,58 @@ class ResourceSerializer(serializers.ModelSerializer):
 #     class Meta:
 #         model = ResourceFile
 #         fields = "__all__"
+
+
+
+class ParticipantCostewardSerializer(serializers.ModelSerializer):
+    user_id = serializers.PrimaryKeyRelatedField(
+        queryset=models.User.objects.all(),
+        required=True,
+        source=Constants.USER,
+    )
+    organization_id = serializers.PrimaryKeyRelatedField(
+        queryset=Organization.objects.all(),
+        allow_null=True,
+        required=False,
+        source=Constants.ORGANIZATION,
+    )
+    user = UserSerializer(
+        read_only=False,
+        required=False,
+    )
+    organization = OrganizationRetriveSerializer(
+        required=False,
+        allow_null=True,
+        read_only=True,
+    )
+
+    class Meta:
+        model = UserOrganizationMap
+        exclude = Constants.EXCLUDE_DATES
+
+    dataset_count = serializers.SerializerMethodField(method_name="get_dataset_count")
+    dataset_files_count = serializers.SerializerMethodField(method_name="get_dataset_files_count")
+    connector_count = serializers.SerializerMethodField(method_name="get_connector_count")
+    number_of_participants = serializers.SerializerMethodField()
+
+    def get_dataset_count(self, user_org_map):
+        return DatasetV2.objects.filter(user_map_id=user_org_map.id, is_temp=False).count()
+    
+    def get_dataset_files_count(self, user_org_map):
+        return DatasetV2File.objects.select_related("dataset").filter(
+            Q(dataset__user_map_id=user_org_map.id) |
+            Q(dataset__user_map__onboared_by=user_org_map.user),
+            is_temp=False
+        ).count()
+ 
+    def get_connector_count(self, user_org_map):
+        return Connectors.objects.filter(user_map_id=user_org_map.id).count()
+
+    def get_number_of_participants(self, user_org_map):
+        return (
+            UserOrganizationMap.objects.select_related(Constants.USER, Constants.ORGANIZATION)
+            .filter(user__status=True, user__on_boarded_by=user_org_map.user.id, user__role=3)
+            .all()
+            .count()
+        )
+

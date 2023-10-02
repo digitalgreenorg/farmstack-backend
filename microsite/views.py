@@ -51,6 +51,7 @@ from datahub.serializers import (
     DatahubDatasetsV2Serializer,
     DatasetV2Serializer,
     OrganizationSerializer,
+    ParticipantCostewardSerializer,
     ParticipantSerializer,
     ResourceSerializer,
     micrositeOrganizationSerializer,
@@ -647,6 +648,9 @@ class ParticipantMicrositeViewSet(GenericViewSet):
                     .order_by("-user__updated_at")
                     .all()
                 )
+                page = self.paginate_queryset(roles)
+                participant_serializer = ParticipantCostewardSerializer(page, many=True)
+                return self.get_paginated_response(participant_serializer.data)
             else:
                 roles = (
                     UserOrganizationMap.objects.select_related(Constants.USER, Constants.ORGANIZATION)

@@ -139,6 +139,7 @@ from utils.jwt_services import http_request_mutation
 from .models import Policy, ResourceFile, UsagePolicy
 from .serializers import (
     APIBuilderSerializer,
+    ParticipantCostewardSerializer,
     PolicySerializer,
     ResourceFileSerializer,
     UsagePolicyDetailSerializer,
@@ -474,6 +475,9 @@ class ParticipantViewSet(GenericViewSet):
                 .order_by("-user__updated_at")
                 .all()
             )
+            page = self.paginate_queryset(roles)
+            participant_serializer = ParticipantCostewardSerializer(page, many=True)
+            return self.get_paginated_response(participant_serializer.data)
         else:
             roles = (
                 UserOrganizationMap.objects.select_related(Constants.USER, Constants.ORGANIZATION)
