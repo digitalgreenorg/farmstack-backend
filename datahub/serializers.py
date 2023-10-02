@@ -1113,8 +1113,8 @@ class ParticipantCostewardSerializer(serializers.ModelSerializer):
     def get_dataset_files_count(self, user_org_map):
         return DatasetV2File.objects.select_related("dataset").filter(
             Q(dataset__user_map_id=user_org_map.id) |
-            Q(dataset__user_map__onboared_by=user_org_map.user),
-            is_temp=False
+            Q(dataset__user_map__user__on_boarded_by=user_org_map.user_id),
+            dataset__is_temp=False
         ).count()
  
     def get_connector_count(self, user_org_map):
