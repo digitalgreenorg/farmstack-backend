@@ -863,7 +863,7 @@ class ResourceMicrositeViewSet(GenericViewSet):
         except ValidationError as e:
             return Response(e.detail, status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
-            LOGGER.error(f"Error occured in ResourceMicrositeViewSet list ERROR: {error}", exc_info=True)
+            LOGGER.error(f"Error occured in ResourceMicrositeViewSet list ERROR: {e}", exc_info=True)
             return Response(str(e), status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     def retrieve(self, request, *args, **kwargs):

@@ -8,7 +8,7 @@ import plazy
 from django.conf import settings
 from django.core.exceptions import ObjectDoesNotExist, ValidationError
 from django.core.validators import URLValidator
-from django.db.models import Q
+from django.db.models import Count, Q
 from django.utils.translation import gettext as _
 from rest_framework import serializers, status
 
@@ -151,16 +151,18 @@ class ParticipantSerializer(serializers.ModelSerializer):
         exclude = Constants.EXCLUDE_DATES
 
     dataset_count = serializers.SerializerMethodField(method_name="get_dataset_count")
-    dataset_files_count = serializers.SerializerMethodField(method_name="get_dataset_files_count")
+    content_files_count = serializers.SerializerMethodField(method_name="get_content_files_count")
     connector_count = serializers.SerializerMethodField(method_name="get_connector_count")
     number_of_participants = serializers.SerializerMethodField()
 
     def get_dataset_count(self, user_org_map):
         return DatasetV2.objects.filter(user_map_id=user_org_map.id, is_temp=False).count()
     
-    def get_dataset_files_count(self, user_org_map):
-        return DatasetV2File.objects.select_related("dataset").filter(dataset__user_map_id=user_org_map.id, is_temp=False).count()
- 
+    def get_content_files_count(self, user_org_map):
+        return ResourceFile.objects.select_related("resource").filter(
+            Q(resource__user_map_id=user_org_map.id) |
+            Q(resource__user_map__user__on_boarded_by=user_org_map.user_id)
+                            ).values('type').annotate(count=Count('type'))
     def get_connector_count(self, user_org_map):
         return Connectors.objects.filter(user_map_id=user_org_map.id).count()
 
@@ -1015,6 +1017,7 @@ class ResourceSerializer(serializers.ModelSerializer):
         allow_null=True, required=False, read_only=True, source="user_map.organization"
     )
     user = UserSerializer(allow_null=True, required=False, read_only=True, source="user_map.user")
+    content_files_count = serializers.SerializerMethodField(method_name="get_content_files_count")
 
     class Meta:
         model = Resource
@@ -1030,8 +1033,10 @@ class ResourceSerializer(serializers.ModelSerializer):
             "user",
             "created_at",
             "updated_at",
+            "content_files_count"
         )
-
+    def get_content_files_count(self, resource):
+        return ResourceFile.objects.filter(resource=resource.id).values('type').annotate(count=Count('type'))
     def create(self, validated_data):
         resource_files_data = validated_data.pop("uploaded_files")
         resource = Resource.objects.create(**validated_data)
@@ -1103,19 +1108,18 @@ class ParticipantCostewardSerializer(serializers.ModelSerializer):
         exclude = Constants.EXCLUDE_DATES
 
     dataset_count = serializers.SerializerMethodField(method_name="get_dataset_count")
-    dataset_files_count = serializers.SerializerMethodField(method_name="get_dataset_files_count")
+    content_files_count = serializers.SerializerMethodField(method_name="get_content_files_count")
     connector_count = serializers.SerializerMethodField(method_name="get_connector_count")
     number_of_participants = serializers.SerializerMethodField()
 
     def get_dataset_count(self, user_org_map):
         return DatasetV2.objects.filter(user_map_id=user_org_map.id, is_temp=False).count()
     
-    def get_dataset_files_count(self, user_org_map):
-        return DatasetV2File.objects.select_related("dataset").filter(
-            Q(dataset__user_map_id=user_org_map.id) |
-            Q(dataset__user_map__user__on_boarded_by=user_org_map.user_id),
-            dataset__is_temp=False
-        ).count()
+    def get_content_files_count(self, user_org_map):
+        return ResourceFile.objects.select_related("resource").filter(
+            Q(resource__user_map_id=user_org_map.id) |
+            Q(resource__user_map__user__on_boarded_by=user_org_map.user_id)
+                            ).values('type').annotate(count=Count('type'))
  
     def get_connector_count(self, user_org_map):
         return Connectors.objects.filter(user_map_id=user_org_map.id).count()
