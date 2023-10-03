@@ -242,9 +242,9 @@ class ParticipantDatasetsViewSet(GenericViewSet):
         setattr(request.data, "_mutable", True)
 
         data = request.data
-        user_org_map = UserOrganizationMap.objects.get(
-            id=data.get(Constants.USER_MAP))
-        user = User.objects.get(id=user_org_map.user_id)
+        user = User.objects.get(
+            id=data.get(Constants.USER_ID))
+        # user = User.objects.get(id=user_org_map.user_id)
 
         if not data.get("is_public"):
             if not csv_and_xlsx_file_validatation(request.data.get(Constants.SAMPLE_DATASET)):
@@ -426,9 +426,8 @@ class ParticipantDatasetsViewSet(GenericViewSet):
         instance = self.get_object()
 
         # trigger email to the participant
-        user_map_queryset = UserOrganizationMap.objects.select_related(
-            Constants.USER).get(id=instance.user_map_id)
-        user_obj = user_map_queryset.user
+        user_map_queryset = User.objects.get(id=instance.user_id)
+        user_obj = user_map_queryset
 
         # reset the approval status b/c the user modified the dataset after an approval
         if getattr(instance, Constants.APPROVAL_STATUS) == Constants.APPROVED and (
@@ -700,17 +699,18 @@ class ParticipantConnectorsViewSet(GenericViewSet):
         """
         return serializer.save()
 
-    def trigger_email(self, request, template, subject, user_org_map, connector_data, dataset):
+    def trigger_email(self, request, template, subject, user_id, connector_data, dataset):
         """trigger email to the respective users"""
         try:
             datahub_admin = User.objects.filter(role_id=1).first()
             admin_full_name = string_functions.get_full_name(
                 datahub_admin.first_name, datahub_admin.last_name)
+            participant = User.objects.get(id=user_id)
             participant_org = Organization.objects.get(
-                id=user_org_map.organization_id) if user_org_map else None
+                id=participant.organization_id)
             participant_org_address = string_functions.get_full_address(
                 participant_org.address)
-            participant = User.objects.get(id=user_org_map.user_id)
+
             participant_full_name = string_functions.get_full_name(
                 participant.first_name, participant.last_name)
 
@@ -762,8 +762,8 @@ class ParticipantConnectorsViewSet(GenericViewSet):
         serializer.is_valid(raise_exception=True)
         self.perform_create(serializer)
 
-        user_org_map = UserOrganizationMap.objects.select_related(Constants.ORGANIZATION).get(
-            id=serializer.data.get(Constants.USER_MAP)
+        user_org_map = User.objects.select_related(Constants.ORGANIZATION).get(
+            id=serializer.data.get(Constants.USER_ID)
         )
         dataset = Datasets.objects.get(
             id=serializer.data.get(Constants.DATASET))
@@ -910,8 +910,8 @@ class ParticipantConnectorsViewSet(GenericViewSet):
         self.perform_create(serializer)
 
         if request.data.get(Constants.CERTIFICATE):
-            user_org_map = UserOrganizationMap.objects.select_related(Constants.ORGANIZATION).get(
-                id=serializer.data.get(Constants.USER_MAP)
+            user_org_map = User.objects.select_related(Constants.ORGANIZATION).get(
+                id=serializer.data.get(Constants.USER_ID)
             )
             dataset = Datasets.objects.get(
                 id=serializer.data.get(Constants.DATASET))
@@ -942,8 +942,8 @@ class ParticipantConnectorsViewSet(GenericViewSet):
                     ["Connector status should be either unpaired or rejected to delete"],
                     status=400,
                 )
-            user_org_map = UserOrganizationMap.objects.select_related(Constants.ORGANIZATION).get(
-                id=connector.user_map_id
+            user_org_map = User.objects.get(
+                id=connector.user_id
             )
             dataset = Datasets.objects.get(id=connector.dataset_id)
             self.trigger_email(
@@ -1102,6 +1102,7 @@ class ParticipantConnectorsMapViewSet(GenericViewSet):
         return serializer.save()
 
     def trigger_email_for_pairing(self, request, template, subject, consumer_connector, provider_connector):
+        #assist-> here token is not being used to extract
         # trigger email to the participant as they are being added
         try:
             consumer_org_map = (
@@ -2139,8 +2140,8 @@ class SupportTicketV2ModelViewSet(GenericViewSet):
                 "message": "No ticket found for this id.",
             }, status=status.HTTP_404_NOT_FOUND)
         try:
-            current_user = UserOrganizationMap.objects.select_related(
-                "organization").get(id=request.META.get("map_id"))
+            current_user = User.objects.select_related(
+                "organization").get(id=request.META.get("user_id"))
         except UserOrganizationMap.DoesNotExist:
             return Response(
                 {

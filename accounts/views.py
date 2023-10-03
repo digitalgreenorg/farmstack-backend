@@ -335,7 +335,7 @@ class VerifyLoginOTPViewset(GenericViewSet):
         email = serializer.validated_data["email"]
         otp_entered = serializer.validated_data["otp"]
         # user = User.objects.filter(user__email=email).select_related()
-        user_map = UserOrganizationMap.objects.select_related("user").filter(user__email=email).first()
+        # user_map = UserOrganizationMap.objects.select_related("user").filter(user__email=email).first()
         user = User.objects.filter(email=email)
         user = user.first()
 
@@ -363,13 +363,13 @@ class VerifyLoginOTPViewset(GenericViewSet):
                     if (correct_otp == int(otp_entered) and cache.get(email)["email"] == email) or email == "imran+1@digitalgreen.org":
                         cache.delete(email)
                         refresh = RefreshToken.for_user(user)
-                        refresh["org_id"] = str(user_map.organization_id) if user_map else None
-                        refresh["map_id"] = str(user_map.id) if user_map else None
+                        refresh["org_id"] = str(user.organization_id) if user.organization_id else None
+                        # refresh["map_id"] = str(user_map.id) if user_map else None
                         refresh["role"] = str(user.role_id) 
                         refresh["onboarded_by"] = str(user.on_boarded_by_id)
 
-                        refresh.access_token["org_id"] = str(user_map.organization_id) if user_map else None
-                        refresh.access_token["map_id"] = str(user_map.id) if user_map else None 
+                        refresh.access_token["org_id"] = str(user.organization_id) if user.organization_id else None
+                        # refresh.access_token["map_id"] = str(user_map.id) if user_map else None
                         refresh.access_token["role"] = str(user.role_id) 
                         refresh.access_token["onboarded_by"] = str(user.on_boarded_by_id)
 
@@ -377,8 +377,8 @@ class VerifyLoginOTPViewset(GenericViewSet):
                         return Response(
                             {
                                 "user": user.id,
-                                "user_map": user_map.id if user_map else None,
-                                "org_id": user_map.organization_id if user_map else None,
+                                # "user_map": user_map.id if user_map else None,
+                                "org_id": str(user.organization_id) if user.organization_id else None,
                                 "email": user.email,
                                 "status": user.status,
                                 "on_boarded": user.on_boarded,
