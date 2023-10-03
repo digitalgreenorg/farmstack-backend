@@ -177,10 +177,10 @@ class TeamMemberViewSet(GenericViewSet):
             LOGGER.error(e,exc_info=True)
             return Response(str(e), status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-    def list(self, request, *args, **kwargs):
+    def list(self, request, pk, *args, **kwargs):
         """GET method: query all the list of objects from the Product model"""
         # queryset = self.filter_queryset(self.get_queryset())
-        queryset = User.objects.filter(Q(status=True) & (Q(role__id=2) | Q(role__id=5)))
+        queryset = User.objects.filter(organization=pk,status=True,role_id=2)
         page = self.paginate_queryset(queryset)
         if page is not None:
             serializer = self.get_serializer(page, many=True)

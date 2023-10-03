@@ -6,6 +6,7 @@ from django.db import models
 
 # from utils.validators import validate_file_size
 from core.base_models import TimeStampMixin
+from datahub.models import Organization
 from utils.validators import validate_file_size
 
 
@@ -77,6 +78,10 @@ class User(AbstractBaseUser, TimeStampMixin):
     """
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    organization = models.ForeignKey(
+        Organization,
+        on_delete=models.CASCADE,
+    )
     password = None
     last_login = None
     is_superuser = None

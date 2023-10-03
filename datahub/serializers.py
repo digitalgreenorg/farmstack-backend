@@ -230,7 +230,7 @@ class TeamMemberCreateSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = User
-        fields = ("email", "first_name", "last_name", "role", "on_boarded_by", "on_boarded")
+        fields = ("email", "first_name", "last_name", "role", "on_boarded_by", "on_boarded","organization")
 
 
 class TeamMemberDetailsSerializer(serializers.ModelSerializer):
@@ -240,7 +240,7 @@ class TeamMemberDetailsSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = User
-        fields = ("id", "email", "first_name", "last_name", "role", "on_boarded_by", "on_boarded")
+        fields = ("id", "email", "first_name", "last_name", "role", "on_boarded_by", "on_boarded","organization")
 
 
 class TeamMemberUpdateSerializer(serializers.ModelSerializer):
