@@ -390,9 +390,9 @@ class VerifyLoginOTPViewset(GenericViewSet):
                             status=status.HTTP_201_CREATED,
                         )
 
-                        response.set_cookie("Bearer-Token", str(refresh), max_age=new_duration,httponly=True)
+                        response.set_cookie("Bearer-Token", str(refresh), expires=str(refresh["exp"]), httponly=True)
                         response.set_cookie("Access-Token", str(refresh.access_token),
-                                            max_age=new_duration,httponly=True)
+                                            expires=str(refresh.access_token["exp"]), httponly=True)
 
                         return response
                     elif correct_otp != int(otp_entered) or cache.get(email)["email"] != email:
