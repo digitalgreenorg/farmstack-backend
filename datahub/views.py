@@ -220,8 +220,8 @@ class TeamMemberViewSet(GenericViewSet):
     def destroy(self, request, pk):
         """DELETE method: delete an object"""
         team_member = self.get_object()
-        team_member.status = False
-        # team_member.delete()
+        # team_member.status = False
+        team_member.delete()
         team_member.save()
         return Response(status=status.HTTP_200_OK,data={
             "message":"Resource Deleted"
