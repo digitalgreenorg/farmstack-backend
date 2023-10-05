@@ -5,7 +5,7 @@ from unicodedata import category
 # import black
 from django.db import models
 
-from accounts.models import User
+# from accounts.models import User # causing circular import
 from core import settings
 from core.base_models import TimeStampMixin
 from datahub.models import Datasets, Organization, UserOrganizationMap
@@ -90,7 +90,8 @@ class Connectors(TimeStampMixin):
     """Connectors model of all the users"""
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    user_map = models.ForeignKey(UserOrganizationMap, on_delete=models.PROTECT, blank=True, default="")
+    # user_map = models.ForeignKey(UserOrganizationMap, on_delete=models.PROTECT, blank=True, default="")
+    # user = models.ForeignKey(User, on_delete=models.PROTECT)
     project = models.ForeignKey(Project, on_delete=models.PROTECT, null=True)
     department = models.ForeignKey(
         Department, on_delete=models.PROTECT, default="e459f452-2b4b-4129-ba8b-1e1180c87888"

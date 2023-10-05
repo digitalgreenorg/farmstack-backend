@@ -7,7 +7,8 @@ from django.conf import settings
 from django.db import models
 from django.utils import timezone
 
-from accounts.models import User
+# from accounts.models import User
+# from accounts.models import User
 from core.base_models import TimeStampMixin
 from core.constants import Constants
 from utils.validators import (
@@ -76,7 +77,7 @@ class UserOrganizationMap(TimeStampMixin):
     """UserOrganizationMap model for mapping User and Organization model"""
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    # user = models.ForeignKey(User, on_delete=models.CASCADE)
     organization = models.ForeignKey(Organization, on_delete=models.CASCADE)
 
 
@@ -119,7 +120,8 @@ class Datasets(TimeStampMixin):
     """Datasets model of all the users"""
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    user_map = models.ForeignKey(UserOrganizationMap, on_delete=models.PROTECT)
+    # user_map = models.ForeignKey(UserOrganizationMap, on_delete=models.PROTECT)
+    # user = models.ForeignKey(User, on_delete=models.PROTECT) added user and commenting because this is causing another circular import
     name = models.CharField(max_length=255, unique=True)
     description = models.CharField(max_length=500)
     category = models.JSONField()

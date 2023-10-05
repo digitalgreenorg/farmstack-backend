@@ -96,9 +96,8 @@ class OrganizationMicrositeViewSet(GenericViewSet):
 
             user_queryset = datahub_admin.first()
             user_serializer = UserSerializer(user_queryset)
-            user_org_queryset = UserOrganizationMap.objects.prefetch_related(
-                Constants.USER, Constants.ORGANIZATION
-            ).filter(user=user_queryset.id)
+            user_org_queryset = User.objects.prefetch_related(Constants.ORGANIZATION
+            ).filter(id=user_queryset.id)
 
             if not user_org_queryset:
                 data = {
@@ -108,7 +107,7 @@ class OrganizationMicrositeViewSet(GenericViewSet):
                 }
                 return Response(data, status=status.HTTP_200_OK)
 
-            org_obj = Organization.objects.get(id=user_org_queryset.first().organization_id)
+            org_obj = Organization.objects.get(id=user_org_queryset.organization_id)
             org_seriliazer = OrganizationMicrositeSerializer(org_obj)
             data = {
                 Constants.USER: user_serializer.data,
@@ -626,12 +625,12 @@ class ParticipantMicrositeViewSet(GenericViewSet):
         try:
             if on_boarded_by:
                 roles = (
-                    UserOrganizationMap.objects.select_related(Constants.USER, Constants.ORGANIZATION)
+                    User.objects.select_related(Constants.ORGANIZATION)
                     .filter(
-                        user__status=True,
-                        user__on_boarded_by=on_boarded_by,
-                        user__role=3,
-                        user__approval_status=approval_status,
+                        status=True,
+                        on_boarded_by=on_boarded_by,
+                        role=3,
+                        approval_status=approval_status,
                         **filter,
                     )
                     .order_by("-user__updated_at")
@@ -639,19 +638,19 @@ class ParticipantMicrositeViewSet(GenericViewSet):
                 )
             elif co_steward:
                 roles = (
-                    UserOrganizationMap.objects.select_related(Constants.USER, Constants.ORGANIZATION)
-                    .filter(user__status=True, user__role=6, **filter)
+                    User.objects.select_related(Constants.ORGANIZATION)
+                    .filter(status=True, role=6, **filter)
                     .order_by("-user__updated_at")
                     .all()
                 )
             else:
                 roles = (
-                    UserOrganizationMap.objects.select_related(Constants.USER, Constants.ORGANIZATION)
+                    User.objects.select_related(Constants.USER, Constants.ORGANIZATION)
                     .filter(
-                        user__status=True,
-                        user__role=3,
-                        user__on_boarded_by=None,
-                        user__approval_status=approval_status,
+                        status=True,
+                        role=3,
+                        on_boarded_by=None,
+                        approval_status=approval_status,
                         **filter,
                     )
                     .order_by("-user__updated_at")
@@ -667,8 +666,8 @@ class ParticipantMicrositeViewSet(GenericViewSet):
     def retrieve(self, request, pk):
         """GET method: retrieve an object or instance of the Product model"""
         roles = (
-            UserOrganizationMap.objects.prefetch_related(Constants.USER, Constants.ORGANIZATION)
-            .filter(user__status=True, user=pk)
+            User.objects.prefetch_related(Constants.ORGANIZATION)
+            .filter(status=True, id=pk)
             .all()
         )
         participant_serializer = ParticipantSerializer(roles, many=True)
@@ -687,14 +686,14 @@ class ParticipantMicrositeViewSet(GenericViewSet):
         try:
             if co_steward:
                 roles = (
-                    UserOrganizationMap.objects.select_related(Constants.ORGANIZATION)
-                    .filter(user__status=True, user__role=6)
+                    User.objects.select_related(Constants.ORGANIZATION)
+                    .filter(status=True, role=6)
                     .all()
                 )
             else:
                 roles = (
-                    UserOrganizationMap.objects.select_related(Constants.USER, Constants.ORGANIZATION)
-                    .filter((Q(user__role=3) | Q(user__role=1)), user__status=True)
+                    User.objects.select_related(Constants.USER, Constants.ORGANIZATION)
+                    .filter((Q(role=3) | Q(role=1)), status=True)
                     .all()
                 )
             page = self.paginate_queryset(roles)

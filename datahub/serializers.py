@@ -221,6 +221,26 @@ class TeamMemberListSerializer(serializers.Serializer):
     profile_picture = serializers.FileField()
     status = serializers.BooleanField()
     on_boarded = serializers.BooleanField()
+    organization = serializers.UUIDField()
+
+class TeamMemberListAllSerializer(serializers.Serializer):
+    """
+    Create Team Member Serializer.
+    """
+    organization = OrganizationSerializer()
+
+    class Meta:
+        model = User
+
+    id = serializers.UUIDField()
+    email = serializers.EmailField()
+    first_name = serializers.CharField()
+    last_name = serializers.CharField()
+    role = serializers.PrimaryKeyRelatedField(queryset=UserRole.objects.all(), read_only=False)
+    profile_picture = serializers.FileField()
+    status = serializers.BooleanField()
+    on_boarded = serializers.BooleanField()
+
 
 
 class TeamMemberCreateSerializer(serializers.ModelSerializer):
@@ -230,7 +250,7 @@ class TeamMemberCreateSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = User
-        fields = ("email", "first_name", "last_name", "role", "on_boarded_by", "on_boarded")
+        fields = ("email", "first_name", "last_name", "role", "on_boarded_by", "on_boarded","organization")
 
 
 class TeamMemberDetailsSerializer(serializers.ModelSerializer):
@@ -240,7 +260,7 @@ class TeamMemberDetailsSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = User
-        fields = ("id", "email", "first_name", "last_name", "role", "on_boarded_by", "on_boarded")
+        fields = ("id", "email", "first_name", "last_name", "role", "on_boarded_by", "on_boarded","organization")
 
 
 class TeamMemberUpdateSerializer(serializers.ModelSerializer):
@@ -250,7 +270,7 @@ class TeamMemberUpdateSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = User
-        fields = ("id", "email", "first_name", "last_name", "role", "on_boarded_by", "on_boarded")
+        fields = ("id", "email", "first_name", "last_name", "role", "on_boarded_by", "on_boarded","organization")
 
 
 class DatasetSerializer(serializers.ModelSerializer):

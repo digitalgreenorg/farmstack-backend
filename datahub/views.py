@@ -118,7 +118,7 @@ from datahub.serializers import (
     TeamMemberUpdateSerializer,
     UsageUpdatePolicySerializer,
     UserOrganizationCreateSerializer,
-    UserOrganizationMapSerializer,
+    UserOrganizationMapSerializer, TeamMemberListAllSerializer,
 )
 from participant.models import SupportTicket
 from participant.serializers import (
@@ -167,11 +167,13 @@ class TeamMemberViewSet(GenericViewSet):
     def create(self, request, *args, **kwargs):
         """POST method: create action to save an object by sending a POST request"""
         try:
+            LOGGER.info("Creating a new team member.")
             serializer = TeamMemberCreateSerializer(data=request.data)
             serializer.is_valid(raise_exception=True)
             serializer.save()
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         except ValidationError as e:
+            LOGGER.error("ValidationError",e.detail)
             return Response(e.detail, status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
             LOGGER.error(e,exc_info=True)
@@ -180,13 +182,16 @@ class TeamMemberViewSet(GenericViewSet):
     def list(self, request, *args, **kwargs):
         """GET method: query all the list of objects from the Product model"""
         # queryset = self.filter_queryset(self.get_queryset())
-        queryset = User.objects.filter(Q(status=True) & (Q(role__id=2) | Q(role__id=5)))
+
+        LOGGER.info("Listing for team member.")
+        org_id = request.data.get("organization")
+        queryset = User.objects.filter(organization=org_id,status=True,role_id=2)
         page = self.paginate_queryset(queryset)
         if page is not None:
-            serializer = self.get_serializer(page, many=True)
+            serializer = TeamMemberListAllSerializer(page, many=True)
             return self.get_paginated_response(serializer.data)
 
-        serializer = self.get_serializer(queryset, many=True)
+        serializer = TeamMemberListAllSerializer(queryset, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
     def retrieve(self, request, pk):
@@ -206,6 +211,7 @@ class TeamMemberViewSet(GenericViewSet):
             serializer.save()
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         except ValidationError as e:
+            LOGGER.error("ValidationError", e.detail)
             return Response(e.detail, status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
             LOGGER.error(e,exc_info=True)
@@ -214,10 +220,12 @@ class TeamMemberViewSet(GenericViewSet):
     def destroy(self, request, pk):
         """DELETE method: delete an object"""
         team_member = self.get_object()
-        team_member.status = False
-        # team_member.delete()
+        # team_member.status = False
+        team_member.delete()
         team_member.save()
-        return Response(status=status.HTTP_204_NO_CONTENT)
+        return Response(status=status.HTTP_200_OK,data={
+            "message":"Resource Deleted"
+        })
 
 
 class OrganizationViewSet(GenericViewSet):
@@ -245,8 +253,8 @@ class OrganizationViewSet(GenericViewSet):
         """POST method: create action to save an organization object using User ID (IMPORTANT: Using USER ID instead of Organization ID)"""
         try:
             user_obj = User.objects.get(id=request.data.get(Constants.USER_ID))
-            user_org_queryset = UserOrganizationMap.objects.filter(user_id=request.data.get(Constants.USER_ID)).first()
-            if user_org_queryset:
+            # user_org_queryset = UserOrganizationMap.objects.filter(user_id=request.data.get(Constants.USER_ID)).first()
+            if user_obj:
                 return Response(
                     {"message": ["User is already associated with an organization"]},
                     status=status.HTTP_400_BAD_REQUEST,
@@ -285,7 +293,7 @@ class OrganizationViewSet(GenericViewSet):
         """GET method: query the list of Organization objects"""
         try:
             user_org_queryset = (
-                UserOrganizationMap.objects.select_related(Constants.USER, Constants.ORGANIZATION)
+                User.objects.select_related(Constants.ORGANIZATION)
                 .filter(organization__status=True)
                 .all()
             )
@@ -300,15 +308,15 @@ class OrganizationViewSet(GenericViewSet):
         """GET method: retrieve an object of Organization using User ID of the User (IMPORTANT: Using USER ID instead of Organization ID)"""
         try:
             user_obj = User.objects.get(id=pk, status=True)
-            user_org_queryset = UserOrganizationMap.objects.prefetch_related(
-                Constants.USER, Constants.ORGANIZATION
-            ).filter(user=pk)
+            # user_org_queryset = UserOrganizationMap.objects.prefetch_related(
+            #     Constants.USER, Constants.ORGANIZATION
+            # ).filter(user=pk)
 
-            if not user_org_queryset:
+            if not user_obj:
                 data = {Constants.USER: {"id": user_obj.id}, Constants.ORGANIZATION: "null"}
                 return Response(data, status=status.HTTP_200_OK)
 
-            org_obj = Organization.objects.get(id=user_org_queryset.first().organization_id)
+            org_obj = Organization.objects.get(id=user_obj.organization_id)
             user_org_serializer = OrganizationSerializer(org_obj)
             data = {
                 Constants.USER: {"id": user_obj.id},
@@ -322,15 +330,15 @@ class OrganizationViewSet(GenericViewSet):
     def update(self, request, pk):
         """PUT method: update or PUT request for Organization using User ID of the User (IMPORTANT: Using USER ID instead of Organization ID)"""
         user_obj = User.objects.get(id=pk, status=True)
-        user_org_queryset = (
-            UserOrganizationMap.objects.prefetch_related(Constants.USER, Constants.ORGANIZATION).filter(user=pk).all()
-        )
+        # user_org_queryset = (
+        #     UserOrganizationMap.objects.prefetch_related(Constants.USER, Constants.ORGANIZATION).filter(user=pk).all()
+        # )
 
-        if not user_org_queryset:
+        if not user_obj:
             return Response({}, status=status.HTTP_404_NOT_FOUND)  # 310-360 not covered 4
         OrganizationSerializerValidator.validate_website(request.data)
         organization_serializer = OrganizationSerializer(
-            Organization.objects.get(id=user_org_queryset.first().organization_id),
+            Organization.objects.get(id=user_obj.organization_id),
             data=request.data,
             partial=True,
         )
@@ -340,8 +348,8 @@ class OrganizationViewSet(GenericViewSet):
             data = {
                 Constants.USER: {"id": pk},
                 Constants.ORGANIZATION: organization_serializer.data,
-                "user_map": user_org_queryset.first().id,
-                "org_id": user_org_queryset.first().organization_id,
+                # "user_map": user_org_queryset.first().id,
+                "org_id": user_obj.organization_id,
             }
             return Response(
                 data,
@@ -357,8 +365,8 @@ class OrganizationViewSet(GenericViewSet):
         """DELETE method: delete an object"""
         try:
             user_obj = User.objects.get(id=pk, status=True)
-            user_org_queryset = UserOrganizationMap.objects.select_related(Constants.ORGANIZATION).get(user_id=pk)
-            org_queryset = Organization.objects.get(id=user_org_queryset.organization_id)
+            # user_org_queryset = UserOrganizationMap.objects.select_related(Constants.ORGANIZATION).get(user_id=pk)
+            org_queryset = Organization.objects.get(id=user_obj.organization_id)
             org_queryset.status = False
             self.perform_create(org_queryset)
             return Response(status=status.HTTP_204_NO_CONTENT)
@@ -456,12 +464,12 @@ class ParticipantViewSet(GenericViewSet):
         filter = {Constants.ORGANIZATION_NAME_ICONTAINS: name} if name else {}
         if on_boarded_by:
             roles = (
-                UserOrganizationMap.objects.select_related(Constants.USER, Constants.ORGANIZATION)
+                User.objects.select_related(Constants.ORGANIZATION)
                 .filter(
-                    user__status=True,
-                    user__on_boarded_by=on_boarded_by,
-                    user__role=3,
-                    user__approval_status=approval_status,
+                    status=True,
+                    on_boarded_by=on_boarded_by,
+                    role=3,
+                    approval_status=approval_status,
                     **filter,
                 )
                 .order_by("-user__updated_at")
@@ -469,19 +477,19 @@ class ParticipantViewSet(GenericViewSet):
             )
         elif co_steward:
             roles = (
-                UserOrganizationMap.objects.select_related(Constants.USER, Constants.ORGANIZATION)
-                .filter(user__status=True, user__role=6, **filter)
+                User.objects.select_related(Constants.ORGANIZATION)
+                .filter(status=True, role=6, **filter)
                 .order_by("-user__updated_at")
                 .all()
             )
         else:
             roles = (
-                UserOrganizationMap.objects.select_related(Constants.USER, Constants.ORGANIZATION)
+                User.objects.select_related(Constants.ORGANIZATION)
                 .filter(
-                    user__status=True,
-                    user__role=3,
-                    user__on_boarded_by=None,
-                    user__approval_status=approval_status,
+                    status=True,
+                    role=3,
+                    on_boarded_by=None,
+                    approval_status=approval_status,
                     **filter,
                 )
                 .order_by("-user__updated_at")
@@ -495,8 +503,8 @@ class ParticipantViewSet(GenericViewSet):
     def retrieve(self, request, pk):
         """GET method: retrieve an object or instance of the Product model"""
         roles = (
-            UserOrganizationMap.objects.prefetch_related(Constants.USER, Constants.ORGANIZATION)
-            .filter(user__status=True, user=pk)
+            User.objects.prefetch_related(Constants.ORGANIZATION)
+            .filter(status=True, id=pk)
             .first()
         )
 
@@ -562,7 +570,7 @@ class ParticipantViewSet(GenericViewSet):
         """DELETE method: delete an object"""
         participant = self.get_object()
         user_organization = (
-            UserOrganizationMap.objects.select_related(Constants.ORGANIZATION).filter(user_id=pk).first()
+            User.objects.select_related(Constants.ORGANIZATION).filter(id=pk).first()
         )
         organization = Organization.objects.get(id=user_organization.organization_id)
         if participant.status:
@@ -1231,8 +1239,8 @@ class DatahubDatasetsViewSet(GenericViewSet):
         instance = self.get_object()
 
         # trigger email to the participant
-        user_map_queryset = UserOrganizationMap.objects.select_related(Constants.USER).get(id=instance.user_map_id)
-        user_obj = user_map_queryset.user
+        user_map_queryset = User.objects.get(id=instance.user_id)
+        user_obj = user_map_queryset
 
         # reset the approval status b/c the user modified the dataset after an approval
         if getattr(instance, Constants.APPROVAL_STATUS) == Constants.APPROVED and (
@@ -1480,9 +1488,10 @@ class DatahubDashboard(GenericViewSet):
         """Retrieve datahub dashboard details"""
         try:
             # total_participants = User.objects.filter(role_id=3, status=True).count()
+            # explain is_temp not in child not in parent class
             total_participants = (
-                UserOrganizationMap.objects.select_related(Constants.USER, Constants.ORGANIZATION)
-                .filter(user__role=3, user__status=True, is_temp=False)
+                User.objects.select_related(Constants.USER, Constants.ORGANIZATION)
+                .filter(role=3, status=True)
                 .count()
             )
             total_datasets = (
@@ -2261,20 +2270,21 @@ class DatasetV2ViewSetOps(GenericViewSet):
 
     @action(detail=False, methods=["get"])
     def organization(self, request, *args, **kwargs):
+        #assist
         """GET method: query the list of Organization objects"""
         on_boarded_by = request.GET.get("on_boarded_by", "")
         user_id = request.GET.get("user_id", "")
         try:
             user_org_queryset = (
-                UserOrganizationMap.objects.prefetch_related("user_org_map")
-                .select_related("organization", "user")
-                .annotate(dataset_count=Count("user_org_map__id"))
+                User.objects
+                .select_related("organization")
+                .annotate(dataset_count=Count("user_id"))
                 .values(
                     name=F("organization__name"),
                     org_id=F("organization_id"),
                     org_description=F("organization__org_description"),
                 )
-                .filter(user__status=True, dataset_count__gt=0)
+                .filter(status=True, dataset_count__gt=0)
                 .all()
             )
             if on_boarded_by:
@@ -2925,39 +2935,39 @@ class DatahubNewDashboard(GenericViewSet):
         try:
             if on_boarded_by != "None" or role_id == str(6):
                 result["participants_count"] = (
-                    UserOrganizationMap.objects.select_related(Constants.USER, Constants.ORGANIZATION)
+                    User.objects.select_related(Constants.USER, Constants.ORGANIZATION)
                     .filter(
-                        user__status=True,
-                        user__on_boarded_by=on_boarded_by if on_boarded_by != "None" else user_id,
-                        user__role=3,
-                        user__approval_status=True,
+                        status=True,
+                        on_boarded_by=on_boarded_by if on_boarded_by != "None" else user_id,
+                        role=3,
+                        approval_status=True,
                     )
                     .count()
                 )
             elif role_id == str(1):
                 result["co_steward_count"] = (
-                    UserOrganizationMap.objects.select_related(Constants.USER, Constants.ORGANIZATION)
-                    .filter(user__status=True, user__role=6)
+                    User.objects.select_related(Constants.USER, Constants.ORGANIZATION)
+                    .filter(status=True,role=6)
                     .count()
                 )
                 result["participants_count"] = (
-                    UserOrganizationMap.objects.select_related(Constants.USER, Constants.ORGANIZATION)
+                    User.objects.select_related(Constants.USER, Constants.ORGANIZATION)
                     .filter(
-                        user__status=True,
-                        user__role=3,
-                        user__on_boarded_by=None,
-                        user__approval_status=True,
+                        status=True,
+                        role=3,
+                        on_boarded_by=None,
+                        approval_status=True,
                     )
                     .count()
                 )
             else:
                 result["participants_count"] = (
-                    UserOrganizationMap.objects.select_related(Constants.USER, Constants.ORGANIZATION)
+                    User.objects.select_related(Constants.USER, Constants.ORGANIZATION)
                     .filter(
-                        user__status=True,
-                        user__role=3,
-                        user__on_boarded_by=None,
-                        user__approval_status=True,
+                        status=True,
+                        role=3,
+                        on_boarded_by=None,
+                        approval_status=True,
                     )
                     .count()
                 )
@@ -3089,11 +3099,11 @@ class DatahubNewDashboard(GenericViewSet):
                     dataset_category_metrics[key] = dataset_count
             recent_datasets = DatasetV2ListNewSerializer(dataset_query.order_by("-updated_at")[0:3], many=True).data
             data = {
-                "user": UserOrganizationMap.objects.select_related("user", "organization")
-                .filter(id=data.get("map_id"))
+                "user": User.objects.select_related("organization")
+                .filter(id=data.get("user_id"))
                 .values(
-                    first_name=F("user__first_name"),
-                    last_name=F("user__last_name"),
+                    first_name=F("first_name"),
+                    last_name=F("last_name"),
                     logo=Concat(
                         Value("media/"),
                         F("organization__logo"),
