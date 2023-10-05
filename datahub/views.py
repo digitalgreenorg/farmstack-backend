@@ -118,7 +118,7 @@ from datahub.serializers import (
     TeamMemberUpdateSerializer,
     UsageUpdatePolicySerializer,
     UserOrganizationCreateSerializer,
-    UserOrganizationMapSerializer,
+    UserOrganizationMapSerializer, TeamMemberListAllSerializer,
 )
 from participant.models import SupportTicket
 from participant.serializers import (
@@ -179,18 +179,19 @@ class TeamMemberViewSet(GenericViewSet):
             LOGGER.error(e,exc_info=True)
             return Response(str(e), status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-    def list(self, request, pk, *args, **kwargs):
+    def list(self, request, *args, **kwargs):
         """GET method: query all the list of objects from the Product model"""
         # queryset = self.filter_queryset(self.get_queryset())
 
         LOGGER.info("Listing for team member.")
-        queryset = User.objects.filter(organization=pk,status=True,role_id=2)
+        org_id = request.data.get("organization")
+        queryset = User.objects.filter(organization=org_id,status=True,role_id=2)
         page = self.paginate_queryset(queryset)
         if page is not None:
-            serializer = self.get_serializer(page, many=True)
+            serializer = TeamMemberListAllSerializer(page, many=True)
             return self.get_paginated_response(serializer.data)
 
-        serializer = self.get_serializer(queryset, many=True)
+        serializer = TeamMemberListAllSerializer(queryset, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
     def retrieve(self, request, pk):
@@ -222,7 +223,9 @@ class TeamMemberViewSet(GenericViewSet):
         team_member.status = False
         # team_member.delete()
         team_member.save()
-        return Response(status=status.HTTP_204_NO_CONTENT)
+        return Response(status=status.HTTP_200_OK,data={
+            "message":"Resource Deleted"
+        })
 
 
 class OrganizationViewSet(GenericViewSet):
