@@ -81,6 +81,7 @@ class User(AbstractBaseUser, TimeStampMixin):
     organization = models.ForeignKey(
         Organization,
         on_delete=models.CASCADE,
+        null=True
     )
     password = None
     last_login = None
