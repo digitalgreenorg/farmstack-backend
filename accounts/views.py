@@ -29,7 +29,7 @@ from core.utils import Utils
 from datahub.models import UserOrganizationMap
 from utils import login_helper, string_functions
 from utils.jwt_services import http_request_mutation
-from core.serializer_validation import OrganizationSerializerValidator,UserCreateSerializerValidator
+from core.serializer_validation import OrganizationSerializerValidator, UserCreateSerializerValidator
 LOGGER = logging.getLogger(__name__)
 from rest_framework.parsers import JSONParser, MultiPartParser
 
@@ -373,8 +373,7 @@ class VerifyLoginOTPViewset(GenericViewSet):
                         refresh.access_token["role"] = str(user.role_id) 
                         refresh.access_token["onboarded_by"] = str(user.on_boarded_by_id)
 
-
-                        return Response(
+                        response = Response(
                             {
                                 "user": user.id,
                                 "user_map": user_map.id if user_map else None,
@@ -391,6 +390,11 @@ class VerifyLoginOTPViewset(GenericViewSet):
                             status=status.HTTP_201_CREATED,
                         )
 
+                        response.set_cookie("Bearer-Token", str(refresh), expires=str(refresh["exp"]), httponly=True)
+                        response.set_cookie("Access-Token", str(refresh.access_token),
+                                            expires=str(refresh.access_token["exp"]), httponly=True)
+
+                        return response
                     elif correct_otp != int(otp_entered) or cache.get(email)["email"] != email:
                         # check for otp limit
                         if cache.get(email)["otp_attempt"] < int(settings.OTP_LIMIT):
@@ -432,6 +436,7 @@ class VerifyLoginOTPViewset(GenericViewSet):
             status=status.HTTP_403_FORBIDDEN,
         )
 
+
 @permission_classes([])
 class SelfRegisterParticipantViewSet(GenericViewSet):
     """
@@ -462,9 +467,9 @@ class SelfRegisterParticipantViewSet(GenericViewSet):
         org_serializer.is_valid(raise_exception=True)
         org_queryset = self.perform_create(org_serializer)
         org_id = org_queryset.id
-        request.data._mutable=True
-        request.data.update({'role':3})
-        request.data.update({'approval_status':False})
+        request.data._mutable = True
+        request.data.update({'role': 3})
+        request.data.update({'approval_status': False})
         UserCreateSerializerValidator.validate_phone_number_format(request.data)
         user_serializer = UserCreateSerializer(data=request.data)
         user_serializer.is_valid(raise_exception=True)
@@ -474,7 +479,7 @@ class SelfRegisterParticipantViewSet(GenericViewSet):
             data={
                 Constants.USER: user_saved.id,
                 Constants.ORGANIZATION: org_id,
-            } # type: ignore
+            }  # type: ignore
         )
         user_org_serializer.is_valid(raise_exception=True)
         self.perform_create(user_org_serializer)
@@ -499,11 +504,10 @@ class SelfRegisterParticipantViewSet(GenericViewSet):
                 to_email=request.data.get("email"),
                 content=mail_body,
                 subject=Constants.PARTICIPANT_ORG_ADDITION_SUBJECT
-                + os.environ.get(Constants.DATAHUB_NAME, Constants.datahub_name),
+                        + os.environ.get(Constants.DATAHUB_NAME, Constants.datahub_name),
             )
         except Exception as error:
             LOGGER.error(error, exc_info=True)
             return Response({"message": ["An error occured"]}, status=status.HTTP_200_OK)
 
         return Response(user_org_serializer.data, status=status.HTTP_201_CREATED)
-
