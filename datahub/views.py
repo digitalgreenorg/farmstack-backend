@@ -599,8 +599,10 @@ class ParticipantViewSet(GenericViewSet):
                 )
 
                 # Set the on_boarded_by_id to null if co_steward is deleted
-                User.objects.filter(on_boarded_by=pk).update(on_boarded_by=None)
+                # User.objects.filter(on_boarded_by=pk).update(on_boarded_by=None)
 
+                # hard delete the participant
+                User.objects.filter(on_boarded_by=pk).delete()
                 return Response(
                     {"message": ["Participant deleted"]},
                     status=status.HTTP_204_NO_CONTENT,
