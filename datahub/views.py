@@ -274,11 +274,11 @@ class OrganizationViewSet(GenericViewSet):
                         "organization": org_serializer.data,
                     }
                     return Response(data, status=status.HTTP_201_CREATED)
-                
+
         except ValidationError as e:
             return Response(e.detail, status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
-            LOGGER.error(e,exc_info=True)
+            LOGGER.error(e, exc_info=True)
             return Response(str(e), status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     def list(self, request, *args, **kwargs):
@@ -350,7 +350,7 @@ class OrganizationViewSet(GenericViewSet):
         except ValidationError as e:
             return Response(e.detail, status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
-            LOGGER.error(e,exc_info=True)
+            LOGGER.error(e, exc_info=True)
             return Response(str(e), status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     def destroy(self, request, pk):
@@ -442,7 +442,7 @@ class ParticipantViewSet(GenericViewSet):
         except ValidationError as e:
             return Response(e.detail, status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
-            LOGGER.error(e,exc_info=True)
+            LOGGER.error(e, exc_info=True)
             return Response(str(e), status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
         return Response(user_org_serializer.data, status=status.HTTP_201_CREATED)
@@ -553,9 +553,8 @@ class ParticipantViewSet(GenericViewSet):
         except ValidationError as e:
             return Response(e.detail, status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
-            LOGGER.error(e,exc_info=True)
+            LOGGER.error(e, exc_info=True)
             return Response(str(e), status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
 
     @authenticate_user(model=Organization)
     def destroy(self, request, pk):
@@ -599,10 +598,11 @@ class ParticipantViewSet(GenericViewSet):
                 )
 
                 # Set the on_boarded_by_id to null if co_steward is deleted
-                # User.objects.filter(on_boarded_by=pk).update(on_boarded_by=None)
+                User.objects.filter(on_boarded_by=pk).update(on_boarded_by=None)
 
                 # hard delete the participant
-                User.objects.filter(on_boarded_by=pk).delete()
+                User.objects.filter(pk=pk).delete()
+
                 return Response(
                     {"message": ["Participant deleted"]},
                     status=status.HTTP_204_NO_CONTENT,
@@ -1015,7 +1015,7 @@ class SupportViewSet(GenericViewSet):
         except ValidationError as e:
             return Response(e.detail, status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
-            LOGGER.error(e,exc_info=True)
+            LOGGER.error(e, exc_info=True)
             return Response(str(e), status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     @action(detail=False, methods=["post"])
@@ -1052,7 +1052,7 @@ class SupportViewSet(GenericViewSet):
         except ValidationError as e:
             return Response(e.detail, status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
-            LOGGER.error(e,exc_info=True)
+            LOGGER.error(e, exc_info=True)
             return Response(str(e), status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     def list(self, request, *args, **kwargs):
@@ -1160,7 +1160,7 @@ class DatahubDatasetsViewSet(GenericViewSet):
         except ValidationError as e:
             return Response(e.detail, status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
-            LOGGER.error(e,exc_info=True)
+            LOGGER.error(e, exc_info=True)
             return Response(str(e), status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     @http_request_mutation
@@ -1825,7 +1825,7 @@ class DatasetV2ViewSet(GenericViewSet):
         except ValidationError as e:
             return Response(e.detail, status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
-            LOGGER.error(e,exc_info=True)
+            LOGGER.error(e, exc_info=True)
             return Response(str(e), status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     @authenticate_user(model=DatasetV2)
@@ -1857,7 +1857,7 @@ class DatasetV2ViewSet(GenericViewSet):
         except ValidationError as e:
             return Response(e.detail, status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
-            LOGGER.error(e,exc_info=True)
+            LOGGER.error(e, exc_info=True)
             return Response(str(e), status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     # not being used
@@ -2311,7 +2311,7 @@ class StandardisationTemplateView(GenericViewSet):
         except ValidationError as e:
             return Response(e.detail, status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
-            LOGGER.error(e,exc_info=True)
+            LOGGER.error(e, exc_info=True)
             return Response(str(e), status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     @action(detail=False, methods=["put"])
@@ -2381,7 +2381,7 @@ class DatasetV2View(GenericViewSet):
         except ValidationError as e:
             return Response(e.detail, status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
-            LOGGER.error(e,exc_info=True)
+            LOGGER.error(e, exc_info=True)
             return Response(str(e), status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     def retrieve(self, request, *args, **kwargs):
@@ -2402,7 +2402,7 @@ class DatasetV2View(GenericViewSet):
         except ValidationError as e:
             return Response(e.detail, status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
-            LOGGER.error(e,exc_info=True)
+            LOGGER.error(e, exc_info=True)
             return Response(str(e), status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     @authenticate_user(model=DatasetV2)
@@ -2548,13 +2548,13 @@ class DatasetV2View(GenericViewSet):
             dataset_file = str(dataset_file_obj.file)
             if role_id != str(1):
                 if UsagePolicy.objects.filter(
-                                                user_organization_map=map_id,
-                                                dataset_file_id=pk,
-                                                approval_status="approved"
-                                            ).order_by("-updated_at").first():
-                    filters=True
+                        user_organization_map=map_id,
+                        dataset_file_id=pk,
+                        approval_status="approved"
+                ).order_by("-updated_at").first():
+                    filters = True
                 elif DatasetV2File.objects.select_related("dataset").filter(id=pk, dataset__user_map_id=map_id).first():
-                    filters =  True
+                    filters = True
                 else:
                     filters = False
             # Create a dictionary mapping dataset types to dashboard generation functions
@@ -2707,9 +2707,9 @@ class DatasetV2View(GenericViewSet):
                 f"Something went wrong, please try again. {e}",
                 status=status.HTTP_400_BAD_REQUEST,
             )
-    
+
     def get_consolidated_file(self, name):
-        consolidated_file = f"consolidated_{name}.csv" 
+        consolidated_file = f"consolidated_{name}.csv"
         dataframes = []
         thread_list = []
         combined_df = pd.DataFrame([])
@@ -2724,6 +2724,7 @@ class DatasetV2View(GenericViewSet):
                     .filter(dataset__name__icontains=name, file__iendswith=".csv")
                     .values_list('file', flat=True).distinct()  # Flatten the list of values
                 )
+
                 def read_csv_file(file_path):
                     chunk_size = 50000
                     chunk_df = pd.DataFrame([])
@@ -2733,11 +2734,12 @@ class DatasetV2View(GenericViewSet):
                         for chunk in pd.read_csv(file_path, chunksize=chunk_size):
                             # Append the processed chunk to the combined DataFrame
                             chunk_df = pd.concat([chunk_df, chunk], ignore_index=True)
-                            chunks = chunks+1
+                            chunks = chunks + 1
                         LOGGER.info(f"{file_path} Consolidated {chunks} chunks")
                         dataframes.append(chunk_df)
                     except Exception as e:
                         LOGGER.error(f"Error reading CSV file {file_path}", exc_info=True)
+
                 for csv_file in dataset_file_objects:
                     file_path = os.path.join(settings.DATASET_FILES_URL, csv_file)
                     thread = threading.Thread(target=read_csv_file, args=(file_path,))
@@ -2754,9 +2756,10 @@ class DatasetV2View(GenericViewSet):
         except Exception as e:
             LOGGER.error(f"Error occoured while creating {consolidated_file}", exc_info=True)
             return Response(
-                    "Requested resource is currently unavailable. Please try again later.",
-                    status=500,
-                )
+                "Requested resource is currently unavailable. Please try again later.",
+                status=500,
+            )
+
 
 class DatasetFileV2View(GenericViewSet):
     queryset = DatasetV2File.objects.all()
@@ -2785,7 +2788,7 @@ class DatasetFileV2View(GenericViewSet):
         except ValidationError as e:
             return Response(e.detail, status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
-            LOGGER.error(e,exc_info=True)
+            LOGGER.error(e, exc_info=True)
             return Response(str(e), status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     @authenticate_user(model=DatasetV2File)
@@ -2835,7 +2838,8 @@ class DatasetFileV2View(GenericViewSet):
                     )  # type: ignore
                 # data = request.data
                 standardised_file_path = os.path.join(instance.dataset.name, instance.source, file_name)
-                data["file_size"] = os.path.getsize(os.path.join(settings.DATASET_FILES_URL, str(standardised_file_path)))
+                data["file_size"] = os.path.getsize(
+                    os.path.join(settings.DATASET_FILES_URL, str(standardised_file_path)))
             else:
                 file_name = os.path.basename(file_path)
                 standardised_file_path = os.path.join(instance.dataset.name, instance.source, file_name)
@@ -2849,7 +2853,7 @@ class DatasetFileV2View(GenericViewSet):
         except ValidationError as e:
             return Response(e.detail, status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
-            LOGGER.error(e,exc_info=True)
+            LOGGER.error(e, exc_info=True)
             return Response(str(e), status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     def list(self, request, *args, **kwargs):
@@ -3145,7 +3149,7 @@ class ResourceManagementViewSet(GenericViewSet):
         except ValidationError as e:
             return Response(e.detail, status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
-            LOGGER.error(e,exc_info=True)
+            LOGGER.error(e, exc_info=True)
             return Response(str(e), status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     def update(self, request, *args, **kwargs):
@@ -3191,12 +3195,12 @@ class ResourceManagementViewSet(GenericViewSet):
         serializer = self.get_serializer(resource)
         # serializer.is_valid(raise_exception=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
-    
+
     @http_request_mutation
     @action(detail=False, methods=["post"])
     def resources_filter(self, request, *args, **kwargs):
         try:
-            data =request.data
+            data = request.data
             user_map = request.META.get("map_id")
             categories = data.pop(Constants.CATEGORY, None)
             others = data.pop(Constants.OTHERS, "")
@@ -3241,7 +3245,7 @@ class ResourceFileManagementViewSet(GenericViewSet):
         except ValidationError as e:
             return Response(e.detail, status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
-            LOGGER.error(e,exc_info=True)
+            LOGGER.error(e, exc_info=True)
             return Response(str(e), status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     def destroy(self, request, *args, **kwargs):
