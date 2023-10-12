@@ -6,6 +6,7 @@ import math
 import operator
 import os
 import pickle
+import threading
 from functools import reduce
 
 import pandas as pd
@@ -775,7 +776,88 @@ class APIResponseViewSet(GenericViewSet):
         except Exception as error:
             LOGGER.error(f"Error occured in APIResponseViewSet api ERROR: {error}", exc_info=True)
             return Response(str(error), status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    
+    @action(detail=False, methods=["get"])
+    def flw_validation(self, request, *args, **kwargs):
+        try:
+            phone_number=request.GET.get("phone_number")
+            department_details=request.GET.get("department_details", False)
+            df = self.get_consolidated_dataframe()
+            df.fillna("",  inplace=True) # type: ignore
+            df["Phone number"] = df["Phone number"].astype(str) # type: ignore
+            result = df[df['Phone number'] == phone_number]
+            if not result.empty: # type: ignore
+                if department_details:
+                    return Response(result['KVK and Contact persons'].iloc[0], 200)  # type: ignore # Return only the kvk details column value
+                else:
+                    return Response(result.iloc[0].to_dict(), 200)  # type: ignore # Return the first matching row as a dictionary
+            else:
+                return Response(str(f"With this phone_number:{phone_number} Flew is not availbe"), status=400)
+        except pd.errors.EmptyDataError:
+            LOGGER.info("The flw file is emty.")
+            return Response(str("No Flew regiestry are available"), status=400)
+        except Exception as error:
+            LOGGER.error(f"Error occured in flw_validation api ERROR: {error}", exc_info=True)
+            return Response(str("Error during execution of flw validations"), status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
+    @action(detail=False, methods=["get"])
+    def get_consolidated_dataframe(self):
+        consolidated_file = f"consolidated_flw_registry.csv" 
+        dataframes = []
+        thread_list = []
+        combined_df = pd.DataFrame([])
+        try:
+            def read_csv_file(file_path):
+                    chunk_size = 50000
+                    chunk_df = pd.DataFrame([])
+                    chunks = 0
+                    try:
+                        LOGGER.info(f"{file_path} Consolidation started")
+                        for chunk in pd.read_csv(file_path, chunksize=chunk_size):
+                            # Append the processed chunk to the combined DataFrame
+                            chunk_df = pd.concat([chunk_df, chunk], ignore_index=True)
+                            chunks = chunks+1
+                        LOGGER.info(f"{file_path} Consolidated {chunks} chunks")
+                        dataframes.append(chunk_df)
+                    except Exception as e:
+                        LOGGER.error(f"Error reading CSV file {file_path}", exc_info=True)
+                
+            if cache.get("flw_consolidated_file"):
+                LOGGER.info(f"{consolidated_file} file available in cache")
+                file_path = os.path.join(settings.DATASET_FILES_URL, consolidated_file)
+                read_csv_file(file_path)
+                combined_df = pd.concat(dataframes, ignore_index=True)
+                return combined_df
+            else:
+                dataset_file_objects = (
+                    DatasetV2File.objects
+                    .select_related("dataset")
+                    .filter(file__iendswith=".csv")
+                    .values_list('file', flat=True).distinct()  # Flatten the list of values
+                )
+                # dataset_file_objects = ["/Users/ugesh/PycharmProjects/datahub-api/protected/datasets/sample/AndhraPradesh - FLEW's.csv"]
+                for csv_file in dataset_file_objects:
+                    file_path = os.path.join(settings.DATASET_FILES_URL, csv_file)
+                    thread = threading.Thread(target=read_csv_file, args=(file_path,))
+                    thread_list.append(thread)
+                    thread.start()
+
+                # Wait for all threads to complete
+                for thread in thread_list:
+                    thread.join()
+            combined_df = pd.concat(dataframes, ignore_index=True)
+            combined_df.to_csv(os.path.join(settings.DATASET_FILES_URL, consolidated_file), index=False)
+            LOGGER.info(f"{consolidated_file} file created")
+            cache.set("flw_consolidated_file", consolidated_file, 86400)
+            return combined_df
+        except Exception as e:
+            LOGGER.error(f"Error occoured while creating {consolidated_file}", exc_info=True)
+            return Response(
+                    "Requested resource is currently unavailable. Please try again later.",
+                    status=500,
+                )
+
+    
 
 class UserDataMicrositeViewSet(GenericViewSet):
     """UserData Microsite ViewSet for microsite"""
