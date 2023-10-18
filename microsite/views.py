@@ -57,6 +57,7 @@ from datahub.serializers import (
     ResourceSerializer,
     micrositeOrganizationSerializer,
 )
+from microsite.models import FeedBack
 from microsite.serializers import (
     ConnectorsListSerializer,
     ConnectorsRetriveSerializer,
@@ -65,6 +66,7 @@ from microsite.serializers import (
     ContentSerializer,
     DatahubDatasetFileDashboardFilterSerializer,
     DatasetsMicrositeSerializer,
+    FeedBackSerializer,
     LegalDocumentSerializer,
     OrganizationMicrositeSerializer,
     PolicySerializer,
@@ -1031,3 +1033,13 @@ class ResourceMicrositeViewSet(GenericViewSet):
         except Exception as e:
             LOGGER.error(f"Error occured in ResourceMicrositeViewSet resources_filter ERROR: {e}", exc_info=True)
             return Response(str(e), status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+
+class MyModelListCreateView(generics.ListCreateAPIView):
+    queryset = FeedBack.objects.all()
+    serializer_class = FeedBackSerializer
+
+class MyModelDetailView(generics.RetrieveUpdateDestroyAPIView):
+    queryset = FeedBack.objects.all()
+    serializer_class = FeedBackSerializer

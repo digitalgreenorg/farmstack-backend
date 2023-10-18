@@ -8,6 +8,8 @@ from microsite.views import (
     DatahubThemeMicrositeViewSet,
     DatasetsMicrositeViewSet,
     DocumentsMicrositeViewSet,
+    MyModelDetailView,
+    MyModelListCreateView,
     OrganizationMicrositeViewSet,
     ParticipantMicrositeViewSet,
     PolicyAPIView,
@@ -35,4 +37,7 @@ urlpatterns = [
     # path('policy/', PolicyListAPIView.as_view(), name='microsite-policy-list'),
     # path('policy/<uuid:pk>/', PolicyDetailAPIView.as_view(), name='microsite-policy-detail'),
     path("microsite_media_view", microsite_media_view, name="microsite_media_view"),
+    path('feedback/', MyModelListCreateView.as_view(), name='mymodel-list-create'),
+    path('feedback/<str:pk>/', MyModelDetailView.as_view(), name='mymodel-detail'),
+
 ]

@@ -21,6 +21,8 @@ from datahub.models import (
 )
 from datahub.serializers import DatasetV2FileSerializer
 
+from .models import FeedBack
+
 
 class OrganizationMicrositeSerializer(serializers.ModelSerializer):
     """Organization Serializer for microsite"""
@@ -207,3 +209,8 @@ class ContentSerializer(serializers.ModelSerializer):
     class Meta:
         model = Resource
         fields = ["id", "title", "description", "category", "resources"]
+
+class FeedBackSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = FeedBack
+        fields = '__all__'
