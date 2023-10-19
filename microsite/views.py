@@ -1037,9 +1037,11 @@ class ResourceMicrositeViewSet(GenericViewSet):
 
 
 class MyModelListCreateView(generics.ListCreateAPIView):
+    permission_classes = []
     queryset = FeedBack.objects.all()
     serializer_class = FeedBackSerializer
 
 class MyModelDetailView(generics.RetrieveUpdateDestroyAPIView):
+    permission_classes = []
     queryset = FeedBack.objects.all()
     serializer_class = FeedBackSerializer
