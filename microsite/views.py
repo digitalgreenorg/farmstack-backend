@@ -836,7 +836,7 @@ class APIResponseViewSet(GenericViewSet):
                 dataset_file_objects = (
                     DatasetV2File.objects
                     .select_related("dataset")
-                    .filter(file__iendswith=".csv", dataset__is_temp=True)
+                    .filter(file__iendswith=".csv", dataset__is_temp=False)
                     .values_list('file', flat=True).distinct()  # Flatten the list of values
                 )
                 print(len(dataset_file_objects))
