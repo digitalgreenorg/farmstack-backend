@@ -786,8 +786,8 @@ class APIResponseViewSet(GenericViewSet):
             department_details=request.GET.get("department_details", False)
             df = self.get_consolidated_dataframe()
             df.fillna("",  inplace=True) # type: ignore
-            df["Phone number"] = df["Phone number"].astype(str) # type: ignore
-            result = df[df['Phone number'] == phone_number]
+            df["Contact No."] = df["Contact No."].astype(str) # type: ignore
+            result = df[df['Contact No.'] == phone_number]
             if not result.empty: # type: ignore
                 if department_details:
                     return Response(result['KVK and Contact persons'].iloc[0], 200)  # type: ignore # Return only the kvk details column value
