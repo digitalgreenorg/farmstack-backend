@@ -836,9 +836,10 @@ class APIResponseViewSet(GenericViewSet):
                 dataset_file_objects = (
                     DatasetV2File.objects
                     .select_related("dataset")
-                    .filter(file__iendswith=".csv", dataset__status=True)
+                    .filter(file__iendswith=".csv", dataset__is_temp=True)
                     .values_list('file', flat=True).distinct()  # Flatten the list of values
                 )
+                print(len(dataset_file_objects))
                 # dataset_file_objects = ["/Users/ugesh/PycharmProjects/datahub-api/protected/datasets/sample/AndhraPradesh - FLEW's.csv"]
                 for csv_file in dataset_file_objects:
                     file_path = os.path.join(settings.DATASET_FILES_URL, csv_file)
