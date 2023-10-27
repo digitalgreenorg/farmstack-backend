@@ -785,6 +785,8 @@ class APIResponseViewSet(GenericViewSet):
             phone_number=request.GET.get("phone_number")
             department_details=request.GET.get("department_details", False)
             df = self.get_consolidated_dataframe()
+            if df.empty:
+                return Response(str(f"With this phone_number:{phone_number} Flew is not availbe"), status=400)
             df.fillna("",  inplace=True) # type: ignore
             df["Contact No."] = df["Contact No."].astype(str) # type: ignore
             result = df[df['Contact No.'] == phone_number]
@@ -854,10 +856,7 @@ class APIResponseViewSet(GenericViewSet):
             return combined_df
         except Exception as e:
             LOGGER.error(f"Error occoured while creating {consolidated_file}", exc_info=True)
-            return Response(
-                    "Requested resource is currently unavailable. Please try again later.",
-                    status=500,
-                )
+            return pd.DataFrame([])
 
     
 
