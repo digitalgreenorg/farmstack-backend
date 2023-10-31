@@ -788,8 +788,8 @@ class APIResponseViewSet(GenericViewSet):
             if df.empty:
                 return Response(str(f"With this phone_number:{phone_number} Flew is not availbe"), status=400)
             df.fillna("",  inplace=True) # type: ignore
-            df["Contact No."] = df["Contact No."].astype(str) # type: ignore
-            result = df[df['Contact No.'] == phone_number]
+            df["Phone Number"] = df["Phone Number"].astype(str) # type: ignore
+            result = df[df['Phone Number'] == phone_number]
             if not result.empty: # type: ignore
                 if department_details:
                     return Response(result['KVK and Contact persons'].iloc[0], 200)  # type: ignore # Return only the kvk details column value
