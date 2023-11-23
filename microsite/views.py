@@ -825,7 +825,7 @@ class APIResponseViewSet(GenericViewSet):
                         LOGGER.info(f"{file_path} Consolidated {chunks} chunks")
                         dataframes.append(chunk_df)
                     except Exception as e:
-                        LOGGER.error(f"Error reading CSV file {file_path}", exc_info=True)
+                        LOGGER.error(f"Error reading CSV file {file_path}: {e}", exc_info=True)
                 
             if cache.get("flw_consolidated_file"):
                 LOGGER.info(f"{consolidated_file} file available in cache")
@@ -858,7 +858,7 @@ class APIResponseViewSet(GenericViewSet):
             cache.set("flw_consolidated_file", consolidated_file, 86400)
             return combined_df
         except Exception as e:
-            LOGGER.error(f"Error occoured while creating {consolidated_file}", exc_info=True)
+            LOGGER.error(f"Error occoured while creating {consolidated_file}: {e}", exc_info=True)
             return pd.DataFrame([])
 
     @action(detail=False, methods=["get"])
