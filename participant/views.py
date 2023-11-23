@@ -1,8 +1,3 @@
-from timeit import Timer
-from utils import file_operations as file_ops
-from rest_framework.decorators import api_view
-from rest_framework import status
-from django.http import HttpResponse, JsonResponse
 import ast
 import datetime
 import json
@@ -17,6 +12,7 @@ from contextlib import closing
 from functools import reduce
 from sre_compile import isstring
 from struct import unpack
+from timeit import Timer
 
 import mysql.connector
 import pandas as pd
@@ -24,13 +20,14 @@ import psycopg2
 import requests
 import xlwt
 from django.conf import settings
-from rest_framework.exceptions import ValidationError
 from django.db.models import Q
 from django.db.models.functions import Lower
+from django.http import HttpResponse, JsonResponse
 from django.shortcuts import render
 from psycopg2 import errorcodes
 from rest_framework import pagination, serializers, status
-from rest_framework.decorators import action, permission_classes
+from rest_framework.decorators import action, api_view, permission_classes
+from rest_framework.exceptions import ValidationError
 from rest_framework.generics import get_object_or_404
 from rest_framework.parsers import JSONParser
 from rest_framework.permissions import IsAuthenticated
@@ -101,13 +98,13 @@ from participant.serializers import (
     TicketSupportSerializer,
     UpdateSupportTicketV2Serializer,
 )
+from utils import file_operations as file_ops
 from utils import string_functions
 from utils.authorization_services import support_ticket_role_authorization
-from utils.connector_utils import run_containers, stop_containers
+
+# from utils.connector_utils import run_containers, stop_containers
 from utils.file_operations import check_file_name_length
 from utils.jwt_services import http_request_mutation
-from rest_framework.exceptions import ValidationError
-
 
 LOGGER = logging.getLogger(__name__)
 
@@ -1295,7 +1292,7 @@ class ParticipantConnectorsMapViewSet(GenericViewSet):
                     ],
                     400,
                 )
-            ports = run_containers(provider_connectors, consumer_connectors)
+            # ports = run_containers(provider_connectors, consumer_connectors)
             provider_connectors.connector_status = Constants.PAIRED
             consumer_connectors.connector_status = Constants.PAIRED
             self.perform_create(consumer_connectors)
@@ -1338,7 +1335,7 @@ class ParticipantConnectorsMapViewSet(GenericViewSet):
             consumer_connectors.connector_status = Constants.UNPAIRED
             self.perform_create(consumer_connectors)
             self.perform_create(provider_connectors)
-            stop_containers(provider_connectors, consumer_connectors)
+            # stop_containers(provider_connectors, consumer_connectors)
 
             self.trigger_email_for_pairing(
                 request,
