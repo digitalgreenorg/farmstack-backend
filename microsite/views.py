@@ -842,7 +842,7 @@ class APIResponseViewSet(GenericViewSet):
                 )
 
                 dataset_file_objects = dataset_file_objects.filter(dataset__category__contains=category if category else {"States": ["Bihar"]})
-                dataset_file_objects = ["/Users/ugesh/PycharmProjects/datahub-api/protected/datasets/sample/bihar.csv"]
+                # dataset_file_objects = ["/Users/ugesh/PycharmProjects/datahub-api/protected/datasets/sample/bihar.csv"]
                 for csv_file in dataset_file_objects:
                     file_path = os.path.join(settings.DATASET_FILES_URL, csv_file)
                     thread = threading.Thread(target=read_csv_file, args=(file_path,))
