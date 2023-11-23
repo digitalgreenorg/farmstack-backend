@@ -1100,7 +1100,8 @@ class ResourceMicrositeViewSet(GenericViewSet):
             else:
                 with open(Constants.DATAHUB_CATEGORIES_FILE, "r") as json_obj:
                     data = json.loads(json_obj.read())
-                    return Response(data.get("States", []), status=404)
+                    print(data)
+                    return Response(data.get("Crops", []), status=200)
         except ValidationError as e:
             return Response(e.detail, status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
