@@ -10,10 +10,11 @@ import threading
 from functools import reduce
 
 import pandas as pd
+import requests
 from django.conf import settings
 from django.core.cache import cache
 from django.core.paginator import Paginator
-from django.db.models import Q
+from django.db.models import Count, Q
 from django.http import FileResponse, HttpResponse, HttpResponseNotFound, JsonResponse
 from django.shortcuts import get_object_or_404, render
 from python_http_client import exceptions
@@ -785,9 +786,11 @@ class APIResponseViewSet(GenericViewSet):
             phone_number=request.GET.get("phone_number")
             department_details=request.GET.get("department_details", False)
             df = self.get_consolidated_dataframe()
+            if df.empty:
+                return Response(str(f"With this phone_number:{phone_number} Flew is not availbe"), status=400)
             df.fillna("",  inplace=True) # type: ignore
-            df["Phone number"] = df["Phone number"].astype(str) # type: ignore
-            result = df[df['Phone number'] == phone_number]
+            df["Phone Number"] = df["Phone Number"].astype(str) # type: ignore
+            result = df[df['Phone Number'] == phone_number]
             if not result.empty: # type: ignore
                 if department_details:
                     return Response(result['KVK and Contact persons'].iloc[0], 200)  # type: ignore # Return only the kvk details column value
@@ -803,7 +806,7 @@ class APIResponseViewSet(GenericViewSet):
             return Response(str("Error during execution of flw validations"), status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     @action(detail=False, methods=["get"])
-    def get_consolidated_dataframe(self):
+    def get_consolidated_dataframe(self, category={}):
         consolidated_file = f"consolidated_flw_registry.csv" 
         dataframes = []
         thread_list = []
@@ -822,7 +825,7 @@ class APIResponseViewSet(GenericViewSet):
                         LOGGER.info(f"{file_path} Consolidated {chunks} chunks")
                         dataframes.append(chunk_df)
                     except Exception as e:
-                        LOGGER.error(f"Error reading CSV file {file_path}", exc_info=True)
+                        LOGGER.error(f"Error reading CSV file {file_path}: {e}", exc_info=True)
                 
             if cache.get("flw_consolidated_file"):
                 LOGGER.info(f"{consolidated_file} file available in cache")
@@ -834,10 +837,12 @@ class APIResponseViewSet(GenericViewSet):
                 dataset_file_objects = (
                     DatasetV2File.objects
                     .select_related("dataset")
-                    .filter(file__iendswith=".csv")
+                    .filter(file__iendswith=".csv", dataset__is_temp=False)
                     .values_list('file', flat=True).distinct()  # Flatten the list of values
                 )
-                # dataset_file_objects = ["/Users/ugesh/PycharmProjects/datahub-api/protected/datasets/sample/AndhraPradesh - FLEW's.csv"]
+
+                dataset_file_objects = dataset_file_objects.filter(dataset__category__contains=category if category else {"States": ["Bihar"]})
+                # dataset_file_objects = ["/Users/ugesh/PycharmProjects/datahub-api/protected/datasets/sample/bihar.csv"]
                 for csv_file in dataset_file_objects:
                     file_path = os.path.join(settings.DATASET_FILES_URL, csv_file)
                     thread = threading.Thread(target=read_csv_file, args=(file_path,))
@@ -853,14 +858,82 @@ class APIResponseViewSet(GenericViewSet):
             cache.set("flw_consolidated_file", consolidated_file, 86400)
             return combined_df
         except Exception as e:
-            LOGGER.error(f"Error occoured while creating {consolidated_file}", exc_info=True)
-            return Response(
-                    "Requested resource is currently unavailable. Please try again later.",
-                    status=500,
+            LOGGER.error(f"Error occoured while creating {consolidated_file}: {e}", exc_info=True)
+            return pd.DataFrame([])
+
+    @action(detail=False, methods=["get"])
+    def bot_dashboard(self, request, *args):
+        def get_user_organization_map_count(role_id, result_dict):
+            count = (
+                    UserOrganizationMap.objects.select_related(Constants.USER, Constants.ORGANIZATION)
+                    .filter(user__status=True, user__role=role_id)
+                    .count()
                 )
+            result_dict[role_id]=count
+        def get_resources_count(result_dict):
+            rsources_count = ResourceFile.objects.values('type').annotate(count=Count('type'))
+            result_dict["resource"]= rsources_count
+        def run_query(thread, target, *args):
+            result = target(*args)
+            thread.result = result
+        threads = []  # List to store thread objects
+        result_dict = {}
 
-    
+        # Create threads for each query in a loop
+        for role in [6, 3]:
+            thread = threading.Thread(target=lambda r=role: get_user_organization_map_count(r, result_dict))
+            threads.append(thread)
+            thread.start()
 
+        resources_count_thread = threading.Thread(target=get_resources_count(result_dict))
+        threads.append(resources_count_thread)
+        resources_count_thread.start()
+
+        # Wait for all threads to finish
+        for thread in threads:
+            thread.join()
+
+        # Retrieve results
+        states_result = result_dict.get(6)
+        participants_result = result_dict.get(3)
+        resources_count_result = result_dict.get("resource")
+
+        response = requests.get("https://farmerchat.farmstack.co/dashboard_be/dashboard_api/dashboard_data/?instance=vistaar")
+        if response.status_code ==200:
+            bot_mobile_numbers = response.json().get("mobile_numbers", [])
+            mobile_number_message_count = response.json().get("user_wise_message_count", [])
+            total_flews_df = self.get_consolidated_dataframe()
+            total_flews = total_flews_df.size
+            bot_users = len(bot_mobile_numbers)
+            merged_df = pd.merge(pd.DataFrame(mobile_number_message_count), total_flews_df[["Phone Number", "Gender", "State","Department","District Name","FLEW Name"]], left_on="phone", right_on="Phone Number", how="inner")
+
+            gender_wise_count_df = merged_df.groupby(["District Name", "Gender"]).size().reset_index(name='Count')
+
+            pivot_table = gender_wise_count_df.pivot_table(index='District Name', columns='Gender', values='Count', fill_value=0)
+            gender_wise_count = pivot_table.to_dict(orient='index')
+
+            message_count_sum_by_district = merged_df.groupby("District Name")["message_count"].sum().reset_index(name='Sum_Message_Count')
+
+            # Convert the DataFrame to a dictionary with the desired format
+            message_result_dict = dict(zip(message_count_sum_by_district['District Name'], message_count_sum_by_district['Sum_Message_Count']))
+            
+            flew_gender_wise_df = total_flews_df.groupby(["District Name", "Gender"]).size().reset_index(name='Count')
+            flew_pivot_table = flew_gender_wise_df.pivot_table(index='District Name', columns='Gender', values='Count', fill_value=0)
+            flew_gender_wise_count = flew_pivot_table.to_dict(orient='index')
+            # Convert the DataFrame to a dictionary with the desired format
+            message_result_dict = dict(zip(message_count_sum_by_district['District Name'], message_count_sum_by_district['Sum_Message_Count']))
+            return Response({"states":states_result,
+                            "departments": participants_result,
+                            "respources": resources_count_result,
+                            "total_flews": total_flews,
+                            "flew_users_in_bot": bot_users,
+                            "flew_users_not_in_bot": total_flews-bot_users,
+                            "languages_supported": response.json().get("languages_supported", []),
+                            "date_wise_message_count": response.json().get("date_wise_message_count", []),
+                            "location_wise_message_count": message_result_dict,
+                            "bot_gender_wise_count": gender_wise_count,
+                            "total_flew_gender_wise_count": flew_gender_wise_count
+                            }, 200)
 class UserDataMicrositeViewSet(GenericViewSet):
     """UserData Microsite ViewSet for microsite"""
 
@@ -1023,11 +1096,11 @@ class ResourceMicrositeViewSet(GenericViewSet):
                 # Extract the crops from the filtered records
                 crops_list = [item for record in records_with_state 
                               for item in record.category.get("Crops", [])]
-
-                return Response(list(set(crops_list)), status=status.HTTP_200_OK)
+                return Response(list(set(crops_list)), status=200)
             else:
-                return Response("State value is required.", status=404)
-            
+                with open(Constants.DATAHUB_CATEGORIES_FILE, "r") as json_obj:
+                    data = json.loads(json_obj.read())
+                    return Response(data.get("States", []), status=404)
         except ValidationError as e:
             return Response(e.detail, status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
@@ -1037,9 +1110,11 @@ class ResourceMicrositeViewSet(GenericViewSet):
 
 
 class MyModelListCreateView(generics.ListCreateAPIView):
+    permission_classes = []
     queryset = FeedBack.objects.all()
     serializer_class = FeedBackSerializer
 
 class MyModelDetailView(generics.RetrieveUpdateDestroyAPIView):
+    permission_classes = []
     queryset = FeedBack.objects.all()
     serializer_class = FeedBackSerializer
