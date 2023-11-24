@@ -941,6 +941,8 @@ class APIResponseViewSet(GenericViewSet):
                             "total_flew_gender_wise_count": flew_gender_wise_count,
                             "questions_asked_by_gender": questions_asked_by_gender
                             }, 200)
+        else:
+            return Response(f"Bot is responding with status code:{response.status_code}", 500)
 class UserDataMicrositeViewSet(GenericViewSet):
     """UserData Microsite ViewSet for microsite"""
 
