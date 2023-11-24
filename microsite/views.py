@@ -926,9 +926,6 @@ class APIResponseViewSet(GenericViewSet):
             # Convert the DataFrame to a dictionary with the desired format
 
             
-            flew_gender_wise_df = total_flews_df.groupby(["Gender"]).size().reset_index(name='Count')
-            # flew_pivot_table = flew_gender_wise_df.pivot_table(index='Gender', columns='Gender', values='Count', fill_value=0)
-            flew_gender_wise_count = flew_gender_wise_df.to_dict(orient='records')
             # Convert the DataFrame to a dictionary with the desired format
             message_count_sum_by_district = merged_df.groupby("District Name").agg({
                 "total_messages": "sum",
@@ -964,7 +961,6 @@ class APIResponseViewSet(GenericViewSet):
                             "date_wise_message_count": response.json().get("date_wise_message_count", []),
                             "location_wise_message_count": questions_asked_by_location,
                             "bot_gender_wise_count": gender_wise_count,
-                            "total_flew_gender_wise_count": flew_gender_wise_count,
                             "questions_asked_by_gender": questions_asked_by_gender
                             }, 200)
         else:
