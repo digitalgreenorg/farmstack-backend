@@ -913,7 +913,9 @@ class APIResponseViewSet(GenericViewSet):
             gender_wise_count = gender_wise_count_df.to_dict(orient='records')
 
             message_count_sum_by_district = merged_df.groupby("District Name")["total_messages"].sum().reset_index(name='Sum_Toatal_Messages')
-
+            total_questions_answered = merged_df["answered"].sum()
+            total_questions_unanswered = merged_df["unanswered"].sum()
+            total_questions_asked = merged_df["total_messages"].sum()
             # Convert the DataFrame to a dictionary with the desired format
             message_result_dict = dict(zip(message_count_sum_by_district['District Name'], message_count_sum_by_district['Sum_Toatal_Messages']))
             
@@ -928,7 +930,10 @@ class APIResponseViewSet(GenericViewSet):
             # Convert the DataFrame to a dictionary with the desired format
             questions_asked_by_gender = dict(zip(questions_asked_by_gender_df['Gender'], questions_asked_by_gender_df['Sum_Toatal_Messages']))
             
-            return Response({"states":states_result,
+            return Response({"total_questions_asked":total_questions_asked,
+                            "total_questions_answered": total_questions_answered,
+                            "total_questions_unanswered": total_questions_unanswered,
+                            "states":states_result,
                             "departments": participants_result,
                             "respources": resources_count_result,
                             "total_flews": total_flews,
