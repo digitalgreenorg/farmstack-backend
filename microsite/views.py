@@ -912,21 +912,21 @@ class APIResponseViewSet(GenericViewSet):
             # pivot_table = gender_wise_count_df.pivot_table(index='District Name', columns='Gender', values='Count', fill_value=0)
             gender_wise_count = gender_wise_count_df.to_dict(orient='records')
 
-            message_count_sum_by_district = merged_df.groupby("District Name")["message_count"].sum().reset_index(name='Sum_Message_Count')
+            message_count_sum_by_district = merged_df.groupby("District Name")["total_messages"].sum().reset_index(name='Sum_Toatal_Messages')
 
             # Convert the DataFrame to a dictionary with the desired format
-            message_result_dict = dict(zip(message_count_sum_by_district['District Name'], message_count_sum_by_district['Sum_Message_Count']))
+            message_result_dict = dict(zip(message_count_sum_by_district['District Name'], message_count_sum_by_district['Sum_Toatal_Messages']))
             
             flew_gender_wise_df = total_flews_df.groupby(['District Name',"Gender"]).size().reset_index(name='Count')
             flew_pivot_table = flew_gender_wise_df.pivot_table(index='District Name', columns='Gender', values='Count', fill_value=0)
             flew_gender_wise_count = flew_pivot_table.to_dict(orient='index')
             # Convert the DataFrame to a dictionary with the desired format
             
-            message_result_dict = dict(zip(message_count_sum_by_district['District Name'], message_count_sum_by_district['Sum_Message_Count']))
-            questions_asked_by_gender_df =  merged_df.groupby("Gender")["message_count"].sum().reset_index(name='Sum_Message_Count')
+            message_result_dict = dict(zip(message_count_sum_by_district['District Name'], message_count_sum_by_district['Sum_Toatal_Messages']))
+            questions_asked_by_gender_df =  merged_df.groupby("Gender")["total_messages"].sum().reset_index(name='Sum_Toatal_Messages')
 
             # Convert the DataFrame to a dictionary with the desired format
-            questions_asked_by_gender = dict(zip(questions_asked_by_gender_df['Gender'], questions_asked_by_gender_df['Sum_Message_Count']))
+            questions_asked_by_gender = dict(zip(questions_asked_by_gender_df['Gender'], questions_asked_by_gender_df['Sum_Toatal_Messages']))
             
             return Response({"states":states_result,
                             "departments": participants_result,
