@@ -144,7 +144,7 @@ class Constants:
     DATASETS_V2_URL = "datasets/v2"
     DATASET_FILES = "dataset_files"
     CATEGORIES_FILE = "categories.json"
-    DATAHUB_CATEGORIES_FILE = "datahub.categories.json"
+    DATAHUB_CATEGORIES_FILE = "categories.json"
     CONNECTORS = "connectors"
     STANDARDISE = "standardise"
     MAPS = "maps"
