@@ -903,32 +903,58 @@ class APIResponseViewSet(GenericViewSet):
             bot_mobile_numbers = response.json().get("mobile_numbers", [])
             mobile_number_message_count = response.json().get("user_wise_message_count", [])
             total_flews_df = self.get_consolidated_dataframe()
+            total_flews_df["Gender"] = total_flews_df["Gender"].str.upper().str.strip()
+            print(total_flews_df["Gender"].unique())
+            gender_changes = {'M': 'MALE', 'F': 'FEMALE', "FEMALE": 'FEMALE', "MALE":"MALE"}
+            total_flews_df['Gender'] = total_flews_df['Gender'].astype(str).map(gender_changes).fillna('') # type: ignore
             total_flews = total_flews_df.size
             bot_users = len(bot_mobile_numbers)
             merged_df = pd.merge(pd.DataFrame(mobile_number_message_count), total_flews_df[["Phone Number", "Gender", "State","Department","District Name","FLEW Name"]], left_on="phone", right_on="Phone Number", how="inner")
+            gender_wise_total_count_df = total_flews_df.groupby(["Gender"]).size().reset_index(name='Count')
 
+            # pivot_table = gender_wise_count_df.pivot_table(index='District Name', columns='Gender', values='Count', fill_value=0)
+            gender_wise_total_count = gender_wise_total_count_df.to_dict(orient='records')
+            
             gender_wise_count_df = merged_df.groupby(["Gender"]).size().reset_index(name='Count')
 
             # pivot_table = gender_wise_count_df.pivot_table(index='District Name', columns='Gender', values='Count', fill_value=0)
             gender_wise_count = gender_wise_count_df.to_dict(orient='records')
 
-            message_count_sum_by_district = merged_df.groupby("District Name")["message_count"].sum().reset_index(name='Sum_Message_Count')
+            total_questions_answered = merged_df["answered"].sum()
+            total_questions_unanswered = merged_df["unanswered"].sum()
+            total_questions_asked = merged_df["total_messages"].sum()
+            # Convert the DataFrame to a dictionary with the desired format
+
+            
+            flew_gender_wise_df = total_flews_df.groupby(["Gender"]).size().reset_index(name='Count')
+            # flew_pivot_table = flew_gender_wise_df.pivot_table(index='Gender', columns='Gender', values='Count', fill_value=0)
+            flew_gender_wise_count = flew_gender_wise_df.to_dict(orient='records')
+            # Convert the DataFrame to a dictionary with the desired format
+            message_count_sum_by_district = merged_df.groupby("District Name").agg({
+                "total_messages": "sum",
+                "answered": "sum",
+                "unanswered": "sum"
+            }).reset_index()
+
+            message_count_sum_by_district.columns = ['District Name', 'Total_Messages', 'Answered', 'Unanswered']
+            questions_asked_by_location = message_count_sum_by_district.set_index('District Name').to_dict(orient='index')
+
+            questions_asked_by_gender_df = merged_df.groupby("Gender").agg({
+                "total_messages": "sum",
+                "answered": "sum",
+                "unanswered": "sum"
+            }).reset_index()
+
+            # Rename the columns for clarity
+            questions_asked_by_gender_df.columns = ['Gender', 'Total_Messages', 'Answered', 'Unanswered']
 
             # Convert the DataFrame to a dictionary with the desired format
-            message_result_dict = dict(zip(message_count_sum_by_district['District Name'], message_count_sum_by_district['Sum_Message_Count']))
-            
-            flew_gender_wise_df = total_flews_df.groupby(['District Name',"Gender"]).size().reset_index(name='Count')
-            flew_pivot_table = flew_gender_wise_df.pivot_table(index='District Name', columns='Gender', values='Count', fill_value=0)
-            flew_gender_wise_count = flew_pivot_table.to_dict(orient='index')
-            # Convert the DataFrame to a dictionary with the desired format
-            
-            message_result_dict = dict(zip(message_count_sum_by_district['District Name'], message_count_sum_by_district['Sum_Message_Count']))
-            questions_asked_by_gender_df =  merged_df.groupby("Gender")["message_count"].sum().reset_index(name='Sum_Message_Count')
-
-            # Convert the DataFrame to a dictionary with the desired format
-            questions_asked_by_gender = dict(zip(questions_asked_by_gender_df['Gender'], questions_asked_by_gender_df['Sum_Message_Count']))
-            
-            return Response({"states":states_result,
+            questions_asked_by_gender = questions_asked_by_gender_df.set_index('Gender').to_dict(orient='index')
+            return Response({"gender_wise_total_count": gender_wise_total_count,
+                            "total_questions_asked":total_questions_asked,
+                            "total_questions_answered": total_questions_answered,
+                            "total_questions_unanswered": total_questions_unanswered,
+                            "states":states_result,
                             "departments": participants_result,
                             "respources": resources_count_result,
                             "total_flews": total_flews,
@@ -936,11 +962,13 @@ class APIResponseViewSet(GenericViewSet):
                             "flew_users_not_in_bot": total_flews-bot_users,
                             "languages_supported": response.json().get("languages_supported", []),
                             "date_wise_message_count": response.json().get("date_wise_message_count", []),
-                            "location_wise_message_count": message_result_dict,
+                            "location_wise_message_count": questions_asked_by_location,
                             "bot_gender_wise_count": gender_wise_count,
                             "total_flew_gender_wise_count": flew_gender_wise_count,
                             "questions_asked_by_gender": questions_asked_by_gender
                             }, 200)
+        else:
+            return Response(f"Bot is responding with status code:{response.status_code}", 500)
 class UserDataMicrositeViewSet(GenericViewSet):
     """UserData Microsite ViewSet for microsite"""
 
