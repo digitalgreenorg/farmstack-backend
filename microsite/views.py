@@ -907,21 +907,27 @@ class APIResponseViewSet(GenericViewSet):
             bot_users = len(bot_mobile_numbers)
             merged_df = pd.merge(pd.DataFrame(mobile_number_message_count), total_flews_df[["Phone Number", "Gender", "State","Department","District Name","FLEW Name"]], left_on="phone", right_on="Phone Number", how="inner")
 
-            gender_wise_count_df = merged_df.groupby(["District Name", "Gender"]).size().reset_index(name='Count')
+            gender_wise_count_df = merged_df.groupby(["Gender"]).size().reset_index(name='Count')
 
-            pivot_table = gender_wise_count_df.pivot_table(index='District Name', columns='Gender', values='Count', fill_value=0)
-            gender_wise_count = pivot_table.to_dict(orient='index')
+            # pivot_table = gender_wise_count_df.pivot_table(index='District Name', columns='Gender', values='Count', fill_value=0)
+            gender_wise_count = gender_wise_count_df.to_dict(orient='records')
 
             message_count_sum_by_district = merged_df.groupby("District Name")["message_count"].sum().reset_index(name='Sum_Message_Count')
 
             # Convert the DataFrame to a dictionary with the desired format
             message_result_dict = dict(zip(message_count_sum_by_district['District Name'], message_count_sum_by_district['Sum_Message_Count']))
             
-            flew_gender_wise_df = total_flews_df.groupby(["District Name", "Gender"]).size().reset_index(name='Count')
+            flew_gender_wise_df = total_flews_df.groupby(['District Name',"Gender"]).size().reset_index(name='Count')
             flew_pivot_table = flew_gender_wise_df.pivot_table(index='District Name', columns='Gender', values='Count', fill_value=0)
             flew_gender_wise_count = flew_pivot_table.to_dict(orient='index')
             # Convert the DataFrame to a dictionary with the desired format
+            
             message_result_dict = dict(zip(message_count_sum_by_district['District Name'], message_count_sum_by_district['Sum_Message_Count']))
+            questions_asked_by_gender_df =  merged_df.groupby("Gender")["message_count"].sum().reset_index(name='Sum_Message_Count')
+
+            # Convert the DataFrame to a dictionary with the desired format
+            questions_asked_by_gender = dict(zip(questions_asked_by_gender_df['Gender'], questions_asked_by_gender_df['Sum_Message_Count']))
+            
             return Response({"states":states_result,
                             "departments": participants_result,
                             "respources": resources_count_result,
@@ -932,7 +938,8 @@ class APIResponseViewSet(GenericViewSet):
                             "date_wise_message_count": response.json().get("date_wise_message_count", []),
                             "location_wise_message_count": message_result_dict,
                             "bot_gender_wise_count": gender_wise_count,
-                            "total_flew_gender_wise_count": flew_gender_wise_count
+                            "total_flew_gender_wise_count": flew_gender_wise_count,
+                            "questions_asked_by_gender": questions_asked_by_gender
                             }, 200)
 class UserDataMicrositeViewSet(GenericViewSet):
     """UserData Microsite ViewSet for microsite"""
