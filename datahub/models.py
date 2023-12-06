@@ -109,7 +109,8 @@ USAGE_POLICY_API_TYPE = (
 )
 RESOURCE_URL_TYPE = (
     ("youtube", "youtube"),
-    ("pdf", "pdf")
+    ("pdf", "pdf"),
+    ("file", "file")
 )
 
 USAGE_POLICY_APPROVAL_STATUS = (
