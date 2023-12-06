@@ -281,3 +281,68 @@ class UsagePolicy(TimeStampMixin):
     approval_status = models.CharField(max_length=255, null=True, choices=USAGE_POLICY_REQUEST_STATUS, default="requested")
     accessibility_time = models.DateField(null=True)
 
+class Resource(TimeStampMixin):
+    """
+    Resource Module -- Any user can create resource.
+    """
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    title = models.CharField(max_length=100)
+    description = models.TextField(max_length=250)
+    user_map = models.ForeignKey(UserOrganizationMap, on_delete=models.CASCADE)
+    category = models.JSONField(default=dict)
+    
+    def __str__(self) -> str:
+        return self.title
+
+RESOURCE_URL_TYPE = (
+    ("youtube", "youtube"),
+    ("pdf", "pdf")
+)
+
+class ResourceFile(TimeStampMixin):
+    """
+    Resource Files Model -- Has a one to many relation 
+    -- 1 resource can have multiple resource files.
+    """
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    resource = models.ForeignKey(Resource, on_delete=models.CASCADE, related_name="resources")
+    file = models.FileField(upload_to=settings.RESOURCES_URL, null=True, blank=True)
+    file_size = models.PositiveIntegerField(null=True, blank=True)
+    type = models.CharField(max_length=20, null=True, choices=RESOURCE_URL_TYPE)
+    url = models.CharField(max_length=200, null=True)
+    transcription = models.CharField(max_length=2500,null=True, blank=True)
+
+
+    def __str__(self) -> str:
+        return self.file.name
+from pgvector.django import VectorField
+
+# class ResourceVector(TimeStampMixin):
+#     resource_file = models.ForeignKey(ResourceFile, on_delete=models.CASCADE, related_name="resource_file")
+
+class LangchainPgCollection(models.Model):
+    name = models.UUIDField()
+    cmetadata = models.JSONField()
+    uuid = models.UUIDField(primary_key=True)
+
+    class Meta:
+        db_table = 'langchain_pg_collection'
+
+
+class LangchainPgEmbedding(models.Model):
+    # resource_file = models.ForeignKey(ResourceFile, on_delete=models.CASCADE)
+    collection_id = models.UUIDField()
+    embedding = VectorField(1563)  # Assuming 'vector' is a custom PostgreSQL data type
+    document = models.TextField()
+    cmetadata = models.JSONField()
+    custom_id = models.CharField(max_length=255)
+    uuid = models.UUIDField(primary_key=True)
+
+    class Meta:
+        db_table = 'langchain_pg_embedding'
+
+    def __str__(self):
+        return f"LangchainPgEmbedding(uuid={self.uuid}, document={self.document})"
+
+
+

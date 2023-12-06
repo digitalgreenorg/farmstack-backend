@@ -4,9 +4,11 @@ import shutil
 
 import xmltodict
 import yaml
-from core.constants import Constants
 from django.conf import settings
-from python_on_whales import DockerClient
+
+from core.constants import Constants
+
+# from python_on_whales import DockerClient
 
 
 def get_ports():
@@ -377,28 +379,30 @@ def generate_xml_yaml(provider, consumer):
     # Return Yaml and XML
     return provider_yaml, consumer_yaml, ports
 
-
+# 
 def run_containers(provider, consumer):
-    "Run Docker containers"
-    provider_yaml, consumer_yaml, ports = generate_xml_yaml(provider, consumer)
-    # Run Docker Containers.
-    docker_clients_provider = DockerClient(compose_files=[provider_yaml])
-    docker_clients_consumer = DockerClient(compose_files=[consumer_yaml])
-    # print(docker_clients)
-    docker_clients_provider.compose.build()
-    docker_clients_provider.compose.up(detach=True)
+#     "Run Docker containers"
+#     provider_yaml, consumer_yaml, ports = generate_xml_yaml(provider, consumer)
+#     # Run Docker Containers.
+#     docker_clients_provider = DockerClient(compose_files=[provider_yaml])
+#     docker_clients_consumer = DockerClient(compose_files=[consumer_yaml])
+#     # print(docker_clients)
+#     docker_clients_provider.compose.build()
+#     docker_clients_provider.compose.up(detach=True)
 
-    docker_clients_consumer.compose.build()
-    docker_clients_consumer.compose.up(detach=True)
-    return ports
+#     docker_clients_consumer.compose.build()
+#     docker_clients_consumer.compose.up(detach=True)
+#     return ports
+    return
 
 
 def stop_containers(provider, consumer):
-    "stop Docker containers"
-    connector_path = os.path.join(settings.CONNECTOR_CONFIGS, provider.connector_name + consumer.connector_name)
-    provider_yaml = "%s.yaml" % (os.path.join(connector_path, provider.connector_name.replace(" ", "")))
-    consumer_yaml = "%s.yaml" % (os.path.join(connector_path, consumer.connector_name.replace(" ", "")))
-    docker_clients = DockerClient(compose_files=[provider_yaml, consumer_yaml])
-    docker_clients.compose.down()
-    print(connector_path)
-    shutil.rmtree(connector_path, ignore_errors=True, onerror=None)
+#     "stop Docker containers"
+#     connector_path = os.path.join(settings.CONNECTOR_CONFIGS, provider.connector_name + consumer.connector_name)
+#     provider_yaml = "%s.yaml" % (os.path.join(connector_path, provider.connector_name.replace(" ", "")))
+#     consumer_yaml = "%s.yaml" % (os.path.join(connector_path, consumer.connector_name.replace(" ", "")))
+#     docker_clients = DockerClient(compose_files=[provider_yaml, consumer_yaml])
+#     docker_clients.compose.down()
+#     print(connector_path)
+#     shutil.rmtree(connector_path, ignore_errors=True, onerror=None)
+    return
