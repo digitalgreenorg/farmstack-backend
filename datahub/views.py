@@ -11,7 +11,7 @@ from calendar import c
 from functools import reduce
 from pickle import TRUE
 from urllib.parse import unquote
-import json
+
 import django
 import pandas as pd
 from django.conf import settings
@@ -41,6 +41,7 @@ from psycopg2.extensions import ISOLATION_LEVEL_AUTOCOMMIT
 from python_http_client import exceptions
 from rest_framework import generics, pagination, status
 from rest_framework.decorators import action
+from rest_framework.exceptions import ValidationError
 from rest_framework.parsers import JSONParser, MultiPartParser
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
@@ -111,9 +112,11 @@ from utils.authentication_services import authenticate_user
 from utils.file_operations import check_file_name_length
 from utils.jwt_services import http_request_mutation
 
-from .models import Policy, UsagePolicy
+from .models import Policy, Resource, ResourceFile, UsagePolicy
 from .serializers import (
     PolicySerializer,
+    ResourceFileSerializer,
+    ResourceSerializer,
     UsagePolicyDetailSerializer,
     UsagePolicySerializer,
 )
@@ -225,7 +228,7 @@ class OrganizationViewSet(GenericViewSet):
                         data={
                             Constants.USER: user_obj.id,
                             Constants.ORGANIZATION: org_queryset.id,
-                        } # type: ignore
+                        }  # type: ignore
                     )
                     user_org_serializer.is_valid(raise_exception=True)
                     self.perform_create(user_org_serializer)
@@ -264,8 +267,7 @@ class OrganizationViewSet(GenericViewSet):
                 Constants.USER, Constants.ORGANIZATION
             ).filter(organization__status=True, user=pk)
 
-
-            if not user_org_queryset: 
+            if not user_org_queryset:
                 data = {Constants.USER: {"id": user_obj.id}, Constants.ORGANIZATION: "null"}
                 return Response(data, status=status.HTTP_200_OK)
 
@@ -287,8 +289,8 @@ class OrganizationViewSet(GenericViewSet):
             UserOrganizationMap.objects.prefetch_related(Constants.USER, Constants.ORGANIZATION).filter(user=pk).all()
         )
 
-        if not user_org_queryset:  
-            return Response({}, status=status.HTTP_404_NOT_FOUND) # 310-360 not covered 4
+        if not user_org_queryset:
+            return Response({}, status=status.HTTP_404_NOT_FOUND)  # 310-360 not covered 4
 
         organization_serializer = OrganizationSerializer(
             Organization.objects.get(id=user_org_queryset.first().organization_id),
@@ -2088,7 +2090,7 @@ class DatasetV2ViewSetOps(GenericViewSet):
                     .filter(dataset_id__in=dataset_ids)
                     .filter(Q(file__endswith=".xls") | Q(file__endswith=".xlsx") | Q(file__endswith=".csv"))
                     .filter(
-                        Q(accessibility__in=["public", "registered"]) | 
+                        Q(accessibility__in=["public", "registered"]) |
                         Q(dataset__user_map_id=user_map) |
                         Q(dataset_v2_file__approval_status="approved")
                     )
@@ -2390,6 +2392,80 @@ class DatasetV2View(GenericViewSet):
     #     serializer = self.get_serializer(page, many=True).exclude(is_temp = True)
     #     return self.get_paginated_response(serializer.data)
 
+    @action(detail=True, methods=["get"])
+    def get_dashboard_chart_data(self, request, pk, *args, **kwargs):
+        try:
+            dataset_file_object = DatasetV2File.objects.get(id=pk)
+            dataset_file = str(dataset_file_object.standardised_file)
+            try:
+                if dataset_file.endswith(".xlsx") or dataset_file.endswith(".xls"):
+                    df = pd.read_excel(os.path.join(settings.DATASET_FILES_URL, dataset_file))
+                elif dataset_file.endswith(".csv"):
+                    df = pd.read_csv(os.path.join(settings.DATASET_FILES_URL, dataset_file))
+
+                else:
+                    return Response(
+                        "Unsupported file please use .xls or .csv.",
+                        status=status.HTTP_400_BAD_REQUEST,
+                    )
+                obj = {
+                    "total_no_of_records": len(df),
+                    "male_count": (df['Gender'] == 1).sum(),
+                    "female_count": (df['Gender'] == 0).sum(),
+                    "constituencies": (df['Constituency']).nunique(),
+                    "counties": (df['County']).nunique(),
+                    "sub_counties": (df['Sub County']).nunique(),
+                    "farming_practices": {
+                        "crop_production": (df['Crop Production']).sum(),
+                        "livestock_production": (df['Livestock Production']).sum(),
+                    },
+                    "livestock_and_poultry_production": {
+                        "cows": (df[['Other Dual Cattle', 'Cross breed Cattle', 'Cattle boma']]).sum(axis=1).sum(),
+                        "goats": df[['Small East African Goats', 'Somali Goat', 'Other Goat']].sum(axis=1).sum(),
+                        "chickens": df[['Chicken -Indigenous', 'Chicken -Broilers', 'Chicken -Layers']].sum(axis=1).sum(),
+                        "ducks": df[['Ducks']].sum(axis=1).sum(),
+                        "sheep": df[['Other Sheep']].sum()
+                    },
+                    "financial_livelihood": {
+                        "lenders": (df['Moneylender']).sum(),
+                        "relatives": (df['Family']).sum(),
+                        "traders": 0,
+                        "agents": 0,
+                        "institutional": 0
+                    },
+                    "water_sources": {
+                        "borewell": 0,
+                        "irrigation": (df['Total Area Irrigation']).sum(),
+                        "rainwater": (df['Rain']).sum(),
+
+                    },
+                    "insurance_information": {
+                        "insured_crops": (df['Do you insure your crops?']).sum(),
+                        "insured_machinery": (df['Do you insure your farm buildings and other assets?']).sum(),
+                    }
+                }
+            except Exception as e:
+                print(e)
+                return Response(
+
+                    "Something went wrong, please try again.",
+                    status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                )
+
+            return Response(
+                obj,
+                status=status.HTTP_200_OK,
+            )
+
+        except DatasetV2File.DoesNotExist:
+            return Response(
+                "No dataset file for the provided id.",
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+
+
+
 
 class DatasetFileV2View(GenericViewSet):
     queryset = DatasetV2File.objects.all()
@@ -2490,6 +2566,7 @@ class DatasetFileV2View(GenericViewSet):
         except Exception as error:
             LOGGER.error(error, exc_info=True)
             return Response(str(error), status=status.HTTP_400_BAD_REQUEST)
+
     # @action(detail=False, methods=["put"])
     @authenticate_user(model=DatasetV2File)
     def patch(self, request, *args, **kwargs):
@@ -2718,3 +2795,135 @@ class DatahubNewDashboard(GenericViewSet):
         except Exception as error:
             LOGGER.error(error, exc_info=True)
             return Response({}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+
+
+# @http_request_mutation
+class ResourceManagementViewSet(GenericViewSet):
+    """
+    Resource Management viewset.
+    """
+
+    queryset = Resource.objects.all()
+    serializer_class = ResourceSerializer
+    pagination_class = CustomPagination
+
+    @http_request_mutation
+    def create(self, request, *args, **kwargs):
+        try:
+            user_map = request.META.get("map_id")
+            #request.data._mutable = True
+            request.data["user_map"] = user_map
+
+            serializer = self.get_serializer(data=request.data)
+            serializer.is_valid(raise_exception=True)
+            serializer.save()
+
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        except ValidationError as e:
+            return Response(e.detail, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            LOGGER.error(e,exc_info=True)
+            return Response(str(e), status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    def update(self, request, *args, **kwargs):
+        try:
+            instance = self.get_object()
+            serializer = self.get_serializer(instance, data=request.data, partial=True)
+            serializer.is_valid(raise_exception=True)
+            serializer.save()
+            return Response(status=status.HTTP_200_OK)
+        except ValidationError as e:
+            return Response(e.detail, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            LOGGER.error(e)
+            return Response(str(e), status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    @http_request_mutation
+    def list(self, request, *args, **kwargs):
+        try:
+            user_map = request.META.get("map_id")
+            # import pdb; pdb.set_trace();
+            if request.GET.get("others", None):
+                queryset = Resource.objects.exclude(user_map=user_map)
+            else:
+                queryset = Resource.objects.filter(user_map=user_map)
+                # Created by me.
+
+            page = self.paginate_queryset(queryset)
+            serializer = self.get_serializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
+        except ValidationError as e:
+            return Response(e.detail, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            LOGGER.error(e)
+            return Response(str(e), status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    def destroy(self, request, *args, **kwargs):
+        resource = self.get_object()
+        resource.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+    def retrieve(self, request, *args, **kwargs):
+        resource = self.get_object()
+        serializer = self.get_serializer(resource)
+        # serializer.is_valid(raise_exception=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+    
+    @http_request_mutation
+    @action(detail=False, methods=["post"])
+    def resources_filter(self, request, *args, **kwargs):
+        try:
+            data =request.data
+            user_map = request.META.get("map_id")
+            categories = data.pop(Constants.CATEGORY, None)
+            others = data.pop(Constants.OTHERS, "")
+            filters = {key: value for key, value in data.items() if value}
+            query_set = self.get_queryset().filter(**filters).order_by("-updated_at")
+            if categories:
+                query_set = query_set.filter(
+                    reduce(
+                        operator.or_,
+                        (Q(category__contains=cat) for cat in categories),
+                    )
+                )
+            query_set = query_set.exclude(user_map=user_map) if others else query_set.filter(
+                user_map=user_map)
+            page = self.paginate_queryset(query_set)
+            serializer = self.get_serializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
+        except ValidationError as e:
+            return Response(e.detail, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            LOGGER.error(e)
+            return Response(str(e), status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+class ResourceFileManagementViewSet(GenericViewSet):
+    """
+    Resource File Management
+    """
+
+    queryset = ResourceFile.objects.all()
+    serializer_class = ResourceFileSerializer
+
+    @http_request_mutation
+    def create(self, request, *args, **kwargs):
+        try:
+            #request.data._mutable = True
+            #request.data["file_size"] = request.FILES.get("file").size
+            serializer = self.get_serializer(data=request.data, partial=True)
+            serializer.is_valid(raise_exception=True)
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        except ValidationError as e:
+            return Response(e.detail, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            LOGGER.error(e,exc_info=True)
+            return Response(str(e), status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    def destroy(self, request, *args, **kwargs):
+        instance = self.get_object()
+        instance.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)

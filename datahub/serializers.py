@@ -39,7 +39,7 @@ from utils.validators import (
     validate_image_type,
 )
 
-from .models import Policy, UsagePolicy
+from .models import Policy, Resource, ResourceFile, UsagePolicy
 from django.core.validators import URLValidator
 from django.core.exceptions import ValidationError
 LOGGER = logging.getLogger(__name__)
@@ -513,10 +513,10 @@ class DatasetV2TempFileSerializer(serializers.Serializer):
                     f"Document type not supported. Only following documents are allowed: {Constants.DATASET_FILE_TYPES}"
                 )
 
-            if not validate_dataset_size(file, Constants.DATASET_MAX_FILE_SIZE):
-                raise ValidationError(
-                    f"You cannot upload/export file size more than {Constants.DATASET_MAX_FILE_SIZE}MB."
-                )
+            #if not validate_dataset_size(file, Constants.DATASET_MAX_FILE_SIZE):
+            #    raise ValidationError(
+            #        f"You cannot upload/export file size more than {Constants.DATASET_MAX_FILE_SIZE}MB."
+            #    )
 
         return files
 
@@ -950,3 +950,89 @@ class UsagePolicyDetailSerializer(serializers.ModelSerializer):
     class Meta:
         model = UsagePolicy
         fields = '__all__'
+
+class ResourceFileSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ResourceFile
+        fields = "__all__"
+
+
+class ResourceSerializer(serializers.ModelSerializer):
+    class OrganizationRetriveSerializer(serializers.ModelSerializer):
+        class Meta:
+            model = Organization
+            fields = ["id", "org_email", "name"]
+
+    class UserSerializer(serializers.ModelSerializer):
+        class Meta:
+            model = User
+            fields = ["id", "first_name", "last_name", "email", "role", "on_boarded_by"]
+
+    resources = ResourceFileSerializer(many=True, read_only=True)
+    uploaded_files = serializers.ListField(child=serializers.JSONField(), write_only=True)
+    organization = OrganizationRetriveSerializer(
+        allow_null=True, required=False, read_only=True, source="user_map.organization"
+    )
+    user = UserSerializer(allow_null=True, required=False, read_only=True, source="user_map.user")
+    content_files_count = serializers.SerializerMethodField(method_name="get_content_files_count")
+
+    class Meta:
+        model = Resource
+        fields = (
+            "id",
+            "title",
+            "description",
+            "user_map",
+            "category",
+            "resources",
+            "uploaded_files",
+            "organization",
+            "user",
+            "created_at",
+            "updated_at",
+            "content_files_count"
+        )
+    def get_content_files_count(self, resource):
+        return ResourceFile.objects.filter(resource=resource.id).values('type').annotate(count=Count('type'))
+    def create(self, validated_data):
+        resource_files_data = validated_data.pop("uploaded_files")
+        resource = Resource.objects.create(**validated_data)
+        for file_data in resource_files_data:
+            # file_size = file_data.size
+            ResourceFile.objects.create(resource=resource, **file_data)
+                                        # url=file_data.get("url", ""),
+                                        #  type=file_data.get("type", ""),
+                                        #  transcription=file_data.get("transcription", ""))
+
+        return resource
+
+    # def update(self, instance, validated_data):
+    #     uploaded_files_data = validated_data.pop('uploaded_files', [])
+
+    #     for attr, value in validated_data.items():
+    #         setattr(instance, attr, value)
+    #     instance.save()
+
+    #     # Handle existing files
+    #     # import pdb; pdb.set_trace()
+    #     existing_file_ids = []
+    #     for file_data in uploaded_files_data:
+    #         file_id = file_data.get('id', None)
+    #         if file_id and file_data.get('delete', None):  # Existing file
+    #             existing_file = ResourceFile.objects.get(id=file_id)
+    #             existing_file_ids.append(existing_file.id)
+    #             # Update file attributes if needed
+    #         else:  # New file
+    #             ResourceFile.objects.create(resource=instance, file=file_data['file'])
+
+    #     # Handle deletion of files not present in uploaded_files_data
+    #     unwanted_files = ResourceFile.objects.filter(resource=instance).exclude(id__in=existing_file_ids)
+    #     unwanted_files.delete()
+    #     return instance
+
+
+# class ResourceFileSerializer(serializers.ModelSerializer):
+#     class Meta:
+#         model = ResourceFile
+#         fields = "__all__"
+

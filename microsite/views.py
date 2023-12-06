@@ -33,6 +33,8 @@ from datahub.models import (
     DatasetV2File,
     Organization,
     Policy,
+    Resource,
+    ResourceFile,
     UsagePolicy,
     UserOrganizationMap,
 )
@@ -41,10 +43,13 @@ from datahub.serializers import (
     DatasetV2Serializer,
     OrganizationSerializer,
     ParticipantSerializer,
+    ResourceSerializer,
     micrositeOrganizationSerializer,
 )
 from microsite.serializers import (
     ContactFormSerializer,
+    ContentFileSerializer,
+    ContentSerializer,
     DatasetsMicrositeSerializer,
     LegalDocumentSerializer,
     OrganizationMicrositeSerializer,
@@ -54,6 +59,7 @@ from microsite.serializers import (
 )
 from utils import custom_exceptions, file_operations
 from utils.jwt_services import http_request_mutation
+from rest_framework.exceptions import ValidationError
 
 LOGGER = logging.getLogger(__name__)
 
@@ -607,3 +613,110 @@ def microsite_media_view(request):
     except Exception as error:
         LOGGER.error(error, exc_info=True)
         return Response({str(error)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    
+
+
+class ResourceMicrositeViewSet(GenericViewSet):
+    permission_classes = []
+    queryset = Resource.objects.all()
+    serializer_class = ResourceSerializer
+    pagination_class = CustomPagination
+
+    # @http_request_mutation
+    def list(self, request, *args, **kwargs):
+        try:
+            page = self.paginate_queryset(self.get_queryset().order_by("-updated_at"))
+            serializer = self.get_serializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
+        except ValidationError as e:
+            return Response(e.detail, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            LOGGER.error(f"Error occured in ResourceMicrositeViewSet list ERROR: {e}", exc_info=True)
+            return Response(str(e), status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    def retrieve(self, request, *args, **kwargs):
+        resource = self.get_object()
+        serializer = self.get_serializer(resource)
+        # serializer.is_valid(raise_exception=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+    
+    @action(detail=False, methods=["post"])
+    def resources_filter(self, request, *args, **kwargs):
+        try:
+            data =request.data
+            categories = data.pop(Constants.CATEGORY, None)
+            filters = {key: value for key, value in data.items() if value}
+            query_set = self.get_queryset().filter(**filters).order_by("-updated_at")
+            if categories:
+                query_set = query_set.filter(
+                    reduce(
+                        operator.or_,
+                        (Q(category__contains=cat) for cat in categories),
+                    )
+                )
+            page = self.paginate_queryset(query_set)
+            serializer = self.get_serializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
+        except ValidationError as e:
+            return Response(e.detail, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            LOGGER.error(f"Error occured in ResourceMicrositeViewSet resources_filter ERROR: {e}", exc_info=True)
+            return Response(str(e), status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    @action(detail=False, methods=["post"])
+    def content_data(self, request, *args, **kwargs):
+        try:
+            data =request.data
+            categories = data.pop(Constants.CATEGORY, None)
+            filters = {key: value for key, value in data.items() if value}
+            file_filters = data.get("resources__updated_at__gt", None)
+            query_set = Resource.objects.filter(**filters).prefetch_related('resources')
+            if categories:
+                query_set = query_set.filter(
+                    reduce(
+                        operator.and_,
+                        (Q(category__contains=cat) for cat in categories),
+                    )
+                )
+            file_filters = {"updated_at__gt":datetime.datetime.fromisoformat(file_filters)} if file_filters else {} # type: ignore
+            if file_filters:
+                data = []
+                for resource in query_set.distinct():
+                    resources_data={"id": resource.id, "title": resource.title, "description": resource.description, "category": resource.category}
+                    files = ResourceFile.objects.filter(**file_filters, resource=resource.id).all()
+                    resources_data["resources"] = ContentFileSerializer(files, many=True).data
+                    data.append(resources_data)
+                return Response(data, status=status.HTTP_200_OK)
+            else:
+                serializer = ContentSerializer(query_set, many=True)
+                return Response(serializer.data, status=status.HTTP_200_OK)
+        except ValidationError as e:
+            return Response(e.detail, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            LOGGER.error(f"Error occured in ResourceMicrositeViewSet resources_filter ERROR: {e}", exc_info=True)
+            return Response(str(e), status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    @action(detail=False, methods=["get"])
+    def crops_list(self, request, *args, **kwargs):
+        try:
+            state =request.GET.get("state")
+            if state:
+                # Filter the queryset to get records with the desired state
+                records_with_state = Resource.objects.filter(category__States__contains=[state]).all()
+                print(records_with_state)
+                # Extract the crops from the filtered records
+                crops_list = [item for record in records_with_state 
+                              for item in record.category.get("Crops", [])]
+                return Response(list(set(crops_list)), status=200)
+            else:
+                with open(Constants.DATAHUB_CATEGORIES_FILE, "r") as json_obj:
+                    data = json.loads(json_obj.read())
+                    print(data)
+                    return Response(data.get("Crops", []), status=200)
+        except ValidationError as e:
+            return Response(e.detail, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            LOGGER.error(f"Error occured in ResourceMicrositeViewSet resources_filter ERROR: {e}", exc_info=True)
+            return Response(str(e), status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+

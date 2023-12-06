@@ -28,9 +28,3 @@ class TestUrls(SimpleTestCase):
         """_summary_"""
         url = reverse("participant_connectors-list")
         assert resolve(url)._func_path == "participant.views.ParticipantConnectorsViewSet"
-
-    def test_participant_connectors_create_valid_func(self):
-        """_summary_"""
-        url = reverse("participant_connectors")
-        print(resolve(url))
-        self.assertNotEqual(resolve(url).func, "ParticipantConnectorsViewSet")

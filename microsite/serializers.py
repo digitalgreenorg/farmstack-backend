@@ -1,6 +1,6 @@
 from core.utils import Constants
 from accounts.models import User
-from datahub.models import Organization, Datasets, DatahubDocuments, Policy
+from datahub.models import Organization, Datasets, DatahubDocuments, Policy, Resource, ResourceFile
 from rest_framework import serializers
 
 
@@ -84,3 +84,14 @@ class PolicySerializer(serializers.ModelSerializer):
     class Meta:
         model = Policy
         fields = Constants.ALL
+        
+class ContentFileSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ResourceFile
+        fields = ["id","file", "type", "url", "transcription", "updated_at"]
+
+class ContentSerializer(serializers.ModelSerializer):
+    resources = ContentFileSerializer(many=True, read_only=True)
+    class Meta:
+        model = Resource
+        fields = ["id", "title", "description", "category", "resources"]

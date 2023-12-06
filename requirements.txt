@@ -129,3 +129,10 @@ zipp==3.11.0
 ruamel.yaml
 testcontainers
 sqlalchemy
+secrets==1.0.2
+langchain
+openai
+python-dotenv
+pgvector
+psycopg
+tiktokens

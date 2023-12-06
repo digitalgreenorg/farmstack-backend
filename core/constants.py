@@ -172,6 +172,8 @@ class Constants:
     ORGANIZATION_NAME_ICONTAINS = 'organization__name__icontains'
     DASHBOARD = 'dashboard'
     NEW_DASHBOARD = 'new_dashboard'
+    RESOURCE_MANAGEMENT = "resource_management"
+    RESOURCE_FILE_MANAGEMENT = "resource_file_management"
 
 
 class NumericalConstants:

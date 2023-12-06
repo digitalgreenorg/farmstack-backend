@@ -64,5 +64,5 @@ def postgres_test_container():
     settings.DATABASES['default']['PASSWORD'] = db_password
 
     yield postgres_container
-
+    # time.sleep(200)
     postgres_container.stop()
