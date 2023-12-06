@@ -296,7 +296,9 @@ class Resource(TimeStampMixin):
 
 RESOURCE_URL_TYPE = (
     ("youtube", "youtube"),
-    ("pdf", "pdf")
+    ("pdf", "pdf"),
+    ("file", "file")
+
 )
 
 class ResourceFile(TimeStampMixin):
