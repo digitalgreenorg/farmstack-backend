@@ -11,7 +11,7 @@ from calendar import c
 from functools import reduce
 from pickle import TRUE
 from urllib.parse import unquote
-import json
+
 import django
 import pandas as pd
 from django.conf import settings
@@ -41,6 +41,7 @@ from psycopg2.extensions import ISOLATION_LEVEL_AUTOCOMMIT
 from python_http_client import exceptions
 from rest_framework import generics, pagination, status
 from rest_framework.decorators import action
+from rest_framework.exceptions import ValidationError
 from rest_framework.parsers import JSONParser, MultiPartParser
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
@@ -111,9 +112,11 @@ from utils.authentication_services import authenticate_user
 from utils.file_operations import check_file_name_length
 from utils.jwt_services import http_request_mutation
 
-from .models import Policy, UsagePolicy
+from .models import Policy, Resource, ResourceFile, UsagePolicy
 from .serializers import (
     PolicySerializer,
+    ResourceFileSerializer,
+    ResourceSerializer,
     UsagePolicyDetailSerializer,
     UsagePolicySerializer,
 )
@@ -2792,3 +2795,135 @@ class DatahubNewDashboard(GenericViewSet):
         except Exception as error:
             LOGGER.error(error, exc_info=True)
             return Response({}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+
+
+# @http_request_mutation
+class ResourceManagementViewSet(GenericViewSet):
+    """
+    Resource Management viewset.
+    """
+
+    queryset = Resource.objects.all()
+    serializer_class = ResourceSerializer
+    pagination_class = CustomPagination
+
+    @http_request_mutation
+    def create(self, request, *args, **kwargs):
+        try:
+            user_map = request.META.get("map_id")
+            #request.data._mutable = True
+            request.data["user_map"] = user_map
+
+            serializer = self.get_serializer(data=request.data)
+            serializer.is_valid(raise_exception=True)
+            serializer.save()
+
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        except ValidationError as e:
+            return Response(e.detail, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            LOGGER.error(e,exc_info=True)
+            return Response(str(e), status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    def update(self, request, *args, **kwargs):
+        try:
+            instance = self.get_object()
+            serializer = self.get_serializer(instance, data=request.data, partial=True)
+            serializer.is_valid(raise_exception=True)
+            serializer.save()
+            return Response(status=status.HTTP_200_OK)
+        except ValidationError as e:
+            return Response(e.detail, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            LOGGER.error(e)
+            return Response(str(e), status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    @http_request_mutation
+    def list(self, request, *args, **kwargs):
+        try:
+            user_map = request.META.get("map_id")
+            # import pdb; pdb.set_trace();
+            if request.GET.get("others", None):
+                queryset = Resource.objects.exclude(user_map=user_map)
+            else:
+                queryset = Resource.objects.filter(user_map=user_map)
+                # Created by me.
+
+            page = self.paginate_queryset(queryset)
+            serializer = self.get_serializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
+        except ValidationError as e:
+            return Response(e.detail, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            LOGGER.error(e)
+            return Response(str(e), status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    def destroy(self, request, *args, **kwargs):
+        resource = self.get_object()
+        resource.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+    def retrieve(self, request, *args, **kwargs):
+        resource = self.get_object()
+        serializer = self.get_serializer(resource)
+        # serializer.is_valid(raise_exception=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+    
+    @http_request_mutation
+    @action(detail=False, methods=["post"])
+    def resources_filter(self, request, *args, **kwargs):
+        try:
+            data =request.data
+            user_map = request.META.get("map_id")
+            categories = data.pop(Constants.CATEGORY, None)
+            others = data.pop(Constants.OTHERS, "")
+            filters = {key: value for key, value in data.items() if value}
+            query_set = self.get_queryset().filter(**filters).order_by("-updated_at")
+            if categories:
+                query_set = query_set.filter(
+                    reduce(
+                        operator.or_,
+                        (Q(category__contains=cat) for cat in categories),
+                    )
+                )
+            query_set = query_set.exclude(user_map=user_map) if others else query_set.filter(
+                user_map=user_map)
+            page = self.paginate_queryset(query_set)
+            serializer = self.get_serializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
+        except ValidationError as e:
+            return Response(e.detail, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            LOGGER.error(e)
+            return Response(str(e), status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+class ResourceFileManagementViewSet(GenericViewSet):
+    """
+    Resource File Management
+    """
+
+    queryset = ResourceFile.objects.all()
+    serializer_class = ResourceFileSerializer
+
+    @http_request_mutation
+    def create(self, request, *args, **kwargs):
+        try:
+            #request.data._mutable = True
+            #request.data["file_size"] = request.FILES.get("file").size
+            serializer = self.get_serializer(data=request.data, partial=True)
+            serializer.is_valid(raise_exception=True)
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        except ValidationError as e:
+            return Response(e.detail, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            LOGGER.error(e,exc_info=True)
+            return Response(str(e), status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    def destroy(self, request, *args, **kwargs):
+        instance = self.get_object()
+        instance.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)

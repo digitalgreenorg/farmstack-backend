@@ -117,10 +117,10 @@ DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.postgresql",
         "NAME": "postgres",
-        "USER": os.environ.get("POSTGRES_USER", "test"),
-        "PASSWORD": os.environ.get("POSTGRES_PASSWORD", "test"),
-        "HOST": os.environ.get("POSTGRES_HOST", "db"),
-        "PORT": os.environ.get("POSTGRES_PORT", "5432"),
+        "USER": os.environ.get("POSTGRES_USER", "postgres"),
+        "PASSWORD": os.environ.get("POSTGRES_PASSWORD", "$farmstack@!21"),
+        "HOST": os.environ.get("POSTGRES_HOST", "datahubethdev.farmstack.co"),
+        "PORT": os.environ.get("POSTGRES_PORT", "7000"),
         "OPTIONS": {
             "client_encoding": "UTF8",
         },
@@ -205,6 +205,7 @@ STANDARDISED_FILES_URL = os.path.join(PROTECTED_MEDIA_URL, "standardised/")
 
 RESOLUTIONS_ATTACHMENT_URL = os.path.join(SUPPORT_RESOLUTIONS, "resolutions/")
 SUPPORT_TICKET_FILES_URL = os.path.join(SUPPORT_TICKET_V2, "support/")
+RESOURCES_URL = "users/resources/"
 
 # os.makedirs(CONNECTOR_FILES_URL)
 

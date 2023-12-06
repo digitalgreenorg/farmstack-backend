@@ -1,0 +1,26 @@
+{
+    "States": [
+        "Bihar",
+        "Andhra pradesh",
+        "Tamil Nadu"
+    ],
+    "Crops": [
+        "Paddy",
+        "Wheat",
+        "Tomato",
+        "Coriander",
+        "Ladies Finger",
+        "French Bean",
+        "Moong ",
+        "Mustard",
+        "Onion",
+        "Pigeon Pea",
+        "Frame",
+        "Livestock",
+        "Brinjal",
+        "Chilli (मिर्च) 🌶️"
+    ],
+    "Soil": [
+        "red"
+    ]
+}
