@@ -997,6 +997,8 @@ class ResourceSerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         resource_files_data = validated_data.pop("uploaded_files")
         resource = Resource.objects.create(**validated_data)
+        if resource_files_data:
+            resource_files_data = json.loads(resource_files_data[0])
         for file_data in resource_files_data:
             # file_size = file_data.size
             ResourceFile.objects.create(resource=resource, **file_data)
