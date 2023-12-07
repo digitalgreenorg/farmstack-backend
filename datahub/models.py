@@ -322,29 +322,26 @@ from pgvector.django import VectorField
 # class ResourceVector(TimeStampMixin):
 #     resource_file = models.ForeignKey(ResourceFile, on_delete=models.CASCADE, related_name="resource_file")
 
-class LangchainPgCollection(models.Model):
-    name = models.UUIDField()
-    cmetadata = models.JSONField()
-    uuid = models.UUIDField(primary_key=True)
+# class LangchainPgCollection(models.Model):
+#     name = models.UUIDField()
+#     cmetadata = models.JSONField()
+#     uuid = models.UUIDField(primary_key=True)
 
-    class Meta:
-        db_table = 'langchain_pg_collection'
-
-
-class LangchainPgEmbedding(models.Model):
-    # resource_file = models.ForeignKey(ResourceFile, on_delete=models.CASCADE)
-    collection_id = models.UUIDField()
-    embedding = VectorField(1563)  # Assuming 'vector' is a custom PostgreSQL data type
-    document = models.TextField()
-    cmetadata = models.JSONField()
-    custom_id = models.CharField(max_length=255)
-    uuid = models.UUIDField(primary_key=True)
-
-    class Meta:
-        db_table = 'langchain_pg_embedding'
-
-    def __str__(self):
-        return f"LangchainPgEmbedding(uuid={self.uuid}, document={self.document})"
+#     class Meta:
+#         db_table = 'langchain_pg_collection'
 
 
+# class LangchainPgEmbedding(models.Model):
+#     # resource_file = models.ForeignKey(ResourceFile, on_delete=models.CASCADE)
+#     collection_id = models.UUIDField()
+#     embedding = VectorField(1563)  # Assuming 'vector' is a custom PostgreSQL data type
+#     document = models.TextField()
+#     cmetadata = models.JSONField()
+#     custom_id = models.CharField(max_length=255)
+#     uuid = models.UUIDField(primary_key=True)
 
+#     class Meta:
+#         db_table = 'langchain_pg_embedding'
+
+#     def __str__(self):
+#         return f"LangchainPgEmbedding(uuid={self.uuid}, document={self.document})"
