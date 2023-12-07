@@ -2911,7 +2911,7 @@ class ResourceFileManagementViewSet(GenericViewSet):
     @http_request_mutation
     def create(self, request, *args, **kwargs):
         try:
-            #request.data._mutable = True
+            request.data._mutable = True
             #request.data["file_size"] = request.FILES.get("file").size
             serializer = self.get_serializer(data=request.data, partial=True)
             serializer.is_valid(raise_exception=True)
