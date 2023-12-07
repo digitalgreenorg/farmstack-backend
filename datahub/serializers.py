@@ -1044,7 +1044,6 @@ class ResourceSerializer(serializers.ModelSerializer):
             resource_files_data = json.loads(resource_files_data[0])
         for file_data in resource_files_data:
             # file_size = file_data.size
-            import pdb; pdb.set_trace()
             ResourceFile.objects.create(resource=resource, **file_data)
                                         # url=file_data.get("url", ""),
                                         #  type=file_data.get("type", ""),
