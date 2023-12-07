@@ -317,7 +317,7 @@ class ResourceFile(TimeStampMixin):
 
     def __str__(self) -> str:
         return self.file.name
-from pgvector.django import VectorField
+# from pgvector.django import VectorField
 
 # class ResourceVector(TimeStampMixin):
 #     resource_file = models.ForeignKey(ResourceFile, on_delete=models.CASCADE, related_name="resource_file")
@@ -345,4 +345,3 @@ from pgvector.django import VectorField
 
 #     def __str__(self):
 #         return f"LangchainPgEmbedding(uuid={self.uuid}, document={self.document})"
-
