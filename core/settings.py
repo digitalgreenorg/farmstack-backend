@@ -205,6 +205,7 @@ STANDARDISED_FILES_URL = os.path.join(PROTECTED_MEDIA_URL, "standardised/")
 
 RESOLUTIONS_ATTACHMENT_URL = os.path.join(SUPPORT_RESOLUTIONS, "resolutions/")
 SUPPORT_TICKET_FILES_URL = os.path.join(SUPPORT_TICKET_V2, "support/")
+RESOURCES_URL = "users/resources/"
 
 # os.makedirs(CONNECTOR_FILES_URL)
 

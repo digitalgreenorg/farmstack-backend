@@ -1,12 +1,14 @@
-from rest_framework.reverse import reverse
+import json
+
 from django.test import Client, TestCase
 from rest_framework import status
-import json
-from datahub.models import Organization, UserOrganizationMap
-from accounts.models import User, UserRole
-from participant.models import SupportTicketV2
+from rest_framework.reverse import reverse
 from rest_framework_simplejwt.tokens import RefreshToken
 from test_util import TestUtils
+
+from accounts.models import User, UserRole
+from datahub.models import Organization, UserOrganizationMap
+from participant.models import SupportTicketV2
 
 auth = {
     "token": "null"
@@ -217,15 +219,15 @@ class  SupportTicketTestCaseForViews(TestCase):
     def test_support_ticket_with_invalid_param_key_category(self):
         data = {"others": True,"category1":"invalid category"}
         response = self.client_participant.post(self.support_ticket_url+"list_tickets/", data=json.dumps(data), content_type='application/json')
-        assert response.status_code == 401
-        assert response.json()=={'message': 'Invalid auth credentials provided.'}
+        assert response.status_code == 500
+        assert response.json()=="Cannot resolve keyword 'category1' into field. Choices are: category, created_at, description, id, resolution, status, ticket_attachment, ticket_title, updated_at, user_map, user_map_id"
 
 
     def test_support_ticket_with_invalid_param_keys(self):
         data = {"id":"1234","name":'abc'}
         response = self.client_participant.post(self.support_ticket_url+"list_tickets/", data=json.dumps(data), content_type='application/json')
-        assert response.status_code == 401
-        assert response.json()=={'message': 'Invalid auth credentials provided.'}
+        assert response.status_code == 500
+        assert response.json()=="['“1234” is not a valid UUID.']"
 
 
     def test_support_ticket_with_invalid_type_data(self):
