@@ -42,11 +42,6 @@ from utils.validators import (
 )
 
 from .models import Policy, Resource, ResourceFile, UsagePolicy
-<<<<<<< HEAD
-from django.core.validators import URLValidator
-from django.core.exceptions import ValidationError
-=======
->>>>>>> 67a32ee (serializers updated)
 
 LOGGER = logging.getLogger(__name__)
 
