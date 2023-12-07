@@ -7,6 +7,7 @@ import shutil
 import plazy
 from django.conf import settings
 from django.core.exceptions import ObjectDoesNotExist, ValidationError
+from django.core.validators import URLValidator
 from django.utils.translation import gettext as _
 from rest_framework import serializers, status
 
@@ -40,8 +41,7 @@ from utils.validators import (
 )
 
 from .models import Policy, Resource, ResourceFile, UsagePolicy
-from django.core.validators import URLValidator
-from django.core.exceptions import ValidationError
+
 LOGGER = logging.getLogger(__name__)
 
 
@@ -997,6 +997,8 @@ class ResourceSerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         resource_files_data = validated_data.pop("uploaded_files")
         resource = Resource.objects.create(**validated_data)
+        if resource_files_data:
+            resource_files_data = json.loads(resource_files_data[0])
         for file_data in resource_files_data:
             # file_size = file_data.size
             ResourceFile.objects.create(resource=resource, **file_data)
