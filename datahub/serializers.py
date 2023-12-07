@@ -7,6 +7,7 @@ import shutil
 import plazy
 from django.conf import settings
 from django.core.exceptions import ObjectDoesNotExist, ValidationError
+from django.core.validators import URLValidator
 from django.utils.translation import gettext as _
 from rest_framework import serializers, status
 
@@ -42,6 +43,7 @@ from utils.validators import (
 from .models import Policy, Resource, ResourceFile, UsagePolicy
 from django.core.validators import URLValidator
 from django.core.exceptions import ValidationError
+
 LOGGER = logging.getLogger(__name__)
 
 

@@ -345,3 +345,4 @@ from pgvector.django import VectorField
 
 #     def __str__(self):
 #         return f"LangchainPgEmbedding(uuid={self.uuid}, document={self.document})"
+
