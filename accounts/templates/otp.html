@@ -284,7 +284,11 @@
               <table class="logo">
                 <tr>
                   <td>
-                    <img src="https://res.cloudinary.com/dhlck4tsv/image/upload/v1694079862/Farmstack/xbmx25tmpol9srkerdmj.png" alt="Powered by FarmStack" />
+                    {% if logo %}
+                    <img src="{{ logo }}" alt="Logo" width="100" height="100" />
+                    {% else %}
+                    <p>DGT</p>
+                    {% endif %}
                   </td>
                 </tr>
                 <tr>

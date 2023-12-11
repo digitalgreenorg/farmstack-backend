@@ -28,6 +28,7 @@ from core.constants import Constants
 from core.utils import Utils
 from datahub.models import UserOrganizationMap
 from utils import login_helper, string_functions
+from utils.admin_utils import get_organization_info
 from utils.jwt_services import http_request_mutation
 from core.serializer_validation import OrganizationSerializerValidator,UserCreateSerializerValidator
 LOGGER = logging.getLogger(__name__)
@@ -193,7 +194,8 @@ class LoginViewset(GenericViewSet):
             gen_key = login_helper.generateKey()
             otp = gen_key.returnValue().get("OTP")
             full_name = string_functions.get_full_name(user.first_name, user.last_name)
-            data = {"otp": otp, "participant_admin_name": full_name}
+            logo = get_organization_info()
+            data = {"otp": otp, "participant_admin_name": full_name, "logo": logo }
 
             email_render = render(request, "otp.html", data)
             mail_body = email_render.content.decode("utf-8")
