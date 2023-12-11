@@ -3169,9 +3169,9 @@ class ResourceManagementViewSet(GenericViewSet):
             user_map = request.META.get("map_id")
             # import pdb; pdb.set_trace();
             if request.GET.get("others", None):
-                queryset = Resource.objects.exclude(user_map=user_map)
+                queryset = Resource.objects.exclude(user_map=user_map).order_by("-updated_at")
             else:
-                queryset = Resource.objects.filter(user_map=user_map)
+                queryset = Resource.objects.filter(user_map=user_map).order_by("-updated_at")
                 # Created by me.
 
             page = self.paginate_queryset(queryset)
