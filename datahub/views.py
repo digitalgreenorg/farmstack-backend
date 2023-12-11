@@ -3136,10 +3136,11 @@ class ResourceManagementViewSet(GenericViewSet):
     def create(self, request, *args, **kwargs):
         try:
             user_map = request.META.get("map_id")
-            request.data._mutable = True
-            request.data["user_map"] = user_map
+            # request.data._mutable = True
+            data = request.data.copy()
+            data["user_map"] = user_map
 
-            serializer = self.get_serializer(data=request.data)
+            serializer = self.get_serializer(data=data)
             serializer.is_valid(raise_exception=True)
             serializer.save()
 
