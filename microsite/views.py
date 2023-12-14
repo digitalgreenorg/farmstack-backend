@@ -1141,6 +1141,36 @@ class ResourceMicrositeViewSet(GenericViewSet):
 
 
 
+# Created a new class to return data from kde, agnext and krishitantra data stored in json format in utils folder
+class AdexAPIDatasetViewSet(GenericViewSet):
+
+    permission_classes = []
+    
+    def list(self, request, *args, **kwargs):
+        try:
+            # Getting query paarmas
+            data_list = []
+            data_dict = {}
+            if request.GET.get('krishitantra') == 'True' or request.GET.get('krishitantra') =='true':
+                data_list.append('krishitantra_data')
+            if request.GET.get('agnext') == 'True' or request.GET.get('agnext') == 'true':
+                data_list.append('agnext_data')
+            if request.GET.get('kde') == 'True' or request.GET.get('kde') == 'true':
+                data_list.append('kde_data')
+            if data_list == []:
+                data_list = ['krishitantra_data','agnext_data','kde_data']
+            for datasets in data_list:
+                with open(f"./utils/{datasets}.json", 'r') as file:
+                    json_data = json.loads(file.read())
+                data_dict[datasets] = []
+                for value in json_data.values():
+                    data_dict[datasets].append(value)
+            return Response(data_dict, status=200)
+        except Exception as e:
+            LOGGER.error(f"Error occured in data retreival ERROR: {e}", exc_info=True)
+            return Response(str(e), status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
 class MyModelListCreateView(generics.ListCreateAPIView):
     permission_classes = []
     queryset = FeedBack.objects.all()
