@@ -396,3 +396,5 @@ if not os.path.exists(TEMP_FILE_PATH):
 
 if not os.path.exists("logs"):
     os.makedirs("logs")  # create the logs directory
+
+SAGUBAGU_API_KEY = os.environ.get("SAGUBAGU_API_KEY",'')
