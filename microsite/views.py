@@ -1148,6 +1148,9 @@ class AdexAPIDatasetViewSet(GenericViewSet):
     
     def list(self, request, *args, **kwargs):
         try:
+            # Checking the auth params form headers
+            if request.headers.get('x-api-key', '') == '' or request.headers.get('x-api-key', '') != "wexUn97Amow6NE+acr0kOP":
+                return Response({"message":"Invalid auth credentials provided."},status=status.HTTP_401_UNAUTHORIZED)
             # Getting query paarmas
             data_list = []
             data_dict = {}
