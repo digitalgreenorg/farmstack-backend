@@ -961,7 +961,7 @@ class ResourceSerializer(serializers.ModelSerializer):
     class OrganizationRetriveSerializer(serializers.ModelSerializer):
         class Meta:
             model = Organization
-            fields = ["id", "org_email", "name", "logo"]
+            fields = ["id", "org_email", "name", "logo", "address"]
 
     class UserSerializer(serializers.ModelSerializer):
         class Meta:
