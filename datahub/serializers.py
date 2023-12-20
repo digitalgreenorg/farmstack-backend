@@ -11,7 +11,7 @@ from django.core.validators import URLValidator
 from django.db.models import Count, Q
 from django.utils.translation import gettext as _
 from rest_framework import serializers, status
-
+from django.db.models import Count
 from accounts import models
 from accounts.models import User, UserRole
 from accounts.serializers import (
@@ -962,7 +962,7 @@ class ResourceSerializer(serializers.ModelSerializer):
     class OrganizationRetriveSerializer(serializers.ModelSerializer):
         class Meta:
             model = Organization
-            fields = ["id", "org_email", "name"]
+            fields = ["id", "org_email", "name", "logo", "address"]
 
     class UserSerializer(serializers.ModelSerializer):
         class Meta:
