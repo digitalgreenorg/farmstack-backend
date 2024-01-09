@@ -3168,21 +3168,25 @@ class ResourceManagementViewSet(GenericViewSet):
     def update(self, request, *args, **kwargs):
         try:
             instance = self.get_object()
-            data = request.data
+            data = request.data.copy()
             sub_categories_map = data.pop("sub_categories_map")
             serializer = self.get_serializer(instance, data=data, partial=True)
             serializer.is_valid(raise_exception=True)
-            DatasetSubCategoryMap.objects.filter(id=serializer.id).delete()
             serializer.save()
-            dataset_sub_cat_instances= [
-            DatasetSubCategoryMap(resource=serializer, sub_category=SubCategory.objects.get(id=sub_cat)
+            resource_id=serializer.data.get("id")
+            ResourceSubCategoryMap.objects.filter(resource=instance).delete()
+            
+            sub_categories_map = json.loads(sub_categories_map[0]) if sub_categories_map else []
+            resource_sub_cat_instances= [
+                ResourceSubCategoryMap(resource=instance, sub_category=SubCategory.objects.get(id=sub_cat)
                                        ) for sub_cat in sub_categories_map]
-            DatasetSubCategoryMap.objects.bulk_create(dataset_sub_cat_instances)
-            return Response(status=status.HTTP_200_OK)
+            ResourceSubCategoryMap.objects.bulk_create(resource_sub_cat_instances)
+
+            return Response(serializer.data, status=status.HTTP_200_OK)
         except ValidationError as e:
             return Response(e.detail, status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
-            LOGGER.error(e)
+            LOGGER.error(e, exc_info=True)
             return Response(str(e), status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     @http_request_mutation

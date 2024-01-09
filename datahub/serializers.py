@@ -1103,7 +1103,7 @@ class ResourceSerializer(serializers.ModelSerializer):
                                 resource_sub_category_map__resource=instance.id),
                         ), 
         'subcategory_category__resource_sub_category_map'
-        ).filter(subcategory_category__resource_sub_category_map__resource=instance.id).all()
+        ).filter(subcategory_category__resource_sub_category_map__resource=instance.id).distinct().all()
         serializer = CategorySerializer(category_and_sub_category, many=True)
         return serializer.data
     def get_content_files_count(self, resource):
