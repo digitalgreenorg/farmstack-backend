@@ -1004,18 +1004,18 @@ class DatahubDatasetFileDashboardFilterSerializer(serializers.Serializer):
 class SubCategorySerializer(serializers.ModelSerializer):
     class Meta:
         model = SubCategory
-        fields = "__all__"
+        fields = ["id", "name", "category"]
     
 class CategorySerializer(serializers.ModelSerializer):
     subcategories =  SubCategorySerializer(many=True,
-        read_only=True
+        read_only=True,  source="subcategory_category"
     )
     class Meta:
         model = Category
-        fields = "__all__"
+        fields = ["id", "name", "subcategories"]
         
 class ResourceSubCategoryMapSerializer(serializers.ModelSerializer):
-    sub_categories =  CategorySerializer(many=True, read_only=True)
+    sub_categories =  CategorySerializer(many=True, read_only=True, source="subcategory_category")
     class Meta:
         model = ResourceSubCategoryMap
         fields = "__all__"
