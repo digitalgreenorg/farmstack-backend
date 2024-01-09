@@ -43,7 +43,7 @@ from utils.validators import (
     validate_image_type,
 )
 
-from .models import Policy, UsagePolicy
+from .models import Category, Policy, ResourceSubCategoryMap, SubCategory, UsagePolicy
 
 LOGGER = logging.getLogger(__name__)
 
@@ -1000,6 +1000,26 @@ class DatahubDatasetFileDashboardFilterSerializer(serializers.Serializer):
 
 
 
+
+class SubCategorySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = SubCategory
+        fields = "__all__"
+    
+class CategorySerializer(serializers.ModelSerializer):
+    subcategories =  SubCategorySerializer(many=True,
+        read_only=True
+    )
+    class Meta:
+        model = Category
+        fields = "__all__"
+        
+class ResourceSubCategoryMapSerializer(serializers.ModelSerializer):
+    sub_categories =  CategorySerializer(many=True, read_only=True)
+    class Meta:
+        model = ResourceSubCategoryMap
+        fields = "__all__"
+
 class ResourceSerializer(serializers.ModelSerializer):
     class OrganizationRetriveSerializer(serializers.ModelSerializer):
         class Meta:
@@ -1010,7 +1030,7 @@ class ResourceSerializer(serializers.ModelSerializer):
         class Meta:
             model = User
             fields = ["id", "first_name", "last_name", "email", "role", "on_boarded_by"]
-
+    categories = ResourceSubCategoryMapSerializer(many=True, read_only=True)
     resources = ResourceFileSerializer(many=True, read_only=True)
     uploaded_files = serializers.ListField(child=serializers.JSONField(), write_only=True)
     organization = OrganizationRetriveSerializer(
@@ -1133,4 +1153,5 @@ class ParticipantCostewardSerializer(serializers.ModelSerializer):
             .all()
             .count()
         )
+  
 
