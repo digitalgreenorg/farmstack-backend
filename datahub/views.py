@@ -1864,9 +1864,10 @@ class DatasetV2ViewSet(GenericViewSet):
                 },
             )
             serializer.is_valid(raise_exception=True)
-            ResourceSubCategoryMap.objects.filter(id=serializer.id).delete()
+            ResourceSubCategoryMap.objects.filter(dataset=datasetv2).delete()
 
             serializer.save()
+            
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         except ValidationError as e:
             return Response(e.detail, status=status.HTTP_400_BAD_REQUEST)
