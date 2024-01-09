@@ -1579,7 +1579,7 @@ class DatasetV2ViewSet(GenericViewSet):
     """
 
     serializer_class = DatasetV2Serializer
-    queryset = DatasetV2.objects.all()
+    queryset = DatasetV2.objects.prefetch_related('dataset_cat_map',  'dataset_cat_map__sub_category', 'dataset_cat_map__sub_category__category').all()
     pagination_class = CustomPagination
 
     @action(detail=False, methods=["post"])
@@ -1864,6 +1864,8 @@ class DatasetV2ViewSet(GenericViewSet):
                 },
             )
             serializer.is_valid(raise_exception=True)
+            ResourceSubCategoryMap.objects.filter(id=serializer.id).delete()
+
             serializer.save()
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         except ValidationError as e:
@@ -3138,11 +3140,12 @@ class ResourceManagementViewSet(GenericViewSet):
     Resource Management viewset.
     """
 
-    queryset = Resource.objects.all()
+    queryset = Resource.objects.prefetch_related().all()
     serializer_class = ResourceSerializer
     pagination_class = CustomPagination
 
     @http_request_mutation
+    @transaction.atomic
     def create(self, request, *args, **kwargs):
         try:
             user_map = request.META.get("map_id")
@@ -3161,12 +3164,20 @@ class ResourceManagementViewSet(GenericViewSet):
             LOGGER.error(e,exc_info=True)
             return Response(str(e), status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
+    @transaction.atomic
     def update(self, request, *args, **kwargs):
         try:
             instance = self.get_object()
-            serializer = self.get_serializer(instance, data=request.data, partial=True)
+            data = request.data
+            sub_categories_map = data.pop("sub_categories_map")
+            serializer = self.get_serializer(instance, data=data, partial=True)
             serializer.is_valid(raise_exception=True)
+            DatasetSubCategoryMap.objects.filter(id=serializer.id).delete()
             serializer.save()
+            dataset_sub_cat_instances= [
+            DatasetSubCategoryMap(resource=serializer, sub_category=SubCategory.objects.get(id=sub_cat)
+                                       ) for sub_cat in sub_categories_map]
+            DatasetSubCategoryMap.objects.bulk_create(dataset_sub_cat_instances)
             return Response(status=status.HTTP_200_OK)
         except ValidationError as e:
             return Response(e.detail, status=status.HTTP_400_BAD_REQUEST)
