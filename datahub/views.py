@@ -3263,11 +3263,12 @@ class ResourceFileManagementViewSet(GenericViewSet):
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 class CategoryViewSet(viewsets.ModelViewSet):
-    queryset = Category.objects.all()
+    queryset = Category.objects.prefetch_related("subcategory_category").all()
     serializer_class = CategorySerializer
     permission_classes=[]
 
-    def list(self, request):
+    @action(detail=False, methods=["get"])
+    def categories_and_sub_categories(self, request):
         categories_with_subcategories = {}
         # Retrieve all categories and their related subcategories
         categories = Category.objects.all()
