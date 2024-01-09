@@ -47,7 +47,7 @@ from jsonschema import ValidationError
 from psycopg2 import connect
 from psycopg2.extensions import ISOLATION_LEVEL_AUTOCOMMIT
 from python_http_client import exceptions
-from rest_framework import generics, pagination, status
+from rest_framework import generics, pagination, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.exceptions import ValidationError
 from rest_framework.parsers import JSONParser, MultiPartParser
@@ -136,12 +136,22 @@ from utils.file_operations import (
 )
 from utils.jwt_services import http_request_mutation
 
-from .models import Policy, ResourceFile, UsagePolicy
+from .models import (
+    Category,
+    DatasetSubCategoryMap,
+    Policy,
+    ResourceFile,
+    ResourceSubCategoryMap,
+    SubCategory,
+    UsagePolicy,
+)
 from .serializers import (
     APIBuilderSerializer,
+    CategorySerializer,
     ParticipantCostewardSerializer,
     PolicySerializer,
     ResourceFileSerializer,
+    SubCategorySerializer,
     UsagePolicyDetailSerializer,
     UsagePolicySerializer,
 )
@@ -3251,3 +3261,84 @@ class ResourceFileManagementViewSet(GenericViewSet):
         instance = self.get_object()
         instance.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+class CategoryViewSet(viewsets.ModelViewSet):
+    queryset = Category.objects.all()
+    serializer_class = CategorySerializer
+    permission_classes=[]
+
+    def list(self, request):
+        categories_with_subcategories = {}
+        # Retrieve all categories and their related subcategories
+        categories = Category.objects.all()
+
+        for category in categories:
+            # Retrieve the names of all subcategories related to this category
+            subcategory_names = [sub_category.name for sub_category in SubCategory.objects.filter(category=category).all()]
+            # Assign the list of subcategory names to the category name in the dictionary
+            categories_with_subcategories[category.name] = subcategory_names
+
+        return Response(categories_with_subcategories, 200)
+
+class SubCategoryViewSet(viewsets.ModelViewSet):
+    queryset = SubCategory.objects.all()
+    serializer_class = SubCategorySerializer
+    permission_classes=[]
+
+    @action(detail=False, methods=["post"])
+    def dump_categories(self, request):
+        data=request.data
+        for category_name, sub_categories in data.items():
+            category, created = Category.objects.get_or_create(name=category_name)
+            print(category)
+            for sub_category_name in sub_categories:
+                SubCategory.objects.get_or_create(category=category, name=sub_category_name)
+        return Response("Data dumped")
+    
+    @action(detail=False, methods=["get"])
+    @transaction.atomic
+    def dump_resource_categories_map(self, request):
+    # Parse the category JSON field
+        resources = Resource.objects.all()
+        for resource in resources:
+            categories = resource.category
+            for category_name, sub_category_names in categories.items():
+                category = Category.objects.filter(name=category_name).first()
+                for sub_category_name in sub_category_names:
+                    # Find the corresponding SubCategory instance
+                    try:
+                        sub_category = SubCategory.objects.filter(name=sub_category_name, category=category).first()
+                        print(sub_category)
+                        print(resource)
+                        if sub_category:
+                            ResourceSubCategoryMap.objects.get_or_create(
+                                sub_category=sub_category,
+                                resource=resource
+                            )
+                    except SubCategory.DoesNotExist:
+                        print(f"SubCategory '{sub_category_name}' does not exist.")
+        return Response("Data dumped")
+
+    @action(detail=False, methods=["get"])
+    @transaction.atomic
+    def dump_dataset_map(self, request):
+    # Parse the category JSON field
+        resources = DatasetV2.objects.all()
+        for resource in resources:
+            categories = resource.category
+            for category_name, sub_category_names in categories.items():
+                category = Category.objects.filter(name=category_name).first()
+                for sub_category_name in sub_category_names:
+                    # Find the corresponding SubCategory instance
+                    try:
+                        sub_category = SubCategory.objects.filter(name=sub_category_name, category=category).first()
+                        print(sub_category)
+                        print(resource)
+                        if sub_category:
+                            DatasetSubCategoryMap.objects.get_or_create(
+                                sub_category=sub_category,
+                                dataset=resource
+                            )
+                    except SubCategory.DoesNotExist:
+                        print(f"SubCategory '{sub_category_name}' does not exist.")
+        return Response("Data dumped")

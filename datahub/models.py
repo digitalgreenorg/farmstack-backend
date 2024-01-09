@@ -326,3 +326,25 @@ class ResourceFile(TimeStampMixin):
     
 class DatasetV2FileReload(TimeStampMixin):
     dataset_file = models.ForeignKey(DatasetV2File, on_delete=models.CASCADE, related_name="dataset_file")
+
+class Category(TimeStampMixin):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    name = models.CharField(max_length=50)
+    description = models.CharField(max_length=500)
+
+class SubCategory(TimeStampMixin):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    name = models.CharField(max_length=50)
+    category = models.ForeignKey(Category, on_delete=models.CASCADE, related_name="subcategory_category")
+
+class ResourceSubCategoryMap(TimeStampMixin):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    sub_category = models.ForeignKey(SubCategory, on_delete=models.CASCADE, related_name="resource_sub_category_map")
+    resource = models.ForeignKey(Resource, on_delete=models.CASCADE, related_name="resource_map")
+
+
+class DatasetSubCategoryMap(TimeStampMixin):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    sub_category = models.ForeignKey(SubCategory, on_delete=models.CASCADE, related_name="dataset_sub_category_map")
+    dataset = models.ForeignKey(DatasetV2, on_delete=models.CASCADE, related_name="dataset_map")
+
