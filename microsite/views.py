@@ -18,7 +18,7 @@ from django.db.models import Count, Q
 from django.http import FileResponse, HttpResponse, HttpResponseNotFound, JsonResponse
 from django.shortcuts import get_object_or_404, render
 from python_http_client import exceptions
-from rest_framework import generics, permissions, status, viewsets
+from rest_framework import generics, mixins, permissions, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.exceptions import ValidationError
 from rest_framework.response import Response
@@ -38,6 +38,7 @@ from core.utils import (
     read_contents_from_csv_or_xlsx_file,
 )
 from datahub.models import (
+    Category,
     DatahubDocuments,
     Datasets,
     DatasetV2,
@@ -50,6 +51,7 @@ from datahub.models import (
     UserOrganizationMap,
 )
 from datahub.serializers import (
+    CategorySerializer,
     DatahubDatasetsV2Serializer,
     DatasetV2Serializer,
     OrganizationSerializer,
@@ -1188,3 +1190,18 @@ class MyModelDetailView(generics.RetrieveUpdateDestroyAPIView):
     permission_classes = []
     queryset = FeedBack.objects.all()
     serializer_class = FeedBackSerializer
+
+class CategoryViewSet(GenericViewSet):
+    queryset = Category.objects.prefetch_related("subcategory_category").all()
+    serializer_class = CategorySerializer
+    permission_classes=[]
+ 
+    def list(self, request, *args, **kwargs):
+        queryset = self.get_queryset()
+        serializer = self.get_serializer(queryset, many=True)
+        return Response(serializer.data)
+
+    def retrieve(self, request, *args, **kwargs):
+        instance = self.get_object()
+        serializer = self.get_serializer(instance)
+        return Response(serializer.data)

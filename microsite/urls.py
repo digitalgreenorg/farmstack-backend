@@ -4,6 +4,7 @@ from rest_framework.routers import DefaultRouter
 from microsite.views import (
     AdexAPIDatasetViewSet,
     APIResponseViewSet,
+    CategoryViewSet,
     ConnectorMicrositeViewSet,
     ContactFormViewSet,
     DatahubThemeMicrositeViewSet,
@@ -33,6 +34,7 @@ router.register(r"datasets_file", APIResponseViewSet, basename="dataset_json_res
 router.register(r"connectors", ConnectorMicrositeViewSet, basename="microsite_connectors")
 router.register(r"resources", ResourceMicrositeViewSet, basename="microsite_resource")
 router.register(r"sagubagu", AdexAPIDatasetViewSet, basename='sagubagu')
+router.register(r"categories", CategoryViewSet, basename='categories')
 
 urlpatterns = [
     path("", include(router.urls)),

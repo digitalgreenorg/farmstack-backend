@@ -3297,7 +3297,6 @@ class ResourceFileManagementViewSet(GenericViewSet):
 class CategoryViewSet(viewsets.ModelViewSet):
     queryset = Category.objects.prefetch_related("subcategory_category").all()
     serializer_class = CategorySerializer
-    permission_classes=[]
 
     @action(detail=False, methods=["get"])
     def categories_and_sub_categories(self, request):
