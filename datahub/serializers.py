@@ -891,7 +891,7 @@ class DatahubDatasetsV2Serializer(serializers.ModelSerializer):
         required=False,
         source="user_map.organization",
     )
-
+    categories= serializers.SerializerMethodField()
     organization = DatahubDatasetsSerializer.OrganizationDatsetsListRetriveSerializer(
         required=False, allow_null=True, read_only=True, source="user_map.organization"
     )
@@ -903,7 +903,18 @@ class DatahubDatasetsV2Serializer(serializers.ModelSerializer):
         model = DatasetV2
         fields = Constants.ALL
 
-
+    def get_categories(self, instance):
+        category_and_sub_category = Category.objects.prefetch_related(
+              Prefetch("subcategory_category",
+                        queryset=SubCategory.objects.prefetch_related(
+                            "dataset_sub_category_map__dataset").filter(
+                                dataset_sub_category_map__dataset_id=instance.id),
+                        ), 
+        'subcategory_category__dataset_sub_category_map'
+        ).filter(subcategory_category__dataset_sub_category_map__dataset_id=instance.id).distinct().all()
+        serializer = CategorySerializer(category_and_sub_category, many=True)
+        return serializer.data
+    
 class micrositeOrganizationSerializer(serializers.ModelSerializer):
     organization_id = serializers.PrimaryKeyRelatedField(
         queryset=Organization.objects.all(),

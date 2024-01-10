@@ -1093,7 +1093,7 @@ class ResourceMicrositeViewSet(GenericViewSet):
             categories = data.pop(Constants.CATEGORY, None)
             filters = {key: value for key, value in data.items() if value}
             file_filters = data.get("resources__updated_at__gt", None)
-            query_set = Resource.objects.filter(**filters).prefetch_related('resources')
+            query_set = Resource.objects.filter(**filters).prefetch_related('resources', "resource_cat_map")
             if categories:
                 query_set = query_set.filter(
                     reduce(
