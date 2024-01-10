@@ -166,7 +166,10 @@ class DatasetsMicrositeViewSet(GenericViewSet):
     """Datasets viewset for microsite"""
 
     serializer_class = DatasetV2Serializer
-    queryset = DatasetV2.objects.all()
+    queryset = DatasetV2.objects.prefetch_related(
+                    'dataset_cat_map',
+                    'dataset_cat_map__sub_category',
+                    'dataset_cat_map__sub_category__category').all()
     pagination_class = CustomPagination
     permission_classes = [permissions.AllowAny]
 
@@ -277,32 +280,32 @@ class DatasetsMicrositeViewSet(GenericViewSet):
         else:
             filters = {Constants.USER_MAP_ORGANIZATION: org_id} if org_id else {}
         try:
-            if categories is not None:
-                data = (
+            # if categories is not None:
+            #     data = (
+            #         DatasetV2.objects.select_related(
+            #             Constants.USER_MAP,
+            #             Constants.USER_MAP_USER,
+            #             Constants.USER_MAP_ORGANIZATION,
+            #         )
+            #         .filter(is_temp=False, **data, **filters)
+            #         .filter(
+            #             reduce(
+            #                 operator.or_,
+            #                 (Q(category__contains=cat) for cat in categories),
+            #             )
+            #         )
+            #         .exclude(**exclude)
+            #         .order_by(Constants.UPDATED_AT)
+            #         .reverse()
+            #         .all()
+            #     )
+            # else:
+            data = (
                     DatasetV2.objects.select_related(
                         Constants.USER_MAP,
                         Constants.USER_MAP_USER,
                         Constants.USER_MAP_ORGANIZATION,
-                    )
-                    .filter(is_temp=False, **data, **filters)
-                    .filter(
-                        reduce(
-                            operator.or_,
-                            (Q(category__contains=cat) for cat in categories),
-                        )
-                    )
-                    .exclude(**exclude)
-                    .order_by(Constants.UPDATED_AT)
-                    .reverse()
-                    .all()
-                )
-            else:
-                data = (
-                    DatasetV2.objects.select_related(
-                        Constants.USER_MAP,
-                        Constants.USER_MAP_USER,
-                        Constants.USER_MAP_ORGANIZATION,
-                    )
+                    ).prefetch_related('dataset_cat_map')
                     .filter(is_temp=False, **data, **filters)
                     .exclude(**exclude)
                     .order_by(Constants.UPDATED_AT)

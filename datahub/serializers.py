@@ -678,11 +678,10 @@ class DatasetV2Serializer(serializers.ModelSerializer):
               Prefetch("subcategory_category",
                         queryset=SubCategory.objects.prefetch_related(
                             "dataset_sub_category_map__dataset").filter(
-                                dataset_sub_category_map__dataset=instance.id),
+                                dataset_sub_category_map__dataset_id=instance.id),
                         ), 
         'subcategory_category__dataset_sub_category_map'
-        ).filter(subcategory_category__dataset_sub_category_map__dataset=instance.id).all()
-        print(str(category_and_sub_category.query))
+        ).filter(subcategory_category__dataset_sub_category_map__dataset_id=instance.id).distinct().all()
         serializer = CategorySerializer(category_and_sub_category, many=True)
         return serializer.data
     
@@ -1121,7 +1120,6 @@ class ResourceSerializer(serializers.ModelSerializer):
             resource_sub_cat_instances= [
                 ResourceSubCategoryMap(resource=resource, sub_category=SubCategory.objects.get(id=sub_cat)
                                        ) for sub_cat in sub_categories_map]
-            print(resource_sub_cat_instances)
 
             ResourceSubCategoryMap.objects.bulk_create(resource_sub_cat_instances)
 

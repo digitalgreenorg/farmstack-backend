@@ -1850,8 +1850,9 @@ class DatasetV2ViewSet(GenericViewSet):
         """
         # setattr(request.data, "_mutable", True)
         try:
-            data = request.data
+            data = request.data.copy()
             to_delete = ast.literal_eval(data.get("deleted", "[]"))
+            sub_categories_map = data.pop("sub_categories_map")
             self.dataset_files(data, to_delete)
             datasetv2 = self.get_object()
             serializer = self.get_serializer(
@@ -1864,10 +1865,15 @@ class DatasetV2ViewSet(GenericViewSet):
                 },
             )
             serializer.is_valid(raise_exception=True)
-            ResourceSubCategoryMap.objects.filter(dataset=datasetv2).delete()
-
+            a = DatasetSubCategoryMap.objects.filter(dataset_id=datasetv2).delete()
             serializer.save()
-            
+            sub_categories_map = json.loads(sub_categories_map[0]) if c else []
+            dataset_sub_cat_instances= [
+                DatasetSubCategoryMap(dataset=datasetv2, sub_category=SubCategory.objects.get(id=sub_cat)
+                                       ) for sub_cat in sub_categories_map]
+
+            DatasetSubCategoryMap.objects.bulk_create(dataset_sub_cat_instances)
+
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         except ValidationError as e:
             return Response(e.detail, status=status.HTTP_400_BAD_REQUEST)
@@ -1973,7 +1979,8 @@ class DatasetV2ViewSet(GenericViewSet):
                     Constants.USER_MAP,
                     Constants.USER_MAP_USER,
                     Constants.USER_MAP_ORGANIZATION,
-                )
+                ).prefetch_related(
+                    'dataset_cat_map')
                 .filter(**data, **filters)
                 .exclude(is_temp=True)
                 .exclude(**exclude_filters)
@@ -1981,13 +1988,13 @@ class DatasetV2ViewSet(GenericViewSet):
                 .reverse()
                 .all()
             )
-            if categories is not None:
-                data = data.filter(
-                    reduce(
-                        operator.or_,
-                        (Q(category__contains=cat) for cat in categories),
-                    )
-                )
+            # if categories is not None:
+            #     data = data.filter(
+            #         reduce(
+            #             operator.or_,
+            #             (Q(category__contains=cat) for cat in categories),
+            #         )
+            #     )
             if on_boarded_by:
                 data = (
                     data.filter(user_map__user__on_boarded_by=user_id)
@@ -2408,11 +2415,20 @@ class DatasetV2View(GenericViewSet):
         # setattr(request.data, "_mutable", True)
         try:
             instance = self.get_object()
-            data = request.data
+            data = request.data.copy()
+            sub_categories_map = data.pop("sub_categories_map")
             data["is_temp"] = False
             serializer = self.get_serializer(instance, data=data, partial=True)
             serializer.is_valid(raise_exception=True)
+            DatasetSubCategoryMap.objects.filter(dataset_id=instance).delete()
             serializer.save()
+            # sub_categories_map = json.loads(sub_categories_map[0]) if c else []
+            dataset_sub_cat_instances= [
+                DatasetSubCategoryMap(dataset=instance, sub_category=SubCategory.objects.get(id=sub_cat)
+                                       ) for sub_cat in sub_categories_map]
+
+            DatasetSubCategoryMap.objects.bulk_create(dataset_sub_cat_instances)
+
             return Response(serializer.data, status=status.HTTP_200_OK)
         except ValidationError as e:
             return Response(e.detail, status=status.HTTP_400_BAD_REQUEST)
