@@ -1,7 +1,9 @@
 import json
 import os
+from collections import defaultdict
 
 import pandas as pd
+from django.db.models import Count, Prefetch, Q
 from rest_framework import serializers
 
 from accounts.models import User
@@ -10,6 +12,7 @@ from connectors.serializers import OrganizationRetriveSerializer
 from core import settings
 from core.utils import Constants
 from datahub.models import (
+    Category,
     DatahubDocuments,
     Datasets,
     DatasetV2,
@@ -17,9 +20,11 @@ from datahub.models import (
     Policy,
     Resource,
     ResourceFile,
+    ResourceSubCategoryMap,
+    SubCategory,
     UserOrganizationMap,
 )
-from datahub.serializers import DatasetV2FileSerializer
+from datahub.serializers import CategorySerializer, DatasetV2FileSerializer
 
 from .models import FeedBack
 
@@ -204,12 +209,49 @@ class ContentFileSerializer(serializers.ModelSerializer):
         model = ResourceFile
         fields = ["id", "type", "url", "transcription", "updated_at"]
 
+class CategorySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Category
+        fields = ["name"]
+
+class SubCategorySerializer(serializers.ModelSerializer):
+    category = CategorySerializer(allow_null=True, read_only=True)
+
+    class Meta:
+        model = SubCategory
+        fields = ["name", "category"]
+
+
+class ResourceSubCategoryMapSerializer(serializers.ModelSerializer):
+    sub_category = SubCategorySerializer(allow_null=True, read_only=True)
+    class Meta:
+        model = ResourceSubCategoryMap
+        fields = ["sub_category"]
+
+
 class ContentSerializer(serializers.ModelSerializer):
     resources = ContentFileSerializer(many=True, read_only=True)
+    category = ResourceSubCategoryMapSerializer(many=True, read_only=True, source='resource_cat_map')
+
     class Meta:
         model = Resource
-        fields = ["id", "title", "description", "category", "resources"]
+        fields = ["id", "title", "description", "resources", "category"]
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        resource_sub_category_maps = data.get('category', [])
+        category_aggregate = defaultdict(list)
 
+        for resource_map in resource_sub_category_maps:
+            sub_category_data = resource_map.get('sub_category')
+            if sub_category_data:
+                category_name = sub_category_data['category']['name']
+                sub_category_name = sub_category_data['name']
+                category_aggregate[category_name].append(sub_category_name)
+
+        aggregated_data = {k: v for k, v in category_aggregate.items()}
+        data['category'] = aggregated_data
+        return data
+  
 class FeedBackSerializer(serializers.ModelSerializer):
     class Meta:
         model = FeedBack

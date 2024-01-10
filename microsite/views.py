@@ -1090,17 +1090,19 @@ class ResourceMicrositeViewSet(GenericViewSet):
     def content_data(self, request, *args, **kwargs):
         try:
             data =request.data
-            categories = data.pop(Constants.CATEGORY, None)
+            categories = data.pop(Constants.CATEGORY, [])
             filters = {key: value for key, value in data.items() if value}
             file_filters = data.get("resources__updated_at__gt", None)
-            query_set = Resource.objects.filter(**filters).prefetch_related('resources', "resource_cat_map")
+            query_set = Resource.objects.filter(**filters).prefetch_related('resources', "resource_cat_map","resource_cat_map__sub_category", "resource_cat_map__sub_category__category")
+            category_query = Q()
             if categories:
-                query_set = query_set.filter(
-                    reduce(
-                        operator.and_,
-                        (Q(category__contains=cat) for cat in categories),
-                    )
-                )
+                for cat in categories:
+                    for key, values in cat.items():
+                        # Build a Q object for each category and subcategory
+                        category_query &= Q(resource_cat_map__sub_category__name__in=values,
+                                            resource_cat_map__sub_category__category__name=key)
+                            
+                query_set = query_set.filter(category_query)
             file_filters = {"updated_at__gt":datetime.datetime.fromisoformat(file_filters)} if file_filters else {} # type: ignore
             if file_filters:
                 data = []
