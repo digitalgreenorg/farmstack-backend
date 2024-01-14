@@ -3383,10 +3383,13 @@ class EmbeddingsViewSet(viewsets.ModelViewSet):
     lookup_field = 'uuid'  # Specify the UUID field as the lookup field
     permission_classes=[]
 
-    @action(detail=True, methods=['get'])
-    def custom_detail(self, request, uuid=None):
+    @action(detail=False, methods=['post'])
+    def get_embeddings(self, request):
         # Use the 'uuid' field to look up the instance
-        import pdb; pdb.set_trace()
-        instance = self.get_object()
-        serializer = self.get_serializer(instance)
-        return Response(serializer.data)
+        # instance = self.get_object()
+        uuid=request.data.get("uuid")
+        data = LangchainPgEmbedding.objects.filter(uuid=uuid).values("embedding", "document")
+        # print(data)
+        # import pdb; pdb.set_trace()
+        # serializer = self.get_serializer(data)
+        return Response(data)

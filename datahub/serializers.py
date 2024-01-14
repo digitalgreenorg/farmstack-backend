@@ -1054,7 +1054,7 @@ class LangChainEmbeddingsSerializer(serializers.ModelSerializer):
     # cmetadata = CustomJSONField()
     class Meta:
         model=LangchainPgEmbedding
-        fields=["embeddings"]
+        fields=["embedding", "document"]
     
     # def to_representation(self, instance):
     #     try:
@@ -1081,13 +1081,14 @@ class ResourceFileSerializer(serializers.ModelSerializer):
         # print(collection)
         # import pdb; pdb.set_trace()
         if collection:
-            embeddings = LangchainPgEmbedding.objects.filter(collection_id=collection.uuid).all()
-            print(embeddings)
-            # Serialize the retrieved embeddings using LangchainPgEmbeddingSerializert
-            embeddings_serializer = LangChainEmbeddingsSerializer(embeddings, many=True)
+            embeddings = LangchainPgEmbedding.objects.filter(collection_id=collection.uuid).values("embedding", "document")
+
+            # print(embeddings)
+            # # Serialize the retrieved embeddings using LangchainPgEmbeddingSerializert
+            # embeddings_serializer = LangChainEmbeddingsSerializer(embeddings, many=True)
             
             # Return the serialized embeddings
-            return embeddings_serializer.data
+            return embeddings
         return []
 
 class DatahubDatasetFileDashboardFilterSerializer(serializers.Serializer):
