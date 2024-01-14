@@ -127,6 +127,7 @@ from participant.serializers import (
 )
 from utils import custom_exceptions, file_operations, string_functions, validators
 from utils.authentication_services import authenticate_user
+from utils.embeddings_creation import VectorDBBuilder
 from utils.file_operations import (
     check_file_name_length,
     filter_dataframe_for_dashboard_counties,
@@ -144,6 +145,7 @@ from .models import (
     ResourceSubCategoryMap,
     SubCategory,
     UsagePolicy,
+    LangchainPgEmbedding
 )
 from .serializers import (
     APIBuilderSerializer,
@@ -154,6 +156,7 @@ from .serializers import (
     SubCategorySerializer,
     UsagePolicyDetailSerializer,
     UsagePolicySerializer,
+    LangChainEmbeddingsSerializer
 )
 
 LOGGER = logging.getLogger(__name__)
@@ -3282,6 +3285,7 @@ class ResourceFileManagementViewSet(GenericViewSet):
             serializer = self.get_serializer(data=request.data, partial=True)
             serializer.is_valid(raise_exception=True)
             serializer.save()
+            VectorDBBuilder.create_vector_db(serializer.data)
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         except ValidationError as e:
             return Response(e.detail, status=status.HTTP_400_BAD_REQUEST)
@@ -3364,8 +3368,6 @@ class SubCategoryViewSet(viewsets.ModelViewSet):
                     # Find the corresponding SubCategory instance
                     try:
                         sub_category = SubCategory.objects.filter(name=sub_category_name, category=category).first()
-                        print(sub_category)
-                        print(resource)
                         if sub_category:
                             DatasetSubCategoryMap.objects.get_or_create(
                                 sub_category=sub_category,
@@ -3374,3 +3376,17 @@ class SubCategoryViewSet(viewsets.ModelViewSet):
                     except SubCategory.DoesNotExist:
                         print(f"SubCategory '{sub_category_name}' does not exist.")
         return Response("Data dumped")
+
+class EmbeddingsViewSet(viewsets.ModelViewSet):
+    queryset = LangchainPgEmbedding.objects.all()
+    serializer_class = LangChainEmbeddingsSerializer
+    lookup_field = 'uuid'  # Specify the UUID field as the lookup field
+    permission_classes=[]
+
+    @action(detail=True, methods=['get'])
+    def custom_detail(self, request, uuid=None):
+        # Use the 'uuid' field to look up the instance
+        import pdb; pdb.set_trace()
+        instance = self.get_object()
+        serializer = self.get_serializer(instance)
+        return Response(serializer.data)

@@ -3,6 +3,7 @@ import logging
 import os
 import re
 import shutil
+import uuid
 
 import plazy
 from django.conf import settings
@@ -47,6 +48,8 @@ from utils.validators import (
 from .models import (
     Category,
     DatasetSubCategoryMap,
+    LangchainPgCollection,
+    LangchainPgEmbedding,
     Policy,
     ResourceSubCategoryMap,
     SubCategory,
@@ -1032,12 +1035,60 @@ class UsagePolicyDetailSerializer(serializers.ModelSerializer):
         model = UsagePolicy
         fields = "__all__"
 
+class CustomJSONField(serializers.JSONField):
+    """
+    Custom JSON field to handle non-JSON data.
+    """
+
+    def to_representation(self, obj):
+        """
+        Serialize the field value.
+        """
+        try:
+            return super().to_representation(obj)
+        except Exception as e:
+            # Handle non-JSON data here, for example, by converting it to a JSON-compatible format
+            return str(obj)
+
+class LangChainEmbeddingsSerializer(serializers.ModelSerializer):
+    # cmetadata = CustomJSONField()
+    class Meta:
+        model=LangchainPgEmbedding
+        fields=["embeddings"]
+    
+    # def to_representation(self, instance):
+    #     try:
+    #         data = super().to_representation(instance)
+    #         # Attempt to decode JSON in cmetadata
+    #         data['cmetadata'] = json.loads(data['cmetadata'])
+    #         return data
+    #     except json.JSONDecodeError:
+    #         # Handle the case where cmetadata is not valid JSON
+    #         data['cmetadata'] = {}  # Provide a default value or appropriate fallback
+    #         return data
 
 class ResourceFileSerializer(serializers.ModelSerializer):
+    collections = serializers.SerializerMethodField()
     class Meta:
         model = ResourceFile
         fields = "__all__"
-
+    
+    def get_collections(self, obj):
+        # Assuming that 'obj' is an instance of ResourceFile
+        # Retrieve the related LangchainPgEmbedding instances
+        collection = LangchainPgCollection.objects.filter(name=str(obj.id)).first()
+        # return collection
+        # print(collection)
+        # import pdb; pdb.set_trace()
+        if collection:
+            embeddings = LangchainPgEmbedding.objects.filter(collection_id=collection.uuid).all()
+            print(embeddings)
+            # Serialize the retrieved embeddings using LangchainPgEmbeddingSerializert
+            embeddings_serializer = LangChainEmbeddingsSerializer(embeddings, many=True)
+            
+            # Return the serialized embeddings
+            return embeddings_serializer.data
+        return []
 
 class DatahubDatasetFileDashboardFilterSerializer(serializers.Serializer):
     county = serializers.ListField(allow_empty=False, required=True)
@@ -1126,7 +1177,7 @@ class ResourceSerializer(serializers.ModelSerializer):
 
             resource_files_data = json.loads(resource_files_data[0]) if resource_files_data else []
             resource_file_instances= [ResourceFile(resource=resource, **file_data) for file_data in resource_files_data]
-            ResourceFile.objects.bulk_create(resource_file_instances)
+            ids = ResourceFile.objects.bulk_create(resource_file_instances)
             sub_categories_map = json.loads(sub_categories_map[0]) if sub_categories_map else []
             resource_sub_cat_instances= [
                 ResourceSubCategoryMap(resource=resource, sub_category=SubCategory.objects.get(id=sub_cat)

@@ -32,6 +32,7 @@ from datahub.views import (
     TeamMemberViewSet,
     UsagePolicyListCreateView,
     UsagePolicyRetrieveUpdateDestroyView,
+    EmbeddingsViewSet
 )
 
 router = DefaultRouter()
@@ -55,6 +56,8 @@ router.register(r"resource_management", ResourceManagementViewSet, basename=Cons
 router.register(r"resource_file", ResourceFileManagementViewSet, basename=Constants.RESOURCE_FILE_MANAGEMENT)
 router.register(r'categories', CategoryViewSet, basename=Constants.CATEGORY)
 router.register(r'subcategories', SubCategoryViewSet, basename=Constants.SUBCATEGORY)
+router.register(r'embeddings', EmbeddingsViewSet, basename=Constants.SUBCATEGORY)
+
 urlpatterns = [
     path("", include(router.urls)),
     path('policy/', PolicyListAPIView.as_view(), name='policy-list'),
