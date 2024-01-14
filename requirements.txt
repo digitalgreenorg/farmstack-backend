@@ -236,7 +236,6 @@ poetry-core==1.0.8
 proglog==0.1.10
 protobuf==3.20.1
 psycopg
-psycopg2-binary
 ptyprocess==0.7.0
 py==1.11.0
 pyaml==21.10.1
