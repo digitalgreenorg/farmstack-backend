@@ -3278,6 +3278,7 @@ class ResourceFileManagementViewSet(GenericViewSet):
     serializer_class = ResourceFileSerializer
 
     @http_request_mutation
+    @transaction.atomic
     def create(self, request, *args, **kwargs):
         try:
             #request.data._mutable = True
@@ -3285,6 +3286,7 @@ class ResourceFileManagementViewSet(GenericViewSet):
             serializer = self.get_serializer(data=request.data, partial=True)
             serializer.is_valid(raise_exception=True)
             serializer.save()
+            # import pdb; pdb.set_trace()
             VectorDBBuilder.create_vector_db(serializer.data)
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         except ValidationError as e:

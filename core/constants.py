@@ -175,7 +175,8 @@ class Constants:
     NEW_DASHBOARD = "new_dashboard"
     RESOURCE_MANAGEMENT = "resource_management"
     RESOURCE_FILE_MANAGEMENT = "resource_file_management"
-
+    GOOGLE_DRIVE_DOWNLOAD_URL = "https://drive.google.com/uc?export=download&id"
+    GOOGLE_DRIVE_DOMAIN = "drive.google.com"
 
 class NumericalConstants:
     FILE_NAME_LENGTH = 85
