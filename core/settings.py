@@ -265,10 +265,6 @@ REST_FRAMEWORK = {
     # "DEFAULT_PERMISSION_CLASSES": [
     #     "rest_framework.permissions.AllowAny"
     # ],
-    # Comment this line for test, stage and prod environments
-    "DEFAULT_PERMISSION_CLASSES": [
-        "rest_framework.permissions.IsAuthenticated"
-    ],
     #  # Un comment this to enable authentication
     "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
     "EXCEPTION_HANDLER": "rest_framework.views.exception_handler",
@@ -398,3 +394,4 @@ if not os.path.exists("logs"):
     os.makedirs("logs")  # create the logs directory
 
 SAGUBAGU_API_KEY = os.environ.get("SAGUBAGU_API_KEY",'')
+OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY",'')
