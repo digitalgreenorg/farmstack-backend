@@ -135,7 +135,6 @@ def download_file(file_url, local_file_path):
 
     return None
 
-
 def build_pdf(transcript, local_file_path):
     try:
         with open(local_file_path, 'w'):
@@ -166,8 +165,6 @@ def build_pdf(transcript, local_file_path):
 
     return None
 
-
-
 def load_documents(url, file, type, id, transcription=""):
     documents = []
     # for pdf_path in pdf_paths:
@@ -197,14 +194,13 @@ def split_documents(documents, chunk_size, chunk_overlap):
     )
     return text_splitter.split_documents(documents)
 
-
 class VectorDBBuilder:
     def create_vector_db(resource, chunk_size=1000, chunk_overlap=200):
         # resource = ResourceFile(resource)
         documents = load_documents(resource.get("url"), resource.get("file"), resource.get("type"), resource.get("id"), resource.get("transcription"))
         texts = split_documents(documents, chunk_size, chunk_overlap)
         embeddings = OpenAIEmbeddings()
-        vectordb = get_embeddings(embeddings, texts, resource.get("id"), connectionString, resource)
+        vectordb = get_embeddings(embeddings, texts, str(resource.get("id")), connectionString, resource)
         return None
 
     
