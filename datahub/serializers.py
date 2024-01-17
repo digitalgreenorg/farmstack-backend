@@ -55,6 +55,7 @@ from .models import (
     SubCategory,
     UsagePolicy,
 )
+from utils.embeddings_creation import VectorDBBuilder
 
 LOGGER = logging.getLogger(__name__)
 
@@ -1186,14 +1187,9 @@ class ResourceSerializer(serializers.ModelSerializer):
 
             ResourceSubCategoryMap.objects.bulk_create(resource_sub_cat_instances)
 
-                # file_size = file_data.size  # If you need to process file size or any other field, do it here
-                # resource_file_instance = ResourceFile(resource=resource, **file_data)
-                # resource_file_instances.append(resource_file_instance)
-
-            # for file_data in resource_files_data:
-            #     # file_size = file_data.size
-            #     ResourceFile.objects.create(resource=resource, **file_data)
-        
+            resource_file_obj = ResourceFile.objects.filter(resource=resource).all()
+            for resource_file in resource_file_obj:
+                VectorDBBuilder.create_vector_db(resource_file.__dict__)
 
             return resource
         except Exception as e:
