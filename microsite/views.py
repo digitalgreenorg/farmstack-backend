@@ -18,7 +18,7 @@ from django.db.models import Count, Q
 from django.http import FileResponse, HttpResponse, HttpResponseNotFound, JsonResponse
 from django.shortcuts import get_object_or_404, render
 from python_http_client import exceptions
-from rest_framework import generics, permissions, status, viewsets
+from rest_framework import generics, mixins, permissions, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.exceptions import ValidationError
 from rest_framework.response import Response
@@ -38,6 +38,7 @@ from core.utils import (
     read_contents_from_csv_or_xlsx_file,
 )
 from datahub.models import (
+    Category,
     DatahubDocuments,
     Datasets,
     DatasetV2,
@@ -50,6 +51,7 @@ from datahub.models import (
     UserOrganizationMap,
 )
 from datahub.serializers import (
+    CategorySerializer,
     DatahubDatasetsV2Serializer,
     DatasetV2Serializer,
     OrganizationSerializer,
@@ -166,7 +168,10 @@ class DatasetsMicrositeViewSet(GenericViewSet):
     """Datasets viewset for microsite"""
 
     serializer_class = DatasetV2Serializer
-    queryset = DatasetV2.objects.all()
+    queryset = DatasetV2.objects.prefetch_related(
+                    'dataset_cat_map',
+                    'dataset_cat_map__sub_category',
+                    'dataset_cat_map__sub_category__category').all()
     pagination_class = CustomPagination
     permission_classes = [permissions.AllowAny]
 
@@ -277,32 +282,32 @@ class DatasetsMicrositeViewSet(GenericViewSet):
         else:
             filters = {Constants.USER_MAP_ORGANIZATION: org_id} if org_id else {}
         try:
-            if categories is not None:
-                data = (
+            # if categories is not None:
+            #     data = (
+            #         DatasetV2.objects.select_related(
+            #             Constants.USER_MAP,
+            #             Constants.USER_MAP_USER,
+            #             Constants.USER_MAP_ORGANIZATION,
+            #         )
+            #         .filter(is_temp=False, **data, **filters)
+            #         .filter(
+            #             reduce(
+            #                 operator.or_,
+            #                 (Q(category__contains=cat) for cat in categories),
+            #             )
+            #         )
+            #         .exclude(**exclude)
+            #         .order_by(Constants.UPDATED_AT)
+            #         .reverse()
+            #         .all()
+            #     )
+            # else:
+            data = (
                     DatasetV2.objects.select_related(
                         Constants.USER_MAP,
                         Constants.USER_MAP_USER,
                         Constants.USER_MAP_ORGANIZATION,
-                    )
-                    .filter(is_temp=False, **data, **filters)
-                    .filter(
-                        reduce(
-                            operator.or_,
-                            (Q(category__contains=cat) for cat in categories),
-                        )
-                    )
-                    .exclude(**exclude)
-                    .order_by(Constants.UPDATED_AT)
-                    .reverse()
-                    .all()
-                )
-            else:
-                data = (
-                    DatasetV2.objects.select_related(
-                        Constants.USER_MAP,
-                        Constants.USER_MAP_USER,
-                        Constants.USER_MAP_ORGANIZATION,
-                    )
+                    ).prefetch_related('dataset_cat_map')
                     .filter(is_temp=False, **data, **filters)
                     .exclude(**exclude)
                     .order_by(Constants.UPDATED_AT)
@@ -1087,17 +1092,19 @@ class ResourceMicrositeViewSet(GenericViewSet):
     def content_data(self, request, *args, **kwargs):
         try:
             data =request.data
-            categories = data.pop(Constants.CATEGORY, None)
+            categories = data.pop(Constants.CATEGORY, [])
             filters = {key: value for key, value in data.items() if value}
             file_filters = data.get("resources__updated_at__gt", None)
-            query_set = Resource.objects.filter(**filters).prefetch_related('resources')
+            query_set = Resource.objects.filter(**filters).prefetch_related('resources', "resource_cat_map","resource_cat_map__sub_category", "resource_cat_map__sub_category__category")
+            category_query = Q()
             if categories:
-                query_set = query_set.filter(
-                    reduce(
-                        operator.and_,
-                        (Q(category__contains=cat) for cat in categories),
-                    )
-                )
+                for cat in categories:
+                    for key, values in cat.items():
+                        # Build a Q object for each category and subcategory
+                        category_query &= Q(resource_cat_map__sub_category__name__in=values,
+                                            resource_cat_map__sub_category__category__name=key)
+                            
+                query_set = query_set.filter(category_query)
             file_filters = {"updated_at__gt":datetime.datetime.fromisoformat(file_filters)} if file_filters else {} # type: ignore
             if file_filters:
                 data = []
@@ -1148,6 +1155,9 @@ class AdexAPIDatasetViewSet(GenericViewSet):
     
     def list(self, request, *args, **kwargs):
         try:
+            # Checking the auth params form headers
+            if request.headers.get('x-api-key', '') == '' or request.headers.get('x-api-key', None) != settings.SAGUBAGU_API_KEY:
+                return Response({"message":"Invalid auth credentials provided."},status=status.HTTP_401_UNAUTHORIZED)
             # Getting query paarmas
             data_list = []
             data_dict = {}
@@ -1180,3 +1190,18 @@ class MyModelDetailView(generics.RetrieveUpdateDestroyAPIView):
     permission_classes = []
     queryset = FeedBack.objects.all()
     serializer_class = FeedBackSerializer
+
+class CategoryViewSet(GenericViewSet):
+    queryset = Category.objects.prefetch_related("subcategory_category").all()
+    serializer_class = CategorySerializer
+    permission_classes=[]
+ 
+    def list(self, request, *args, **kwargs):
+        queryset = self.get_queryset()
+        serializer = self.get_serializer(queryset, many=True)
+        return Response(serializer.data)
+
+    def retrieve(self, request, *args, **kwargs):
+        instance = self.get_object()
+        serializer = self.get_serializer(instance)
+        return Response(serializer.data)

@@ -47,7 +47,7 @@ from jsonschema import ValidationError
 from psycopg2 import connect
 from psycopg2.extensions import ISOLATION_LEVEL_AUTOCOMMIT
 from python_http_client import exceptions
-from rest_framework import generics, pagination, status
+from rest_framework import generics, pagination, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.exceptions import ValidationError
 from rest_framework.parsers import JSONParser, MultiPartParser
@@ -127,6 +127,7 @@ from participant.serializers import (
 )
 from utils import custom_exceptions, file_operations, string_functions, validators
 from utils.authentication_services import authenticate_user
+from utils.embeddings_creation import VectorDBBuilder
 from utils.file_operations import (
     check_file_name_length,
     filter_dataframe_for_dashboard_counties,
@@ -136,14 +137,26 @@ from utils.file_operations import (
 )
 from utils.jwt_services import http_request_mutation
 
-from .models import Policy, ResourceFile, UsagePolicy
+from .models import (
+    Category,
+    DatasetSubCategoryMap,
+    Policy,
+    ResourceFile,
+    ResourceSubCategoryMap,
+    SubCategory,
+    UsagePolicy,
+    LangchainPgEmbedding
+)
 from .serializers import (
     APIBuilderSerializer,
+    CategorySerializer,
     ParticipantCostewardSerializer,
     PolicySerializer,
     ResourceFileSerializer,
+    SubCategorySerializer,
     UsagePolicyDetailSerializer,
     UsagePolicySerializer,
+    LangChainEmbeddingsSerializer
 )
 
 LOGGER = logging.getLogger(__name__)
@@ -1569,7 +1582,7 @@ class DatasetV2ViewSet(GenericViewSet):
     """
 
     serializer_class = DatasetV2Serializer
-    queryset = DatasetV2.objects.all()
+    queryset = DatasetV2.objects.prefetch_related('dataset_cat_map',  'dataset_cat_map__sub_category', 'dataset_cat_map__sub_category__category').all()
     pagination_class = CustomPagination
 
     @action(detail=False, methods=["post"])
@@ -1840,8 +1853,9 @@ class DatasetV2ViewSet(GenericViewSet):
         """
         # setattr(request.data, "_mutable", True)
         try:
-            data = request.data
+            data = request.data.copy()
             to_delete = ast.literal_eval(data.get("deleted", "[]"))
+            sub_categories_map = data.pop("sub_categories_map")
             self.dataset_files(data, to_delete)
             datasetv2 = self.get_object()
             serializer = self.get_serializer(
@@ -1854,7 +1868,15 @@ class DatasetV2ViewSet(GenericViewSet):
                 },
             )
             serializer.is_valid(raise_exception=True)
+            a = DatasetSubCategoryMap.objects.filter(dataset_id=datasetv2).delete()
             serializer.save()
+            sub_categories_map = json.loads(sub_categories_map[0]) if c else []
+            dataset_sub_cat_instances= [
+                DatasetSubCategoryMap(dataset=datasetv2, sub_category=SubCategory.objects.get(id=sub_cat)
+                                       ) for sub_cat in sub_categories_map]
+
+            DatasetSubCategoryMap.objects.bulk_create(dataset_sub_cat_instances)
+
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         except ValidationError as e:
             return Response(e.detail, status=status.HTTP_400_BAD_REQUEST)
@@ -1960,7 +1982,8 @@ class DatasetV2ViewSet(GenericViewSet):
                     Constants.USER_MAP,
                     Constants.USER_MAP_USER,
                     Constants.USER_MAP_ORGANIZATION,
-                )
+                ).prefetch_related(
+                    'dataset_cat_map')
                 .filter(**data, **filters)
                 .exclude(is_temp=True)
                 .exclude(**exclude_filters)
@@ -1968,13 +1991,13 @@ class DatasetV2ViewSet(GenericViewSet):
                 .reverse()
                 .all()
             )
-            if categories is not None:
-                data = data.filter(
-                    reduce(
-                        operator.or_,
-                        (Q(category__contains=cat) for cat in categories),
-                    )
-                )
+            # if categories is not None:
+            #     data = data.filter(
+            #         reduce(
+            #             operator.or_,
+            #             (Q(category__contains=cat) for cat in categories),
+            #         )
+            #     )
             if on_boarded_by:
                 data = (
                     data.filter(user_map__user__on_boarded_by=user_id)
@@ -2395,11 +2418,20 @@ class DatasetV2View(GenericViewSet):
         # setattr(request.data, "_mutable", True)
         try:
             instance = self.get_object()
-            data = request.data
+            data = request.data.copy()
+            sub_categories_map = data.pop("sub_categories_map")
             data["is_temp"] = False
             serializer = self.get_serializer(instance, data=data, partial=True)
             serializer.is_valid(raise_exception=True)
+            DatasetSubCategoryMap.objects.filter(dataset_id=instance).delete()
             serializer.save()
+            # sub_categories_map = json.loads(sub_categories_map[0]) if c else []
+            dataset_sub_cat_instances= [
+                DatasetSubCategoryMap(dataset=instance, sub_category=SubCategory.objects.get(id=sub_cat)
+                                       ) for sub_cat in sub_categories_map]
+
+            DatasetSubCategoryMap.objects.bulk_create(dataset_sub_cat_instances)
+
             return Response(serializer.data, status=status.HTTP_200_OK)
         except ValidationError as e:
             return Response(e.detail, status=status.HTTP_400_BAD_REQUEST)
@@ -3128,11 +3160,12 @@ class ResourceManagementViewSet(GenericViewSet):
     Resource Management viewset.
     """
 
-    queryset = Resource.objects.all()
+    queryset = Resource.objects.prefetch_related().all()
     serializer_class = ResourceSerializer
     pagination_class = CustomPagination
 
     @http_request_mutation
+    @transaction.atomic
     def create(self, request, *args, **kwargs):
         try:
             user_map = request.META.get("map_id")
@@ -3151,17 +3184,29 @@ class ResourceManagementViewSet(GenericViewSet):
             LOGGER.error(e,exc_info=True)
             return Response(str(e), status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
+    @transaction.atomic
     def update(self, request, *args, **kwargs):
         try:
             instance = self.get_object()
-            serializer = self.get_serializer(instance, data=request.data, partial=True)
+            data = request.data.copy()
+            sub_categories_map = data.pop("sub_categories_map")
+            serializer = self.get_serializer(instance, data=data, partial=True)
             serializer.is_valid(raise_exception=True)
             serializer.save()
-            return Response(status=status.HTTP_200_OK)
+            resource_id=serializer.data.get("id")
+            ResourceSubCategoryMap.objects.filter(resource=instance).delete()
+            
+            sub_categories_map = json.loads(sub_categories_map[0]) if sub_categories_map else []
+            resource_sub_cat_instances= [
+                ResourceSubCategoryMap(resource=instance, sub_category=SubCategory.objects.get(id=sub_cat)
+                                       ) for sub_cat in sub_categories_map]
+            ResourceSubCategoryMap.objects.bulk_create(resource_sub_cat_instances)
+
+            return Response(serializer.data, status=status.HTTP_200_OK)
         except ValidationError as e:
             return Response(e.detail, status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
-            LOGGER.error(e)
+            LOGGER.error(e, exc_info=True)
             return Response(str(e), status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     @http_request_mutation
@@ -3233,6 +3278,7 @@ class ResourceFileManagementViewSet(GenericViewSet):
     serializer_class = ResourceFileSerializer
 
     @http_request_mutation
+    @transaction.atomic
     def create(self, request, *args, **kwargs):
         try:
             #request.data._mutable = True
@@ -3240,6 +3286,8 @@ class ResourceFileManagementViewSet(GenericViewSet):
             serializer = self.get_serializer(data=request.data, partial=True)
             serializer.is_valid(raise_exception=True)
             serializer.save()
+            # import pdb; pdb.set_trace()
+            VectorDBBuilder.create_vector_db(serializer.data)
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         except ValidationError as e:
             return Response(e.detail, status=status.HTTP_400_BAD_REQUEST)
@@ -3251,3 +3299,99 @@ class ResourceFileManagementViewSet(GenericViewSet):
         instance = self.get_object()
         instance.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+class CategoryViewSet(viewsets.ModelViewSet):
+    queryset = Category.objects.prefetch_related("subcategory_category").all()
+    serializer_class = CategorySerializer
+
+    @action(detail=False, methods=["get"])
+    def categories_and_sub_categories(self, request):
+        categories_with_subcategories = {}
+        # Retrieve all categories and their related subcategories
+        categories = Category.objects.all()
+
+        for category in categories:
+            # Retrieve the names of all subcategories related to this category
+            subcategory_names = [sub_category.name for sub_category in SubCategory.objects.filter(category=category).all()]
+            # Assign the list of subcategory names to the category name in the dictionary
+            categories_with_subcategories[category.name] = subcategory_names
+
+        return Response(categories_with_subcategories, 200)
+
+class SubCategoryViewSet(viewsets.ModelViewSet):
+    queryset = SubCategory.objects.all()
+    serializer_class = SubCategorySerializer
+    permission_classes=[]
+
+    @action(detail=False, methods=["post"])
+    def dump_categories(self, request):
+        data=request.data
+        for category_name, sub_categories in data.items():
+            category, created = Category.objects.get_or_create(name=category_name)
+            print(category)
+            for sub_category_name in sub_categories:
+                SubCategory.objects.get_or_create(category=category, name=sub_category_name)
+        return Response("Data dumped")
+    
+    @action(detail=False, methods=["get"])
+    @transaction.atomic
+    def dump_resource_categories_map(self, request):
+    # Parse the category JSON field
+        resources = Resource.objects.all()
+        for resource in resources:
+            categories = resource.category
+            for category_name, sub_category_names in categories.items():
+                category = Category.objects.filter(name=category_name).first()
+                for sub_category_name in sub_category_names:
+                    # Find the corresponding SubCategory instance
+                    try:
+                        sub_category = SubCategory.objects.filter(name=sub_category_name, category=category).first()
+                        print(sub_category)
+                        print(resource)
+                        if sub_category:
+                            ResourceSubCategoryMap.objects.get_or_create(
+                                sub_category=sub_category,
+                                resource=resource
+                            )
+                    except SubCategory.DoesNotExist:
+                        print(f"SubCategory '{sub_category_name}' does not exist.")
+        return Response("Data dumped")
+
+    @action(detail=False, methods=["get"])
+    @transaction.atomic
+    def dump_dataset_map(self, request):
+    # Parse the category JSON field
+        resources = DatasetV2.objects.all()
+        for resource in resources:
+            categories = resource.category
+            for category_name, sub_category_names in categories.items():
+                category = Category.objects.filter(name=category_name).first()
+                for sub_category_name in sub_category_names:
+                    # Find the corresponding SubCategory instance
+                    try:
+                        sub_category = SubCategory.objects.filter(name=sub_category_name, category=category).first()
+                        if sub_category:
+                            DatasetSubCategoryMap.objects.get_or_create(
+                                sub_category=sub_category,
+                                dataset=resource
+                            )
+                    except SubCategory.DoesNotExist:
+                        print(f"SubCategory '{sub_category_name}' does not exist.")
+        return Response("Data dumped")
+
+class EmbeddingsViewSet(viewsets.ModelViewSet):
+    queryset = LangchainPgEmbedding.objects.all()
+    serializer_class = LangChainEmbeddingsSerializer
+    lookup_field = 'uuid'  # Specify the UUID field as the lookup field
+    permission_classes=[]
+
+    @action(detail=False, methods=['post'])
+    def get_embeddings(self, request):
+        # Use the 'uuid' field to look up the instance
+        # instance = self.get_object()
+        uuid=request.data.get("uuid")
+        data = LangchainPgEmbedding.objects.filter(uuid=uuid).values("embedding", "document")
+        # print(data)
+        # import pdb; pdb.set_trace()
+        # serializer = self.get_serializer(data)
+        return Response(data)

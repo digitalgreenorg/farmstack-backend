@@ -7,6 +7,7 @@ from django.conf import settings
 from django.core.files.storage import Storage
 from django.db import models
 from django.utils import timezone
+from pgvector.django import VectorField
 
 from accounts.models import User
 from core.base_models import TimeStampMixin
@@ -326,3 +327,50 @@ class ResourceFile(TimeStampMixin):
     
 class DatasetV2FileReload(TimeStampMixin):
     dataset_file = models.ForeignKey(DatasetV2File, on_delete=models.CASCADE, related_name="dataset_file")
+
+class Category(TimeStampMixin):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    name = models.CharField(max_length=50)
+    description = models.CharField(max_length=500)
+
+class SubCategory(TimeStampMixin):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    name = models.CharField(max_length=100)
+    category = models.ForeignKey(Category, on_delete=models.CASCADE, related_name="subcategory_category")
+
+
+class DatasetSubCategoryMap(TimeStampMixin):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    sub_category = models.ForeignKey(SubCategory, on_delete=models.CASCADE, related_name="dataset_sub_category_map")
+    dataset = models.ForeignKey(DatasetV2, on_delete=models.CASCADE, related_name="dataset_cat_map")
+
+
+class ResourceSubCategoryMap(TimeStampMixin):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    sub_category = models.ForeignKey(SubCategory, on_delete=models.CASCADE, related_name="resource_sub_category_map")
+    resource = models.ForeignKey(Resource, on_delete=models.CASCADE, related_name="resource_cat_map")
+
+class LangchainPgCollection(models.Model):
+    name = models.CharField(max_length=50)
+    cmetadata = models.JSONField()
+    uuid = models.UUIDField(primary_key=True)
+    # resource_file = models.ForeignKey(ResourceFile, on_delete=models.PROTECT, related_name="resource_file_collections")
+
+    class Meta:
+        db_table = 'langchain_pg_collection'
+
+
+class LangchainPgEmbedding(models.Model):
+    collection = models.ForeignKey(LangchainPgCollection, on_delete=models.PROTECT)
+    embedding = VectorField(1563)  # Assuming 'vector' is a custom PostgreSQL data type
+    document = models.TextField()
+    cmetadata = models.JSONField()
+    custom_id = models.CharField(max_length=255)
+    uuid = models.UUIDField(primary_key=True)
+
+    class Meta:
+        db_table = 'langchain_pg_embedding'
+
+    # def __str__(self):
+    #     return f"LangchainPgEmbedding(uuid={self.uuid}, document={self.document})"
+
