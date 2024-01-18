@@ -47,6 +47,7 @@ from datahub.models import (
     Policy,
     Resource,
     ResourceFile,
+    ResourceUsagePolicy,
     UsagePolicy,
     UserOrganizationMap,
 )
@@ -970,6 +971,36 @@ class APIResponseViewSet(GenericViewSet):
                             }, 200)
         else:
             return Response(f"Bot is responding with status code:{response.status_code}", 500)
+
+    @action(detail=False, methods=["get"])
+    def resource(self, request, *args, **kwargs):
+        try:
+            get_api_key = request.META.get("HTTP_API_KEY", None)
+            # page = int(request.GET.get('page', 1))
+            file_path_query_set=Resource.objects.prefetch_related('resource_usage_policy').filter(resource_usage_policy__api_key=get_api_key)
+            if get_api_key is None or not file_path_query_set:
+                return Response(
+                {
+                    "message" : "Invalid auth credentials provided."
+                },
+                status=status.HTTP_401_UNAUTHORIZED
+            )          
+
+            
+            return JsonResponse(
+            {
+            'next': next,
+            'current_page': page,
+            'data': df.to_dict(orient='records')
+            }, safe=False,status=200)       
+        except pd.errors.EmptyDataError:
+            LOGGER.info("The file is empty or Reached end of file.")
+            return Response(str("File is Empty or Reached End of the file"), status=400)
+        except Exception as error:
+            LOGGER.error(f"Error occured in APIResponseViewSet api ERROR: {error}", exc_info=True)
+            return Response(str(error), status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    
+
 class UserDataMicrositeViewSet(GenericViewSet):
     """UserData Microsite ViewSet for microsite"""
 

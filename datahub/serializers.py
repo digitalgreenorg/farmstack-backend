@@ -30,11 +30,13 @@ from datahub.models import (
     Organization,
     Resource,
     ResourceFile,
+    ResourceUsagePolicy,
     StandardisationTemplate,
     UserOrganizationMap,
 )
 from participant.models import Connectors, SupportTicket
 from utils.custom_exceptions import NotFoundException
+from utils.embeddings_creation import VectorDBBuilder
 from utils.file_operations import create_directory, move_directory
 from utils.string_functions import check_special_chars
 from utils.validators import (
@@ -55,7 +57,6 @@ from .models import (
     SubCategory,
     UsagePolicy,
 )
-from utils.embeddings_creation import VectorDBBuilder
 
 LOGGER = logging.getLogger(__name__)
 
@@ -1277,5 +1278,13 @@ class ParticipantCostewardSerializer(serializers.ModelSerializer):
             .all()
             .count()
         )
-  
 
+class ResourceUsagePolicySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ResourceUsagePolicy
+        fields = "__all__"
+
+class ResourceAPIBuilderSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ResourceUsagePolicy
+        fields = ["approval_status", "accessibility_time", "api_key"]

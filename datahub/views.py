@@ -109,7 +109,9 @@ from datahub.serializers import (
     PolicyDocumentSerializer,
     RecentDatasetListSerializer,
     RecentSupportTicketSerializer,
+    ResourceAPIBuilderSerializer,
     ResourceSerializer,
+    ResourceUsagePolicySerializer,
     StandardisationTemplateUpdateSerializer,
     StandardisationTemplateViewSerializer,
     TeamMemberCreateSerializer,
@@ -140,23 +142,24 @@ from utils.jwt_services import http_request_mutation
 from .models import (
     Category,
     DatasetSubCategoryMap,
+    LangchainPgEmbedding,
     Policy,
     ResourceFile,
     ResourceSubCategoryMap,
+    ResourceUsagePolicy,
     SubCategory,
     UsagePolicy,
-    LangchainPgEmbedding
 )
 from .serializers import (
     APIBuilderSerializer,
     CategorySerializer,
+    LangChainEmbeddingsSerializer,
     ParticipantCostewardSerializer,
     PolicySerializer,
     ResourceFileSerializer,
     SubCategorySerializer,
     UsagePolicyDetailSerializer,
     UsagePolicySerializer,
-    LangChainEmbeddingsSerializer
 )
 
 LOGGER = logging.getLogger(__name__)
@@ -3395,3 +3398,39 @@ class EmbeddingsViewSet(viewsets.ModelViewSet):
         # import pdb; pdb.set_trace()
         # serializer = self.get_serializer(data)
         return Response(data)
+    
+
+
+class ResourceUsagePolicyListCreateView(generics.ListCreateAPIView):
+    queryset = ResourceUsagePolicy.objects.all()
+    serializer_class = ResourceUsagePolicySerializer
+
+
+class ResourceUsagePolicyRetrieveUpdateDestroyView(generics.RetrieveUpdateDestroyAPIView):
+    queryset = ResourceUsagePolicy.objects.all()
+    serializer_class = ResourceUsagePolicySerializer
+    api_builder_serializer_class = ResourceAPIBuilderSerializer
+
+    @authenticate_user(model=ResourceUsagePolicy)
+    def patch(self, request, *args, **kwargs):
+        instance = self.get_object()
+        approval_status = request.data.get('approval_status')
+        policy_type = request.data.get('type', None)
+        instance.api_key = None
+        try:
+            if policy_type == 'api':
+                if approval_status == 'approved':
+                    instance.api_key = generate_api_key()
+            serializer = self.api_builder_serializer_class(instance, data=request.data, partial=True)
+            serializer.is_valid(raise_exception=True)
+            serializer.save()
+            return Response(serializer.data, status=200)
+
+        except ValidationError as e:
+            LOGGER.error(e, exc_info=True)
+            return Response(e.detail, status=status.HTTP_400_BAD_REQUEST)
+
+        except Exception as error:
+            LOGGER.error(error, exc_info=True)
+            return Response(str(error), status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
