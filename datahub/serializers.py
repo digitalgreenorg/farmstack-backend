@@ -1037,6 +1037,19 @@ class UsagePolicyDetailSerializer(serializers.ModelSerializer):
         model = UsagePolicy
         fields = "__all__"
 
+
+class ResourceUsagePolicyDetailSerializer(serializers.ModelSerializer):
+    organization = DatahubDatasetsSerializer.OrganizationDatsetsListRetriveSerializer(
+        required=False, allow_null=True, read_only=True, source="user_organization_map.organization"
+    )
+    user = DatahubDatasetsSerializer.UserDatasetSerializer(
+        required=False, allow_null=True, read_only=True, source="user_organization_map.user"
+    )
+
+    class Meta:
+        model = ResourceUsagePolicy
+        fields = "__all__"
+
 class CustomJSONField(serializers.JSONField):
     """
     Custom JSON field to handle non-JSON data.
