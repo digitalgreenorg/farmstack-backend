@@ -157,6 +157,7 @@ from .serializers import (
     ParticipantCostewardSerializer,
     PolicySerializer,
     ResourceFileSerializer,
+    ResourceUsagePolicyDetailSerializer,
     SubCategorySerializer,
     UsagePolicyDetailSerializer,
     UsagePolicySerializer,
@@ -3236,13 +3237,64 @@ class ResourceManagementViewSet(GenericViewSet):
         resource = self.get_object()
         resource.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
-
+    
+    @http_request_mutation
     def retrieve(self, request, *args, **kwargs):
+        user_map = request.META.get("map_id")
         resource = self.get_object()
         serializer = self.get_serializer(resource)
-        # serializer.is_valid(raise_exception=True)
-        return Response(serializer.data, status=status.HTTP_200_OK)
-    
+        data = serializer.data.copy()
+        try:
+            if str(resource.user_map) == str(user_map):
+                resource_usage_policy = (
+                ResourceUsagePolicy.objects.select_related(
+                    "resource",
+                )
+                .filter(resource=resource)
+                .values(
+                    "id",
+                    "approval_status",
+                    "accessibility_time",
+                    "updated_at",
+                    "created_at",
+                    "resource_id",
+                    resource_title=F("resource__title"),
+                    organization_name=F("user_organization_map__organization__name"),
+                    organization_email=F("user_organization_map__organization__org_email"),
+                    organization_phone_number=F("user_organization_map__organization__phone_number"),
+                )
+                .order_by("-updated_at")
+            )
+            else:
+                resource_usage_policy = (
+                ResourceUsagePolicy.objects.select_related(
+                    "resource"
+                )
+                .filter(user_organization_map_id=user_map, resource=resource)
+                .values(
+                    "id",
+                    "approval_status",
+                    "updated_at",
+                    "accessibility_time",
+                    "type",
+                    "resource_id",
+                    organization_name=F("user_organization_map__organization__name"),
+                    organization_email=F("user_organization_map__organization__org_email"),
+                    organization_phone_number=F("user_organization_map__organization__phone_number"),
+                )
+                .order_by("-updated_at")
+            )
+
+            data["resource_usage_policy"] = resource_usage_policy
+            print(data.get(resource_usage_policy))
+            return Response(data, status=status.HTTP_200_OK)
+        except Exception as error:
+            LOGGER.error("Issue while Retrive Resource details", exc_info=True)
+            return Response(
+                f"Issue while Retrive Retrive Resource details {error}",
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+        
     @http_request_mutation
     @action(detail=False, methods=["post"])
     def resources_filter(self, request, *args, **kwargs):
@@ -3296,6 +3348,7 @@ class ResourceManagementViewSet(GenericViewSet):
                 )
                 .order_by("-updated_at")
             )
+            
             requested_sent = (
                 ResourceUsagePolicy.objects.select_related(
                     "resource"
