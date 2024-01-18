@@ -74,6 +74,7 @@ from microsite.serializers import (
     LegalDocumentSerializer,
     OrganizationMicrositeSerializer,
     PolicySerializer,
+    ResourceMicrsositeSerializer,
     UserDataMicrositeSerializer,
     UserSerializer,
 )
@@ -977,7 +978,7 @@ class APIResponseViewSet(GenericViewSet):
         try:
             get_api_key = request.META.get("HTTP_API_KEY", None)
             # page = int(request.GET.get('page', 1))
-            file_path_query_set=Resource.objects.prefetch_related('resource_usage_policy').filter(resource_usage_policy__api_key=get_api_key)
+            file_path_query_set=Resource.objects.prefetch_related('resource_usage_policy').filter(resource_usage_policy__api_key=get_api_key).first()
             if get_api_key is None or not file_path_query_set:
                 return Response(
                 {
@@ -985,14 +986,12 @@ class APIResponseViewSet(GenericViewSet):
                 },
                 status=status.HTTP_401_UNAUTHORIZED
             )          
+            if file_path_query_set.filter(resource_usage_policy__type='embeddings'):
+                serializer = ResourceSerializer(file_path_query_set)
+            if file_path_query_set.filter(resource_usage_policy__type='resource_api'):
+                serializer = ResourceMicrsositeSerializer(file_path_query_set)
 
-            
-            return JsonResponse(
-            {
-            'next': next,
-            'current_page': page,
-            'data': df.to_dict(orient='records')
-            }, safe=False,status=200)       
+            return JsonResponse(serializer.data ,safe=False,status=200)       
         except pd.errors.EmptyDataError:
             LOGGER.info("The file is empty or Reached end of file.")
             return Response(str("File is Empty or Reached End of the file"), status=400)

@@ -3271,6 +3271,65 @@ class ResourceManagementViewSet(GenericViewSet):
             LOGGER.error(e)
             return Response(str(e), status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
+    @action(detail=False, methods=["post"])
+    def requested_resources(self, request, *args, **kwargs):
+        try:
+            user_map_id = request.data.get("user_map")
+            # policy_type = request.data.get("type", None)
+            # resource_id = request.data.get("resource")
+            requested_recieved = (
+                ResourceUsagePolicy.objects.select_related(
+                    "resource",
+                )
+                .filter(resource__user_map_id=user_map_id)
+                .values(
+                    "id",
+                    "approval_status",
+                    "accessibility_time",
+                    "updated_at",
+                    "created_at",
+                    "resource_id",
+                    resource_title=F("resource__title"),
+                    organization_name=F("user_organization_map__organization__name"),
+                    organization_email=F("user_organization_map__organization__org_email"),
+                    organization_phone_number=F("user_organization_map__organization__phone_number"),
+                )
+                .order_by("-updated_at")
+            )
+            requested_sent = (
+                ResourceUsagePolicy.objects.select_related(
+                    "resource"
+                )
+                .filter(user_organization_map_id=user_map_id)
+                .values(
+                    "id",
+                    "approval_status",
+                    "updated_at",
+                    "accessibility_time",
+                    "type",
+                    "resource_id",
+                    resource_title=F("resource__title"),
+                    organization_name=F("resource__user_map__organization__name"),
+                    organization_email=F("resource__user_map__organization__org_email"),
+                )
+                .order_by("-updated_at")
+            )
+
+            return Response(
+                {
+                    "sent":requested_sent,
+                    "recieved": requested_recieved,
+                },
+                200,
+            )
+        except Exception as error:
+            LOGGER.error("Issue while Retrive Resource requeted data", exc_info=True)
+            return Response(
+                f"Issue while Retrive Resource requeted data {error}",
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+
+    
 
 class ResourceFileManagementViewSet(GenericViewSet):
     """
