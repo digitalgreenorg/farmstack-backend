@@ -110,6 +110,7 @@ from datahub.serializers import (
     RecentDatasetListSerializer,
     RecentSupportTicketSerializer,
     ResourceAPIBuilderSerializer,
+    ResourceFileSerializer,
     ResourceSerializer,
     ResourceUsagePolicySerializer,
     StandardisationTemplateUpdateSerializer,
@@ -121,8 +122,6 @@ from datahub.serializers import (
     UsageUpdatePolicySerializer,
     UserOrganizationCreateSerializer,
     UserOrganizationMapSerializer,
-    ResourceFileSerializer,
-  
 )
 from participant.models import SupportTicket
 from participant.serializers import (
@@ -3247,7 +3246,7 @@ class ResourceManagementViewSet(GenericViewSet):
         serializer = self.get_serializer(resource)
         data = serializer.data.copy()
         try:
-            if str(resource.user_map) == str(user_map):
+            if str(resource.user_map_id) == str(user_map):
                 resource_usage_policy = (
                 ResourceUsagePolicy.objects.select_related(
                     "resource",
