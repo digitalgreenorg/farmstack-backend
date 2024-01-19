@@ -988,13 +988,10 @@ class APIResponseViewSet(GenericViewSet):
             )          
             if file_path_query_set.filter(resource_usage_policy__type='embeddings'):
                 serializer = ResourceSerializer(file_path_query_set)
-            if file_path_query_set.filter(resource_usage_policy__type='resource_api'):
+            if file_path_query_set.filter(resource_usage_policy__type='resource'):
                 serializer = ResourceMicrsositeSerializer(file_path_query_set)
 
             return JsonResponse(serializer.data ,safe=False,status=200)       
-        except pd.errors.EmptyDataError:
-            LOGGER.info("The file is empty or Reached end of file.")
-            return Response(str("File is Empty or Reached End of the file"), status=400)
         except Exception as error:
             LOGGER.error(f"Error occured in APIResponseViewSet api ERROR: {error}", exc_info=True)
             return Response(str(error), status=status.HTTP_500_INTERNAL_SERVER_ERROR)

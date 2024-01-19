@@ -110,8 +110,7 @@ USAGE_POLICY_API_TYPE = (
 )
 
 RESOURCE_USAGE_POLICY_API_TYPE = (
-    ("resourse_file", "resourse_file"),
-    ("resource_api", "resource_api"),
+    ("resource", "resource"),
     ("embeddings", "embeddings")
 )
 RESOURCE_URL_TYPE = (

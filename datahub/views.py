@@ -121,6 +121,8 @@ from datahub.serializers import (
     UsageUpdatePolicySerializer,
     UserOrganizationCreateSerializer,
     UserOrganizationMapSerializer,
+    ResourceFileSerializer,
+  
 )
 from participant.models import SupportTicket
 from participant.serializers import (
@@ -3532,9 +3534,10 @@ class ResourceUsagePolicyRetrieveUpdateDestroyView(generics.RetrieveUpdateDestro
         policy_type = request.data.get('type', None)
         instance.api_key = None
         try:
-            if policy_type == 'api':
-                if approval_status == 'approved':
-                    instance.api_key = generate_api_key()
+            if approval_status == 'approved':
+                instance.api_key = generate_api_key()
+            else:
+                instance.api_key = ""
             serializer = self.api_builder_serializer_class(instance, data=request.data, partial=True)
             serializer.is_valid(raise_exception=True)
             serializer.save()
