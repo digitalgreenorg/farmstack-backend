@@ -1103,11 +1103,7 @@ class ResourceFileSerializer(serializers.ModelSerializer):
             # embeddings_serializer = LangChainEmbeddingsSerializer(embeddings, many=True)
 
             # Return the serialized embeddings
-            serialized_embeddings = [
-                {"embedding": embedding["embedding"].tolist(), "document": embedding["document"]}
-                for embedding in embeddings
-            ]
-            return serialized_embeddings
+            return embeddings
         return []
 
 class DatahubDatasetFileDashboardFilterSerializer(serializers.Serializer):
@@ -1188,8 +1184,7 @@ class ResourceSerializer(serializers.ModelSerializer):
         serializer = CategorySerializer(category_and_sub_category, many=True)
         return serializer.data
     def get_content_files_count(self, resource):
-        count_query_set = ResourceFile.objects.filter(resource=resource.id).values('type').annotate(count=Count('type'))
-        return list(count_query_set)
+        return ResourceFile.objects.filter(resource=resource.id).values('type').annotate(count=Count('type'))
     def create(self, validated_data):
         try:
             resource_files_data = validated_data.pop("uploaded_files")
