@@ -1101,7 +1101,7 @@ class ResourceFileSerializer(serializers.ModelSerializer):
             # print(embeddings)
             # # Serialize the retrieved embeddings using LangchainPgEmbeddingSerializert
             # embeddings_serializer = LangChainEmbeddingsSerializer(embeddings, many=True)
-            
+
             # Return the serialized embeddings
             return embeddings
         return []

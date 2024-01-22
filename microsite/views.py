@@ -986,12 +986,12 @@ class APIResponseViewSet(GenericViewSet):
                 },
                 status=status.HTTP_401_UNAUTHORIZED
             )          
-            if file_path_query_set.objects.filter(resource_usage_policy__type='embeddings'):
+            if file_path_query_set.resource_usage_policy.filter(type='embeddings'):
                 serializer = ResourceSerializer(file_path_query_set)
-            elif file_path_query_set.objects.filter(resource_usage_policy__type='resource'):
+            elif file_path_query_set.resource_usage_policy.filter(type='resource'):
                 serializer = ResourceMicrsositeSerializer(file_path_query_set)
                 
-            return JsonResponse(serializer.data ,safe=False,status=200)       
+            return Response(serializer.data,status=200)       
         except Exception as error:
             LOGGER.error(f"Error occured in APIResponseViewSet api ERROR: {error}", exc_info=True)
             return Response(str(error), status=status.HTTP_500_INTERNAL_SERVER_ERROR)
