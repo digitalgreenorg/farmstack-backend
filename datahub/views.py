@@ -3528,7 +3528,7 @@ class ResourceUsagePolicyRetrieveUpdateDestroyView(generics.RetrieveUpdateDestro
     serializer_class = ResourceUsagePolicySerializer
     api_builder_serializer_class = ResourceAPIBuilderSerializer
 
-    # @authenticate_user(model=ResourceUsagePolicy)
+    @authenticate_user(model=ResourceUsagePolicy)
     def patch(self, request, *args, **kwargs):
         # import pdb;pdb.set_trace()
         instance = self.get_object()
