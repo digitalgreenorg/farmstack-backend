@@ -1185,6 +1185,13 @@ class ResourceSerializer(serializers.ModelSerializer):
         return serializer.data
     def get_content_files_count(self, resource):
         return ResourceFile.objects.filter(resource=resource.id).values('type').annotate(count=Count('type'))
+    def construct_file_path(self, instance, filename):
+        # Generate a unique string to append to the filename
+        unique_str = get_random_string(length=8)
+        # Construct the file path
+        file_path = f"users/resources/{unique_str}_{filename}"
+        return file_path
+    
     def create(self, validated_data):
         try:
             resource_files_data = validated_data.pop("uploaded_files")
@@ -1192,7 +1199,19 @@ class ResourceSerializer(serializers.ModelSerializer):
             resource = Resource.objects.create(**validated_data)
 
             resource_files_data = json.loads(resource_files_data[0]) if resource_files_data else []
-            resource_file_instances= [ResourceFile(resource=resource, **file_data) for file_data in resource_files_data]
+            resource_file_instances = []
+            for file_data in resource_files_data:
+                # Assuming 'file' is the key in file_data dict that holds the actual file
+                file_instance = file_data['file']
+                # Use the custom function to get the correct file path
+                file_path = self.construct_file_path(None, file_instance.name)
+                # Update the file path in file_data
+                file_data['file'] = file_path
+                # Create ResourceFile instance
+                resource_file_instance = ResourceFile(resource=resource, **file_data)
+                resource_file_instances.append(resource_file_instance)
+
+            # resource_file_instances= [ResourceFile(resource=resource, **file_data) for file_data in resource_files_data]
             ids = ResourceFile.objects.bulk_create(resource_file_instances)
             sub_categories_map = json.loads(sub_categories_map[0]) if sub_categories_map else []
             resource_sub_cat_instances= [

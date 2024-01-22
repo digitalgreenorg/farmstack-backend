@@ -1,21 +1,17 @@
 # from langchain.document_loaders import PdfLoader
+import argparse
 import json
+import logging
 import os
 import re
-import logging
-# import fitz
-from requests import Request, Session
-import os, requests, json, re, logging, argparse, time, pytz, subprocess, certifi
+import subprocess
+import time
+from urllib.parse import quote_plus
 
+import certifi
 import openai
+import pytz
 import requests
-# import request
-
-from reportlab.platypus import SimpleDocTemplate, Paragraph
-from reportlab.lib.styles import getSampleStyleSheet
-from reportlab.lib import colors
-from urllib3.util import Retry
-from requests.adapters import HTTPAdapter
 
 # from langchain.vectorstores import Chroma
 from dotenv import load_dotenv
@@ -31,13 +27,26 @@ from langchain.text_splitter import (
 from langchain.vectorstores.pgvector import DistanceStrategy, PGVector
 from pgvector.django import CosineDistance, L2Distance
 from psycopg.conninfo import make_conninfo
-from core.constants import Constants
-from core import settings
-from datahub.models import ResourceFile
+from reportlab.lib import colors
 from reportlab.lib.pagesizes import letter
+from reportlab.lib.styles import getSampleStyleSheet
 from reportlab.pdfgen import canvas
-from urllib.parse import quote_plus
+from reportlab.platypus import Paragraph, SimpleDocTemplate
+
+# import fitz
+from requests import Request, Session
+from requests.adapters import HTTPAdapter
 from sqlalchemy.dialects.postgresql import dialect
+from urllib3.util import Retry
+
+from core import settings
+from core.constants import Constants
+from datahub.models import ResourceFile
+
+# import request
+
+
+
 
 
 LOGGING = logging.getLogger(__name__)
