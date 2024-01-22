@@ -108,6 +108,11 @@ USAGE_POLICY_API_TYPE = (
     ("dataset_file", "dataset_file"),
     ("api", "api")
 )
+
+RESOURCE_USAGE_POLICY_API_TYPE = (
+    ("resource", "resource"),
+    ("embeddings", "embeddings")
+)
 RESOURCE_URL_TYPE = (
     ("youtube", "youtube"),
     ("pdf", "pdf"),
@@ -373,4 +378,18 @@ class LangchainPgEmbedding(models.Model):
 
     # def __str__(self):
     #     return f"LangchainPgEmbedding(uuid={self.uuid}, document={self.document})"
+
+    
+class ResourceUsagePolicy(TimeStampMixin):
+    """
+    Resource Policy Model.
+    """
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    user_organization_map = models.ForeignKey(UserOrganizationMap, on_delete=models.PROTECT, related_name="org_usage_policy")
+    resource = models.ForeignKey(Resource, on_delete=models.CASCADE, related_name="resource_usage_policy")
+    type = models.CharField(max_length=20, null=True, choices=RESOURCE_USAGE_POLICY_API_TYPE, default="resourse_file")
+    approval_status = models.CharField(max_length=255, null=True, choices=USAGE_POLICY_REQUEST_STATUS, default="requested")
+    accessibility_time = models.DateField(null=True)
+    api_key = models.CharField(max_length=64, null=True, unique=True)
+    configs = models.JSONField(default=dict, null=True)
 

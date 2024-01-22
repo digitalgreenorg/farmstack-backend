@@ -26,13 +26,15 @@ from datahub.views import (
     PolicyListAPIView,
     ResourceFileManagementViewSet,
     ResourceManagementViewSet,
+    ResourceUsagePolicyListCreateView,
+    ResourceUsagePolicyRetrieveUpdateDestroyView,
     StandardisationTemplateView,
     SubCategoryViewSet,
     SupportViewSet,
     TeamMemberViewSet,
     UsagePolicyListCreateView,
     UsagePolicyRetrieveUpdateDestroyView,
-    EmbeddingsViewSet
+    EmbeddingsViewSet,
 )
 
 router = DefaultRouter()
@@ -64,4 +66,6 @@ urlpatterns = [
     path('policy/<uuid:pk>/', PolicyDetailAPIView.as_view(), name='policy-detail'),
     path('usage_policies/', UsagePolicyListCreateView.as_view(), name='usage-policy-list-create'),
     path('usage_policies/<uuid:pk>/', UsagePolicyRetrieveUpdateDestroyView.as_view(), name='usage-policy-retrieve-update-destroy'),
+    path('resource_usage_policies/', ResourceUsagePolicyListCreateView.as_view(), name='resource_usage-policy-list-create'),
+    path('resource_usage_policies/<uuid:pk>/', ResourceUsagePolicyRetrieveUpdateDestroyView.as_view(), name='resource_usage-policy-retrieve-update-destroy'),
 ]

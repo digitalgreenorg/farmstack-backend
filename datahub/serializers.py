@@ -30,11 +30,13 @@ from datahub.models import (
     Organization,
     Resource,
     ResourceFile,
+    ResourceUsagePolicy,
     StandardisationTemplate,
     UserOrganizationMap,
 )
 from participant.models import Connectors, SupportTicket
 from utils.custom_exceptions import NotFoundException
+from utils.embeddings_creation import VectorDBBuilder
 from utils.file_operations import create_directory, move_directory
 from utils.string_functions import check_special_chars
 from utils.validators import (
@@ -55,7 +57,6 @@ from .models import (
     SubCategory,
     UsagePolicy,
 )
-from utils.embeddings_creation import VectorDBBuilder
 
 LOGGER = logging.getLogger(__name__)
 
@@ -1036,6 +1037,19 @@ class UsagePolicyDetailSerializer(serializers.ModelSerializer):
         model = UsagePolicy
         fields = "__all__"
 
+
+class ResourceUsagePolicyDetailSerializer(serializers.ModelSerializer):
+    organization = DatahubDatasetsSerializer.OrganizationDatsetsListRetriveSerializer(
+        required=False, allow_null=True, read_only=True, source="user_organization_map.organization"
+    )
+    user = DatahubDatasetsSerializer.UserDatasetSerializer(
+        required=False, allow_null=True, read_only=True, source="user_organization_map.user"
+    )
+
+    class Meta:
+        model = ResourceUsagePolicy
+        fields = "__all__"
+
 class CustomJSONField(serializers.JSONField):
     """
     Custom JSON field to handle non-JSON data.
@@ -1087,7 +1101,7 @@ class ResourceFileSerializer(serializers.ModelSerializer):
             # print(embeddings)
             # # Serialize the retrieved embeddings using LangchainPgEmbeddingSerializert
             # embeddings_serializer = LangChainEmbeddingsSerializer(embeddings, many=True)
-            
+
             # Return the serialized embeddings
             return embeddings
         return []
@@ -1277,5 +1291,13 @@ class ParticipantCostewardSerializer(serializers.ModelSerializer):
             .all()
             .count()
         )
-  
 
+class ResourceUsagePolicySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ResourceUsagePolicy
+        fields = "__all__"
+
+class ResourceAPIBuilderSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ResourceUsagePolicy
+        fields = ["approval_status", "accessibility_time", "api_key"]
