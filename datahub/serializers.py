@@ -4,7 +4,9 @@ import os
 import re
 import shutil
 import uuid
-
+import secrets
+import string
+from urllib.parse import quote
 import plazy
 from django.conf import settings
 from django.core.exceptions import ObjectDoesNotExist, ValidationError
@@ -1189,7 +1191,7 @@ class ResourceSerializer(serializers.ModelSerializer):
         # Generate a unique string to append to the filename
         unique_str = get_random_string(length=8)
         # Construct the file path
-        file_path = f"users/resources/{unique_str}_{filename}"
+        file_path = f"users/resources/{unique_str}_{filename.replace('/','')}"
         return file_path
     
     def create(self, validated_data):
@@ -1204,7 +1206,7 @@ class ResourceSerializer(serializers.ModelSerializer):
                 # Assuming 'file' is the key in file_data dict that holds the actual file
                 file_instance = file_data['file']
                 # Use the custom function to get the correct file path
-                file_path = self.construct_file_path(None, file_instance.name)
+                file_path = self.construct_file_path(None, file_instance)
                 # Update the file path in file_data
                 file_data['file'] = file_path
                 # Create ResourceFile instance
@@ -1227,7 +1229,7 @@ class ResourceSerializer(serializers.ModelSerializer):
             return resource
         except Exception as e:
             LOGGER.error(e,exc_info=True)
-            return e.detail
+            return e
     # def update(self, instance, validated_data):
     #     uploaded_files_data = validated_data.pop('uploaded_files', [])
 
@@ -1320,3 +1322,8 @@ class ResourceAPIBuilderSerializer(serializers.ModelSerializer):
     class Meta:
         model = ResourceUsagePolicy
         fields = ["approval_status", "accessibility_time", "api_key"]
+
+def get_random_string(length=8):
+    characters = string.ascii_letters + string.digits
+    unique_str = ''.join(secrets.choice(characters) for _ in range(length))
+    return quote(unique_str, safe='')
