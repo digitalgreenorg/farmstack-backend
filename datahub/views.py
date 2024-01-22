@@ -3528,8 +3528,9 @@ class ResourceUsagePolicyRetrieveUpdateDestroyView(generics.RetrieveUpdateDestro
     serializer_class = ResourceUsagePolicySerializer
     api_builder_serializer_class = ResourceAPIBuilderSerializer
 
-    @authenticate_user(model=ResourceUsagePolicy)
+    # @authenticate_user(model=ResourceUsagePolicy)
     def patch(self, request, *args, **kwargs):
+        # import pdb;pdb.set_trace()
         instance = self.get_object()
         approval_status = request.data.get('approval_status')
         policy_type = request.data.get('type', None)
@@ -3537,8 +3538,6 @@ class ResourceUsagePolicyRetrieveUpdateDestroyView(generics.RetrieveUpdateDestro
         try:
             if approval_status == 'approved':
                 instance.api_key = generate_api_key()
-            else:
-                instance.api_key = ""
             serializer = self.api_builder_serializer_class(instance, data=request.data, partial=True)
             serializer.is_valid(raise_exception=True)
             serializer.save()
