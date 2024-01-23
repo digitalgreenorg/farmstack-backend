@@ -2,8 +2,11 @@ import json
 import logging
 import os
 import re
+import secrets
 import shutil
+import string
 import uuid
+from urllib.parse import quote
 
 import plazy
 from django.conf import settings
@@ -1144,7 +1147,9 @@ class ResourceSerializer(serializers.ModelSerializer):
             fields = ["id", "first_name", "last_name", "email", "role", "on_boarded_by"]
     categories = serializers.SerializerMethodField(read_only=True)
     resources = ResourceFileSerializer(many=True, read_only=True)
-    uploaded_files = serializers.ListField(child=serializers.JSONField(), write_only=True)
+    uploaded_files = serializers.ListField(child=serializers.JSONField(), write_only=True, required=False)
+    files = serializers.ListField(child=serializers.ListField(), write_only=True, required=False)
+
     sub_categories_map = serializers.ListField(write_only=True)
 
     organization = OrganizationRetriveSerializer(
@@ -1169,7 +1174,8 @@ class ResourceSerializer(serializers.ModelSerializer):
             "updated_at",
             "content_files_count",
             "sub_categories_map",
-            "categories"
+            "categories",
+            "files"
         )
     
     def get_categories(self, instance):
@@ -1185,15 +1191,27 @@ class ResourceSerializer(serializers.ModelSerializer):
         return serializer.data
     def get_content_files_count(self, resource):
         return ResourceFile.objects.filter(resource=resource.id).values('type').annotate(count=Count('type'))
+    def construct_file_path(self, instance, filename):
+        # Generate a unique string to append to the filename
+        unique_str = get_random_string(length=8)
+        # Construct the file path
+        file_path = f"users/resources/{unique_str}_{filename.replace('/','')}"
+        return file_path
+    
     def create(self, validated_data):
         try:
             resource_files_data = validated_data.pop("uploaded_files")
+            resource_files = validated_data.pop("files")
+
+
             sub_categories_map=validated_data.pop("sub_categories_map")
             resource = Resource.objects.create(**validated_data)
 
             resource_files_data = json.loads(resource_files_data[0]) if resource_files_data else []
-            resource_file_instances= [ResourceFile(resource=resource, **file_data) for file_data in resource_files_data]
-            ids = ResourceFile.objects.bulk_create(resource_file_instances)
+           
+
+            # resource_file_instances= [ResourceFile(resource=resource, **file_data) for file_data in resource_files_data]
+            # ids = ResourceFile.objects.bulk_create(resource_file_instances)
             sub_categories_map = json.loads(sub_categories_map[0]) if sub_categories_map else []
             resource_sub_cat_instances= [
                 ResourceSubCategoryMap(resource=resource, sub_category=SubCategory.objects.get(id=sub_cat)
@@ -1201,14 +1219,24 @@ class ResourceSerializer(serializers.ModelSerializer):
 
             ResourceSubCategoryMap.objects.bulk_create(resource_sub_cat_instances)
 
-            resource_file_obj = ResourceFile.objects.filter(resource=resource).all()
-            for resource_file in resource_file_obj:
-                VectorDBBuilder.create_vector_db(resource_file.__dict__)
+            # resource_file_obj = ResourceFile.objects.filter(resource=resource).all()
+            for resource_file in resource_files_data:
+                data = {"resource":resource.id, **resource_file}
+                serializer = ResourceFileSerializer(data = data)
+                serializer.is_valid(raise_exception=True)
+                serializer.save()
+                VectorDBBuilder.create_vector_db(serializer.data)
+            for file in resource_files[0]:
+                data = {"resource":resource.id, "file":file, "type": "file"}
+                serializer = ResourceFileSerializer(data = data)
+                serializer.is_valid(raise_exception=True)
+                serializer.save()
+                VectorDBBuilder.create_vector_db(serializer.data)
 
             return resource
         except Exception as e:
             LOGGER.error(e,exc_info=True)
-            return e.detail
+            return e
     # def update(self, instance, validated_data):
     #     uploaded_files_data = validated_data.pop('uploaded_files', [])
 
@@ -1301,3 +1329,8 @@ class ResourceAPIBuilderSerializer(serializers.ModelSerializer):
     class Meta:
         model = ResourceUsagePolicy
         fields = ["approval_status", "accessibility_time", "api_key"]
+
+def get_random_string(length=8):
+    characters = string.ascii_letters + string.digits
+    unique_str = ''.join(secrets.choice(characters) for _ in range(length))
+    return quote(unique_str, safe='')

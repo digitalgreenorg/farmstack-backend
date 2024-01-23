@@ -323,7 +323,7 @@ class ResourceFile(TimeStampMixin):
     resource = models.ForeignKey(Resource, on_delete=models.CASCADE, related_name="resources")
     file = models.FileField(upload_to=settings.RESOURCES_URL, null=True, blank=True)
     file_size = models.PositiveIntegerField(null=True, blank=True)
-    type = models.CharField(max_length=20, null=True, choices=RESOURCE_URL_TYPE)
+    type = models.CharField(max_length=20, null=True, choices=RESOURCE_URL_TYPE, default="file")
     url = models.CharField(max_length=200, null=True)
     transcription = models.CharField(max_length=10000,null=True, blank=True)
 
@@ -387,7 +387,7 @@ class ResourceUsagePolicy(TimeStampMixin):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     user_organization_map = models.ForeignKey(UserOrganizationMap, on_delete=models.PROTECT, related_name="org_usage_policy")
     resource = models.ForeignKey(Resource, on_delete=models.CASCADE, related_name="resource_usage_policy")
-    type = models.CharField(max_length=20, null=True, choices=RESOURCE_USAGE_POLICY_API_TYPE, default="resourse_file")
+    type = models.CharField(max_length=20, null=True, choices=RESOURCE_USAGE_POLICY_API_TYPE, default="resource")
     approval_status = models.CharField(max_length=255, null=True, choices=USAGE_POLICY_REQUEST_STATUS, default="requested")
     accessibility_time = models.DateField(null=True)
     api_key = models.CharField(max_length=64, null=True, unique=True)
