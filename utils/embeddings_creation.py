@@ -186,6 +186,8 @@ def load_documents(url, file, type, id, transcription=""):
             download_file(url, "temp.pdf")
             loader = PyMuPDFLoader("temp.pdf")
         else: 
+            # file_path = os.path.join(settings.MEDIA_ROOT, file)
+            # print(file_path)
             loader = PyMuPDFLoader(file)
         return loader.load()
 

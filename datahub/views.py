@@ -3176,6 +3176,8 @@ class ResourceManagementViewSet(GenericViewSet):
             user_map = request.META.get("map_id")
             # request.data._mutable = True
             data = request.data.copy()
+            files = request.FILES.getlist('files')  # 'files' is the key used in FormData
+            data["files"] = files
             data["user_map"] = user_map
 
             serializer = self.get_serializer(data=data)
@@ -3401,12 +3403,9 @@ class ResourceFileManagementViewSet(GenericViewSet):
     @transaction.atomic
     def create(self, request, *args, **kwargs):
         try:
-            #request.data._mutable = True
-            #request.data["file_size"] = request.FILES.get("file").size
             serializer = self.get_serializer(data=request.data, partial=True)
             serializer.is_valid(raise_exception=True)
             serializer.save()
-            # import pdb; pdb.set_trace()
             VectorDBBuilder.create_vector_db(serializer.data)
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         except ValidationError as e:

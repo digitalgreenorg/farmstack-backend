@@ -1147,7 +1147,9 @@ class ResourceSerializer(serializers.ModelSerializer):
             fields = ["id", "first_name", "last_name", "email", "role", "on_boarded_by"]
     categories = serializers.SerializerMethodField(read_only=True)
     resources = ResourceFileSerializer(many=True, read_only=True)
-    uploaded_files = serializers.ListField(child=serializers.JSONField(), write_only=True)
+    uploaded_files = serializers.ListField(child=serializers.JSONField(), write_only=True, required=False)
+    files = serializers.ListField(child=serializers.ListField(), write_only=True, required=False)
+
     sub_categories_map = serializers.ListField(write_only=True)
 
     organization = OrganizationRetriveSerializer(
@@ -1172,7 +1174,8 @@ class ResourceSerializer(serializers.ModelSerializer):
             "updated_at",
             "content_files_count",
             "sub_categories_map",
-            "categories"
+            "categories",
+            "files"
         )
     
     def get_categories(self, instance):
@@ -1198,6 +1201,9 @@ class ResourceSerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         try:
             resource_files_data = validated_data.pop("uploaded_files")
+            resource_files = validated_data.pop("files")
+
+
             sub_categories_map=validated_data.pop("sub_categories_map")
             resource = Resource.objects.create(**validated_data)
 
@@ -1216,6 +1222,12 @@ class ResourceSerializer(serializers.ModelSerializer):
             # resource_file_obj = ResourceFile.objects.filter(resource=resource).all()
             for resource_file in resource_files_data:
                 data = {"resource":resource.id, **resource_file}
+                serializer = ResourceFileSerializer(data = data)
+                serializer.is_valid(raise_exception=True)
+                serializer.save()
+                VectorDBBuilder.create_vector_db(serializer.data)
+            for file in resource_files[0]:
+                data = {"resource":resource.id, "file":file, "type": "file"}
                 serializer = ResourceFileSerializer(data = data)
                 serializer.is_valid(raise_exception=True)
                 serializer.save()
