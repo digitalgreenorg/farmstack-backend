@@ -190,7 +190,6 @@ def load_documents(url, file, type, id, transcription=""):
             # print(file_path)
             domain = os.environ.get('DATAHUB_SITE', "http://localhost:8000")
             file = file if file.startswith(domain) else domain+file
-            import pdb; pdb.set_trace()
             loader = PyMuPDFLoader(file)
         return loader.load()
 
