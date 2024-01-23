@@ -323,7 +323,7 @@ class ResourceFile(TimeStampMixin):
     resource = models.ForeignKey(Resource, on_delete=models.CASCADE, related_name="resources")
     file = models.FileField(upload_to=settings.RESOURCES_URL, null=True, blank=True)
     file_size = models.PositiveIntegerField(null=True, blank=True)
-    type = models.CharField(max_length=20, null=True, choices=RESOURCE_URL_TYPE)
+    type = models.CharField(max_length=20, null=True, choices=RESOURCE_URL_TYPE, default="file")
     url = models.CharField(max_length=200, null=True)
     transcription = models.CharField(max_length=10000,null=True, blank=True)
 
