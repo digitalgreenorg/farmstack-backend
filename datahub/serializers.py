@@ -1346,3 +1346,8 @@ class MessagesSerializer(serializers.ModelSerializer):
     class Meta:
         model = Messages
         fields = "__all__"
+
+class MessagesRetriveSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Messages
+        exclude = ["retrieved_chunks"]
