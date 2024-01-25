@@ -3531,13 +3531,14 @@ class EmbeddingsViewSet(viewsets.ModelViewSet):
         # print(chat_history)
         user_name = User.objects.get(id=user_id).first_name
         summary, chunks = VectorDBBuilder.get_input_embeddings(query, user_name, resource_id, chat_history)
-        data = {"user_map": map_id, "resource": resource_id, "query": query, 
+        data = {"user_map": UserOrganizationMap.objects.get(id=map_id).id, "resource": resource_id, "query": query, 
                 "query_response": summary}
-        if chunks:
-            data["retrieved_chunks"]= chunks.values_list("uuid", flat=True)
         messages_serializer = MessagesSerializer(data=data)
         messages_serializer.is_valid(raise_exception=True)
-        messages_serializer.save()
+        message_instance = messages_serializer.save()  # This returns the Messages model instance
+        if chunks:
+            message_instance.retrieved_chunks.set(chunks.values_list("uuid", flat=True))
+    
         return Response(summary)
     
     @http_request_mutation
