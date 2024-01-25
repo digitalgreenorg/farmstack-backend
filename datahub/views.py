@@ -3545,9 +3545,10 @@ class EmbeddingsViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=['post'])
     def chat_histroy(self, request):
         map_id = request.META.get("map_id")
-        data=request.data
-        # resource_ = request.data.get("resource")
-        history = Messages.objects.filter(user_map=map_id).filter(**data).order_by("-created_at").all()[:5]
+        resource_id = request.data.get("resource")
+        history = Messages.objects.filter(user_map=map_id).order_by("-created_at").all()[:5]
+        if resource_id:
+            history = history.filter(resource_id=resource_id)
         messages_serializer = MessagesSerializer(history, many=True)
         return Response(messages_serializer.data)
     
