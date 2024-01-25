@@ -157,6 +157,7 @@ from .serializers import (
     APIBuilderSerializer,
     CategorySerializer,
     LangChainEmbeddingsSerializer,
+    MessagesRetriveSerializer,
     MessagesSerializer,
     ParticipantCostewardSerializer,
     PolicySerializer,
@@ -3539,7 +3540,6 @@ class EmbeddingsViewSet(viewsets.ModelViewSet):
             message_instance = messages_serializer.save()  # This returns the Messages model instance
             if chunks:
                 message_instance.retrieved_chunks.set(chunks.values_list("uuid", flat=True))
-        
             return Response(summary)
         except ValidationError as e:
             return Response(e.detail, status=status.HTTP_400_BAD_REQUEST)
@@ -3559,7 +3559,7 @@ class EmbeddingsViewSet(viewsets.ModelViewSet):
             else:
                 history = history.filter(resource_id__isnull=True).all()[:5]
 
-            messages_serializer = MessagesSerializer(history, many=True)
+            messages_serializer = MessagesRetriveSerializer(history, many=True)
             return Response(messages_serializer.data)
         except ValidationError as e:
             return Response(e.detail, status=status.HTTP_400_BAD_REQUEST)
