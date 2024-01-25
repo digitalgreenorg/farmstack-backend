@@ -144,6 +144,7 @@ from .models import (
     Category,
     DatasetSubCategoryMap,
     LangchainPgEmbedding,
+    Messages,
     Policy,
     ResourceFile,
     ResourceSubCategoryMap,
@@ -3526,7 +3527,7 @@ class EmbeddingsViewSet(viewsets.ModelViewSet):
         resource_id = request.data.get("resource")
         user_name = User.objects.get(id=user_id).first_name
         summary, chunks = VectorDBBuilder.get_input_embeddings(query, user_name, resource_id)
-        data = {"user_map": map_id, "resource": resource_id, "original_messsage": query, 
+        data = {"user_map": map_id, "resource": resource_id, "query": query, 
                 "query_response": summary}
         if chunks:
             data["retrieved_chunks"]= chunks.values_list("uuid", flat=True)
@@ -3535,12 +3536,19 @@ class EmbeddingsViewSet(viewsets.ModelViewSet):
         messages_serializer.save()
         return Response(summary)
     
-
-
+    @http_request_mutation
+    @action(detail=False, methods=['post'])
+    def chat_histroy(self, request):
+        map_id = request.META.get("map_id")
+        data=request.data
+        # resource_ = request.data.get("resource")
+        history = Messages.objects.filter(user_map=map_id).filter(**data).order_by("-created_at").all()[:5]
+        messages_serializer = MessagesSerializer(history, many=True)
+        return Response(messages_serializer.data)
+    
 class ResourceUsagePolicyListCreateView(generics.ListCreateAPIView):
     queryset = ResourceUsagePolicy.objects.all()
     serializer_class = ResourceUsagePolicySerializer
-
 
 class ResourceUsagePolicyRetrieveUpdateDestroyView(generics.RetrieveUpdateDestroyAPIView):
     queryset = ResourceUsagePolicy.objects.all()

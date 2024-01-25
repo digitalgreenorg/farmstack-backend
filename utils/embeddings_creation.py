@@ -261,12 +261,9 @@ class VectorDBBuilder:
 
             embedding = genrate_embeddings_from_text(text)
             chunks = find_similar_chunks(embedding, resource_id)
-            print(chunks)
-            import pdb; pdb.set_trace()
             documents =  " ".join([row.document for row in chunks])
             formatted_message = format_prompt(user_name, documents, text)
             response = generate_response(formatted_message)
-            print(response)
             return response, chunks
         except Exception as e:
             LOGGING.error(f"Error while generating response for query: {text}: Error {e}", exc_info=True)
