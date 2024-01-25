@@ -231,10 +231,9 @@ def find_similar_chunks(input_embedding, resource_id,  top_n=5,):
         return similar_chunks
     else:
         LOGGING.info("Looking into all embeddings")
-
         similar_chunks = LangchainPgEmbedding.objects.annotate(
             similarity=L2Distance("embedding", input_embedding)
-        ).order_by("similarity").filter(similarity__lt=0.55).all()[:top_n]
+        ).order_by("similarity").filter(similarity__lt=0.55).defer('cmetadata').all()[:top_n]
         # import pdb; pdb.set_trace()
         return similar_chunks
 
@@ -267,7 +266,6 @@ class VectorDBBuilder:
     def get_input_embeddings(text, user_name=None, resource_id=None, chat_history=None):
         text=text.replace("\n", " ") # type: ignore
         try:
-
             embedding = genrate_embeddings_from_text(text)
             chunks = find_similar_chunks(embedding, resource_id)
             documents =  " ".join([row.document for row in chunks])
