@@ -355,6 +355,20 @@ class ResourceSubCategoryMap(TimeStampMixin):
     sub_category = models.ForeignKey(SubCategory, on_delete=models.CASCADE, related_name="resource_sub_category_map")
     resource = models.ForeignKey(Resource, on_delete=models.CASCADE, related_name="resource_cat_map")
 
+class ResourceUsagePolicy(TimeStampMixin):
+    """
+    Resource Policy Model.
+    """
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    user_organization_map = models.ForeignKey(UserOrganizationMap, on_delete=models.PROTECT, related_name="org_usage_policy")
+    resource = models.ForeignKey(Resource, on_delete=models.CASCADE, related_name="resource_usage_policy")
+    type = models.CharField(max_length=200, null=True, choices=RESOURCE_USAGE_POLICY_API_TYPE, default="resource")
+    approval_status = models.CharField(max_length=255, null=True, choices=USAGE_POLICY_REQUEST_STATUS, default="requested")
+    accessibility_time = models.DateField(null=True)
+    api_key = models.CharField(max_length=64, null=True, unique=True)
+    configs = models.JSONField(default=dict, null=True)
+
+
 class LangchainPgCollection(models.Model):
     name = models.CharField(max_length=50)
     cmetadata = models.JSONField()
@@ -379,17 +393,65 @@ class LangchainPgEmbedding(models.Model):
     # def __str__(self):
     #     return f"LangchainPgEmbedding(uuid={self.uuid}, document={self.document})"
 
-    
-class ResourceUsagePolicy(TimeStampMixin):
-    """
-    Resource Policy Model.
-    """
-    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    user_organization_map = models.ForeignKey(UserOrganizationMap, on_delete=models.PROTECT, related_name="org_usage_policy")
-    resource = models.ForeignKey(Resource, on_delete=models.CASCADE, related_name="resource_usage_policy")
-    type = models.CharField(max_length=20, null=True, choices=RESOURCE_USAGE_POLICY_API_TYPE, default="resource")
-    approval_status = models.CharField(max_length=255, null=True, choices=USAGE_POLICY_REQUEST_STATUS, default="requested")
-    accessibility_time = models.DateField(null=True)
-    api_key = models.CharField(max_length=64, null=True, unique=True)
-    configs = models.JSONField(default=dict, null=True)
+# class Conversation(TimeStampMixin):
+#     BOT_CHOICES = (
+#         ("whatsapp", "whatsapp"),
+#         ("telegram", "telegram"),
+#         ("vistaar", "vistaar"),
+
+#     )
+#     id = models.UUIDField(primary_key=True, default=uuid.uuid4, max_length=50)
+#     user = models.ForeignKey(UserOrganizationMap, on_delete=models.CASCADE, related_name="conversation_map")
+#     bot_type = models.CharField(max_length=10, choices=BOT_CHOICES, default="vistaar")
+#     bot_reference = models.CharField(max_length=50, null=True)
+#     # language = models.ForeignKeyField(Language, backref="language", null=True)
+#     # country = models.ForeignKeyField(Country, backref="country", null=True)
+#     # state = models.ForeignKeyField(State, backref="state", null=True)
+#     # crop = models.ForeignKeyField(Crop, backref="crop", null=True)
+
+#     # class Meta:
+#     #     table_name = "conversation"
+
+class Messages(TimeStampMixin):
+    INPUT_TYPES = (
+        ("text", "text"),
+        ("voice", "voice"),
+    )
+    BOT_CHOICES = (
+        ("whatsapp", "whatsapp"),
+        ("telegram", "telegram"),
+        ("vistaar", "vistaar"),
+
+    )
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, max_length=50)
+    user_map = models.ForeignKey(UserOrganizationMap, on_delete=models.CASCADE, related_name="conversation_user_map")
+    resource = models.ForeignKey(Resource, on_delete=models.CASCADE, related_name="messages_resource", null=True)
+    bot_type = models.CharField(max_length=10, choices=BOT_CHOICES, default="vistaar")
+    bot_reference = models.CharField(max_length=50, null=True)
+    query = models.CharField(max_length=10000, null=True)
+    translated_message = models.CharField(max_length=10000, null=True)
+    # message_input_time = models.DateTimeField(null=True)
+    # input_speech_to_text_start_time = models.DateTimeField(null=True)
+    # input_speech_to_text_end_time = models.DateTimeField(null=True)
+    # input_translation_start_time = models.DateTimeField(null=True)
+    # input_translation_end_time = models.DateTimeField(null=True)
+    query_response = models.CharField(max_length=10000, null=True)
+    # message_translated_response = models.CharField(max_length=10000, null=True)
+    # response_translation_start_time = models.DateTimeField(null=True)
+    # response_translation_end_time = models.DateTimeField(null=True)
+    # response_text_to_speech_start_time = models.DateTimeField(null=True)
+    # response_text_to_speech_end_time = models.DateTimeField(null=True)
+    # message_response_time = models.DateTimeField(null=True)
+    # main_bot_logic_start_time = models.DateTimeField(null=True)
+    # main_bot_logic_end_time = models.DateTimeField(null=True)
+    # video_retrieval_start_time = models.DateTimeField(null=True)
+    # video_retrieval_end_time = models.DateTimeField(null=True)
+    feedback = models.CharField(max_length=4096, null=True)
+    input_type = models.CharField(max_length=20, choices=INPUT_TYPES, null=True)
+    input_language_detected = models.CharField(max_length=20, null=True)
+    retrieved_chunks = models.ManyToManyField(LangchainPgEmbedding, null=True)
+    condensed_question = models.CharField(max_length=20000, null=True)
+
+    # class Meta:
+    #     table_name = "messages"
 
