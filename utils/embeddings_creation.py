@@ -238,7 +238,6 @@ def find_similar_chunks(input_embedding, resource_id,  top_n=5,):
 def format_prompt(user_name, context_chunks, user_input, chat_history):
     if context_chunks:
         print("chunks availabe")
-        print(context_chunks)
         return Constants.SYSTEM_MESSAGE.format(name_1=user_name, input=user_input, context=context_chunks, chat_history=chat_history)
     else:
         print("chunks not availabe")
