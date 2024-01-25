@@ -186,13 +186,16 @@ def load_documents(url, file, type, id, transcription=""):
         else: 
             # file_path = os.path.join(settings.MEDIA_ROOT, file)
             # print(file_path)
+            
             domain = os.environ.get('DATAHUB_SITE', "http://localhost:8000")
             file = file if file.startswith(domain) else domain+file
             loader = PyMuPDFLoader(file)
         return loader.load()
 
     except requests.exceptions.RequestException as e:
-        LOGGING.error(f"Error downloading PDF from {url} or {file}: {e}", exe_info=True)
+        LOGGING.error(f"Error downloading PDF from {url} or {file}: {e}", exc_info=True)
+    except Exception as e:
+        LOGGING.error(f"Error downloading PDF from {url} or {file}: {e}", exc_info=True)
 
     return documents
 
@@ -254,9 +257,10 @@ class VectorDBBuilder:
     def create_vector_db(resource, chunk_size=1000, chunk_overlap=200):
         # resource = ResourceFile(resource)
         documents = load_documents(resource.get("url"), resource.get("file"), resource.get("type"), resource.get("id"), resource.get("transcription"))
-        texts = split_documents(documents, chunk_size, chunk_overlap)
-        embeddings = OpenAIEmbeddings()
-        vectordb = get_embeddings(embeddings, texts, str(resource.get("id")), connectionString, resource)
+        if documents:
+            texts = split_documents(documents, chunk_size, chunk_overlap)
+            embeddings = OpenAIEmbeddings()
+            vectordb = get_embeddings(embeddings, texts, str(resource.get("id")), connectionString, resource)
         return None
 
     
