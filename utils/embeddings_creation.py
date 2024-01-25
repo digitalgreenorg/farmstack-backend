@@ -235,16 +235,19 @@ def find_similar_chunks(input_embedding, resource_id,  top_n=5,):
         # import pdb; pdb.set_trace()
         return similar_chunks
 
-def format_prompt(user_name, context_chunks, user_input):
-    return Constants.SYSTEM_MESSAGE.format(name_1=user_name, context=context_chunks, input=user_input)
-
+def format_prompt(user_name, context_chunks, user_input, chat_history):
+    if context_chunks:
+        print("chunks availabe")
+        return Constants.SYSTEM_MESSAGE.format(name_1=user_name, input=user_input, context=context_chunks, chat_history=chat_history)
+    else:
+        print("chunks not availabe")
+        return Constants.NO_CUNKS_SYSTEM_MESSAGE.format(name_1=user_name, input=user_input, chat_history=chat_history)
 def generate_response(prompt):
     response = openai.Completion.create(
         engine="gpt-3.5-turbo-instruct",  # Use an appropriate engine
         prompt=prompt,
         max_tokens=2000  # Adjust as necessary
     )
-
     return response.choices[0].text.strip()
 
 class VectorDBBuilder:
@@ -257,14 +260,16 @@ class VectorDBBuilder:
         return None
 
     
-    def get_input_embeddings(text, user_name=None, resource_id=None):
+    def get_input_embeddings(text, user_name=None, resource_id=None, chat_history=None):
         text=text.replace("\n", " ") # type: ignore
         try:
 
             embedding = genrate_embeddings_from_text(text)
             chunks = find_similar_chunks(embedding, resource_id)
             documents =  " ".join([row.document for row in chunks])
-            formatted_message = format_prompt(user_name, documents, text)
+            LOGGING.info(f"Similarity score for the query: {text}. Score: {' '.join([str(row.similarity) for row in chunks])} ")
+            formatted_message = format_prompt(user_name, documents, text, chat_history)
+            # print(formatted_message)
             response = generate_response(formatted_message)
             return response, chunks
         except Exception as e:
