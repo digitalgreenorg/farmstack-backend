@@ -155,6 +155,7 @@ from .serializers import (
     APIBuilderSerializer,
     CategorySerializer,
     LangChainEmbeddingsSerializer,
+    MessagesSerializer,
     ParticipantCostewardSerializer,
     PolicySerializer,
     ResourceFileSerializer,
@@ -3514,6 +3515,25 @@ class EmbeddingsViewSet(viewsets.ModelViewSet):
         # import pdb; pdb.set_trace()
         # serializer = self.get_serializer(data)
         return Response(data)
+    
+    @http_request_mutation
+    @action(detail=False, methods=['post'])
+    def chat_api(self, request):
+        map_id = request.META.get("map_id")
+        user_id = request.META.get("user_id")
+        data=request.data
+        query = request.data.get("query")
+        resource_id = request.data.get("resource")
+        user_name = User.objects.get(id=user_id).first_name
+        summary, chunks = VectorDBBuilder.get_input_embeddings(query, user_name, resource_id)
+        data = {"user_map": map_id, "resource": resource_id, "original_messsage": query, 
+                "query_response": summary}
+        if chunks:
+            data["retrieved_chunks"]= chunks.values_list("uuid", flat=True)
+        messages_serializer = MessagesSerializer(data=data)
+        messages_serializer.is_valid(raise_exception=True)
+        messages_serializer.save()
+        return Response(summary)
     
 
 

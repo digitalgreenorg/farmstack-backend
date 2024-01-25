@@ -50,11 +50,12 @@ from utils.validators import (
     validate_image_type,
 )
 
-from .models import (
+from .models import (  # Conversation,
     Category,
     DatasetSubCategoryMap,
     LangchainPgCollection,
     LangchainPgEmbedding,
+    Messages,
     Policy,
     ResourceSubCategoryMap,
     SubCategory,
@@ -1325,6 +1326,7 @@ class ResourceUsagePolicySerializer(serializers.ModelSerializer):
         model = ResourceUsagePolicy
         fields = "__all__"
 
+
 class ResourceAPIBuilderSerializer(serializers.ModelSerializer):
     class Meta:
         model = ResourceUsagePolicy
@@ -1334,3 +1336,13 @@ def get_random_string(length=8):
     characters = string.ascii_letters + string.digits
     unique_str = ''.join(secrets.choice(characters) for _ in range(length))
     return quote(unique_str, safe='')
+
+# class ConversationSerializer(serializers.ModelSerializer):
+#     class Meta:
+#         model = Conversation
+#         fields = "__all__"
+
+class MessagesSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Messages
+        fields = "__all__"

@@ -12,9 +12,12 @@ import certifi
 import openai
 import pytz
 import requests
+from django.db.models import OuterRef, Subquery
 
 # from langchain.vectorstores import Chroma
 from dotenv import load_dotenv
+
+# from langchain import PromptTemplate
 from langchain.docstore.document import Document
 from langchain.document_loaders import PyMuPDFLoader
 
@@ -25,6 +28,8 @@ from langchain.text_splitter import (
     RecursiveCharacterTextSplitter,
 )
 from langchain.vectorstores.pgvector import DistanceStrategy, PGVector
+
+# from openai import OpenAI
 from pgvector.django import CosineDistance, L2Distance
 from psycopg.conninfo import make_conninfo
 from reportlab.lib import colors
@@ -41,30 +46,20 @@ from urllib3.util import Retry
 
 from core import settings
 from core.constants import Constants
-from datahub.models import ResourceFile
-
-# import request
-
-
-
-
+from datahub.models import LangchainPgCollection, LangchainPgEmbedding, ResourceFile
 
 LOGGING = logging.getLogger(__name__)
-
 
 load_dotenv()
 
 os.environ["OPENAI_API_KEY"] = settings.OPENAI_API_KEY
 
-# os.environ["allow_reuse"] = "True" # type: ignore
-
-embeddings = OpenAIEmbeddings()
+openai.api_key = settings.OPENAI_API_KEY
 
 embedding_model = "text-embedding-ada-002"
+embeddings = OpenAIEmbeddings(model=embedding_model)
 
 db_settings = settings.DATABASES['default']
-
-# URL-encode the username and password
 encoded_user = quote_plus(db_settings['USER'])
 encoded_password = quote_plus(db_settings['PASSWORD'])
 
@@ -207,6 +202,49 @@ def split_documents(documents, chunk_size, chunk_overlap):
     )
     return text_splitter.split_documents(documents)
 
+def genrate_embeddings_from_text(text):
+    response = openai.Embedding.create(input=text, model=embedding_model)
+    embedding = response['data'][0]['embedding']
+    return embedding
+
+def find_similar_chunks(input_embedding, resource_id,  top_n=5,):
+    # Assuming you have a similarity function or custom SQL to handle vector comparison
+    if resource_id:
+        from uuid import UUID
+
+        from django.db import models
+        from django.db.models.functions import Cast
+        collection_ids = LangchainPgCollection.objects.filter(
+            name__in=Subquery(
+                ResourceFile.objects.filter(resource=resource_id)
+                .annotate(string_id=Cast('id', output_field=models.CharField()))
+                .values('string_id')
+            )
+        ).values_list('uuid', flat=True)
+        # Use these IDs to filter LangchainPgEmbedding objects
+        similar_chunks = LangchainPgEmbedding.objects.annotate(
+            similarity=L2Distance("embedding", input_embedding)
+        ).order_by("similarity").filter(similarity__lt=0.55, collection_id__in=collection_ids).all()[:top_n]
+        return similar_chunks
+    else:
+        similar_chunks = LangchainPgEmbedding.objects.annotate(
+            similarity=L2Distance("embedding", input_embedding)
+        ).order_by("similarity").filter(similarity__lt=0.55).all()[:top_n]
+        # import pdb; pdb.set_trace()
+        return similar_chunks
+
+def format_prompt(user_name, context_chunks, user_input):
+    return Constants.SYSTEM_MESSAGE.format(name_1=user_name, context=context_chunks, input=user_input)
+
+def generate_response(prompt):
+    response = openai.Completion.create(
+        engine="gpt-3.5-turbo-instruct",  # Use an appropriate engine
+        prompt=prompt,
+        max_tokens=2000  # Adjust as necessary
+    )
+
+    return response.choices[0].text.strip()
+
 class VectorDBBuilder:
     def create_vector_db(resource, chunk_size=1000, chunk_overlap=200):
         # resource = ResourceFile(resource)
@@ -217,13 +255,20 @@ class VectorDBBuilder:
         return None
 
     
-    # def get_input_embeddings(text: str):
-    #     text=text.replace("\n", " ")
-    #     response = openai.Embedding.create(input=text, model=embedding_model, api_key=settings.OPENAI_API_KEY)
-    #     embedding = response["data"][0]["embedding"]
-    #     documents = LangchainPgEmbedding.objects.values("document").order_by(CosineDistance("embedding", embedding))[:5]
-    #     print(documents)
-    #     import pdb; pdb.set_trace()
-    #     return documents
+    def get_input_embeddings(text, user_name=None, resource_id=None):
+        text=text.replace("\n", " ") # type: ignore
+        try:
 
-
+            embedding = genrate_embeddings_from_text(text)
+            chunks = find_similar_chunks(embedding, resource_id)
+            print(chunks)
+            import pdb; pdb.set_trace()
+            documents =  " ".join([row.document for row in chunks])
+            formatted_message = format_prompt(user_name, documents, text)
+            response = generate_response(formatted_message)
+            print(response)
+            return response, chunks
+        except Exception as e:
+            LOGGING.error(f"Error while generating response for query: {text}: Error {e}", exc_info=True)
+            return str(e)
+   
