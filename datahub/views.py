@@ -143,6 +143,7 @@ from utils.jwt_services import http_request_mutation
 from .models import (
     Category,
     DatasetSubCategoryMap,
+    LangchainPgCollection,
     LangchainPgEmbedding,
     Messages,
     Policy,
@@ -3391,8 +3392,6 @@ class ResourceManagementViewSet(GenericViewSet):
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
 
-    
-
 class ResourceFileManagementViewSet(GenericViewSet):
     """
     Resource File Management
@@ -3554,6 +3553,30 @@ class EmbeddingsViewSet(viewsets.ModelViewSet):
 
         messages_serializer = MessagesSerializer(history, many=True)
         return Response(messages_serializer.data)
+    
+    @action(detail=False, methods=['get'])
+    def dump_embeddings(self, request):
+        # queryset = ResourceFile.objects.all()
+        from django.db import models
+        from django.db.models.functions import Cast
+
+        queryset = ResourceFile.objects.exclude(
+            id__in=Subquery(
+                LangchainPgCollection.objects.annotate(
+                    uuid_name=Cast('name', models.UUIDField())
+                ).values('uuid_name')
+            )
+        ).all()
+        serializer = ResourceFileSerializer(queryset, many=True)
+        data=serializer.data
+        total_files = len(data)
+        count=0
+        for row in data:
+            count +=1
+            VectorDBBuilder.create_vector_db(row)
+            print(f"resource {row} is completed")
+            print(f"{count} completed out of {total_files}")
+        return Response("embeddings created for all the files")
     
 class ResourceUsagePolicyListCreateView(generics.ListCreateAPIView):
     queryset = ResourceUsagePolicy.objects.all()
