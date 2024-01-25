@@ -7,12 +7,15 @@ import re
 import subprocess
 import time
 from urllib.parse import quote_plus
+from uuid import UUID
 
 import certifi
 import openai
 import pytz
 import requests
+from django.db import models
 from django.db.models import OuterRef, Subquery
+from django.db.models.functions import Cast
 
 # from langchain.vectorstores import Chroma
 from dotenv import load_dotenv
@@ -210,10 +213,7 @@ def genrate_embeddings_from_text(text):
 def find_similar_chunks(input_embedding, resource_id,  top_n=5,):
     # Assuming you have a similarity function or custom SQL to handle vector comparison
     if resource_id:
-        from uuid import UUID
-
-        from django.db import models
-        from django.db.models.functions import Cast
+        LOGGING.info("Looking into resource: {resource_id} embeddings")
         collection_ids = LangchainPgCollection.objects.filter(
             name__in=Subquery(
                 ResourceFile.objects.filter(resource=resource_id)
@@ -227,6 +227,8 @@ def find_similar_chunks(input_embedding, resource_id,  top_n=5,):
         ).order_by("similarity").filter(similarity__lt=0.55, collection_id__in=collection_ids).all()[:top_n]
         return similar_chunks
     else:
+        LOGGING.info("Looking into all embeddings")
+
         similar_chunks = LangchainPgEmbedding.objects.annotate(
             similarity=L2Distance("embedding", input_embedding)
         ).order_by("similarity").filter(similarity__lt=0.55).all()[:top_n]
