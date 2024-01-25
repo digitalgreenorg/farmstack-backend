@@ -3524,36 +3524,48 @@ class EmbeddingsViewSet(viewsets.ModelViewSet):
         data=request.data
         query = request.data.get("query")
         resource_id = request.data.get("resource")
-        history = Messages.objects.filter(user_map=map_id).order_by("-created_at")
-        history = history.filter(resource_id=resource_id).all()[:3] if resource_id else history.all()[:3]
-        chat_history = "\n".join(
-                [f"User: {item.query or 'No query'}\n Vistaar: {item.query_response or 'No response'}" for item in history])
-        # print(chat_history)
-        user_name = User.objects.get(id=user_id).first_name
-        summary, chunks = VectorDBBuilder.get_input_embeddings(query, user_name, resource_id, chat_history)
-        data = {"user_map": UserOrganizationMap.objects.get(id=map_id).id, "resource": resource_id, "query": query, 
-                "query_response": summary}
-        messages_serializer = MessagesSerializer(data=data)
-        messages_serializer.is_valid(raise_exception=True)
-        message_instance = messages_serializer.save()  # This returns the Messages model instance
-        if chunks:
-            message_instance.retrieved_chunks.set(chunks.values_list("uuid", flat=True))
-    
-        return Response(summary)
+        try:
+            history = Messages.objects.filter(user_map=map_id).order_by("-created_at")
+            history = history.filter(resource_id=resource_id).all()[:3] if resource_id else history.all()[:3]
+            chat_history = "\n".join(
+                    [f"User: {item.query or 'No query'}\n Vistaar: {item.query_response or 'No response'}" for item in history])
+            # print(chat_history)
+            user_name = User.objects.get(id=user_id).first_name
+            summary, chunks = VectorDBBuilder.get_input_embeddings(query, user_name, resource_id, chat_history)
+            data = {"user_map": UserOrganizationMap.objects.get(id=map_id).id, "resource": resource_id, "query": query, 
+                    "query_response": summary}
+            messages_serializer = MessagesSerializer(data=data)
+            messages_serializer.is_valid(raise_exception=True)
+            message_instance = messages_serializer.save()  # This returns the Messages model instance
+            if chunks:
+                message_instance.retrieved_chunks.set(chunks.values_list("uuid", flat=True))
+        
+            return Response(summary)
+        except ValidationError as e:
+            return Response(e.detail, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            LOGGER.error(e,exc_info=True)
+            return Response(str(e), status=status.HTTP_500_INTERNAL_SERVER_ERROR)
     
     @http_request_mutation
     @action(detail=False, methods=['post'])
     def chat_histroy(self, request):
-        map_id = request.META.get("map_id")
-        resource_id = request.data.get("resource")
-        history = Messages.objects.filter(user_map=map_id).order_by("created_at")
-        if resource_id:
-            history = history.filter(resource_id=resource_id).all()[:5]
-        else:
-            history = history.filter(resource_id__isnull=True).all()[:5]
+        try:
+            map_id = request.META.get("map_id")
+            resource_id = request.data.get("resource")
+            history = Messages.objects.filter(user_map=map_id).order_by("created_at")
+            if resource_id:
+                history = history.filter(resource_id=resource_id).all()[:5]
+            else:
+                history = history.filter(resource_id__isnull=True).all()[:5]
 
-        messages_serializer = MessagesSerializer(history, many=True)
-        return Response(messages_serializer.data)
+            messages_serializer = MessagesSerializer(history, many=True)
+            return Response(messages_serializer.data)
+        except ValidationError as e:
+            return Response(e.detail, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            LOGGER.error(e,exc_info=True)
+            return Response(str(e), status=status.HTTP_500_INTERNAL_SERVER_ERROR)
     
     @action(detail=False, methods=['get'])
     def dump_embeddings(self, request):
