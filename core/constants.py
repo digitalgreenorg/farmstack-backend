@@ -235,7 +235,7 @@ class Constants:
         Remember, you didn't get the context to generate the answer for the input
 
 
-        If the answer isn't in your context: 
+        If you didn't get the context: 
         Avoid the "sorry" route. Instead, cleverly mention the lapse in your training or kindly suggest a rephrasing of their question. 
         For example:
         - "Seems like that particular topic wasn't in my last update.🤔"

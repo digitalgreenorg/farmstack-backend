@@ -1020,6 +1020,7 @@ class APIResponseViewSet(GenericViewSet):
             )        
                 
             summary, chunks = VectorDBBuilder.get_input_embeddings(query, "Guest User", file_path_query_set.id, "")
+            print(chunks)
             return Response(summary)
         except Exception as error:
             LOGGER.error(f"Error occured in APIResponseViewSet api ERROR: {error}", exc_info=True)
