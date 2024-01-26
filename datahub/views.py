@@ -3553,7 +3553,7 @@ class EmbeddingsViewSet(viewsets.ModelViewSet):
         try:
             map_id = request.META.get("map_id")
             resource_id = request.data.get("resource")
-            history = Messages.objects.filter(user_map=map_id).order_by("created_at")
+            history = Messages.objects.filter(user_map=map_id, bot_type="vistaar").order_by("created_at")
             if resource_id:
                 history = history.filter(resource_id=resource_id).all()[:5]
             else:

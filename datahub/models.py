@@ -421,12 +421,12 @@ class Messages(TimeStampMixin):
         ("whatsapp", "whatsapp"),
         ("telegram", "telegram"),
         ("vistaar", "vistaar"),
-
+        ("vistaar_api", "vistaar_api"),
     )
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, max_length=50)
     user_map = models.ForeignKey(UserOrganizationMap, on_delete=models.CASCADE, related_name="conversation_user_map")
     resource = models.ForeignKey(Resource, on_delete=models.CASCADE, related_name="messages_resource", null=True)
-    bot_type = models.CharField(max_length=10, choices=BOT_CHOICES, default="vistaar")
+    bot_type = models.CharField(max_length=20, choices=BOT_CHOICES, default="vistaar")
     bot_reference = models.CharField(max_length=50, null=True)
     query = models.CharField(max_length=10000, null=True)
     translated_message = models.CharField(max_length=10000, null=True)
