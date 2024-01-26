@@ -55,6 +55,7 @@ from datahub.serializers import (
     CategorySerializer,
     DatahubDatasetsV2Serializer,
     DatasetV2Serializer,
+    MessagesSerializer,
     OrganizationSerializer,
     ParticipantCostewardSerializer,
     ParticipantSerializer,
@@ -1020,7 +1021,14 @@ class APIResponseViewSet(GenericViewSet):
             )        
                 
             summary, chunks = VectorDBBuilder.get_input_embeddings(query, "Guest User", file_path_query_set.id, "")
-            print(chunks)
+            data = {"user_map": file_path_query_set.resource_usage_policy.user_organization_map, "resource": file_path_query_set.id, "query": query, 
+                    "query_response": summary}
+            messages_serializer = MessagesSerializer(data=data)
+            messages_serializer.is_valid(raise_exception=True)
+            message_instance = messages_serializer.save()  # This returns the Messages model instance
+            if chunks:
+                message_instance.retrieved_chunks.set(chunks.values_list("uuid", flat=True))
+            
             return Response(summary)
         except Exception as error:
             LOGGER.error(f"Error occured in APIResponseViewSet api ERROR: {error}", exc_info=True)
