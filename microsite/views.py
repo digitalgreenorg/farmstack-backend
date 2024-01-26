@@ -79,6 +79,7 @@ from microsite.serializers import (
     UserSerializer,
 )
 from utils import custom_exceptions, file_operations
+from utils.embeddings_creation import VectorDBBuilder
 from utils.file_operations import (
     check_file_name_length,
     filter_dataframe_for_dashboard_counties,
@@ -979,6 +980,10 @@ class APIResponseViewSet(GenericViewSet):
             get_api_key = request.META.get("HTTP_API_KEY", None)
             # page = int(request.GET.get('page', 1))
             file_path_query_set=Resource.objects.prefetch_related('resource_usage_policy').filter(resource_usage_policy__api_key=get_api_key).first()
+                       
+            print(get_api_key)           
+            print(file_path_query_set)
+
             if get_api_key is None or not file_path_query_set:
                 return Response(
                 {
@@ -995,7 +1000,31 @@ class APIResponseViewSet(GenericViewSet):
         except Exception as error:
             LOGGER.error(f"Error occured in APIResponseViewSet api ERROR: {error}", exc_info=True)
             return Response(str(error), status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-    
+                
+    @action(detail=False, methods=["get"])
+    def resource_bot(self, request, *args, **kwargs):
+        try:
+            get_api_key = request.META.get("HTTP_API_KEY", None)
+            # page = int(request.GET.get('page', 1))
+            print(get_api_key)
+            query = request.GET.get("query")
+            print(query)
+            file_path_query_set=Resource.objects.prefetch_related('resource_usage_policy').filter(resource_usage_policy__api_key=get_api_key).first()
+            print(file_path_query_set)
+            if get_api_key is None or not file_path_query_set:
+                return Response(
+                {
+                    "message" : "Invalid auth credentials provided."
+                },
+                status=status.HTTP_401_UNAUTHORIZED
+            )        
+                
+            summary, chunks = VectorDBBuilder.get_input_embeddings(query, "Guest User", file_path_query_set.id, "")
+            return Response(summary)
+        except Exception as error:
+            LOGGER.error(f"Error occured in APIResponseViewSet api ERROR: {error}", exc_info=True)
+            return Response(str(error), status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+                
 
 class UserDataMicrositeViewSet(GenericViewSet):
     """UserData Microsite ViewSet for microsite"""

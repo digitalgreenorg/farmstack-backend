@@ -3532,7 +3532,7 @@ class EmbeddingsViewSet(viewsets.ModelViewSet):
                     [f"User: {item.query or 'No query'}\n Vistaar: {item.query_response or 'No response'}" for item in history])
             # print(chat_history)
             user_name = User.objects.get(id=user_id).first_name
-            summary, chunks = VectorDBBuilder.get_input_embeddings(query, user_name, resource_id, chat_history)
+            summary, chunks = VectorDBBuilder.get_input_embeddings(query, user_name, resource_id, "")
             data = {"user_map": UserOrganizationMap.objects.get(id=map_id).id, "resource": resource_id, "query": query, 
                     "query_response": summary}
             messages_serializer = MessagesSerializer(data=data)
