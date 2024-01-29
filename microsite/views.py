@@ -982,9 +982,6 @@ class APIResponseViewSet(GenericViewSet):
             get_api_key = request.META.get("HTTP_API_KEY", None)
             # page = int(request.GET.get('page', 1))
             file_path_query_set=Resource.objects.prefetch_related('resource_usage_policy').filter(resource_usage_policy__api_key=get_api_key).first()
-                       
-            print(get_api_key)           
-            print(file_path_query_set)
 
             if get_api_key is None or not file_path_query_set:
                 return Response(
