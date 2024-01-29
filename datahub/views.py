@@ -3529,12 +3529,11 @@ class EmbeddingsViewSet(viewsets.ModelViewSet):
             history = Messages.objects.filter(user_map=map_id).order_by("-created_at")
             history = history.filter(resource_id=resource_id).all()[:3] if resource_id else history.all()[:3]
             chat_history = "\n".join(
-                    [f"User: {item.query or 'No query'}\n Vistaar: {item.query_response or 'No response'}" for item in history])
-            # print(chat_history)
+                    [f"Query: {item.query or 'No query'}\n Answer: {item.query_response or 'No response'}" for item in history])
             user_name = User.objects.get(id=user_id).first_name
-            summary, chunks = VectorDBBuilder.get_input_embeddings(query, user_name, resource_id, "")
+            summary, chunks, condensed_question = VectorDBBuilder.get_input_embeddings(query, user_name, resource_id, chat_history)
             data = {"user_map": UserOrganizationMap.objects.get(id=map_id).id, "resource": resource_id, "query": query, 
-                    "query_response": summary}
+                    "query_response": summary, "condensed_question":condensed_question}
             messages_serializer = MessagesSerializer(data=data)
             messages_serializer.is_valid(raise_exception=True)
             message_instance = messages_serializer.save()  # This returns the Messages model instance

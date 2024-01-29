@@ -225,10 +225,6 @@ class Constants:
         - Format all your answers using bullet points, new lines to increase readability.
         - Decorate the answer with relevant emojis compatible with Telegram.
 
-
-        Previos conversation:
-        follow up input: '{chat_history}'
-
         Current conversation:
         follow up input: '{input}'
         
@@ -242,6 +238,9 @@ class Constants:
         - "Could you reframe that for me?"
         # - "Ever thought of stumping an AI? You just did! Try another angle?"
     """
+
+    CONDESED_QUESTION = "Given the following chat history, condense the current question into a more concise form:\n\nChat History:\n{chat_history}\n\nCurrent Question:\n{current_question}\n\nCondensed Question:"
+
 
 class NumericalConstants:
     FILE_NAME_LENGTH = 85
