@@ -251,7 +251,7 @@ def condensed_question_prompt(chat_history, current_question):
 
 def generate_response(prompt):
     response = openai.Completion.create(
-        engine="text-davinci-003",  # Use an appropriate engine
+        engine="gpt-3.5-turbo-instruct",  # Use an appropriate engine
         prompt=prompt,
         max_tokens=2000  # Adjust as necessary
     )
