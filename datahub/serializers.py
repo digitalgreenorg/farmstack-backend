@@ -1351,3 +1351,29 @@ class MessagesRetriveSerializer(serializers.ModelSerializer):
     class Meta:
         model = Messages
         exclude = ["retrieved_chunks"]
+
+
+class ResourceListSerializer(serializers.ModelSerializer):
+    class OrganizationRetriveSerializer(serializers.ModelSerializer):
+        class Meta:
+            model = Organization
+            fields = ["id", "org_email", "name", "logo", "address"]
+
+    class UserSerializer(serializers.ModelSerializer):
+        class Meta:
+            model = User
+            fields = ["id", "first_name", "last_name", "email", "role", "on_boarded_by"]
+    organization = OrganizationRetriveSerializer(
+        allow_null=True, required=False, read_only=True, source="user_map.organization"
+    )
+    user = UserSerializer(allow_null=True, required=False, read_only=True, source="user_map.user")
+    content_files_count = serializers.SerializerMethodField(method_name="get_content_files_count")
+
+    class Meta:
+        model = Resource
+        fields = "__all__"
+   
+    def get_content_files_count(self, resource):
+        return ResourceFile.objects.filter(resource=resource.id).values('type').annotate(count=Count('type'))
+
+   

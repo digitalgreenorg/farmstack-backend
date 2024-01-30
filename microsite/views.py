@@ -60,6 +60,7 @@ from datahub.serializers import (
     OrganizationSerializer,
     ParticipantCostewardSerializer,
     ParticipantSerializer,
+    ResourceListSerializer,
     ResourceSerializer,
     micrositeOrganizationSerializer,
 )
@@ -1114,7 +1115,7 @@ class ResourceMicrositeViewSet(GenericViewSet):
     def list(self, request, *args, **kwargs):
         try:
             page = self.paginate_queryset(self.get_queryset().order_by("-updated_at"))
-            serializer = self.get_serializer(page, many=True)
+            serializer = ResourceListSerializer(page, many=True)
             return self.get_paginated_response(serializer.data)
         except ValidationError as e:
             return Response(e.detail, status=status.HTTP_400_BAD_REQUEST)
