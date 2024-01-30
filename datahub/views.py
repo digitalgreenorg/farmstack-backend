@@ -162,6 +162,7 @@ from .serializers import (
     ParticipantCostewardSerializer,
     PolicySerializer,
     ResourceFileSerializer,
+    ResourceListSerializer,
     ResourceUsagePolicyDetailSerializer,
     SubCategorySerializer,
     UsagePolicyDetailSerializer,
@@ -3172,7 +3173,7 @@ class ResourceManagementViewSet(GenericViewSet):
     queryset = Resource.objects.prefetch_related().all()
     serializer_class = ResourceSerializer
     pagination_class = CustomPagination
-
+   
     @http_request_mutation
     @transaction.atomic
     def create(self, request, *args, **kwargs):
@@ -3224,15 +3225,13 @@ class ResourceManagementViewSet(GenericViewSet):
     def list(self, request, *args, **kwargs):
         try:
             user_map = request.META.get("map_id")
-            # import pdb; pdb.set_trace();
             if request.GET.get("others", None):
                 queryset = Resource.objects.exclude(user_map=user_map).order_by("-updated_at")
             else:
                 queryset = Resource.objects.filter(user_map=user_map).order_by("-updated_at")
-                # Created by me.
 
             page = self.paginate_queryset(queryset)
-            serializer = self.get_serializer(page, many=True)
+            serializer = ResourceListSerializer(page, many=True)
             return self.get_paginated_response(serializer.data)
         except ValidationError as e:
             return Response(e.detail, status=status.HTTP_400_BAD_REQUEST)
