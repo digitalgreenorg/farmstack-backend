@@ -1352,6 +1352,16 @@ class MessagesRetriveSerializer(serializers.ModelSerializer):
         model = Messages
         exclude = ["retrieved_chunks"]
 
+class MessagesChunksRetriveSerializer(serializers.ModelSerializer):
+    retrieved_chunks = serializers.SerializerMethodField()
+    class Meta:
+        model = Messages
+        fields = "__all__"
+
+    def get_retrieved_chunks(self, instance):
+        related_embeddings = instance.retrieved_chunks.all()
+        related_documents = [embedding.document for embedding in related_embeddings]
+        return related_documents
 
 class ResourceListSerializer(serializers.ModelSerializer):
     class OrganizationRetriveSerializer(serializers.ModelSerializer):

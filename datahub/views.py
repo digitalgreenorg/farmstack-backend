@@ -157,6 +157,7 @@ from .serializers import (
     APIBuilderSerializer,
     CategorySerializer,
     LangChainEmbeddingsSerializer,
+    MessagesChunksRetriveSerializer,
     MessagesRetriveSerializer,
     MessagesSerializer,
     ParticipantCostewardSerializer,
@@ -3273,6 +3274,7 @@ class ResourceManagementViewSet(GenericViewSet):
                 )
                 .order_by("-updated_at")
             )
+                data["retrival"] = MessagesChunksRetriveSerializer(Messages.objects.filter(resource_id=resource.id).order_by("-created_at").all(), many=True).data
             else:
                 resource_usage_policy = (
                 ResourceUsagePolicy.objects.select_related(
@@ -3293,7 +3295,6 @@ class ResourceManagementViewSet(GenericViewSet):
                 )
                 .order_by("-updated_at")
             )
-
             data["resource_usage_policy"] = resource_usage_policy
             print(data.get(resource_usage_policy))
             return Response(data, status=status.HTTP_200_OK)
