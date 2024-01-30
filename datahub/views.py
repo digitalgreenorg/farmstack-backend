@@ -3529,7 +3529,7 @@ class EmbeddingsViewSet(viewsets.ModelViewSet):
             history = Messages.objects.filter(user_map=map_id).order_by("-created_at")
             history = history.filter(resource_id=resource_id).all()[:3] if resource_id else history.all()[:3]
             chat_history = "\n".join(
-                    [f"Query: {item.query or 'No query'}\n Answer: {item.query_response or 'No response'}" for item in history])
+                    [f"User Query: {item.query or 'No query'}\n Your Answer: {item.query_response or 'No response'}" for item in history])
             user_name = User.objects.get(id=user_id).first_name
             summary, chunks, condensed_question = VectorDBBuilder.get_input_embeddings(query, user_name, resource_id, chat_history)
             data = {"user_map": UserOrganizationMap.objects.get(id=map_id).id, "resource": resource_id, "query": query, 
@@ -3539,7 +3539,7 @@ class EmbeddingsViewSet(viewsets.ModelViewSet):
             message_instance = messages_serializer.save()  # This returns the Messages model instance
             if chunks:
                 message_instance.retrieved_chunks.set(chunks.values_list("uuid", flat=True))
-            return Response(summary)
+            return Response(message_instance.data)
         except ValidationError as e:
             return Response(e.detail, status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
@@ -3622,3 +3622,9 @@ class ResourceUsagePolicyRetrieveUpdateDestroyView(generics.RetrieveUpdateDestro
             LOGGER.error(error, exc_info=True)
             return Response(str(error), status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
+class MessagesViewSet(generics.RetrieveUpdateDestroyAPIView):
+    queryset = Messages.objects.all()
+    serializer_class = MessagesSerializer
+
+    def delete(self, request, *args, **kwargs):
+        return Response("You don't have access to delete the chat history", status=status.HTTP_400_BAD_REQUEST)
