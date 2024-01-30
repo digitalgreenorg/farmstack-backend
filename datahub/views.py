@@ -3539,7 +3539,7 @@ class EmbeddingsViewSet(viewsets.ModelViewSet):
             message_instance = messages_serializer.save()  # This returns the Messages model instance
             if chunks:
                 message_instance.retrieved_chunks.set(chunks.values_list("uuid", flat=True))
-            return Response(message_instance.data)
+            return Response(messages_serializer.data)
         except ValidationError as e:
             return Response(e.detail, status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
