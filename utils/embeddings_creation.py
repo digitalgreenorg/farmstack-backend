@@ -228,7 +228,7 @@ def find_similar_chunks(input_embedding, resource_id,  top_n=5):
         # Use these IDs to filter LangchainPgEmbedding objects
         similar_chunks = LangchainPgEmbedding.objects.annotate(
             similarity=CosineDistance("embedding", input_embedding)
-        ).order_by("similarity").filter(similarity__lt=0.2, collection_id__in=collection_ids).all()[:top_n]
+        ).order_by("similarity").filter(similarity__lt=0.2, collection_id__in=collection_ids).defer("cmetadata").all()[:top_n]
         return similar_chunks
     else:
         LOGGING.info("Looking into all embeddings")
