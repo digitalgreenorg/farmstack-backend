@@ -1,5 +1,6 @@
 # from langchain.document_loaders import PdfLoader
 import argparse
+import csv
 import json
 import logging
 import os
@@ -213,7 +214,7 @@ def genrate_embeddings_from_text(text):
     embedding = response['data'][0]['embedding']
     return embedding
 
-def find_similar_chunks(input_embedding, resource_id,  top_n=5,):
+def find_similar_chunks(input_embedding, resource_id,  top_n=5):
     # Assuming you have a similarity function or custom SQL to handle vector comparison
     if resource_id:
         LOGGING.info("Looking into resource: {resource_id} embeddings")
@@ -226,24 +227,28 @@ def find_similar_chunks(input_embedding, resource_id,  top_n=5,):
         ).values_list('uuid', flat=True)
         # Use these IDs to filter LangchainPgEmbedding objects
         similar_chunks = LangchainPgEmbedding.objects.annotate(
-            similarity=L2Distance("embedding", input_embedding)
-        ).order_by("similarity").filter(similarity__lt=0.55, collection_id__in=collection_ids).all()[:top_n]
+            similarity=CosineDistance("embedding", input_embedding)
+        ).order_by("similarity").filter(similarity__lt=0.2, collection_id__in=collection_ids).all()[:top_n]
         return similar_chunks
     else:
         LOGGING.info("Looking into all embeddings")
         similar_chunks = LangchainPgEmbedding.objects.annotate(
-            similarity=L2Distance("embedding", input_embedding)
-        ).order_by("similarity").filter(similarity__lt=0.55).defer('cmetadata').all()[:top_n]
+            similarity=CosineDistance("embedding", input_embedding)
+        ).order_by("similarity").filter(similarity__lt=0.2).defer('cmetadata').all()[:top_n]
         # import pdb; pdb.set_trace()
         return similar_chunks
 
 def format_prompt(user_name, context_chunks, user_input, chat_history):
-    if context_chunks:
-        print("chunks availabe")
-        return Constants.SYSTEM_MESSAGE.format(name_1=user_name, input=user_input, context=context_chunks, chat_history=chat_history)
-    else:
-        print("chunks not availabe")
-        return Constants.NO_CUNKS_SYSTEM_MESSAGE.format(name_1=user_name, input=user_input, chat_history=chat_history)
+    # if context_chunks:
+    #     LOGGING.info("chunks availabe")
+    return Constants.SYSTEM_MESSAGE.format(name_1=user_name, input=user_input, context=context_chunks)
+    # else:
+    #     LOGGING.info("chunks not availabe")
+    #     return Constants.NO_CUNKS_SYSTEM_MESSAGE.format(name_1=user_name, input=user_input)
+
+def condensed_question_prompt(chat_history, current_question):
+    return Constants.CONDESED_QUESTION.format(chat_history=chat_history, current_question=current_question)
+
 def generate_response(prompt):
     response = openai.Completion.create(
         engine="gpt-3.5-turbo-instruct",  # Use an appropriate engine
@@ -262,18 +267,17 @@ class VectorDBBuilder:
             vectordb = get_embeddings(embeddings, texts, str(resource.get("id")), connectionString, resource)
         return None
 
-    
     def get_input_embeddings(text, user_name=None, resource_id=None, chat_history=None):
         text=text.replace("\n", " ") # type: ignore
         try:
+            text = generate_response(condensed_question_prompt(chat_history, text))
             embedding = genrate_embeddings_from_text(text)
             chunks = find_similar_chunks(embedding, resource_id)
             documents =  " ".join([row.document for row in chunks])
             LOGGING.info(f"Similarity score for the query: {text}. Score: {' '.join([str(row.similarity) for row in chunks])} ")
             formatted_message = format_prompt(user_name, documents, text, chat_history)
-            # print(formatted_message)
             response = generate_response(formatted_message)
-            return response, chunks
+            return response, chunks, text
         except Exception as e:
             LOGGING.error(f"Error while generating response for query: {text}: Error {e}", exc_info=True)
             return str(e)

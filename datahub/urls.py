@@ -19,7 +19,9 @@ from datahub.views import (
     DatasetV2ViewSetOps,
     DocumentSaveView,
     DropDocumentView,
+    EmbeddingsViewSet,
     MailInvitationViewSet,
+    MessagesViewSet,
     OrganizationViewSet,
     ParticipantViewSet,
     PolicyDetailAPIView,
@@ -34,7 +36,6 @@ from datahub.views import (
     TeamMemberViewSet,
     UsagePolicyListCreateView,
     UsagePolicyRetrieveUpdateDestroyView,
-    EmbeddingsViewSet,
 )
 
 router = DefaultRouter()
@@ -68,4 +69,6 @@ urlpatterns = [
     path('usage_policies/<uuid:pk>/', UsagePolicyRetrieveUpdateDestroyView.as_view(), name='usage-policy-retrieve-update-destroy'),
     path('resource_usage_policies/', ResourceUsagePolicyListCreateView.as_view(), name='resource_usage-policy-list-create'),
     path('resource_usage_policies/<uuid:pk>/', ResourceUsagePolicyRetrieveUpdateDestroyView.as_view(), name='resource_usage-policy-retrieve-update-destroy'),
+    path('messages/<uuid:pk>/', MessagesViewSet.as_view(), name='resource_usage-policy-retrieve-update-destroy'),
+
 ]

@@ -43,6 +43,7 @@ from datahub.models import (
     Datasets,
     DatasetV2,
     DatasetV2File,
+    Messages,
     Organization,
     Policy,
     Resource,
@@ -55,9 +56,11 @@ from datahub.serializers import (
     CategorySerializer,
     DatahubDatasetsV2Serializer,
     DatasetV2Serializer,
+    MessagesSerializer,
     OrganizationSerializer,
     ParticipantCostewardSerializer,
     ParticipantSerializer,
+    ResourceListSerializer,
     ResourceSerializer,
     micrositeOrganizationSerializer,
 )
@@ -79,6 +82,7 @@ from microsite.serializers import (
     UserSerializer,
 )
 from utils import custom_exceptions, file_operations
+from utils.embeddings_creation import VectorDBBuilder
 from utils.file_operations import (
     check_file_name_length,
     filter_dataframe_for_dashboard_counties,
@@ -979,6 +983,7 @@ class APIResponseViewSet(GenericViewSet):
             get_api_key = request.META.get("HTTP_API_KEY", None)
             # page = int(request.GET.get('page', 1))
             file_path_query_set=Resource.objects.prefetch_related('resource_usage_policy').filter(resource_usage_policy__api_key=get_api_key).first()
+
             if get_api_key is None or not file_path_query_set:
                 return Response(
                 {
@@ -995,7 +1000,39 @@ class APIResponseViewSet(GenericViewSet):
         except Exception as error:
             LOGGER.error(f"Error occured in APIResponseViewSet api ERROR: {error}", exc_info=True)
             return Response(str(error), status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-    
+                
+    @action(detail=False, methods=["get"])
+    def resource_bot(self, request, *args, **kwargs):
+        try:
+            get_api_key = request.META.get("HTTP_API_KEY", None)
+            # page = int(request.GET.get('page', 1))
+            query = request.GET.get("query")
+            file_path_query_set=Resource.objects.prefetch_related('resource_usage_policy').filter(resource_usage_policy__api_key=get_api_key).first()
+            if get_api_key is None or not file_path_query_set:
+                return Response(
+                {
+                    "message" : "Invalid auth credentials provided."
+                },
+                status=status.HTTP_401_UNAUTHORIZED
+            )
+            map_id = ResourceUsagePolicy.objects.get(api_key=get_api_key).user_organization_map_id        
+            history = Messages.objects.filter(user_map=map_id).filter(
+                resource_id=file_path_query_set.id).order_by("-created_at").all()[:3] 
+            chat_history = "\n".join(
+                    [f"User: {item.query or 'No query'}\n Vistaar: {item.query_response or 'No response'}" for item in history])
+            summary, chunks, condensed_question = VectorDBBuilder.get_input_embeddings(query, "Guest User", file_path_query_set.id, chat_history)
+            data = {"user_map": map_id, "resource": file_path_query_set.id, "query": query, 
+                    "query_response": summary, "bot_type":"vistaar_api", "condensed_question":condensed_question}
+            messages_serializer = MessagesSerializer(data=data)
+            messages_serializer.is_valid(raise_exception=True)
+            message_instance = messages_serializer.save()  # This returns the Messages model instance
+            if chunks:
+                message_instance.retrieved_chunks.set(chunks.values_list("uuid", flat=True))
+            return Response(summary)
+        except Exception as error:
+            LOGGER.error(f"Error occured in APIResponseViewSet api ERROR: {error}", exc_info=True)
+            return Response(str(error), status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+                
 
 class UserDataMicrositeViewSet(GenericViewSet):
     """UserData Microsite ViewSet for microsite"""
@@ -1078,7 +1115,7 @@ class ResourceMicrositeViewSet(GenericViewSet):
     def list(self, request, *args, **kwargs):
         try:
             page = self.paginate_queryset(self.get_queryset().order_by("-updated_at"))
-            serializer = self.get_serializer(page, many=True)
+            serializer = ResourceListSerializer(page, many=True)
             return self.get_paginated_response(serializer.data)
         except ValidationError as e:
             return Response(e.detail, status=status.HTTP_400_BAD_REQUEST)

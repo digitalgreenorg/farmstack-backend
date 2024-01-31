@@ -157,11 +157,13 @@ from .serializers import (
     APIBuilderSerializer,
     CategorySerializer,
     LangChainEmbeddingsSerializer,
+    MessagesChunksRetriveSerializer,
     MessagesRetriveSerializer,
     MessagesSerializer,
     ParticipantCostewardSerializer,
     PolicySerializer,
     ResourceFileSerializer,
+    ResourceListSerializer,
     ResourceUsagePolicyDetailSerializer,
     SubCategorySerializer,
     UsagePolicyDetailSerializer,
@@ -3172,7 +3174,7 @@ class ResourceManagementViewSet(GenericViewSet):
     queryset = Resource.objects.prefetch_related().all()
     serializer_class = ResourceSerializer
     pagination_class = CustomPagination
-
+   
     @http_request_mutation
     @transaction.atomic
     def create(self, request, *args, **kwargs):
@@ -3224,15 +3226,13 @@ class ResourceManagementViewSet(GenericViewSet):
     def list(self, request, *args, **kwargs):
         try:
             user_map = request.META.get("map_id")
-            # import pdb; pdb.set_trace();
             if request.GET.get("others", None):
                 queryset = Resource.objects.exclude(user_map=user_map).order_by("-updated_at")
             else:
                 queryset = Resource.objects.filter(user_map=user_map).order_by("-updated_at")
-                # Created by me.
 
             page = self.paginate_queryset(queryset)
-            serializer = self.get_serializer(page, many=True)
+            serializer = ResourceListSerializer(page, many=True)
             return self.get_paginated_response(serializer.data)
         except ValidationError as e:
             return Response(e.detail, status=status.HTTP_400_BAD_REQUEST)
@@ -3274,6 +3274,7 @@ class ResourceManagementViewSet(GenericViewSet):
                 )
                 .order_by("-updated_at")
             )
+                data["retrival"] = MessagesChunksRetriveSerializer(Messages.objects.filter(resource_id=resource.id).order_by("-created_at").all(), many=True).data
             else:
                 resource_usage_policy = (
                 ResourceUsagePolicy.objects.select_related(
@@ -3294,7 +3295,6 @@ class ResourceManagementViewSet(GenericViewSet):
                 )
                 .order_by("-updated_at")
             )
-
             data["resource_usage_policy"] = resource_usage_policy
             print(data.get(resource_usage_policy))
             return Response(data, status=status.HTTP_200_OK)
@@ -3529,18 +3529,17 @@ class EmbeddingsViewSet(viewsets.ModelViewSet):
             history = Messages.objects.filter(user_map=map_id).order_by("-created_at")
             history = history.filter(resource_id=resource_id).all()[:3] if resource_id else history.all()[:3]
             chat_history = "\n".join(
-                    [f"User: {item.query or 'No query'}\n Vistaar: {item.query_response or 'No response'}" for item in history])
-            # print(chat_history)
+                    [f"User Query: {item.query or 'No query'}\n Your Answer: {item.query_response or 'No response'}" for item in history])
             user_name = User.objects.get(id=user_id).first_name
-            summary, chunks = VectorDBBuilder.get_input_embeddings(query, user_name, resource_id, chat_history)
+            summary, chunks, condensed_question = VectorDBBuilder.get_input_embeddings(query, user_name, resource_id, chat_history)
             data = {"user_map": UserOrganizationMap.objects.get(id=map_id).id, "resource": resource_id, "query": query, 
-                    "query_response": summary}
+                    "query_response": summary, "condensed_question":condensed_question}
             messages_serializer = MessagesSerializer(data=data)
             messages_serializer.is_valid(raise_exception=True)
             message_instance = messages_serializer.save()  # This returns the Messages model instance
             if chunks:
                 message_instance.retrieved_chunks.set(chunks.values_list("uuid", flat=True))
-            return Response(summary)
+            return Response(messages_serializer.data)
         except ValidationError as e:
             return Response(e.detail, status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
@@ -3553,7 +3552,7 @@ class EmbeddingsViewSet(viewsets.ModelViewSet):
         try:
             map_id = request.META.get("map_id")
             resource_id = request.data.get("resource")
-            history = Messages.objects.filter(user_map=map_id).order_by("created_at")
+            history = Messages.objects.filter(user_map=map_id, bot_type="vistaar").order_by("created_at")
             if resource_id:
                 history = history.filter(resource_id=resource_id).all()[:5]
             else:
@@ -3623,3 +3622,9 @@ class ResourceUsagePolicyRetrieveUpdateDestroyView(generics.RetrieveUpdateDestro
             LOGGER.error(error, exc_info=True)
             return Response(str(error), status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
+class MessagesViewSet(generics.RetrieveUpdateDestroyAPIView):
+    queryset = Messages.objects.all()
+    serializer_class = MessagesSerializer
+
+    def delete(self, request, *args, **kwargs):
+        return Response("You don't have access to delete the chat history", status=status.HTTP_400_BAD_REQUEST)
