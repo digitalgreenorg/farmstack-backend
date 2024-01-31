@@ -234,7 +234,11 @@ For example:
         # - "Ever thought of stumping an AI? You just did! Try another angle?"
     """
 
-    CONDESED_QUESTION = "Given the following chat history, condense the current question into a more concise form:\n\nChat History:\n{chat_history}\n\nCurrent Question:\n{current_question}\n\nCondensed Question:"
+    CONDESED_QUESTION = """
+    Given the following chat history, specifically focusing on the user's queries, condense the current question into a more concise and contextually informed form:
+    \n\nChat History:\n{chat_history}
+    \n\nCurrent Question:\n{current_question}
+    \n\nCondensed Question:"""
 
 
 class NumericalConstants:
