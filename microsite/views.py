@@ -43,6 +43,7 @@ from datahub.models import (
     Datasets,
     DatasetV2,
     DatasetV2File,
+    Messages,
     Organization,
     Policy,
     Resource,
@@ -59,6 +60,7 @@ from datahub.serializers import (
     OrganizationSerializer,
     ParticipantCostewardSerializer,
     ParticipantSerializer,
+    ResourceListSerializer,
     ResourceSerializer,
     micrositeOrganizationSerializer,
 )
@@ -981,9 +983,6 @@ class APIResponseViewSet(GenericViewSet):
             get_api_key = request.META.get("HTTP_API_KEY", None)
             # page = int(request.GET.get('page', 1))
             file_path_query_set=Resource.objects.prefetch_related('resource_usage_policy').filter(resource_usage_policy__api_key=get_api_key).first()
-                       
-            print(get_api_key)           
-            print(file_path_query_set)
 
             if get_api_key is None or not file_path_query_set:
                 return Response(
@@ -1007,22 +1006,23 @@ class APIResponseViewSet(GenericViewSet):
         try:
             get_api_key = request.META.get("HTTP_API_KEY", None)
             # page = int(request.GET.get('page', 1))
-            print(get_api_key)
             query = request.GET.get("query")
-            print(query)
             file_path_query_set=Resource.objects.prefetch_related('resource_usage_policy').filter(resource_usage_policy__api_key=get_api_key).first()
-            print(file_path_query_set)
             if get_api_key is None or not file_path_query_set:
                 return Response(
                 {
                     "message" : "Invalid auth credentials provided."
                 },
                 status=status.HTTP_401_UNAUTHORIZED
-            )        
-                
-            summary, chunks = VectorDBBuilder.get_input_embeddings(query, "Guest User", file_path_query_set.id, "")
-            data = {"user_map": ResourceUsagePolicy.objects.get(api_key=get_api_key).user_organization_map_id, "resource": file_path_query_set.id, "query": query, 
-                    "query_response": summary, "bot_type":"vistaar_api"}
+            )
+            map_id = ResourceUsagePolicy.objects.get(api_key=get_api_key).user_organization_map_id        
+            history = Messages.objects.filter(user_map=map_id).filter(
+                resource_id=file_path_query_set.id).order_by("-created_at").all()[:3] 
+            chat_history = "\n".join(
+                    [f"User: {item.query or 'No query'}\n Vistaar: {item.query_response or 'No response'}" for item in history])
+            summary, chunks, condensed_question = VectorDBBuilder.get_input_embeddings(query, "Guest User", file_path_query_set.id, chat_history)
+            data = {"user_map": map_id, "resource": file_path_query_set.id, "query": query, 
+                    "query_response": summary, "bot_type":"vistaar_api", "condensed_question":condensed_question}
             messages_serializer = MessagesSerializer(data=data)
             messages_serializer.is_valid(raise_exception=True)
             message_instance = messages_serializer.save()  # This returns the Messages model instance
@@ -1115,7 +1115,7 @@ class ResourceMicrositeViewSet(GenericViewSet):
     def list(self, request, *args, **kwargs):
         try:
             page = self.paginate_queryset(self.get_queryset().order_by("-updated_at"))
-            serializer = self.get_serializer(page, many=True)
+            serializer = ResourceListSerializer(page, many=True)
             return self.get_paginated_response(serializer.data)
         except ValidationError as e:
             return Response(e.detail, status=status.HTTP_400_BAD_REQUEST)
