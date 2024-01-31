@@ -239,12 +239,12 @@ def find_similar_chunks(input_embedding, resource_id,  top_n=5):
         return similar_chunks
 
 def format_prompt(user_name, context_chunks, user_input, chat_history):
-    if context_chunks:
-        LOGGING.info("chunks availabe")
-        return Constants.SYSTEM_MESSAGE.format(name_1=user_name, input=user_input, context=context_chunks)
-    else:
-        LOGGING.info("chunks not availabe")
-        return Constants.NO_CUNKS_SYSTEM_MESSAGE.format(name_1=user_name, input=user_input)
+    # if context_chunks:
+    #     LOGGING.info("chunks availabe")
+    return Constants.SYSTEM_MESSAGE.format(name_1=user_name, input=user_input, context=context_chunks)
+    # else:
+    #     LOGGING.info("chunks not availabe")
+    #     return Constants.NO_CUNKS_SYSTEM_MESSAGE.format(name_1=user_name, input=user_input)
 
 def condensed_question_prompt(chat_history, current_question):
     return Constants.CONDESED_QUESTION.format(chat_history=chat_history, current_question=current_question)
@@ -275,7 +275,7 @@ class VectorDBBuilder:
             chunks = find_similar_chunks(embedding, resource_id)
             documents =  " ".join([row.document for row in chunks])
             LOGGING.info(f"Similarity score for the query: {text}. Score: {' '.join([str(row.similarity) for row in chunks])} ")
-            formatted_message = format_prompt(user_name, documents, text, "")
+            formatted_message = format_prompt(user_name, documents, text, chat_history)
             response = generate_response(formatted_message)
             return response, chunks, text
         except Exception as e:
