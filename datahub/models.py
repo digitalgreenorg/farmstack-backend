@@ -380,7 +380,7 @@ class LangchainPgCollection(models.Model):
 
 
 class LangchainPgEmbedding(models.Model):
-    collection = models.ForeignKey(LangchainPgCollection, on_delete=models.PROTECT)
+    collection = models.ForeignKey(LangchainPgCollection, on_delete=models.CASCADE)
     embedding = VectorField(1563)  # Assuming 'vector' is a custom PostgreSQL data type
     document = models.TextField()
     cmetadata = models.JSONField()

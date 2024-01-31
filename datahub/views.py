@@ -3415,10 +3415,14 @@ class ResourceFileManagementViewSet(GenericViewSet):
         except Exception as e:
             LOGGER.error(e,exc_info=True)
             return Response(str(e), status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
+    @transaction.atomic
     def destroy(self, request, *args, **kwargs):
         instance = self.get_object()
+        resourcefile_id = instance.id
+        collections_to_delete = LangchainPgCollection.objects.filter(name=resourcefile_id)
+        collections_to_delete.delete()
         instance.delete()
+
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 class CategoryViewSet(viewsets.ModelViewSet):
