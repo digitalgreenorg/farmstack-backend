@@ -3532,9 +3532,9 @@ class EmbeddingsViewSet(viewsets.ModelViewSet):
         try:
             user_name = User.objects.get(id=user_id).first_name
             history = Messages.objects.filter(user_map=map_id).order_by("-created_at")
-            history = history.filter(resource_id=resource_id).all()[:3] if resource_id else history.all()[:3]
-            chat_history = "\n".join(
-                    [f"{user_name}: {item.query or 'No query'}\n Assist: {item.query_response or 'No response'}" for item in history])
+            history = history.filter(resource_id=resource_id).first() if resource_id else history.first()
+            chat_history =(f"{user_name}: {history.condensed_question or ''}\n Assist: {history.query_response or 'No response'}") if history else ""
+            print(chat_history)
             summary, chunks, condensed_question = VectorDBBuilder.get_input_embeddings(query, user_name, resource_id, chat_history)
             data = {"user_map": UserOrganizationMap.objects.get(id=map_id).id, "resource": resource_id, "query": query, 
                     "query_response": summary, "condensed_question":condensed_question}
