@@ -19,7 +19,7 @@ auth_participant = {
 }
 
 
-class TestCasesResourceUsagePolicy(TestCase):
+class TestCasesResourceManagement(TestCase):
     @classmethod
     def setUpClass(self):
         super().setUpClass()
