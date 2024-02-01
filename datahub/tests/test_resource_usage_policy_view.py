@@ -28,6 +28,7 @@ class TestCasesResourceUsagePolicy(TestCase):
         self.user_participant=Client() 
         self.user=Client() 
         self.resource_usage_policy_url=reverse("resource_usage-policy-list-create")
+        self.resource_management_url=reverse("resource_management-list")
 
         ################# create user roles #############
         self.admin_role = UserRole.objects.create(
@@ -222,3 +223,33 @@ class TestCasesResourceUsagePolicy(TestCase):
         assert response.status_code == 405
         data=response.json()
         assert data=={'detail': 'Method "PATCH" not allowed.'}
+
+    def test_requested_resources_list(self):
+        resource_data = {
+            "resource": self.dummy_resource.id,
+            "type": "resource",
+            "user_organization_map": self.co_steward_map.id,
+        }     
+        response = self.user_co_steward.post(self.resource_usage_policy_url, resource_data)
+        data = response.json()
+        assert response.status_code == 201
+        assert data["approval_status"]== 'requested'
+        assert data["api_key"]== None
+        assert data["type"]== "resource"
+
+        resource_data_two = {
+            "resource": self.dummy_resource.id,
+            "type": "embeddings",
+            "user_organization_map": self.co_steward_map.id,
+        }     
+        response = self.user_co_steward.post(self.resource_usage_policy_url, resource_data_two)
+        data = response.json()
+        assert response.status_code == 201
+        url=self.resource_management_url+'requested_resources/'
+        data={
+            "user_map":self.co_steward_map.id
+        }
+        response = self.user_co_steward.post(url,data)
+        data = response.json()
+        assert response.status_code == 200
+        assert len(data['sent']) == 2

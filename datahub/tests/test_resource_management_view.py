@@ -216,6 +216,16 @@ class TestCasesResourceManagement(TestCase):
         assert resource_2['title'] == 'Dummy Resource 12345'
         assert resource_2['description'] == 'This is a dummy resource description.'
 
+    def test_resource_management_get_list_other_organization(self):
+        url=self.resource_management_url
+        data={
+            "others":"true"
+        }
+        response = self.client_admin.get(url,data)
+        assert response.status_code == 200
+        data = response.json()
+        assert data=={'count': 0, 'next': None, 'previous': None, 'results': []}
+
 
     def test_resource_management_get_single_resource(self):
         response = self.client_admin.get(self.resource_management_url)
@@ -264,6 +274,31 @@ class TestCasesResourceManagement(TestCase):
         resource = results[0]
         assert resource['title'] == 'Dummy Resource 12345'
         assert resource['description'] == 'This is a dummy resource description.'
+
+
+    def test_resource_management_delete(self):
+        response = self.client_admin.get(self.resource_management_url)
+        assert response.status_code == 200
+        data = response.json()
+        assert data['count'] == 2
+        results = data['results']
+        resource_1 = results[0]
+        resource_1_id = results[0]['id']
+        url=self.resource_management_url+resource_1_id+'/'
+        response = self.client_admin.delete(url)
+        assert response.status_code == 204
+
+
+    def test_resource_management_error_404(self):
+        response = self.client_admin.get(self.resource_management_url)
+        assert response.status_code == 200
+        data = response.json()
+        assert data['count'] == 2
+        results = data['results']
+        url=self.resource_management_url+'/'
+        response = self.client_admin.get(url)
+        assert response.status_code == 404
+
 
 
     # def test_resource_management_edit_resource(self):
