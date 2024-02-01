@@ -1359,7 +1359,7 @@ class MessagesChunksRetriveSerializer(serializers.ModelSerializer):
         fields = "__all__"
 
     def get_retrieved_chunks(self, instance):
-        related_embeddings = instance.retrieved_chunks.all()
+        related_embeddings = instance.retrieved_chunks.defer("cmetadata").all()
         related_documents = [embedding.document for embedding in related_embeddings]
         return related_documents
 

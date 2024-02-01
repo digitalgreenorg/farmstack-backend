@@ -3415,10 +3415,14 @@ class ResourceFileManagementViewSet(GenericViewSet):
         except Exception as e:
             LOGGER.error(e,exc_info=True)
             return Response(str(e), status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
+    @transaction.atomic
     def destroy(self, request, *args, **kwargs):
         instance = self.get_object()
+        resourcefile_id = instance.id
+        collections_to_delete = LangchainPgCollection.objects.filter(name=resourcefile_id)
+        collections_to_delete.delete()
         instance.delete()
+
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 class CategoryViewSet(viewsets.ModelViewSet):
@@ -3526,25 +3530,26 @@ class EmbeddingsViewSet(viewsets.ModelViewSet):
         query = request.data.get("query")
         resource_id = request.data.get("resource")
         try:
-            history = Messages.objects.filter(user_map=map_id).order_by("-created_at")
-            history = history.filter(resource_id=resource_id).all()[:3] if resource_id else history.all()[:3]
-            chat_history = "\n".join(
-                    [f"User Query: {item.query or 'No query'}\n Your Answer: {item.query_response or 'No response'}" for item in history])
             user_name = User.objects.get(id=user_id).first_name
+            history = Messages.objects.filter(user_map=map_id).order_by("-created_at")
+            history = history.filter(resource_id=resource_id).first() if resource_id else history.first()
+            chat_history =(f"{user_name}: {history.condensed_question or ''}\n Assist: {history.query_response or 'No response'}") if history else ""
+            print(chat_history)
             summary, chunks, condensed_question = VectorDBBuilder.get_input_embeddings(query, user_name, resource_id, chat_history)
             data = {"user_map": UserOrganizationMap.objects.get(id=map_id).id, "resource": resource_id, "query": query, 
                     "query_response": summary, "condensed_question":condensed_question}
             messages_serializer = MessagesSerializer(data=data)
             messages_serializer.is_valid(raise_exception=True)
             message_instance = messages_serializer.save()  # This returns the Messages model instance
+            data =  messages_serializer.data
             if chunks:
                 message_instance.retrieved_chunks.set(chunks.values_list("uuid", flat=True))
-            return Response(messages_serializer.data)
+            return Response(data)
         except ValidationError as e:
             return Response(e.detail, status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
             LOGGER.error(e,exc_info=True)
-            return Response(str(e), status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            return Response("Error During the execution", status=status.HTTP_500_INTERNAL_SERVER_ERROR)
     
     @http_request_mutation
     @action(detail=False, methods=['post'])
@@ -3553,10 +3558,12 @@ class EmbeddingsViewSet(viewsets.ModelViewSet):
             map_id = request.META.get("map_id")
             resource_id = request.data.get("resource")
             history = Messages.objects.filter(user_map=map_id, bot_type="vistaar").order_by("created_at")
+            total = len(history)
+            slice = 0 if total <= 10 else total-10
             if resource_id:
-                history = history.filter(resource_id=resource_id).all()[:5]
+                history = history.filter(resource_id=resource_id).all()[slice:total]
             else:
-                history = history.filter(resource_id__isnull=True).all()[:5]
+                history = history.filter(resource_id__isnull=True).all()[slice:total]
 
             messages_serializer = MessagesRetriveSerializer(history, many=True)
             return Response(messages_serializer.data)
