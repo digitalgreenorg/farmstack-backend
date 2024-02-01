@@ -190,7 +190,10 @@ Your role is to:
 - Format all your answers using bullet points, new lines to increase readability.
 - Decorate the answer with relevant emojis compatible with Telegram.
 
-Current user query: {input}
+Previous Conversion
+    follow up input:\n{chat_history}\n
+ Current conversation:
+    follow up input: \n{input}\n
 
 Remember, you can only generate answers from the information in the following context:
 \n{context}\n

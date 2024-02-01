@@ -228,20 +228,19 @@ def find_similar_chunks(input_embedding, resource_id,  top_n=5):
         # Use these IDs to filter LangchainPgEmbedding objects
         similar_chunks = LangchainPgEmbedding.objects.annotate(
             similarity=CosineDistance("embedding", input_embedding)
-        ).order_by("similarity").filter(similarity__lt=0.2, collection_id__in=collection_ids).defer("cmetadata").all()[:top_n]
+        ).order_by("similarity").filter(similarity__lt=0.3, collection_id__in=collection_ids).defer("cmetadata").all()[:top_n]
         return similar_chunks
     else:
         LOGGING.info("Looking into all embeddings")
         similar_chunks = LangchainPgEmbedding.objects.annotate(
             similarity=CosineDistance("embedding", input_embedding)
-        ).order_by("similarity").filter(similarity__lt=0.2).defer('cmetadata').all()[:top_n]
-        # import pdb; pdb.set_trace()
+        ).order_by("similarity").filter(similarity__lt=0.3).defer('cmetadata').all()[:top_n]
         return similar_chunks
 
 def format_prompt(user_name, context_chunks, user_input, chat_history):
     if context_chunks:
         LOGGING.info("chunks availabe")
-        return Constants.SYSTEM_MESSAGE.format(name_1=user_name, input=user_input, context=context_chunks)
+        return Constants.SYSTEM_MESSAGE.format(name_1=user_name, input=user_input, context=context_chunks, chat_history=chat_history)
     else:
         LOGGING.info("chunks not availabe")
         return Constants.NO_CUNKS_SYSTEM_MESSAGE.format(name_1=user_name, input=user_input)
@@ -270,7 +269,7 @@ class VectorDBBuilder:
     def get_input_embeddings(text, user_name=None, resource_id=None, chat_history=None):
         text=text.replace("\n", " ") # type: ignore
         try:
-            # text = generate_response(condensed_question_prompt(chat_history, text))
+            text = generate_response(condensed_question_prompt(chat_history, text))
             embedding = genrate_embeddings_from_text(text)
             chunks = find_similar_chunks(embedding, resource_id)
             documents =  " ".join([row.document for row in chunks])
