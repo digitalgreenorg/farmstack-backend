@@ -192,6 +192,7 @@ Your role is to:
 
 Previous Conversion
     follow up input:\n{chat_history}\n
+    
  Current conversation:
     follow up input: \n{input}\n
 
