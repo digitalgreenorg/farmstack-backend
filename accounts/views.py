@@ -25,11 +25,15 @@ from accounts.serializers import (
     UserUpdateSerializer,
 )
 from core.constants import Constants
+from core.serializer_validation import (
+    OrganizationSerializerValidator,
+    UserCreateSerializerValidator,
+)
 from core.utils import Utils
 from datahub.models import UserOrganizationMap
 from utils import login_helper, string_functions
 from utils.jwt_services import http_request_mutation
-from core.serializer_validation import OrganizationSerializerValidator,UserCreateSerializerValidator
+
 LOGGER = logging.getLogger(__name__)
 from rest_framework.parsers import JSONParser, MultiPartParser
 
@@ -298,6 +302,16 @@ class ResendOTPViewset(GenericViewSet):
                 data = {"otp": otp, "participant_admin_name": full_name}
                 email_render = render(request, "otp.html", data)
                 mail_body = email_render.content.decode("utf-8")
+                login_helper.set_user_otp(email, otp, settings.OTP_DURATION)
+                print(cache.get(email))
+                return Response(
+                {
+                    "id": user.id,
+                    "email": email,
+                    "message": "Enter the resent OTP to login",
+                },
+                status=status.HTTP_201_CREATED,
+                )
                 Utils().send_email(
                     to_email=email,
                     content=mail_body,
