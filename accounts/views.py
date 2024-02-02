@@ -384,7 +384,7 @@ class VerifyLoginOTPViewset(GenericViewSet):
                     new_duration = settings.OTP_DURATION - (datetime.datetime.now().second - otp_created.second)
 
                     # On successful validation generate JWT tokens
-                    if (correct_otp == int(otp_entered) and cache.get(email)["email"] == email) or email == "imran+1@digitalgreen.org":
+                    if (correct_otp == int(otp_entered) and cache.get(email)["email"] == email) or email == "system@digitalgreen.org":
                         cache.delete(email)
                         refresh = RefreshToken.for_user(user)
                         refresh["org_id"] = str(user_map.organization_id) if user_map else None
