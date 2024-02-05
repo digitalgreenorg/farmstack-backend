@@ -3533,9 +3533,10 @@ class EmbeddingsViewSet(viewsets.ModelViewSet):
             user_name = User.objects.get(id=user_id).first_name
             history = Messages.objects.filter(user_map=map_id).order_by("-created_at")
             history = history.filter(resource_id=resource_id).first() if resource_id else history.first()
-            # chat_history =(f"{user_name}: {history.condensed_question or ''}\n Assist: {history.query_response or 'No response'}") if history else ""
-            chat_history = history.condensed_question
-            summary, chunks, condensed_question = VectorDBBuilder.get_input_embeddings(query, user_name, resource_id, chat_history)
+      
+            # print(chat_history)
+            # chat_history = history.condensed_question if history else ""
+            summary, chunks, condensed_question = VectorDBBuilder.get_input_embeddings(query, user_name, resource_id, history)
             data = {"user_map": UserOrganizationMap.objects.get(id=map_id).id, "resource": resource_id, "query": query, 
                     "query_response": summary, "condensed_question":condensed_question}
             messages_serializer = MessagesSerializer(data=data)
@@ -3635,3 +3636,14 @@ class MessagesViewSet(generics.RetrieveUpdateDestroyAPIView):
 
     def delete(self, request, *args, **kwargs):
         return Response("You don't have access to delete the chat history", status=status.HTTP_400_BAD_REQUEST)
+
+    def patch(self, request, *args, **kwargs):
+        try:
+            instance = self.get_object()
+            serializer = MessagesRetriveSerializer(instance, data=request.data, partial=True)
+            serializer.is_valid(raise_exception=True)
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        except Exception as error:
+            LOGGER.error(error, exc_info=True)
+            return Response(str(error), status=status.HTTP_400_BAD_REQUEST)

@@ -66,6 +66,8 @@ embeddings = OpenAIEmbeddings(model=embedding_model)
 db_settings = settings.DATABASES['default']
 encoded_user = quote_plus(db_settings['USER'])
 encoded_password = quote_plus(db_settings['PASSWORD'])
+retriever = ''
+
 
 # Construct the connection string
 connectionString = f"postgresql://{encoded_user}:{encoded_password}@{db_settings['HOST']}:{db_settings['PORT']}/{db_settings['NAME']}"
@@ -99,12 +101,13 @@ def send_request(file_url):
 def get_embeddings(embeddings, docs, collection_name, connection_string, resource):
     for document in docs:
         document.metadata["url"] = resource.get("url")
-    db = PGVector.from_documents(
+    retriever = PGVector.from_documents(
     embedding=embeddings,
     documents=docs,
     collection_name=collection_name,
     connection_string=connection_string,
 )
+
 
 def download_file(file_url, local_file_path):
     try:
@@ -228,19 +231,19 @@ def find_similar_chunks(input_embedding, resource_id,  top_n=5):
         # Use these IDs to filter LangchainPgEmbedding objects
         similar_chunks = LangchainPgEmbedding.objects.annotate(
             similarity=CosineDistance("embedding", input_embedding)
-        ).order_by("similarity").filter(similarity__lt=0.3, collection_id__in=collection_ids).defer("cmetadata").all()[:top_n]
+        ).order_by("similarity").filter(similarity__lt=0.17, collection_id__in=collection_ids).defer("cmetadata").all()[:top_n]
         return similar_chunks
     else:
         LOGGING.info("Looking into all embeddings")
         similar_chunks = LangchainPgEmbedding.objects.annotate(
             similarity=CosineDistance("embedding", input_embedding)
-        ).order_by("similarity").filter(similarity__lt=0.3).defer('cmetadata').all()[:top_n]
+        ).order_by("similarity").filter(similarity__lt=0.17).defer('cmetadata').all()[:top_n]
         return similar_chunks
 
 def format_prompt(user_name, context_chunks, user_input, chat_history):
     if context_chunks:
         LOGGING.info("chunks availabe")
-        return Constants.SYSTEM_MESSAGE.format(name_1=user_name, input=user_input, context=context_chunks)
+        return Constants.SYSTEM_MESSAGE.format(name_1=user_name, input=user_input, context=context_chunks, chat_history=chat_history)
     else:
         LOGGING.info("chunks not availabe")
         return Constants.NO_CUNKS_SYSTEM_MESSAGE.format(name_1=user_name, input=user_input)
@@ -252,9 +255,22 @@ def generate_response(prompt):
     response = openai.Completion.create(
         engine="gpt-3.5-turbo-instruct",  # Use an appropriate engine
         prompt=prompt,
+        temperature=0.1,
         max_tokens=2000  # Adjust as necessary
     )
     return response.choices[0].text.strip()
+
+def chat_history_formated(chat_history):
+        complete_chat_history =(f"""
+        query: {chat_history.query or ''}\n 
+        Condensed Question: {chat_history.condensed_question or ''} 
+        Answer: {chat_history.query_response or 'No response'}""" 
+        ) if chat_history else ""
+        questions_chat_history = (f"""
+        query: {chat_history.query or ''}\n 
+        Condensed Question: {chat_history.condensed_question or ''} """ 
+        ) if chat_history else ""
+        return complete_chat_history, questions_chat_history
 
 class VectorDBBuilder:
     def create_vector_db(resource, chunk_size=1000, chunk_overlap=200):
@@ -268,13 +284,21 @@ class VectorDBBuilder:
 
     def get_input_embeddings(text, user_name=None, resource_id=None, chat_history=None):
         text=text.replace("\n", " ") # type: ignore
+        documents, chunks = "", []
+        complete_history, history_question = chat_history_formated(chat_history)
         try:
-            text = generate_response(condensed_question_prompt(chat_history, text))
+            text = generate_response(condensed_question_prompt(history_question, text))
             embedding = genrate_embeddings_from_text(text)
             chunks = find_similar_chunks(embedding, resource_id)
             documents =  " ".join([row.document for row in chunks])
             LOGGING.info(f"Similarity score for the query: {text}. Score: {' '.join([str(row.similarity) for row in chunks])} ")
-            formatted_message = format_prompt(user_name, documents, text, chat_history)
+            formatted_message = format_prompt(user_name, documents, text, complete_history)
+            response = generate_response(formatted_message)
+            return response, chunks, text
+        except openai.error.InvalidRequestError as e:
+            LOGGING.error(f"Error while generating response for query: {text}: Error {e}", exc_info=True)
+            LOGGING.info(f"Retrying without chat history")
+            formatted_message = format_prompt(user_name, documents, text, "")
             response = generate_response(formatted_message)
             return response, chunks, text
         except Exception as e:
