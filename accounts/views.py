@@ -204,14 +204,6 @@ class LoginViewset(GenericViewSet):
             print(cache.get(email))
             login_helper.set_user_otp(email, otp, settings.OTP_DURATION)
 
-            return Response(
-                {
-                    "id": user.id,
-                    "email": email,
-                    "message": "Enter the OTP to login",
-                },
-                status=status.HTTP_201_CREATED,
-            )
             Utils().send_email(
                 to_email=email,
                 # content=f"Your OTP is {otp}",
