@@ -201,8 +201,6 @@ class LoginViewset(GenericViewSet):
 
             email_render = render(request, "otp.html", data)
             mail_body = email_render.content.decode("utf-8")
-            print(cache.get(email))
-            login_helper.set_user_otp(email, otp, settings.OTP_DURATION)
 
             Utils().send_email(
                 to_email=email,
