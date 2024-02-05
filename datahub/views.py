@@ -3559,13 +3559,13 @@ class EmbeddingsViewSet(viewsets.ModelViewSet):
             map_id = request.META.get("map_id")
             resource_id = request.data.get("resource")
             history = Messages.objects.filter(user_map=map_id, bot_type="vistaar").order_by("created_at")
+            if resource_id:
+                history = history.filter(resource_id=resource_id).all()
+            else:
+                history = history.filter(resource_id__isnull=True).all()
             total = len(history)
             slice = 0 if total <= 10 else total-10
-            if resource_id:
-                history = history.filter(resource_id=resource_id).all()[slice:total]
-            else:
-                history = history.filter(resource_id__isnull=True).all()[slice:total]
-
+            history = history[slice:total]
             messages_serializer = MessagesRetriveSerializer(history, many=True)
             return Response(messages_serializer.data)
         except ValidationError as e:
