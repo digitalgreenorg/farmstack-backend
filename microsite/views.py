@@ -1016,13 +1016,14 @@ class APIResponseViewSet(GenericViewSet):
                 status=status.HTTP_401_UNAUTHORIZED
             )
             map_id = ResourceUsagePolicy.objects.get(api_key=get_api_key).user_organization_map_id        
-            history = Messages.objects.filter(user_map=map_id).filter(
-                resource_id=file_path_query_set.id).order_by("-created_at").all()[:3] 
-            chat_history = "\n".join(
-                    [f"User: {item.query or 'No query'}\n Vistaar: {item.query_response or 'No response'}" for item in history])
-            summary, chunks, condensed_question = VectorDBBuilder.get_input_embeddings(query, "Guest User", file_path_query_set.id, chat_history)
-            data = {"user_map": map_id, "resource": file_path_query_set.id, "query": query, 
-                    "query_response": summary, "bot_type":"vistaar_api", "condensed_question":condensed_question}
+            history = Messages.objects.filter(user_map=map_id).order_by("-created_at")
+            history = history.filter(resource_id=file_path_query_set.id).first() if file_path_query_set else history.first()
+      
+            # print(chat_history)
+            # chat_history = history.condensed_question if history else ""
+            summary, chunks, condensed_question = VectorDBBuilder.get_input_embeddings(query, "Guest User", file_path_query_set.id, history)
+            data = {"user_map": UserOrganizationMap.objects.get(id=map_id).id, "resource": file_path_query_set.id, "query": query, 
+                    "query_response": summary, "condensed_question":condensed_question}
             messages_serializer = MessagesSerializer(data=data)
             messages_serializer.is_valid(raise_exception=True)
             message_instance = messages_serializer.save()  # This returns the Messages model instance
