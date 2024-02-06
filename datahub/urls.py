@@ -21,6 +21,7 @@ from datahub.views import (
     DropDocumentView,
     EmbeddingsViewSet,
     MailInvitationViewSet,
+    MessagesCreateViewSet,
     MessagesViewSet,
     OrganizationViewSet,
     ParticipantViewSet,
@@ -69,6 +70,7 @@ urlpatterns = [
     path('usage_policies/<uuid:pk>/', UsagePolicyRetrieveUpdateDestroyView.as_view(), name='usage-policy-retrieve-update-destroy'),
     path('resource_usage_policies/', ResourceUsagePolicyListCreateView.as_view(), name='resource_usage-policy-list-create'),
     path('resource_usage_policies/<uuid:pk>/', ResourceUsagePolicyRetrieveUpdateDestroyView.as_view(), name='resource_usage-policy-retrieve-update-destroy'),
-    path('messages/<uuid:pk>/', MessagesViewSet.as_view(), name='resource_usage-policy-retrieve-update-destroy'),
+    path('messages/<uuid:pk>/', MessagesViewSet.as_view(), name='messages-retrieve-update-destroy'),
+    path('messages/', MessagesCreateViewSet.as_view(), name='messages_create'),
 
 ]
