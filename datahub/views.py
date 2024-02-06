@@ -3508,7 +3508,16 @@ class EmbeddingsViewSet(viewsets.ModelViewSet):
     queryset = LangchainPgEmbedding.objects.all()
     serializer_class = LangChainEmbeddingsSerializer
     lookup_field = 'uuid'  # Specify the UUID field as the lookup field
-    permission_classes=[]
+
+    @action(detail=False, methods=['get'])
+    def embeddings_and_chunks(self, request):
+        embeddings = []
+        collection_id = request.GET.get("resource_file")
+        collection = LangchainPgCollection.objects.filter(name=str(collection_id)).first()
+        if collection:
+            embeddings = LangchainPgEmbedding.objects.filter(collection_id=collection.uuid).values("embedding", "document")
+        return Response(embeddings)
+
 
     @action(detail=False, methods=['post'])
     def get_embeddings(self, request):
@@ -3647,3 +3656,20 @@ class MessagesViewSet(generics.RetrieveUpdateDestroyAPIView):
         except Exception as error:
             LOGGER.error(error, exc_info=True)
             return Response(str(error), status=status.HTTP_400_BAD_REQUEST)
+
+class MessagesCreateViewSet(generics.ListCreateAPIView):
+    queryset = Messages.objects.all()
+    serializer_class = MessagesSerializer
+    pagination_class = CustomPagination
+
+    @http_request_mutation
+    def list(self, request, *args, **kwargs):
+        resource_id = request.GET.get("resource")
+        user_map = request.META.get("map_id")
+        if resource_id:
+            queryset = Messages.objects.filter(resource_id=resource_id, user_map=user_map).order_by("-created_at").all()
+        else:
+            queryset = Messages.objects.filter(user_map=user_map).order_by("-created_at").all()
+        page = self.paginate_queryset(queryset)
+        serializer = MessagesChunksRetriveSerializer(page, many=True)
+        return self.get_paginated_response(serializer.data)
