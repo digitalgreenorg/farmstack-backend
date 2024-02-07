@@ -199,7 +199,7 @@ History conversation:
 Remember, generate answer for 'Current conversation input' only from the information in the below context:
 \n{context}\n
 
-Assist the user {name_1}, with answer and share the youtube video if you found in context.
+Assist the user {name_1}, with answer and share the youtube video only if you found in the above context else don't share the youtube video.
 
 If the answer isn't in your context or context is empty: 
 Avoid the "sorry" route. Instead, cleverly mention the lapse in your training or kindly suggest a rephrasing of their question. 
