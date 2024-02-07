@@ -1023,7 +1023,7 @@ class APIResponseViewSet(GenericViewSet):
             # chat_history = history.condensed_question if history else ""
             summary, chunks, condensed_question = VectorDBBuilder.get_input_embeddings(query, "Guest User", file_path_query_set.id, history)
             data = {"user_map": UserOrganizationMap.objects.get(id=map_id).id, "resource": file_path_query_set.id, "query": query, 
-                    "query_response": summary, "condensed_question":condensed_question}
+                    "query_response": summary, "condensed_question":condensed_question, "bot_type":"vistaar_api"}
             messages_serializer = MessagesSerializer(data=data)
             messages_serializer.is_valid(raise_exception=True)
             message_instance = messages_serializer.save()  # This returns the Messages model instance
