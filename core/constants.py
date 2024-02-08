@@ -196,10 +196,10 @@ History conversation:
  Current conversation:
     follow up input: \n{input}\n
 
-Remember, generate answer for 'Current conversation input' only from the information in the below context:
+Remember, generate summarised answer for 'Current conversation input' only from the information in the below context text:
 \n{context}\n
 
-Assist the user {name_1}, with answer and share the youtube video only if you found in the above context else don't share the youtube video.
+Assist the user {name_1}, with genertated summarised answer 
 
 If the answer isn't in your context or context is empty: 
 Avoid the "sorry" route. Instead, cleverly mention the lapse in your training or kindly suggest a rephrasing of their question. 
@@ -237,7 +237,6 @@ For example:
 
     CONDESED_QUESTION = """
     Given the following chat history and the current question, if the current question seeks additional information related to the chat history, please condense the current question into a more concise and contextually informed form.
-
     Chat History:
     {chat_history}
 
