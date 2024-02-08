@@ -1087,7 +1087,7 @@ class LangChainEmbeddingsSerializer(serializers.ModelSerializer):
     #         return data
 
 class ResourceFileSerializer(serializers.ModelSerializer):
-    collections = serializers.SerializerMethodField()
+    # collections = serializers.SerializerMethodField()
     class Meta:
         model = ResourceFile
         fields = "__all__"

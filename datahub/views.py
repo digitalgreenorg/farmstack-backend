@@ -3274,7 +3274,7 @@ class ResourceManagementViewSet(GenericViewSet):
                 )
                 .order_by("-updated_at")
             )
-                data["retrival"] = MessagesChunksRetriveSerializer(Messages.objects.filter(resource_id=resource.id).order_by("-created_at").all(), many=True).data
+                # data["retrival"] = MessagesChunksRetriveSerializer(Messages.objects.filter(resource_id=resource.id).order_by("-created_at").all(), many=True).data
             else:
                 resource_usage_policy = (
                 ResourceUsagePolicy.objects.select_related(
