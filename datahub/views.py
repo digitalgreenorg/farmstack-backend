@@ -3559,7 +3559,7 @@ class EmbeddingsViewSet(viewsets.ModelViewSet):
             return Response(e.detail, status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
             LOGGER.error(e,exc_info=True)
-            return Response("Error During the execution", status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            return Response(f"Error During the execution: {str(e)}", status=status.HTTP_500_INTERNAL_SERVER_ERROR)
     
     @http_request_mutation
     @action(detail=False, methods=['post'])
