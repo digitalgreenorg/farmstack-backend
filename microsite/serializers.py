@@ -16,6 +16,8 @@ from datahub.models import (
     DatahubDocuments,
     Datasets,
     DatasetV2,
+    LangchainPgCollection,
+    LangchainPgEmbedding,
     Organization,
     Policy,
     Resource,
@@ -209,6 +211,19 @@ class ContentFileSerializer(serializers.ModelSerializer):
         model = ResourceFile
         fields = ["id", "type", "file",  "url", "transcription", "updated_at"]
 
+class ContentFileEmbeddingsSerializer(serializers.ModelSerializer):
+    collections = serializers.SerializerMethodField()
+    class Meta:
+        model = ResourceFile
+        fields = ["id", "type", "file",  "url", "transcription", "updated_at", "collections"]
+ 
+    def get_collections(self, obj):
+        collection = LangchainPgCollection.objects.filter(name=str(obj.id)).first()
+        if collection:
+            embeddings = LangchainPgEmbedding.objects.filter(collection_id=collection.uuid).values("embedding", "document")
+            return embeddings
+        return []
+
 class CategorySerializer(serializers.ModelSerializer):
     class Meta:
         model = Category
@@ -228,6 +243,42 @@ class ResourceSubCategoryMapSerializer(serializers.ModelSerializer):
         model = ResourceSubCategoryMap
         fields = ["sub_category"]
 
+class ResourceEmbeddingsSerializer(serializers.ModelSerializer):
+    resources = ContentFileEmbeddingsSerializer(many=True, read_only=True)
+    category = serializers.SerializerMethodField()
+    # category = ResourceSubCategoryMapSerializer(many=True, read_only=True, source='resource_cat_map')
+
+    class Meta:
+        model = Resource
+        fields = ["id", "title", "description", "resources", "category"]
+    
+    def get_category(self, instance):
+        category_and_sub_category = Category.objects.prefetch_related(
+              Prefetch("subcategory_category",
+                        queryset=SubCategory.objects.prefetch_related(
+                            "resource_sub_category_map").filter(
+                                resource_sub_category_map__resource=instance.id),
+                        ), 
+        'subcategory_category__resource_sub_category_map'
+        ).filter(subcategory_category__resource_sub_category_map__resource=instance.id).distinct().all()
+        serializer = CategorySerializer(category_and_sub_category, many=True)
+        return serializer.data
+    
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        resource_sub_category_maps = data.get('category', [])
+        category_aggregate = defaultdict(list)
+
+        for resource_map in resource_sub_category_maps:
+            sub_category_data = resource_map.get('sub_category')
+            if sub_category_data:
+                category_name = sub_category_data['category']['name']
+                sub_category_name = sub_category_data['name']
+                category_aggregate[category_name].append(sub_category_name)
+
+        aggregated_data = {k: v for k, v in category_aggregate.items()}
+        data['category'] = aggregated_data
+        return data
 
 class ResourceMicrsositeSerializer(serializers.ModelSerializer):
     resources = ContentFileSerializer(many=True, read_only=True)

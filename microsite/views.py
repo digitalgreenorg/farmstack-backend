@@ -77,6 +77,7 @@ from microsite.serializers import (
     LegalDocumentSerializer,
     OrganizationMicrositeSerializer,
     PolicySerializer,
+    ResourceEmbeddingsSerializer,
     ResourceMicrsositeSerializer,
     UserDataMicrositeSerializer,
     UserSerializer,
@@ -992,7 +993,7 @@ class APIResponseViewSet(GenericViewSet):
                 status=status.HTTP_401_UNAUTHORIZED
             )          
             if file_path_query_set.resource_usage_policy.filter(type='embeddings'):
-                serializer = ResourceSerializer(file_path_query_set)
+                serializer = ResourceEmbeddingsSerializer(file_path_query_set)
             elif file_path_query_set.resource_usage_policy.filter(type='resource'):
                 serializer = ResourceMicrsositeSerializer(file_path_query_set)
                 
