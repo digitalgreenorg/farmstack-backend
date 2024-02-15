@@ -23,7 +23,7 @@ from dotenv import load_dotenv
 
 # from langchain import PromptTemplate
 from langchain.docstore.document import Document
-from langchain.document_loaders import PyMuPDFLoader
+from langchain.document_loaders import CSVLoader, JSONLoader, PyMuPDFLoader
 
 # from langchain.document_loaders import TextLoader
 from langchain.embeddings.openai import OpenAIEmbeddings
@@ -181,7 +181,11 @@ def load_documents(url, file, type, id, transcription=""):
     # for pdf_path in pdf_paths:
     try:
         removed = os.remove("temp.pdf") if os.path.exists("temp.pdf") else 'pass'
-        if type == 'youtube':
+        if type == 'api':
+            loader = JSONLoader(
+            file_path='./example_data/facebook_chat.json',
+            )
+        elif type == 'youtube':
             build_pdf(transcription, "temp.pdf")
             loader = PyMuPDFLoader("temp.pdf")
         elif type == 'pdf':
@@ -193,7 +197,10 @@ def load_documents(url, file, type, id, transcription=""):
             
             domain = os.environ.get('DATAHUB_SITE', "http://localhost:8000")
             file = file if file.startswith(domain) else domain+file
-            loader = PyMuPDFLoader(file)
+            if file.endswith(".pdf"):
+                loader = PyMuPDFLoader(file)
+            if file.endswith(".csv"):
+                loader = CSVLoader(file_path=file, source_column="Title")
         return loader.load()
 
     except requests.exceptions.RequestException as e:

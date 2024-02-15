@@ -11,9 +11,10 @@ import shutil
 import sys
 import threading
 from calendar import c
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from functools import reduce
 from pickle import TRUE
-from urllib.parse import unquote
+from urllib.parse import parse_qs, unquote, urlparse
 
 import django
 import numpy as np
@@ -43,10 +44,12 @@ from django.db.models.functions import Concat
 from django.http import JsonResponse
 from django.shortcuts import render
 from drf_braces.mixins import MultipleSerializersViewMixin
+from googleapiclient.discovery import build
 from jsonschema import ValidationError
 from psycopg2 import connect
 from psycopg2.extensions import ISOLATION_LEVEL_AUTOCOMMIT
 from python_http_client import exceptions
+from pytube import Channel, Playlist, YouTube
 from rest_framework import generics, pagination, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.exceptions import ValidationError
@@ -170,6 +173,8 @@ from .serializers import (
     UsagePolicySerializer,
 )
 
+# Replace 'YOUR_API_KEY' with your actual API key
+youtube = build('youtube', 'v3', developerKey=settings.YOUTUBE_API_KEY)
 LOGGER = logging.getLogger(__name__)
 con = None
 
@@ -3415,6 +3420,7 @@ class ResourceFileManagementViewSet(GenericViewSet):
         except Exception as e:
             LOGGER.error(e,exc_info=True)
             return Response(str(e), status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    
     @transaction.atomic
     def destroy(self, request, *args, **kwargs):
         instance = self.get_object()
@@ -3425,6 +3431,111 @@ class ResourceFileManagementViewSet(GenericViewSet):
 
         return Response(status=status.HTTP_204_NO_CONTENT)
 
+    @action(detail=False, methods=["post"])
+    def resource_live_api_export(self, request):
+        """This is an API to fetch the data from an External API with an auth token
+        and store it in JSON format."""
+        try:
+            url = request.data.get("url")
+            auth_type = request.data.get("auth_type")
+            name = request.data.get("name")
+            source = request.data.get("source")
+            file_name = request.data.get("file_name")
+
+            if auth_type == 'NO_AUTH':
+                response = requests.get(url)
+            elif auth_type == 'API_KEY':
+                headers = {request.data.get(
+                    "api_key_name"): request.data.get("api_key_value")}
+                response = requests.get(url, headers=headers)
+            elif auth_type == 'BEARER':
+                headers = {"Authorization": "Bearer " +
+                                            request.data.get("token")}
+                response = requests.get(url, headers=headers)
+
+            # response = requests.get(url)
+            if response.status_code in [200, 201]:
+                try:
+                    data = response.json()
+                except ValueError:
+                    data = response.text
+
+                with open(settings.RESOURCES_URL + "/" + file_name + ".json", "w") as outfile:
+                    if type(data) == list:
+                        json.dump(data, outfile)
+                    else:
+                        outfile.write(json.dumps(data))
+
+                # result = os.listdir(file_path)
+            
+                serializer = ResourceFileSerializer(instance)
+                return JsonResponse(serializer.data, status=status.HTTP_200_OK)
+
+            LOGGER.error("Failed to fetch data from api")
+            return Response({"message": f"API Response: {response.json()}"}, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            LOGGER.error(
+                f"Failed to fetch data from api ERROR: {e} and input fields: {request.data}")
+            return Response({"message": f"API Response: {e}"}, status=status.HTTP_400_BAD_REQUEST)
+
+    @action(detail=False, methods=["get"])
+    def fetch_videos(self, request):
+        url = request.GET.get("url")
+        return self.get_youtube_url(url)
+    
+    def get_youtube_url(self, url):
+        # Parse the URL
+        parsed_url = urlparse(url)
+        query_string = parse_qs(parsed_url.query)
+        # Determine the type based on path and parameters
+        if parsed_url.path.startswith('/playlist') and 'list' in query_string:
+            return self.fetch_playlist_videos(query_string['list'][0])
+        elif parsed_url.path == '/watch' and 'v' in query_string:
+            yt = YouTube(url)
+            return Response([{"url": url, "title": yt.title}])
+        elif '/channel/' in parsed_url.path:
+            return self.fetch_channel_videos(parsed_url.path.split('/channel/')[-1])
+        else:
+            return Response("Invaild youtube url or Url is not channel or playlist or video")
+        
+    def fetch_channel_videos(self, channel_id):
+        # Fetch channel's uploads playlist ID
+        channel_response = youtube.channels().list(
+            part='contentDetails',
+            id=channel_id
+        ).execute()
+
+        uploads_playlist_id = channel_response['items'][0]['contentDetails']['relatedPlaylists']['uploads']
+        return self.fetch_playlist_videos(uploads_playlist_id)
+
+    def fetch_playlist_videos(self, playlist_id):
+        videos = []
+        next_page_token = None
+        try:
+            while True:
+                pl_response = youtube.playlistItems().list(
+                    part='snippet',
+                    playlistId=playlist_id,
+                    maxResults=50,  # Adjust based on your needs
+                    pageToken=next_page_token
+                ).execute()
+
+                for item in pl_response['items']:
+                    video_id = item['snippet']['resourceId']['videoId']
+                    video_title = item['snippet']['title']
+                    video_url = f"https://www.youtube.com/watch?v={video_id}"
+
+                    videos.append({'url': video_url, 'title': video_title})
+
+                next_page_token = pl_response.get('nextPageToken')
+                if not next_page_token:
+                    break
+
+            return Response(videos)
+        except Exception as e:
+            return Response(str(e), 500)
+
+#
 class CategoryViewSet(viewsets.ModelViewSet):
     queryset = Category.objects.prefetch_related("subcategory_category").all()
     serializer_class = CategorySerializer
