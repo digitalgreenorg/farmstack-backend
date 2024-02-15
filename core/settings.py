@@ -398,5 +398,5 @@ if not os.path.exists("logs"):
 
 SAGUBAGU_API_KEY = os.environ.get("SAGUBAGU_API_KEY",'')
 OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY",'')
-OPENAI_API_KEY = os.environ.get("YOUTUBE_API_KEY",'')
+YOUTUBE_API_KEY = os.environ.get("YOUTUBE_API_KEY",'')
 
