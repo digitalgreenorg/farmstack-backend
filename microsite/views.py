@@ -7,6 +7,7 @@ import operator
 import os
 import pickle
 import threading
+from collections import defaultdict
 from functools import reduce
 
 import pandas as pd
@@ -1175,7 +1176,15 @@ class ResourceMicrositeViewSet(GenericViewSet):
             if file_filters:
                 data = []
                 for resource in query_set.distinct():
-                    resources_data={"id": resource.id, "title": resource.title, "description": resource.description, "category": resource.category}
+                    category_aggregate = defaultdict(list)
+                    for resource_map in resource.resource_cat_map.all():
+                        sub_category_data = resource_map.sub_category
+                        if sub_category_data:
+                            category_name = sub_category_data.category.name
+                            sub_category_name = sub_category_data.name
+                            category_aggregate[category_name].append(sub_category_name)
+                            aggregated_data = {k: v for k, v in category_aggregate.items()}
+                    resources_data={"id": resource.id, "title": resource.title, "description": resource.description, "category": aggregated_data}
                     files = ResourceFile.objects.filter(**file_filters, resource=resource.id).all()
                     resources_data["resources"] = ContentFileSerializer(files, many=True).data
                     data.append(resources_data)

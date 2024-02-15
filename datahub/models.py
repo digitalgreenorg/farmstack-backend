@@ -310,7 +310,8 @@ class Resource(TimeStampMixin):
     description = models.TextField(max_length=250)
     user_map = models.ForeignKey(UserOrganizationMap, on_delete=models.CASCADE)
     category = models.JSONField(default=dict)
-    
+    accessibility = models.CharField(max_length=255, null=True, choices=USAGE_POLICY_APPROVAL_STATUS, default="public")
+
     def __str__(self) -> str:
         return self.title
 
