@@ -266,7 +266,7 @@ REST_FRAMEWORK = {
     #     "rest_framework.permissions.AllowAny"
     # ],
     "DEFAULT_PERMISSION_CLASSES": [
-        "rest_framework.permissions.AllowAny"
+        "rest_framework.permissions.IsAuthenticated"
     ],
     #  # Un comment this to enable authentication
     "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
@@ -398,3 +398,5 @@ if not os.path.exists("logs"):
 
 SAGUBAGU_API_KEY = os.environ.get("SAGUBAGU_API_KEY",'')
 OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY",'')
+OPENAI_API_KEY = os.environ.get("YOUTUBE_API_KEY",'')
+
