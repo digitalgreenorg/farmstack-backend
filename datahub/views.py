@@ -3438,7 +3438,7 @@ class ResourceFileManagementViewSet(GenericViewSet):
         try:
             url = request.data.get("url")
             auth_type = request.data.get("auth_type")
-            name = request.data.get("name")
+            title = request.data.get("title")
             source = request.data.get("source")
             file_name = request.data.get("file_name")
 
@@ -3460,7 +3460,7 @@ class ResourceFileManagementViewSet(GenericViewSet):
                 except ValueError:
                     data = response.text
 
-                with open(settings.RESOURCES_URL + "/name/" + file_name + ".json", "w") as outfile:
+                with open(settings.RESOURCES_URL + f"/{title}/" + file_name + ".json", "w") as outfile:
                     if type(data) == list:
                         json.dump(data, outfile)
                     else:
