@@ -3460,7 +3460,7 @@ class ResourceFileManagementViewSet(GenericViewSet):
                 except ValueError:
                     data = response.text
 
-                with open(settings.RESOURCES_URL + "/" + file_name + ".json", "w") as outfile:
+                with open(settings.RESOURCES_URL + "/name/" + file_name + ".json", "w") as outfile:
                     if type(data) == list:
                         json.dump(data, outfile)
                     else:
