@@ -302,3 +302,5 @@ zipp==3.11.0
 psycopg==3.1.14
 psycopg-binary
 reportlab
+APScheduler==3.10.4
+django-apscheduler==0.6.2
