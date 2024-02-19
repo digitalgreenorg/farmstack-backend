@@ -309,3 +309,5 @@ beautifulsoup4
 celery
 redis
 flower
+APScheduler==3.10.4
+django-apscheduler==0.6.2
