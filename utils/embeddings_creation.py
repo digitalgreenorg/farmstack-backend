@@ -267,7 +267,7 @@ class VectorBuilder:
             if type == 'api':
                 file_path = self.resolve_file_path(file)
                 # Assuming JSONLoader and other loaders are defined elsewhere
-                loader = JSONLoader(file_path=file_path)
+                loader = JSONLoader(file_path=file_path, jq_schema='.messages[].content')
                 return loader.load(), "completed"
             elif type in ['youtube', 'pdf', 'website', "file"]:
                 with self.temporary_file(suffix=".pdf") as temp_pdf_path:
@@ -285,7 +285,7 @@ class VectorBuilder:
                         doc_text = self.aggregate_links_content(web_links, doc_text)
                         all_content = main_content + "\n" + doc_text
                         self.build_pdf(all_content.replace("\n", " "), temp_pdf_path)
-                    loader = PyMuPDFLoader(temp_pdf_path)  # Assuming PyMuPDFLoader is defined elsewhere
+                        loader = PyMuPDFLoader(temp_pdf_path)  # Assuming PyMuPDFLoader is defined elsewhere
                     return loader.load(), "completed"
             else:
                 LOGGING.error(f"Unsupported input type: {type}")
@@ -339,7 +339,8 @@ class VectorBuilder:
 
     def load_by_file_extension(self, file, temp_pdf):
         if file.endswith(".pdf"):
-            return PyMuPDFLoader(file), 'pdf'
+            logging.info(f"pdf file loader started for file: {file}")
+            return PyMuPDFLoader(file.replace('http://localhost:8000/', "")), 'pdf'
         elif file.endswith(".csv"):
             return CSVLoader(file_path=file.replace('http://localhost:8000/', ""), source_column="Title"), 'csv'
         elif file.endswith(".html"):
