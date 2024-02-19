@@ -303,3 +303,5 @@ psycopg==3.1.14
 psycopg-binary
 reportlab
 google-api-python-client
+APScheduler==3.10.4
+django-apscheduler==0.6.2
