@@ -278,6 +278,7 @@ class ScanHistoryAPIView(APIView):
     """
     api-end point for iudx
     """
+    permission_classes = []
     authentication_classes = [APIKeyAuthentication]
     def get(self, request):
         from_date_str = request.query_params.get('from_date')
