@@ -1223,7 +1223,6 @@ class ResourceSerializer(serializers.ModelSerializer):
 
             # resource_file_obj = ResourceFile.objects.filter(resource=resource).all()
             for resource_file in resource_files_data:
-                import pdb; pdb.set_trace()
                 if resource_file.get("type") == "youtube":
                     youtube_urls_response = get_youtube_url(resource_file.get("url"))
                     if youtube_urls_response.status_code == 400:
@@ -1237,8 +1236,6 @@ class ResourceSerializer(serializers.ModelSerializer):
                         LOGGER.info(f"Embeding creation started for youtube url: {row.get('url')}")
                         VectorDBBuilder.create_vector_db.delay(serializer.data)
                 else:
-                    print(resource_file)
-
                     serializer = ResourceFileSerializer(data={"resource": resource.id, **resource_file}, partial=True)
                     serializer.is_valid(raise_exception=True)
                     serializer.save()
