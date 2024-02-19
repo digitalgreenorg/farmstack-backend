@@ -311,3 +311,6 @@ redis
 flower
 APScheduler==3.10.4
 django-apscheduler==0.6.2
+google-api-python-client
+google-auth-httplib2
+google-auth-oauthlib

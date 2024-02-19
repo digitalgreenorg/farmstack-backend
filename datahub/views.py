@@ -45,7 +45,6 @@ from django.http import JsonResponse
 from django.shortcuts import render
 import requests
 from drf_braces.mixins import MultipleSerializersViewMixin
-from googleapiclient.discovery import build
 from jsonschema import ValidationError
 from psycopg2 import connect
 from psycopg2.extensions import ISOLATION_LEVEL_AUTOCOMMIT
