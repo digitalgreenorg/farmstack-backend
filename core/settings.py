@@ -207,6 +207,7 @@ STANDARDISED_FILES_URL = os.path.join(PROTECTED_MEDIA_URL, "standardised/")
 RESOLUTIONS_ATTACHMENT_URL = os.path.join(SUPPORT_RESOLUTIONS, "resolutions/")
 SUPPORT_TICKET_FILES_URL = os.path.join(SUPPORT_TICKET_V2, "support/")
 RESOURCES_URL = "users/resources/"
+RESOURCES_AUDIOS = "users/resources/audios/"
 
 
 # os.makedirs(CONNECTOR_FILES_URL)
@@ -220,7 +221,8 @@ if not os.path.exists(TEMP_CONNECTOR_URL):
     os.makedirs(TEMP_CONNECTOR_URL)
 if not os.path.exists(CONNECTOR_FILES_URL):
     os.makedirs(CONNECTOR_FILES_URL)
-
+if not os.path.exists(RESOURCES_AUDIOS):
+    os.makedirs(RESOURCES_AUDIOS)
 # Template Files.
 SINGLE_PULL_PROVIDER_TEMPLATE_XML = os.path.join(
     BASE_DIR, "utils/templates/single-pull-based/provider_xml_template.json"
@@ -400,4 +402,6 @@ if not os.path.exists("logs"):
 SAGUBAGU_API_KEY = os.environ.get("SAGUBAGU_API_KEY",'')
 OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY",'')
 YOUTUBE_API_KEY = os.environ.get("YOUTUBE_API_KEY",'')
+YOUTUBE_API_KEY = os.environ.get("CELERY_BROKER_URL",'')
 
+CELERY_BROKER_URL = 'redis://localhost:6379/0'
