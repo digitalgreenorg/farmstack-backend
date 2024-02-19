@@ -43,8 +43,8 @@ from django.db.models.functions import Concat
 # from django.db.models.functions import Index, Substr
 from django.http import JsonResponse
 from django.shortcuts import render
+import requests
 from drf_braces.mixins import MultipleSerializersViewMixin
-from googleapiclient.discovery import build
 from jsonschema import ValidationError
 from psycopg2 import connect
 from psycopg2.extensions import ISOLATION_LEVEL_AUTOCOMMIT
@@ -142,6 +142,7 @@ from utils.file_operations import (
     generate_omfp_dashboard,
 )
 from utils.jwt_services import http_request_mutation
+from utils.youtube_helper import get_youtube_url
 
 from .models import (
     Category,
@@ -174,7 +175,6 @@ from .serializers import (
 )
 
 # Replace 'YOUR_API_KEY' with your actual API key
-youtube = build('youtube', 'v3', developerKey=settings.YOUTUBE_API_KEY)
 LOGGER = logging.getLogger(__name__)
 con = None
 
@@ -3410,10 +3410,26 @@ class ResourceFileManagementViewSet(GenericViewSet):
     @transaction.atomic
     def create(self, request, *args, **kwargs):
         try:
-            serializer = self.get_serializer(data=request.data, partial=True)
-            serializer.is_valid(raise_exception=True)
-            serializer.save()
-            VectorDBBuilder.create_vector_db(serializer.data)
+            data = request.data.copy()
+            resource = data.get("resource")
+            if data.get("type") == "video":
+                youtube_urls_response = get_youtube_url(data.get("url"))
+                if youtube_urls_response.status_code == 400:
+                    return youtube_urls_response
+                youtube_urls = youtube_urls_response.data
+                playlist_urls = [{"resource": resource, "type":"youtube", **row} for row in youtube_urls]
+                for row in playlist_urls:
+                    serializer = self.get_serializer(data=row)
+                    serializer.is_valid(raise_exception=True)
+                    serializer.save()
+                    LOGGER.info(f"Embeding creation started for youtube url: {row.get('url')}")
+                    VectorDBBuilder.create_vector_db.delay(serializer.data)
+                return Response(serializer.data, status=status.HTTP_201_CREATED)
+            else:
+                serializer = self.get_serializer(data=request.data, partial=True)
+                serializer.is_valid(raise_exception=True)
+                serializer.save()
+                VectorDBBuilder.create_vector_db.delay(serializer.data)
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         except ValidationError as e:
             return Response(e.detail, status=status.HTTP_400_BAD_REQUEST)
@@ -3481,60 +3497,8 @@ class ResourceFileManagementViewSet(GenericViewSet):
     @action(detail=False, methods=["get"])
     def fetch_videos(self, request):
         url = request.GET.get("url")
-        return self.get_youtube_url(url)
-    
-    def get_youtube_url(self, url):
-        # Parse the URL
-        parsed_url = urlparse(url)
-        query_string = parse_qs(parsed_url.query)
-        # Determine the type based on path and parameters
-        if parsed_url.path.startswith('/playlist') and 'list' in query_string:
-            return self.fetch_playlist_videos(query_string['list'][0])
-        elif parsed_url.path == '/watch' and 'v' in query_string:
-            yt = YouTube(url)
-            return Response([{"url": url, "title": yt.title}])
-        elif '/channel/' in parsed_url.path:
-            return self.fetch_channel_videos(parsed_url.path.split('/channel/')[-1])
-        else:
-            return Response("Invaild youtube url or Url is not channel or playlist or video")
-        
-    def fetch_channel_videos(self, channel_id):
-        # Fetch channel's uploads playlist ID
-        channel_response = youtube.channels().list(
-            part='contentDetails',
-            id=channel_id
-        ).execute()
-
-        uploads_playlist_id = channel_response['items'][0]['contentDetails']['relatedPlaylists']['uploads']
-        return self.fetch_playlist_videos(uploads_playlist_id)
-
-    def fetch_playlist_videos(self, playlist_id):
-        videos = []
-        next_page_token = None
-        try:
-            while True:
-                pl_response = youtube.playlistItems().list(
-                    part='snippet',
-                    playlistId=playlist_id,
-                    maxResults=50,  # Adjust based on your needs
-                    pageToken=next_page_token
-                ).execute()
-
-                for item in pl_response['items']:
-                    video_id = item['snippet']['resourceId']['videoId']
-                    video_title = item['snippet']['title']
-                    video_url = f"https://www.youtube.com/watch?v={video_id}"
-
-                    videos.append({'url': video_url, 'title': video_title})
-
-                next_page_token = pl_response.get('nextPageToken')
-                if not next_page_token:
-                    break
-
-            return Response(videos)
-        except Exception as e:
-            return Response(str(e), 500)
-
+        return get_youtube_url(url)
+   
 #
 class CategoryViewSet(viewsets.ModelViewSet):
     queryset = Category.objects.prefetch_related("subcategory_category").all()

@@ -249,7 +249,14 @@ For example:
     Condensed Question:
 
     """
-
+    TRANSCTION_PROMPT= """Keep this as context: "{transcription}"
+                        By using only the above context generate
+                        Title: title should be name for the context,
+                        Youtube url: {youtube_url}
+                        Description: Description should be a very much detailed explanation of the context with good formatiing of text,
+                        Keywords: Keywords are important terms in the context,
+                        Tags : Tags should be important nouns associated in the transcript,
+                        """
 
 class NumericalConstants:
     FILE_NAME_LENGTH = 85

@@ -116,13 +116,20 @@ RESOURCE_USAGE_POLICY_API_TYPE = (
 RESOURCE_URL_TYPE = (
     ("youtube", "youtube"),
     ("pdf", "pdf"),
-    ("file", "file")
+    ("file", "file"),
+    ("website", "website"),
+    ("api", "api")
 )
 
 USAGE_POLICY_APPROVAL_STATUS = (
     ("public", "public"),
     ("registered", "registered"),
     ("private", "private"),
+)
+EMBEDDINGS_STATUS = (
+    ("completed", "completed"),
+    ("in-progress", "in-progress"),
+    ("failed", "failed"),
 )
 
 @auto_str
@@ -327,6 +334,8 @@ class ResourceFile(TimeStampMixin):
     type = models.CharField(max_length=20, null=True, choices=RESOURCE_URL_TYPE, default="file")
     url = models.CharField(max_length=200, null=True)
     transcription = models.CharField(max_length=10000,null=True, blank=True)
+    embeddings_status = models.CharField(max_length=20, null=True, choices=EMBEDDINGS_STATUS, default="in-progress")
+    embeddings_status_reason = models.CharField(max_length=1000, null=True)
 
     def __str__(self) -> str:
         return self.file.name
