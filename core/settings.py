@@ -406,4 +406,6 @@ OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY",'')
 YOUTUBE_API_KEY = os.environ.get("YOUTUBE_API_KEY",'')
 CELERY_BROKER_URL = os.environ.get("CELERY_BROKER_URL",'')
 
-CELERY_BROKER_URL = f'redis://{os.environ.get("REDIS_SERVICE","loaclhost")}:6379/0'
+CELERY_BROKER_URL = f'redis://{os.environ.get("REDIS_SERVICE", "loaclhost")}:6379/0'
+
+# CELERY_BROKER_URL = 'redis://localhost:6379/0'
