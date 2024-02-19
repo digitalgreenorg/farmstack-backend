@@ -268,7 +268,7 @@ class VectorBuilder:
                 file_path = self.resolve_file_path(file)
                 # Assuming JSONLoader and other loaders are defined elsewhere
                 loader = JSONLoader(file_path=file_path)
-                return loader.load(), True
+                return loader.load(), "completed"
             elif type in ['youtube', 'pdf', 'website', "file"]:
                 with self.temporary_file(suffix=".pdf") as temp_pdf_path:
                     if type == 'youtube':
@@ -286,13 +286,13 @@ class VectorBuilder:
                         all_content = main_content + "\n" + doc_text
                         self.build_pdf(all_content.replace("\n", " "), temp_pdf_path)
                     loader = PyMuPDFLoader(temp_pdf_path)  # Assuming PyMuPDFLoader is defined elsewhere
-                    return loader.load(), True
+                    return loader.load(), "completed"
             else:
                 LOGGING.error(f"Unsupported input type: {type}")
-                return f"Unsupported input type: {type}", False
+                return f"Unsupported input type: {type}", "failed"
         except Exception as e:
             LOGGING.error(f"Faild lo load the documents: {str(e)}")
-            return str(e), False
+            return str(e), "failed"
 
     @contextmanager
     def temporary_file(self, suffix=""):
@@ -453,13 +453,12 @@ class VectorDBBuilder:
                 resource_file.get("url"), resource_file.get("file"), resource_file.get("type"),
                 resource_file.get("id"), resource_file.get("transcription"))
             LOGGING.info(f"Documents loaded for Resource ID: {resource_id}")
-            if status:
+            if status == "completed":
                 texts = vector.split_documents(documents, chunk_size, chunk_overlap)
                 LOGGING.info(f"Documents splict completed for Resource ID: {resource_id}")
                 embeddings = OpenAIEmbeddings()
                 vector.get_embeddings(embeddings, texts, str(resource_file.get("id")), connectionString, resource_file)
                 LOGGING.info(f"Embeddings creation completed for Resource ID: {resource_id}")
-                status="completed"
                 documents="Embeddings Created Sucessfully"
             data = ResourceFile.objects.filter(id=resource_id).update(
             embeddings_status=status,
