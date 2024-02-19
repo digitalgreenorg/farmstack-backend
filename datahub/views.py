@@ -3590,7 +3590,7 @@ class EmbeddingsViewSet(viewsets.ModelViewSet):
         collection_id = request.GET.get("resource_file")
         collection = LangchainPgCollection.objects.filter(name=str(collection_id)).first()
         if collection:
-            embeddings = LangchainPgEmbedding.objects.filter(collection_id=collection.uuid).values( "document")
+            embeddings = LangchainPgEmbedding.objects.filter(collection_id=collection.uuid).values("embedding", "document")
         return Response(embeddings)
 
 
