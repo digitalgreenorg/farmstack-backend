@@ -196,10 +196,13 @@ History conversation:
  Current conversation:
     follow up input: \n{input}\n
 
-Remember, generate summarised answer for 'Current conversation input' only from the information in the below context text:
+Remember two things:
+    1.generate the answer for 'Current conversation input' only from the information in the below context text:
+    2.generate Youtube url for 'Current conversation input' only from the information in the below context text:
+
 \n{context}\n
 
-Assist the user {name_1}, with genertated summarised answer 
+Assist the user {name_1}, with genertated answer and genertated Youtube url.
 
 If the answer isn't in your context or context is empty: 
 Avoid the "sorry" route. Instead, cleverly mention the lapse in your training or kindly suggest a rephrasing of their question. 
