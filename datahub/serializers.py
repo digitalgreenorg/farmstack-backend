@@ -1223,31 +1223,33 @@ class ResourceSerializer(serializers.ModelSerializer):
 
             # resource_file_obj = ResourceFile.objects.filter(resource=resource).all()
             for resource_file in resource_files_data:
-                if resource_file.get("type") == "video":
-                    youtube_urls_response = get_youtube_url(data.get("url"))
-                if youtube_urls_response.status_code == 400:
-                    return youtube_urls_response
-                youtube_urls = youtube_urls_response.data
-                playlist_urls = [{"resource": resource, "type":"youtube", **row} for row in youtube_urls]
-                for row in playlist_urls:
-                    serializer = self.get_serializer(data=row)
+                import pdb; pdb.set_trace()
+                if resource_file.get("type") == "youtube":
+                    youtube_urls_response = get_youtube_url(resource_file.get("url"))
+                    if youtube_urls_response.status_code == 400:
+                        return youtube_urls_response
+                    youtube_urls = youtube_urls_response.data
+                    playlist_urls = [{"resource": resource.id, "type":"youtube", **row} for row in youtube_urls]
+                    for row in playlist_urls:
+                        serializer = ResourceFileSerializer(data=row, partial=True)
+                        serializer.is_valid(raise_exception=True)
+                        serializer.save()
+                        LOGGER.info(f"Embeding creation started for youtube url: {row.get('url')}")
+                        VectorDBBuilder.create_vector_db.delay(serializer.data)
+                else:
+                    print(resource_file)
+
+                    serializer = ResourceFileSerializer(data={"resource": resource.id, **resource_file}, partial=True)
                     serializer.is_valid(raise_exception=True)
                     serializer.save()
-                    LOGGER.info(f"Embeding creation started for youtube url: {row.get('url')}")
+                    LOGGER.info(f"Embeding creation started for url: {resource_file.get('url')} or file: {resource_file.get('url')}")
                     VectorDBBuilder.create_vector_db.delay(serializer.data)
-                return Response(serializer.data, status=status.HTTP_201_CREATED)
-
-                data = {"resource":resource.id, **resource_file}
-                serializer = ResourceFileSerializer(data = data)
-                serializer.is_valid(raise_exception=True)
-                serializer.save()
-                VectorDBBuilder.create_vector_db(serializer.data)
             for file in resource_files[0]:
                 data = {"resource":resource.id, "file":file, "type": "file"}
                 serializer = ResourceFileSerializer(data = data)
                 serializer.is_valid(raise_exception=True)
                 serializer.save()
-                VectorDBBuilder.create_vector_db(serializer.data)
+                VectorDBBuilder.create_vector_db.delay(serializer.data)
             return resource
         except Exception as e:
             LOGGER.error(e,exc_info=True)

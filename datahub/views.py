@@ -3430,7 +3430,7 @@ class ResourceFileManagementViewSet(GenericViewSet):
                 serializer.is_valid(raise_exception=True)
                 serializer.save()
                 VectorDBBuilder.create_vector_db.delay(serializer.data)
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
+                return Response(serializer.data, status=status.HTTP_201_CREATED)
         except ValidationError as e:
             return Response(e.detail, status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
@@ -3457,7 +3457,7 @@ class ResourceFileManagementViewSet(GenericViewSet):
             title = request.data.get("title")
             source = request.data.get("source")
             file_name = request.data.get("file_name")
-
+            resource = request.data.get("resource")
             if auth_type == 'NO_AUTH':
                 response = requests.get(url)
             elif auth_type == 'API_KEY':
@@ -3475,18 +3475,28 @@ class ResourceFileManagementViewSet(GenericViewSet):
                     data = response.json()
                 except ValueError:
                     data = response.text
+                file_path = settings.RESOURCES_URL + "file.json"
+                if resource:
+                    with open(file_path, "a+") as outfile:
+                        outfile.seek(0)
+                        if type(data) == list:
+                            json.dump(data, outfile)
+                        else:
+                            outfile.write(json.dumps(data))
+                    with open(file_path, "rb") as outfile:  # Open the file in binary read mode
+                        # Wrap the file content using Django's ContentFile
+                        django_file = ContentFile(outfile.read(), name=f"{file_name}.json")  # You can give it any name you prefer
 
-                with open(settings.RESOURCES_URL + f"/{title}/" + file_name + ".json", "w") as outfile:
-                    if type(data) == list:
-                        json.dump(data, outfile)
-                    else:
-                        outfile.write(json.dumps(data))
+                        # Prepare data for serializer
+                        serializer_data = {"resource": resource, "type": "api", "file": django_file}
 
-                # result = os.listdir(file_path)
-            
-                serializer = ResourceFileSerializer(instance)
-                return JsonResponse(serializer.data, status=status.HTTP_200_OK)
-
+                        # Initialize and validate serializer
+                        serializer = ResourceFileSerializer(data=serializer_data)
+                        serializer.is_valid(raise_exception=True)
+                        serializer.save()
+                        VectorDBBuilder.create_vector_db.delay(serializer.data)
+                        return JsonResponse(serializer.data, status=status.HTTP_200_OK)
+                return Response(data)
             LOGGER.error("Failed to fetch data from api")
             return Response({"message": f"API Response: {response.json()}"}, status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
