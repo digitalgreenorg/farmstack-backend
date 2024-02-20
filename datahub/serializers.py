@@ -815,10 +815,7 @@ class DatasetV2Serializer(serializers.ModelSerializer):
             else None
         )
         standardisation_template = json.loads(self.context.get("standardisation_template"))
-        standardisation_config = json.loads(self.context.get("standardisation_config", {}))
-
-        # import pdb
-        # pdb.set_trace()
+        standardisation_config = json.loads(self.context.get("standardisation_config", {})) 
 
         if standardised_file_paths:
             for file_path in standardised_file_paths:
