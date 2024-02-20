@@ -3412,7 +3412,7 @@ class ResourceFileManagementViewSet(GenericViewSet):
         try:
             data = request.data.copy()
             resource = data.get("resource")
-            if data.get("type") == "video":
+            if data.get("type") == "youtube":
                 youtube_urls_response = get_youtube_url(data.get("url"))
                 if youtube_urls_response.status_code == 400:
                     return youtube_urls_response
