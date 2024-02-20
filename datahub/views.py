@@ -3330,7 +3330,6 @@ class ResourceManagementViewSet(GenericViewSet):
                 )
             query_set = query_set.exclude(user_map=user_map) if others else query_set.filter(
                 user_map=user_map)
-            page = self.paginate_queryset(query_set)
             serializer = self.get_serializer(page, many=True)
             return self.get_paginated_response(serializer.data)
         except ValidationError as e:
