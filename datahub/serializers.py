@@ -1229,7 +1229,7 @@ class ResourceSerializer(serializers.ModelSerializer):
                         LOGGER.info(f"Embeding creation started for youtube url: {row.get('url')}")
                         VectorDBBuilder.create_vector_db.delay(serializer.data)
                 if resource_file.get("type") == "api":
-                    with open(os.path.join(settings.MEDIA_ROOT, resource_file.get("file").replace("/media/", '')), "rb") as outfile:  # Open the file in binary read mode
+                    with open(resource_file.get("file").replace("/media/", ''), "rb") as outfile:  # Open the file in binary read mode
                         # Wrap the file content using Django's ContentFile
                         django_file = ContentFile(outfile.read(), name=f"{resource_file.get('file_name', 'file')}.json")  # You can give it any name you prefer
                         # Prepare data for serializer
