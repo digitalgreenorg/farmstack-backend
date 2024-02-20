@@ -3477,12 +3477,12 @@ class ResourceFileManagementViewSet(GenericViewSet):
                     data = response.text
                 file_path = settings.RESOURCES_URL + "file.json"
                 if resource:
-                    with open(file_path, "w+") as outfile:
-                        outfile.seek(0)
+                    format = "w" if os.path.exists(file_path) else "x"
+                    with open(file_path, format) as outfile:
                         if type(data) == list:
                             json.dump(data, outfile)
                         else:
-                            outfile.write(json.dumps(data))
+                            outfile.write(json.dumps(data))                      
                     with open(file_path, "rb") as outfile:  # Open the file in binary read mode
                         # Wrap the file content using Django's ContentFile
                         django_file = ContentFile(outfile.read(), name=f"{file_name}.json")  # You can give it any name you prefer
