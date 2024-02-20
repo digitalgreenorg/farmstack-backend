@@ -200,7 +200,7 @@ Remember, Generate the Answer for the 'Current conversation input' only from the
 
 \n{context}\n
 
-Assist the user {name_1}, with genertated answer and Youtube url only if you found from the above text.
+Assist the user {name_1}, with genertated answer and if you found any youtube url in the above context the provide youtube url as well.
 
 If the answer isn't in your context or context is empty: 
 Avoid the "sorry" route. Instead, cleverly mention the lapse in your training or kindly suggest a rephrasing of their question. 
