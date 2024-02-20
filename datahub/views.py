@@ -3478,6 +3478,7 @@ class ResourceFileManagementViewSet(GenericViewSet):
                     data = response.text
                 file_path = settings.RESOURCES_URL + str(uuid.uuid4())+"file.json"
                 if resource:
+                    os.makedirs(os.path.dirname(file_path), exist_ok=True)
                     format = "w" if os.path.exists(file_path) else "x"
                     with open(file_path, format) as outfile:
                         if type(data) == list:
