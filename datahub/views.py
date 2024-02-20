@@ -3477,7 +3477,7 @@ class ResourceFileManagementViewSet(GenericViewSet):
                     data = response.text
                 file_path = settings.RESOURCES_URL + "file.json"
                 if resource:
-                    with open(file_path, "a+") as outfile:
+                    with open(file_path, "w+") as outfile:
                         outfile.seek(0)
                         if type(data) == list:
                             json.dump(data, outfile)
