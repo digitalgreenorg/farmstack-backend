@@ -15,6 +15,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from functools import reduce
 from pickle import TRUE
 from urllib.parse import parse_qs, unquote, urlparse
+import uuid
 
 import django
 import numpy as np
@@ -3475,7 +3476,7 @@ class ResourceFileManagementViewSet(GenericViewSet):
                     data = response.json()
                 except ValueError:
                     data = response.text
-                file_path = settings.RESOURCES_URL + "file1.json"
+                file_path = settings.RESOURCES_URL + str(uuid.uuid4())+"file.json"
                 if resource:
                     format = "w" if os.path.exists(file_path) else "x"
                     with open(file_path, format) as outfile:
@@ -3496,7 +3497,7 @@ class ResourceFileManagementViewSet(GenericViewSet):
                         serializer.save()
                         VectorDBBuilder.create_vector_db.delay(serializer.data)
                         return JsonResponse(serializer.data, status=status.HTTP_200_OK)
-                return Response(data)
+                return Response(file_path)
             LOGGER.error("Failed to fetch data from api")
             return Response({"message": f"API Response: {response.json()}"}, status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
