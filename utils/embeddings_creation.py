@@ -273,8 +273,10 @@ class VectorBuilder:
                     if type == 'youtube':
                         summary = self.generate_transcriptions_summary(url)
                         self.build_pdf(summary, temp_pdf_path)
+                        loader = PyMuPDFLoader(temp_pdf_path)  # Assuming PyMuPDFLoader is defined elsewhere
                     elif type == 'pdf':
                         self.download_file(url, temp_pdf_path)
+                        loader = PyMuPDFLoader(temp_pdf_path)  # Assuming PyMuPDFLoader is defined elsewhere
                     elif type == 'file':
                         file_path = self.resolve_file_path(file)
                         loader, format = self.load_by_file_extension(file_path, temp_pdf_path)
