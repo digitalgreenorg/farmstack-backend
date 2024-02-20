@@ -3476,15 +3476,14 @@ class ResourceFileManagementViewSet(GenericViewSet):
                     data = response.json()
                 except ValueError:
                     data = response.text
-                file_path = settings.RESOURCES_URL + str(uuid.uuid4())+"file.json"
+                file_path = settings.RESOURCES_URL +f"file {str(uuid.uuid4())}.json"
+                format = "w" if os.path.exists(file_path) else "x"
+                with open(file_path, format) as outfile:
+                    if type(data) == list:
+                        json.dump(data, outfile)
+                    else:
+                        outfile.write(json.dumps(data))  
                 if resource:
-                    os.makedirs(os.path.dirname(file_path), exist_ok=True)
-                    format = "w" if os.path.exists(file_path) else "x"
-                    with open(file_path, format) as outfile:
-                        if type(data) == list:
-                            json.dump(data, outfile)
-                        else:
-                            outfile.write(json.dumps(data))                 
                     with open(file_path, "rb") as outfile:  # Open the file in binary read mode
                         # Wrap the file content using Django's ContentFile
                         django_file = ContentFile(outfile.read(), name=f"{file_name}.json")  # You can give it any name you prefer
