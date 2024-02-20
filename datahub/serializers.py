@@ -7,6 +7,7 @@ import shutil
 import string
 import uuid
 from urllib.parse import quote
+from django.core.files.base import ContentFile
 
 import plazy
 from django.conf import settings
@@ -1204,16 +1205,9 @@ class ResourceSerializer(serializers.ModelSerializer):
         try:
             resource_files_data = validated_data.pop("uploaded_files")
             resource_files = validated_data.pop("files")
-
-
             sub_categories_map=validated_data.pop("sub_categories_map")
             resource = Resource.objects.create(**validated_data)
-
             resource_files_data = json.loads(resource_files_data[0]) if resource_files_data else []
-           
-
-            # resource_file_instances= [ResourceFile(resource=resource, **file_data) for file_data in resource_files_data]
-            # ids = ResourceFile.objects.bulk_create(resource_file_instances)
             sub_categories_map = json.loads(sub_categories_map[0]) if sub_categories_map else []
             resource_sub_cat_instances= [
                 ResourceSubCategoryMap(resource=resource, sub_category=SubCategory.objects.get(id=sub_cat)
@@ -1221,7 +1215,6 @@ class ResourceSerializer(serializers.ModelSerializer):
 
             ResourceSubCategoryMap.objects.bulk_create(resource_sub_cat_instances)
 
-            # resource_file_obj = ResourceFile.objects.filter(resource=resource).all()
             for resource_file in resource_files_data:
                 if resource_file.get("type") == "youtube":
                     youtube_urls_response = get_youtube_url(resource_file.get("url"))
@@ -1234,6 +1227,17 @@ class ResourceSerializer(serializers.ModelSerializer):
                         serializer.is_valid(raise_exception=True)
                         serializer.save()
                         LOGGER.info(f"Embeding creation started for youtube url: {row.get('url')}")
+                        VectorDBBuilder.create_vector_db.delay(serializer.data)
+                if resource_file.get("type") == "api":
+                    with open(os.path.join(settings.MEDIA_ROOT, resource_file.get("file").replace("/media/", '')), "rb") as outfile:  # Open the file in binary read mode
+                        # Wrap the file content using Django's ContentFile
+                        django_file = ContentFile(outfile.read(), name=f"{resource_file.get('file_name', 'file')}.json")  # You can give it any name you prefer
+                        # Prepare data for serializer
+                        serializer_data = {"resource": resource.id, "type": "api", "file": django_file}
+                        serializer = ResourceFileSerializer(data=serializer_data, partial=True)
+                        serializer.is_valid(raise_exception=True)
+                        serializer.save()
+                        LOGGER.info(f"Embeding creation started for youtube url: {resource_file.get('file')}")
                         VectorDBBuilder.create_vector_db.delay(serializer.data)
                 else:
                     serializer = ResourceFileSerializer(data={"resource": resource.id, **resource_file}, partial=True)
