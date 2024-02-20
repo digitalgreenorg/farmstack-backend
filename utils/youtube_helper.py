@@ -1,4 +1,5 @@
  
+import logging
 from googleapiclient.discovery import build
 from urllib.parse import parse_qs, unquote, urlparse
 
@@ -8,6 +9,7 @@ from rest_framework.response import Response
 
 from core import settings
 youtube = build('youtube', 'v3', developerKey=settings.YOUTUBE_API_KEY)
+LOGGER = logging.getLogger(__name__)
 
 
 def get_youtube_url(url):
@@ -16,11 +18,15 @@ def get_youtube_url(url):
     query_string = parse_qs(parsed_url.query)
     # Determine the type based on path and parameters
     if parsed_url.path.startswith('/playlist') and 'list' in query_string:
+        LOGGER.info(f"This is youtube playlist url: {url}")
         return fetch_playlist_videos(query_string['list'][0])
     elif parsed_url.path == '/watch' and 'v' in query_string:
         yt = YouTube(url)
+        LOGGER.info(f"This is youtube video url: {url}")
+
         return Response([{"url": url, "title": yt.title}])
     elif '/channel/' in parsed_url.path:
+        LOGGER.info(f"This is youtube channel url: {url}")
         return fetch_channel_videos(parsed_url.path.split('/channel/')[-1])
     else:
         return Response("Invaild youtube url or Url is not channel or playlist or video", 400)
