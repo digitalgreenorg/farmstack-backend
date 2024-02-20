@@ -3330,7 +3330,9 @@ class ResourceManagementViewSet(GenericViewSet):
                 )
             query_set = query_set.exclude(user_map=user_map) if others else query_set.filter(
                 user_map=user_map)
-            serializer = self.get_serializer(query_set, many=True)
+            
+            page = self.paginate_queryset(query_set)
+            serializer = self.get_serializer(page, many=True)
             return self.get_paginated_response(serializer.data)
         except ValidationError as e:
             return Response(e.detail, status=status.HTTP_400_BAD_REQUEST)
@@ -3477,6 +3479,7 @@ class ResourceFileManagementViewSet(GenericViewSet):
                     data = response.text
                 file_path = settings.RESOURCES_URL +f"file {str(uuid.uuid4())}.json"
                 format = "w" if os.path.exists(file_path) else "x"
+                os.makedirs(os.path.dirname(file_path), exist_ok=True)
                 with open(file_path, format) as outfile:
                     if type(data) == list:
                         json.dump(data, outfile)
