@@ -265,9 +265,8 @@ class VectorBuilder:
     def load_documents(self, url, file, type, id, transcription=""):
         try:
             if type == 'api':
-                file_path = self.resolve_file_path(file)
-                # Assuming JSONLoader and other loaders are defined elsewhere
-                loader = JSONLoader(file_path=file_path, jq_schema='.messages[].content')
+                absolute_path = os.path.join(settings.MEDIA_ROOT, file.replace("/media/", ''))
+                loader = JSONLoader(file_path=absolute_path,  jq_schema='.', text_content=False)
                 return loader.load(), "completed"
             elif type in ['youtube', 'pdf', 'website', "file"]:
                 with self.temporary_file(suffix=".pdf") as temp_pdf_path:
