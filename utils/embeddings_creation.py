@@ -497,6 +497,13 @@ class VectorDBBuilder:
             formatted_message = retrival.format_prompt(user_name, documents, text, "")
             response = retrival.generate_response(formatted_message)
             return response, chunks, text
+        except openai.error.InvalidRequestError as e:
+            LOGGING.error(f"Error while generating response for query: {text}: Error {e}", exc_info=True)
+            LOGGING.info(f"Retrying without chat history and only 3 chunks")
+            documents =  " ".join([row.document for row in chunks[3]])
+            formatted_message = retrival.format_prompt(user_name, documents, text, "")
+            response = retrival.generate_response(formatted_message)
+            return response, chunks, text
         except Exception as e:
             LOGGING.error(f"Error while generating response for query: {text}: Error {e}", exc_info=True)
             return str(e)

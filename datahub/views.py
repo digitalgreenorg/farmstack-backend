@@ -3755,7 +3755,7 @@ class MessagesCreateViewSet(generics.ListCreateAPIView):
         resource_id = request.GET.get("resource")
         user_map = request.META.get("map_id")
         if resource_id:
-            queryset = Messages.objects.filter(resource_id=resource_id, user_map=user_map).order_by("-created_at").all()
+            queryset = Messages.objects.filter(resource_id=resource_id).order_by("-created_at").all()
         else:
             queryset = Messages.objects.filter(user_map=user_map).order_by("-created_at").all()
         page = self.paginate_queryset(queryset)
