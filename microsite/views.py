@@ -7,17 +7,19 @@ import operator
 import os
 import pickle
 import threading
+from collections import defaultdict
 from functools import reduce
 
 import pandas as pd
+import requests
 from django.conf import settings
 from django.core.cache import cache
 from django.core.paginator import Paginator
-from django.db.models import Q
+from django.db.models import Count, Q
 from django.http import FileResponse, HttpResponse, HttpResponseNotFound, JsonResponse
 from django.shortcuts import get_object_or_404, render
 from python_http_client import exceptions
-from rest_framework import generics, permissions, status, viewsets
+from rest_framework import generics, mixins, permissions, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.exceptions import ValidationError
 from rest_framework.response import Response
@@ -37,23 +39,29 @@ from core.utils import (
     read_contents_from_csv_or_xlsx_file,
 )
 from datahub.models import (
+    Category,
     DatahubDocuments,
     Datasets,
     DatasetV2,
     DatasetV2File,
+    Messages,
     Organization,
     Policy,
     Resource,
     ResourceFile,
+    ResourceUsagePolicy,
     UsagePolicy,
     UserOrganizationMap,
 )
 from datahub.serializers import (
+    CategorySerializer,
     DatahubDatasetsV2Serializer,
     DatasetV2Serializer,
+    MessagesSerializer,
     OrganizationSerializer,
     ParticipantCostewardSerializer,
     ParticipantSerializer,
+    ResourceListSerializer,
     ResourceSerializer,
     micrositeOrganizationSerializer,
 )
@@ -70,10 +78,13 @@ from microsite.serializers import (
     LegalDocumentSerializer,
     OrganizationMicrositeSerializer,
     PolicySerializer,
+    ResourceEmbeddingsSerializer,
+    ResourceMicrsositeSerializer,
     UserDataMicrositeSerializer,
     UserSerializer,
 )
 from utils import custom_exceptions, file_operations
+from utils.embeddings_creation import VectorDBBuilder
 from utils.file_operations import (
     check_file_name_length,
     filter_dataframe_for_dashboard_counties,
@@ -165,7 +176,10 @@ class DatasetsMicrositeViewSet(GenericViewSet):
     """Datasets viewset for microsite"""
 
     serializer_class = DatasetV2Serializer
-    queryset = DatasetV2.objects.all()
+    queryset = DatasetV2.objects.prefetch_related(
+                    'dataset_cat_map',
+                    'dataset_cat_map__sub_category',
+                    'dataset_cat_map__sub_category__category').all()
     pagination_class = CustomPagination
     permission_classes = [permissions.AllowAny]
 
@@ -276,32 +290,32 @@ class DatasetsMicrositeViewSet(GenericViewSet):
         else:
             filters = {Constants.USER_MAP_ORGANIZATION: org_id} if org_id else {}
         try:
-            if categories is not None:
-                data = (
+            # if categories is not None:
+            #     data = (
+            #         DatasetV2.objects.select_related(
+            #             Constants.USER_MAP,
+            #             Constants.USER_MAP_USER,
+            #             Constants.USER_MAP_ORGANIZATION,
+            #         )
+            #         .filter(is_temp=False, **data, **filters)
+            #         .filter(
+            #             reduce(
+            #                 operator.or_,
+            #                 (Q(category__contains=cat) for cat in categories),
+            #             )
+            #         )
+            #         .exclude(**exclude)
+            #         .order_by(Constants.UPDATED_AT)
+            #         .reverse()
+            #         .all()
+            #     )
+            # else:
+            data = (
                     DatasetV2.objects.select_related(
                         Constants.USER_MAP,
                         Constants.USER_MAP_USER,
                         Constants.USER_MAP_ORGANIZATION,
-                    )
-                    .filter(is_temp=False, **data, **filters)
-                    .filter(
-                        reduce(
-                            operator.or_,
-                            (Q(category__contains=cat) for cat in categories),
-                        )
-                    )
-                    .exclude(**exclude)
-                    .order_by(Constants.UPDATED_AT)
-                    .reverse()
-                    .all()
-                )
-            else:
-                data = (
-                    DatasetV2.objects.select_related(
-                        Constants.USER_MAP,
-                        Constants.USER_MAP_USER,
-                        Constants.USER_MAP_ORGANIZATION,
-                    )
+                    ).prefetch_related('dataset_cat_map')
                     .filter(is_temp=False, **data, **filters)
                     .exclude(**exclude)
                     .order_by(Constants.UPDATED_AT)
@@ -785,9 +799,11 @@ class APIResponseViewSet(GenericViewSet):
             phone_number=request.GET.get("phone_number")
             department_details=request.GET.get("department_details", False)
             df = self.get_consolidated_dataframe()
+            if df.empty:
+                return Response(str(f"With this phone_number:{phone_number} Flew is not availbe"), status=400)
             df.fillna("",  inplace=True) # type: ignore
-            df["Phone number"] = df["Phone number"].astype(str) # type: ignore
-            result = df[df['Phone number'] == phone_number]
+            df["Phone Number"] = df["Phone Number"].astype(str) # type: ignore
+            result = df[df['Phone Number'] == phone_number]
             if not result.empty: # type: ignore
                 if department_details:
                     return Response(result['KVK and Contact persons'].iloc[0], 200)  # type: ignore # Return only the kvk details column value
@@ -803,7 +819,7 @@ class APIResponseViewSet(GenericViewSet):
             return Response(str("Error during execution of flw validations"), status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     @action(detail=False, methods=["get"])
-    def get_consolidated_dataframe(self):
+    def get_consolidated_dataframe(self, category={}):
         consolidated_file = f"consolidated_flw_registry.csv" 
         dataframes = []
         thread_list = []
@@ -822,7 +838,7 @@ class APIResponseViewSet(GenericViewSet):
                         LOGGER.info(f"{file_path} Consolidated {chunks} chunks")
                         dataframes.append(chunk_df)
                     except Exception as e:
-                        LOGGER.error(f"Error reading CSV file {file_path}", exc_info=True)
+                        LOGGER.error(f"Error reading CSV file {file_path}: {e}", exc_info=True)
                 
             if cache.get("flw_consolidated_file"):
                 LOGGER.info(f"{consolidated_file} file available in cache")
@@ -834,10 +850,12 @@ class APIResponseViewSet(GenericViewSet):
                 dataset_file_objects = (
                     DatasetV2File.objects
                     .select_related("dataset")
-                    .filter(file__iendswith=".csv")
+                    .filter(file__iendswith=".csv", dataset__is_temp=False)
                     .values_list('file', flat=True).distinct()  # Flatten the list of values
                 )
-                # dataset_file_objects = ["/Users/ugesh/PycharmProjects/datahub-api/protected/datasets/sample/AndhraPradesh - FLEW's.csv"]
+
+                dataset_file_objects = dataset_file_objects.filter(dataset__category__contains=category if category else {"States": ["Bihar"]})
+                # dataset_file_objects = ["/Users/ugesh/PycharmProjects/datahub-api/protected/datasets/sample/bihar.csv"]
                 for csv_file in dataset_file_objects:
                     file_path = os.path.join(settings.DATASET_FILES_URL, csv_file)
                     thread = threading.Thread(target=read_csv_file, args=(file_path,))
@@ -853,13 +871,171 @@ class APIResponseViewSet(GenericViewSet):
             cache.set("flw_consolidated_file", consolidated_file, 86400)
             return combined_df
         except Exception as e:
-            LOGGER.error(f"Error occoured while creating {consolidated_file}", exc_info=True)
-            return Response(
-                    "Requested resource is currently unavailable. Please try again later.",
-                    status=500,
-                )
+            LOGGER.error(f"Error occoured while creating {consolidated_file}: {e}", exc_info=True)
+            return pd.DataFrame([])
 
-    
+    @action(detail=False, methods=["get"])
+    def bot_dashboard(self, request, *args):
+        def get_user_organization_map_count(role_id, result_dict):
+            count = (
+                    UserOrganizationMap.objects.select_related(Constants.USER, Constants.ORGANIZATION)
+                    .filter(user__status=True, user__role=role_id)
+                    .count()
+                )
+            result_dict[role_id]=count
+        def get_resources_count(result_dict):
+            rsources_count = ResourceFile.objects.values('type').annotate(count=Count('type'))
+            result_dict["resource"]= rsources_count
+        def run_query(thread, target, *args):
+            result = target(*args)
+            thread.result = result
+        threads = []  # List to store thread objects
+        result_dict = {}
+
+        # Create threads for each query in a loop
+        for role in [6, 3]:
+            thread = threading.Thread(target=lambda r=role: get_user_organization_map_count(r, result_dict))
+            threads.append(thread)
+            thread.start()
+
+        resources_count_thread = threading.Thread(target=get_resources_count(result_dict))
+        threads.append(resources_count_thread)
+        resources_count_thread.start()
+
+        # Wait for all threads to finish
+        for thread in threads:
+            thread.join()
+
+        # Retrieve results
+        states_result = result_dict.get(6)
+        participants_result = result_dict.get(3)
+        resources_count_result = result_dict.get("resource")
+
+        response = requests.get("https://farmerchat.farmstack.co/dashboard_be/dashboard_api/dashboard_data/?instance=vistaar")
+        if response.status_code ==200:
+            bot_mobile_numbers = response.json().get("mobile_numbers", [])
+            mobile_number_message_count = response.json().get("user_wise_message_count", [])
+            total_flews_df = self.get_consolidated_dataframe()
+            total_flews_df["Gender"] = total_flews_df["Gender"].str.upper().str.strip()
+            print(total_flews_df["Gender"].unique())
+            gender_changes = {'M': 'MALE', 'F': 'FEMALE', "FEMALE": 'FEMALE', "MALE":"MALE"}
+            total_flews_df['Gender'] = total_flews_df['Gender'].astype(str).map(gender_changes).fillna('') # type: ignore
+            total_flews = total_flews_df.size
+            bot_users = len(bot_mobile_numbers)
+            merged_df = pd.merge(pd.DataFrame(mobile_number_message_count), total_flews_df[["Phone Number", "Gender", "State","Department","District Name","FLEW Name"]], left_on="phone", right_on="Phone Number", how="inner")
+            gender_wise_total_count_df = total_flews_df.groupby(["Gender"]).size().reset_index(name='Count')
+
+            # pivot_table = gender_wise_count_df.pivot_table(index='District Name', columns='Gender', values='Count', fill_value=0)
+            gender_wise_total_count = gender_wise_total_count_df.to_dict(orient='records')
+            
+            gender_wise_count_df = merged_df.groupby(["Gender"]).size().reset_index(name='Count')
+
+            # pivot_table = gender_wise_count_df.pivot_table(index='District Name', columns='Gender', values='Count', fill_value=0)
+            gender_wise_count = gender_wise_count_df.to_dict(orient='records')
+
+            total_questions_answered = merged_df["answered"].sum()
+            total_questions_unanswered = merged_df["unanswered"].sum()
+            total_questions_asked = merged_df["total_messages"].sum()
+            # Convert the DataFrame to a dictionary with the desired format
+
+            
+            # Convert the DataFrame to a dictionary with the desired format
+            message_count_sum_by_district = merged_df.groupby("District Name").agg({
+                "total_messages": "sum",
+                "answered": "sum",
+                "unanswered": "sum"
+            }).reset_index()
+
+            message_count_sum_by_district.columns = ['District Name', 'Total_Messages', 'Answered', 'Unanswered']
+            questions_asked_by_location = message_count_sum_by_district.set_index('District Name').to_dict(orient='index')
+
+            questions_asked_by_gender_df = merged_df.groupby("Gender").agg({
+                "total_messages": "sum",
+                "answered": "sum",
+                "unanswered": "sum"
+            }).reset_index()
+
+            # Rename the columns for clarity
+            questions_asked_by_gender_df.columns = ['Gender', 'Total_Messages', 'Answered', 'Unanswered']
+
+            # Convert the DataFrame to a dictionary with the desired format
+            questions_asked_by_gender = questions_asked_by_gender_df.set_index('Gender').to_dict(orient='index')
+            return Response({"gender_wise_total_count": gender_wise_total_count,
+                            "total_questions_asked":total_questions_asked,
+                            "total_questions_answered": total_questions_answered,
+                            "total_questions_unanswered": total_questions_unanswered,
+                            "states":states_result,
+                            "departments": participants_result,
+                            "respources": resources_count_result,
+                            "total_flews": total_flews,
+                            "flew_users_in_bot": bot_users,
+                            "flew_users_not_in_bot": total_flews-bot_users,
+                            "languages_supported": response.json().get("languages_supported", []),
+                            "date_wise_message_count": response.json().get("date_wise_message_count", []),
+                            "location_wise_message_count": questions_asked_by_location,
+                            "bot_gender_wise_count": gender_wise_count,
+                            "questions_asked_by_gender": questions_asked_by_gender
+                            }, 200)
+        else:
+            return Response(f"Bot is responding with status code:{response.status_code}", 500)
+
+    @action(detail=False, methods=["get"])
+    def resource(self, request, *args, **kwargs):
+        try:
+            get_api_key = request.META.get("HTTP_API_KEY", None)
+            # page = int(request.GET.get('page', 1))
+            file_path_query_set=Resource.objects.prefetch_related('resource_usage_policy').filter(resource_usage_policy__api_key=get_api_key).first()
+
+            if get_api_key is None or not file_path_query_set:
+                return Response(
+                {
+                    "message" : "Invalid auth credentials provided."
+                },
+                status=status.HTTP_401_UNAUTHORIZED
+            )          
+            if file_path_query_set.resource_usage_policy.filter(type='embeddings'):
+                serializer = ResourceEmbeddingsSerializer(file_path_query_set)
+            elif file_path_query_set.resource_usage_policy.filter(type='resource'):
+                serializer = ResourceMicrsositeSerializer(file_path_query_set)
+                
+            return Response(serializer.data,status=200)       
+        except Exception as error:
+            LOGGER.error(f"Error occured in APIResponseViewSet api ERROR: {error}", exc_info=True)
+            return Response(str(error), status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+                
+    @action(detail=False, methods=["get"])
+    def resource_bot(self, request, *args, **kwargs):
+        try:
+            get_api_key = request.META.get("HTTP_API_KEY", None)
+            # page = int(request.GET.get('page', 1))
+            query = request.GET.get("query")
+            file_path_query_set=Resource.objects.prefetch_related('resource_usage_policy').filter(resource_usage_policy__api_key=get_api_key).first()
+            if get_api_key is None or not file_path_query_set:
+                return Response(
+                {
+                    "message" : "Invalid auth credentials provided."
+                },
+                status=status.HTTP_401_UNAUTHORIZED
+            )
+            map_id = ResourceUsagePolicy.objects.get(api_key=get_api_key).user_organization_map_id        
+            history = Messages.objects.filter(user_map=map_id).order_by("-created_at")
+            history = history.filter(resource_id=file_path_query_set.id).first() if file_path_query_set else history.first()
+      
+            # print(chat_history)
+            # chat_history = history.condensed_question if history else ""
+            summary, chunks, condensed_question = VectorDBBuilder.get_input_embeddings(query, "Guest User", file_path_query_set.id, history)
+            data = {"user_map": UserOrganizationMap.objects.get(id=map_id).id, "resource": file_path_query_set.id, "query": query, 
+                    "query_response": summary, "condensed_question":condensed_question, "bot_type":"vistaar_api"}
+            messages_serializer = MessagesSerializer(data=data)
+            messages_serializer.is_valid(raise_exception=True)
+            message_instance = messages_serializer.save()  # This returns the Messages model instance
+            if chunks:
+                message_instance.retrieved_chunks.set(chunks.values_list("uuid", flat=True))
+            return Response(summary)
+        except Exception as error:
+            LOGGER.error(f"Error occured in APIResponseViewSet api ERROR: {error}", exc_info=True)
+            return Response(str(error), status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+                
 
 class UserDataMicrositeViewSet(GenericViewSet):
     """UserData Microsite ViewSet for microsite"""
@@ -942,7 +1118,7 @@ class ResourceMicrositeViewSet(GenericViewSet):
     def list(self, request, *args, **kwargs):
         try:
             page = self.paginate_queryset(self.get_queryset().order_by("-updated_at"))
-            serializer = self.get_serializer(page, many=True)
+            serializer = ResourceListSerializer(page, many=True)
             return self.get_paginated_response(serializer.data)
         except ValidationError as e:
             return Response(e.detail, status=status.HTTP_400_BAD_REQUEST)
@@ -983,22 +1159,32 @@ class ResourceMicrositeViewSet(GenericViewSet):
     def content_data(self, request, *args, **kwargs):
         try:
             data =request.data
-            categories = data.pop(Constants.CATEGORY, None)
+            categories = data.pop(Constants.CATEGORY, [])
             filters = {key: value for key, value in data.items() if value}
             file_filters = data.get("resources__updated_at__gt", None)
-            query_set = Resource.objects.filter(**filters).prefetch_related('resources')
+            query_set = Resource.objects.filter(**filters).prefetch_related('resources', "resource_cat_map","resource_cat_map__sub_category", "resource_cat_map__sub_category__category")
+            category_query = Q()
             if categories:
-                query_set = query_set.filter(
-                    reduce(
-                        operator.and_,
-                        (Q(category__contains=cat) for cat in categories),
-                    )
-                )
+                for cat in categories:
+                    for key, values in cat.items():
+                        # Build a Q object for each category and subcategory
+                        category_query &= Q(resource_cat_map__sub_category__name__in=values,
+                                            resource_cat_map__sub_category__category__name=key)
+                            
+                query_set = query_set.filter(category_query)
             file_filters = {"updated_at__gt":datetime.datetime.fromisoformat(file_filters)} if file_filters else {} # type: ignore
             if file_filters:
                 data = []
                 for resource in query_set.distinct():
-                    resources_data={"id": resource.id, "title": resource.title, "description": resource.description, "category": resource.category}
+                    category_aggregate = defaultdict(list)
+                    for resource_map in resource.resource_cat_map.all():
+                        sub_category_data = resource_map.sub_category
+                        if sub_category_data:
+                            category_name = sub_category_data.category.name
+                            sub_category_name = sub_category_data.name
+                            category_aggregate[category_name].append(sub_category_name)
+                            aggregated_data = {k: v for k, v in category_aggregate.items()}
+                    resources_data={"id": resource.id, "title": resource.title, "description": resource.description, "category": aggregated_data}
                     files = ResourceFile.objects.filter(**file_filters, resource=resource.id).all()
                     resources_data["resources"] = ContentFileSerializer(files, many=True).data
                     data.append(resources_data)
@@ -1023,11 +1209,12 @@ class ResourceMicrositeViewSet(GenericViewSet):
                 # Extract the crops from the filtered records
                 crops_list = [item for record in records_with_state 
                               for item in record.category.get("Crops", [])]
-
-                return Response(list(set(crops_list)), status=status.HTTP_200_OK)
+                return Response(list(set(crops_list)), status=200)
             else:
-                return Response("State value is required.", status=404)
-            
+                with open(Constants.DATAHUB_CATEGORIES_FILE, "r") as json_obj:
+                    data = json.loads(json_obj.read())
+                    print(data)
+                    return Response(data.get("Crops", []), status=200)
         except ValidationError as e:
             return Response(e.detail, status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
@@ -1036,10 +1223,60 @@ class ResourceMicrositeViewSet(GenericViewSet):
 
 
 
+# Created a new class to return data from kde, agnext and krishitantra data stored in json format in utils folder
+class AdexAPIDatasetViewSet(GenericViewSet):
+
+    permission_classes = []
+    
+    def list(self, request, *args, **kwargs):
+        try:
+            # Checking the auth params form headers
+            if request.headers.get('x-api-key', '') == '' or request.headers.get('x-api-key', None) != settings.SAGUBAGU_API_KEY:
+                return Response({"message":"Invalid auth credentials provided."},status=status.HTTP_401_UNAUTHORIZED)
+            # Getting query paarmas
+            data_list = []
+            data_dict = {}
+            if request.GET.get('krishitantra') == 'True' or request.GET.get('krishitantra') =='true':
+                data_list.append('krishitantra_data')
+            if request.GET.get('agnext') == 'True' or request.GET.get('agnext') == 'true':
+                data_list.append('agnext_data')
+            if request.GET.get('kde') == 'True' or request.GET.get('kde') == 'true':
+                data_list.append('kde_data')
+            if data_list == []:
+                data_list = ['krishitantra_data','agnext_data','kde_data']
+            for datasets in data_list:
+                with open(f"./utils/{datasets}.json", 'r') as file:
+                    json_data = json.loads(file.read())
+                data_dict[datasets] = []
+                for value in json_data.values():
+                    data_dict[datasets].append(value)
+            return Response(data_dict, status=200)
+        except Exception as e:
+            LOGGER.error(f"Error occured in data retreival ERROR: {e}", exc_info=True)
+            return Response(str(e), status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
 class MyModelListCreateView(generics.ListCreateAPIView):
+    permission_classes = []
     queryset = FeedBack.objects.all()
     serializer_class = FeedBackSerializer
 
 class MyModelDetailView(generics.RetrieveUpdateDestroyAPIView):
+    permission_classes = []
     queryset = FeedBack.objects.all()
     serializer_class = FeedBackSerializer
+
+class CategoryViewSet(GenericViewSet):
+    queryset = Category.objects.prefetch_related("subcategory_category").all()
+    serializer_class = CategorySerializer
+    permission_classes=[]
+ 
+    def list(self, request, *args, **kwargs):
+        queryset = self.get_queryset()
+        serializer = self.get_serializer(queryset, many=True)
+        return Response(serializer.data)
+
+    def retrieve(self, request, *args, **kwargs):
+        instance = self.get_object()
+        serializer = self.get_serializer(instance)
+        return Response(serializer.data)

@@ -2,7 +2,9 @@ from django.urls import include, path
 from rest_framework.routers import DefaultRouter
 
 from microsite.views import (
+    AdexAPIDatasetViewSet,
     APIResponseViewSet,
+    CategoryViewSet,
     ConnectorMicrositeViewSet,
     ContactFormViewSet,
     DatahubThemeMicrositeViewSet,
@@ -16,6 +18,9 @@ from microsite.views import (
     ResourceMicrositeViewSet,
     UserDataMicrositeViewSet,
     microsite_media_view,
+)
+from microsite.saagu_baagu import (
+    ScanHistoryAPIView,
 )
 
 router = DefaultRouter()
@@ -31,6 +36,8 @@ router.register(r"microsite_user_data", UserDataMicrositeViewSet,
 router.register(r"datasets_file", APIResponseViewSet, basename="dataset_json_response")
 router.register(r"connectors", ConnectorMicrositeViewSet, basename="microsite_connectors")
 router.register(r"resources", ResourceMicrositeViewSet, basename="microsite_resource")
+router.register(r"sagubagu", AdexAPIDatasetViewSet, basename='sagubagu')
+router.register(r"categories", CategoryViewSet, basename='categories')
 
 urlpatterns = [
     path("", include(router.urls)),
@@ -39,5 +46,5 @@ urlpatterns = [
     path("microsite_media_view", microsite_media_view, name="microsite_media_view"),
     path('feedback/', MyModelListCreateView.as_view(), name='mymodel-list-create'),
     path('feedback/<str:pk>/', MyModelDetailView.as_view(), name='mymodel-detail'),
-
+    path('scan_history/', ScanHistoryAPIView.as_view(), name='scan_history_api'),
 ]

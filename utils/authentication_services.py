@@ -1,12 +1,21 @@
 import logging
 from functools import wraps
+
 from rest_framework import status
 from rest_framework.response import Response
 
 from connectors.models import Connectors
 from core.constants import Constants
-from datahub.models import Datasets, DatasetV2, DatasetV2File, Organization, UsagePolicy
+from datahub.models import (
+    Datasets,
+    DatasetV2,
+    DatasetV2File,
+    Organization,
+    ResourceUsagePolicy,
+    UsagePolicy,
+)
 from utils.jwt_services import JWTServices
+
 LOGGER = logging.getLogger(__name__)
 
 
@@ -34,12 +43,24 @@ def authenticate_user(model):
                     id=query_id, dataset_file__dataset__user_map_id=payload.get("map_id")
                 )
                 if not dsv:
-                    LOGGER.info(f"user_map: {payload.get('map_id')} hot have access")
+                    LOGGER.info(f"user_map: {payload.get('map_id')} not have access")
                     return Response(
                         {"message": "Authorization Failed"},
                         status=status.HTTP_403_FORBIDDEN,
                     )
-
+            elif model == ResourceUsagePolicy:
+                query_id = kwargs.get("pk")
+                
+                dsv = ResourceUsagePolicy.objects.filter(
+                    id=query_id, resource__user_map_id=payload.get("map_id")
+                )
+                if not dsv:
+                    LOGGER.info(f"user_map: {payload.get('map_id')} not have access")
+                    return Response(
+                        {"message": "Authorization Failed"},
+                        status=status.HTTP_403_FORBIDDEN,
+                    )
+                
             elif model == DatasetV2:
                 query_id = kwargs.get("pk")
                 dsv = DatasetV2.objects.filter(

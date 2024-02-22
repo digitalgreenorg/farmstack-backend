@@ -2,14 +2,20 @@ import json
 import logging
 import os
 import re
+import secrets
 import shutil
+import string
+import uuid
+from urllib.parse import quote
+from django.core.files.base import ContentFile
 
 import plazy
 from django.conf import settings
 from django.core.exceptions import ObjectDoesNotExist, ValidationError
 from django.core.validators import URLValidator
-from django.db.models import Count, Q
+from django.db.models import Count, Prefetch, Q
 from django.utils.translation import gettext as _
+from requests import Response
 from rest_framework import serializers, status
 
 from accounts import models
@@ -28,11 +34,13 @@ from datahub.models import (
     Organization,
     Resource,
     ResourceFile,
+    ResourceUsagePolicy,
     StandardisationTemplate,
     UserOrganizationMap,
 )
 from participant.models import Connectors, SupportTicket
 from utils.custom_exceptions import NotFoundException
+from utils.embeddings_creation import VectorDBBuilder
 from utils.file_operations import create_directory, move_directory
 from utils.string_functions import check_special_chars
 from utils.validators import (
@@ -42,8 +50,19 @@ from utils.validators import (
     validate_file_size,
     validate_image_type,
 )
+from utils.youtube_helper import get_youtube_url
 
-from .models import Policy, UsagePolicy
+from .models import (  # Conversation,
+    Category,
+    DatasetSubCategoryMap,
+    LangchainPgCollection,
+    LangchainPgEmbedding,
+    Messages,
+    Policy,
+    ResourceSubCategoryMap,
+    SubCategory,
+    UsagePolicy,
+)
 
 LOGGER = logging.getLogger(__name__)
 
@@ -576,6 +595,22 @@ class DatasetV2FileSerializer(serializers.ModelSerializer):
             "accessibility",
         ]
 
+# class CategoryReverseSerializer(serializers.ModelSerializer):
+  
+#     class Meta:
+#         model = Category
+#         fields = ["id", "name", "subcategories"]
+
+# class SubCategoryReverseSerializer(serializers.ModelSerializer):
+#     category = CategoryReverseSerializer(read_only=True, many=True)
+#     class Meta:
+#         model = SubCategory
+#         fields = ["id", "name", "category"]
+
+class DatasetSubCategoryMapSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = DatasetSubCategoryMap
+        fields = ['id', 'sub_category', 'dataset']
 
 class DatasetV2Serializer(serializers.ModelSerializer):
     """
@@ -613,6 +648,7 @@ class DatasetV2Serializer(serializers.ModelSerializer):
     organization = OrganizationRetriveSerializer(
         allow_null=True, required=False, read_only=True, source="user_map.organization"
     )
+    categories = serializers.SerializerMethodField()
 
     user = UserSerializer(allow_null=True, required=False, read_only=True, source="user_map.user")
 
@@ -645,8 +681,21 @@ class DatasetV2Serializer(serializers.ModelSerializer):
             "user",
             "datasets",
             "upload_datasets",
+            "categories"
         ]
 
+    def get_categories(self, instance):
+        category_and_sub_category = Category.objects.prefetch_related(
+              Prefetch("subcategory_category",
+                        queryset=SubCategory.objects.prefetch_related(
+                            "dataset_sub_category_map__dataset").filter(
+                                dataset_sub_category_map__dataset_id=instance.id),
+                        ), 
+        'subcategory_category__dataset_sub_category_map'
+        ).filter(subcategory_category__dataset_sub_category_map__dataset_id=instance.id).distinct().all()
+        serializer = CategorySerializer(category_and_sub_category, many=True)
+        return serializer.data
+    
     def create(self, validated_data):
         """
         Override the create method to save meta data (DatasetV2) with multiple dataset files on to the referenced model (DatasetV2File).
@@ -766,10 +815,7 @@ class DatasetV2Serializer(serializers.ModelSerializer):
             else None
         )
         standardisation_template = json.loads(self.context.get("standardisation_template"))
-        standardisation_config = json.loads(self.context.get("standardisation_config", {}))
-
-        # import pdb
-        # pdb.set_trace()
+        standardisation_config = json.loads(self.context.get("standardisation_config", {})) 
 
         if standardised_file_paths:
             for file_path in standardised_file_paths:
@@ -839,7 +885,6 @@ class DatasetV2Serializer(serializers.ModelSerializer):
         instance = super(DatasetV2Serializer, self).update(instance, validated_data)
         return instance
 
-
 class DatahubDatasetsV2Serializer(serializers.ModelSerializer):
     """
     Serializer for filtered list of datasets.
@@ -854,7 +899,7 @@ class DatahubDatasetsV2Serializer(serializers.ModelSerializer):
         required=False,
         source="user_map.organization",
     )
-
+    categories= serializers.SerializerMethodField()
     organization = DatahubDatasetsSerializer.OrganizationDatsetsListRetriveSerializer(
         required=False, allow_null=True, read_only=True, source="user_map.organization"
     )
@@ -866,7 +911,18 @@ class DatahubDatasetsV2Serializer(serializers.ModelSerializer):
         model = DatasetV2
         fields = Constants.ALL
 
-
+    def get_categories(self, instance):
+        category_and_sub_category = Category.objects.prefetch_related(
+              Prefetch("subcategory_category",
+                        queryset=SubCategory.objects.prefetch_related(
+                            "dataset_sub_category_map__dataset").filter(
+                                dataset_sub_category_map__dataset_id=instance.id),
+                        ), 
+        'subcategory_category__dataset_sub_category_map'
+        ).filter(subcategory_category__dataset_sub_category_map__dataset_id=instance.id).distinct().all()
+        serializer = CategorySerializer(category_and_sub_category, many=True)
+        return serializer.data
+    
 class micrositeOrganizationSerializer(serializers.ModelSerializer):
     organization_id = serializers.PrimaryKeyRelatedField(
         queryset=Organization.objects.all(),
@@ -972,7 +1028,6 @@ class APIBuilderSerializer(serializers.ModelSerializer):
         fields = ["approval_status", "accessibility_time", "api_key"]
 
 
-
 class UsagePolicyDetailSerializer(serializers.ModelSerializer):
     organization = DatahubDatasetsSerializer.OrganizationDatsetsListRetriveSerializer(
         required=False, allow_null=True, read_only=True, source="user_organization_map.organization"
@@ -986,11 +1041,73 @@ class UsagePolicyDetailSerializer(serializers.ModelSerializer):
         fields = "__all__"
 
 
+class ResourceUsagePolicyDetailSerializer(serializers.ModelSerializer):
+    organization = DatahubDatasetsSerializer.OrganizationDatsetsListRetriveSerializer(
+        required=False, allow_null=True, read_only=True, source="user_organization_map.organization"
+    )
+    user = DatahubDatasetsSerializer.UserDatasetSerializer(
+        required=False, allow_null=True, read_only=True, source="user_organization_map.user"
+    )
+
+    class Meta:
+        model = ResourceUsagePolicy
+        fields = "__all__"
+
+class CustomJSONField(serializers.JSONField):
+    """
+    Custom JSON field to handle non-JSON data.
+    """
+
+    def to_representation(self, obj):
+        """
+        Serialize the field value.
+        """
+        try:
+            return super().to_representation(obj)
+        except Exception as e:
+            # Handle non-JSON data here, for example, by converting it to a JSON-compatible format
+            return str(obj)
+
+class LangChainEmbeddingsSerializer(serializers.ModelSerializer):
+    # cmetadata = CustomJSONField()
+    class Meta:
+        model=LangchainPgEmbedding
+        fields=["embedding", "document"]
+    
+    # def to_representation(self, instance):
+    #     try:
+    #         data = super().to_representation(instance)
+    #         # Attempt to decode JSON in cmetadata
+    #         data['cmetadata'] = json.loads(data['cmetadata'])
+    #         return data
+    #     except json.JSONDecodeError:
+    #         # Handle the case where cmetadata is not valid JSON
+    #         data['cmetadata'] = {}  # Provide a default value or appropriate fallback
+    #         return data
+
 class ResourceFileSerializer(serializers.ModelSerializer):
+    # collections = serializers.SerializerMethodField()
     class Meta:
         model = ResourceFile
         fields = "__all__"
+    
+    def get_collections(self, obj):
+        # Assuming that 'obj' is an instance of ResourceFile
+        # Retrieve the related LangchainPgEmbedding instances
+        collection = LangchainPgCollection.objects.filter(name=str(obj.id)).first()
+        # return collection
+        # print(collection)
+        # import pdb; pdb.set_trace()
+        if collection:
+            embeddings = LangchainPgEmbedding.objects.filter(collection_id=collection.uuid).values("embedding", "document")
 
+            # print(embeddings)
+            # # Serialize the retrieved embeddings using LangchainPgEmbeddingSerializert
+            # embeddings_serializer = LangChainEmbeddingsSerializer(embeddings, many=True)
+
+            # Return the serialized embeddings
+            return embeddings
+        return []
 
 class DatahubDatasetFileDashboardFilterSerializer(serializers.Serializer):
     county = serializers.ListField(allow_empty=False, required=True)
@@ -999,20 +1116,42 @@ class DatahubDatasetFileDashboardFilterSerializer(serializers.Serializer):
     value_chain = serializers.ListField(allow_empty=False, required=False)
 
 
+class SubCategorySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = SubCategory
+        fields = ["id", "name", "category"]
+    
+class CategorySerializer(serializers.ModelSerializer):
+    subcategories =  SubCategorySerializer(many=True,
+        read_only=True,  source="subcategory_category"
+    )
+    class Meta:
+        model = Category
+        fields = ["id", "name", "subcategories"]
+
+class ResourceSubCategoryMapSerializer(serializers.ModelSerializer):
+    sub_categories =  CategorySerializer(many=True, read_only=True, source="subcategory_category")
+    class Meta:
+        model = ResourceSubCategoryMap
+        fields = "__all__"
 
 class ResourceSerializer(serializers.ModelSerializer):
     class OrganizationRetriveSerializer(serializers.ModelSerializer):
         class Meta:
             model = Organization
-            fields = ["id", "org_email", "name"]
+            fields = ["id", "org_email", "name", "logo", "address"]
 
     class UserSerializer(serializers.ModelSerializer):
         class Meta:
             model = User
             fields = ["id", "first_name", "last_name", "email", "role", "on_boarded_by"]
-
+    categories = serializers.SerializerMethodField(read_only=True)
     resources = ResourceFileSerializer(many=True, read_only=True)
-    uploaded_files = serializers.ListField(child=serializers.JSONField(), write_only=True)
+    uploaded_files = serializers.ListField(child=serializers.JSONField(), write_only=True, required=False)
+    files = serializers.ListField(child=serializers.ListField(), write_only=True, required=False)
+
+    sub_categories_map = serializers.ListField(write_only=True)
+
     organization = OrganizationRetriveSerializer(
         allow_null=True, required=False, read_only=True, source="user_map.organization"
     )
@@ -1033,22 +1172,86 @@ class ResourceSerializer(serializers.ModelSerializer):
             "user",
             "created_at",
             "updated_at",
-            "content_files_count"
+            "content_files_count",
+            "sub_categories_map",
+            "categories",
+            "files"
         )
+    
+    def get_categories(self, instance):
+        category_and_sub_category = Category.objects.prefetch_related(
+              Prefetch("subcategory_category",
+                        queryset=SubCategory.objects.prefetch_related(
+                            "resource_sub_category_map").filter(
+                                resource_sub_category_map__resource=instance.id),
+                        ), 
+        'subcategory_category__resource_sub_category_map'
+        ).filter(subcategory_category__resource_sub_category_map__resource=instance.id).distinct().all()
+        serializer = CategorySerializer(category_and_sub_category, many=True)
+        return serializer.data
     def get_content_files_count(self, resource):
         return ResourceFile.objects.filter(resource=resource.id).values('type').annotate(count=Count('type'))
+    def construct_file_path(self, instance, filename):
+        # Generate a unique string to append to the filename
+        unique_str = get_random_string(length=8)
+        # Construct the file path
+        file_path = f"users/resources/{unique_str}_{filename.replace('/','')}"
+        return file_path
+    
     def create(self, validated_data):
-        resource_files_data = validated_data.pop("uploaded_files")
-        resource = Resource.objects.create(**validated_data)
-        for file_data in resource_files_data:
-            # file_size = file_data.size
-            ResourceFile.objects.create(resource=resource, **file_data)
-                                        # url=file_data.get("url", ""),
-                                        #  type=file_data.get("type", ""),
-                                        #  transcription=file_data.get("transcription", ""))
+        try:
+            resource_files_data = validated_data.pop("uploaded_files")
+            resource_files = validated_data.pop("files")
+            sub_categories_map=validated_data.pop("sub_categories_map")
+            resource = Resource.objects.create(**validated_data)
+            resource_files_data = json.loads(resource_files_data[0]) if resource_files_data else []
+            sub_categories_map = json.loads(sub_categories_map[0]) if sub_categories_map else []
+            resource_sub_cat_instances= [
+                ResourceSubCategoryMap(resource=resource, sub_category=SubCategory.objects.get(id=sub_cat)
+                                       ) for sub_cat in sub_categories_map]
 
-        return resource
+            ResourceSubCategoryMap.objects.bulk_create(resource_sub_cat_instances)
 
+            for resource_file in resource_files_data:
+                if resource_file.get("type") == "youtube":
+                    youtube_urls_response = get_youtube_url(resource_file.get("url"))
+                    if youtube_urls_response.status_code == 400:
+                        return youtube_urls_response
+                    youtube_urls = youtube_urls_response.data
+                    playlist_urls = [{"resource": resource.id, "type":"youtube", **row} for row in youtube_urls]
+                    for row in playlist_urls:
+                        serializer = ResourceFileSerializer(data=row, partial=True)
+                        serializer.is_valid(raise_exception=True)
+                        serializer.save()
+                        LOGGER.info(f"Embeding creation started for youtube url: {row.get('url')}")
+                        VectorDBBuilder.create_vector_db.delay(serializer.data)
+                if resource_file.get("type") == "api":
+                    with open(resource_file.get("file").replace("/media/", ''), "rb") as outfile:  # Open the file in binary read mode
+                        # Wrap the file content using Django's ContentFile
+                        django_file = ContentFile(outfile.read(), name=f"{resource_file.get('file_name', 'file')}.json")  # You can give it any name you prefer
+                        # Prepare data for serializer
+                        serializer_data = {"resource": resource.id, "type": "api", "file": django_file}
+                        serializer = ResourceFileSerializer(data=serializer_data, partial=True)
+                        serializer.is_valid(raise_exception=True)
+                        serializer.save()
+                        LOGGER.info(f"Embeding creation started for youtube url: {resource_file.get('file')}")
+                        VectorDBBuilder.create_vector_db.delay(serializer.data)
+                else:
+                    serializer = ResourceFileSerializer(data={"resource": resource.id, **resource_file}, partial=True)
+                    serializer.is_valid(raise_exception=True)
+                    serializer.save()
+                    LOGGER.info(f"Embeding creation started for url: {resource_file.get('url')} or file: {resource_file.get('url')}")
+                    VectorDBBuilder.create_vector_db.delay(serializer.data)
+            for file in resource_files[0]:
+                data = {"resource":resource.id, "file":file, "type": "file"}
+                serializer = ResourceFileSerializer(data = data)
+                serializer.is_valid(raise_exception=True)
+                serializer.save()
+                VectorDBBuilder.create_vector_db.delay(serializer.data)
+            return resource
+        except Exception as e:
+            LOGGER.error(e,exc_info=True)
+            return e
     # def update(self, instance, validated_data):
     #     uploaded_files_data = validated_data.pop('uploaded_files', [])
 
@@ -1132,3 +1335,69 @@ class ParticipantCostewardSerializer(serializers.ModelSerializer):
             .count()
         )
 
+class ResourceUsagePolicySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ResourceUsagePolicy
+        fields = "__all__"
+
+
+class ResourceAPIBuilderSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ResourceUsagePolicy
+        fields = ["approval_status", "accessibility_time", "api_key"]
+
+def get_random_string(length=8):
+    characters = string.ascii_letters + string.digits
+    unique_str = ''.join(secrets.choice(characters) for _ in range(length))
+    return quote(unique_str, safe='')
+
+# class ConversationSerializer(serializers.ModelSerializer):
+#     class Meta:
+#         model = Conversation
+#         fields = "__all__"
+
+class MessagesSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Messages
+        fields = "__all__"
+
+class MessagesRetriveSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Messages
+        exclude = ["retrieved_chunks"]
+
+class MessagesChunksRetriveSerializer(serializers.ModelSerializer):
+    retrieved_chunks = serializers.SerializerMethodField()
+    class Meta:
+        model = Messages
+        fields = "__all__"
+
+    def get_retrieved_chunks(self, instance):
+        related_embeddings = instance.retrieved_chunks.defer("cmetadata").all()
+        related_documents = [embedding.document for embedding in related_embeddings]
+        return related_documents
+
+class ResourceListSerializer(serializers.ModelSerializer):
+    class OrganizationRetriveSerializer(serializers.ModelSerializer):
+        class Meta:
+            model = Organization
+            fields = ["id", "org_email", "name", "logo", "address"]
+
+    class UserSerializer(serializers.ModelSerializer):
+        class Meta:
+            model = User
+            fields = ["id", "first_name", "last_name", "email", "role", "on_boarded_by"]
+    organization = OrganizationRetriveSerializer(
+        allow_null=True, required=False, read_only=True, source="user_map.organization"
+    )
+    user = UserSerializer(allow_null=True, required=False, read_only=True, source="user_map.user")
+    content_files_count = serializers.SerializerMethodField(method_name="get_content_files_count")
+
+    class Meta:
+        model = Resource
+        fields = "__all__"
+   
+    def get_content_files_count(self, resource):
+        return ResourceFile.objects.filter(resource=resource.id).values('type').annotate(count=Count('type'))
+
+   
