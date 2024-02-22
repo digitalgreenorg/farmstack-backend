@@ -413,10 +413,10 @@ class Retrival:
     def format_prompt(self, user_name, context_chunks, user_input, chat_history):
         if context_chunks:
             LOGGING.info("chunks availabe")
-            return Constants.SYSTEM_MESSAGE.format(name_1=user_name, input=user_input, context=context_chunks, chat_history=chat_history)
-        else:
-            LOGGING.info("chunks not availabe")
-            return Constants.NO_CUNKS_SYSTEM_MESSAGE.format(name_1=user_name, input=user_input)
+        return Constants.SYSTEM_MESSAGE.format(name_1=user_name, input=user_input, context=context_chunks, chat_history=chat_history)
+        # else:
+        #     LOGGING.info("chunks not availabe")
+        #     return Constants.NO_CUNKS_SYSTEM_MESSAGE.format(name_1=user_name, input=user_input)
 
     def condensed_question_prompt(self, chat_history, current_question):
         # greetings = ["hello", "hi", "greetings", "hey"]
@@ -434,14 +434,14 @@ class Retrival:
         return response.choices[0].text.strip()
 
     def chat_history_formated(self, chat_history):
-            complete_chat_history =(f"""
-            query: {chat_history.query or ''}\n 
-            Condensed Question: {chat_history.condensed_question or ''} 
-            Answer: {chat_history.query_response or 'No response'}""" 
+            complete_chat_history =(f""" 
+            Human: {chat_history.query or ''} 
+            Assistant: {chat_history.query_response or 'No response'}""" 
             ) if chat_history else ""
+
             questions_chat_history = (f"""
-            query: {chat_history.query or ''}\n 
-            Condensed Question: {chat_history.condensed_question or ''} """ 
+            Human: {chat_history.query or ''}\n 
+            """ 
             ) if chat_history else ""
             return complete_chat_history, questions_chat_history
 
