@@ -226,7 +226,7 @@ For example:
         Current conversation:
         follow up input: \n{input}\n
         
-        Remember, If the current conversation starts with a greeting, warmly welcome the user and explain your capabilities else you didn't get the context to generate the answer for the input.
+        Remember, If the current conversation starts with a greeting or wishes, warmly welcome the user and explain your capabilities else you didn't get the context to generate the answer for the input.
         If you didn't get the context: 
         Avoid the "sorry" route. Instead, cleverly mention the lapse in your training or kindly suggest a rephrasing of their question. 
         For example:
@@ -236,17 +236,16 @@ For example:
     """
 
     CONDESED_QUESTION = """
-    Given the following chat history and the current question,
-    if the current question seeks additional information related to the chat history,
-    please condense the current question into a more concise and contextually informed form.
+    Given the chat history and the current question, create a condensed version of the current question that incorporates relevant context from the chat history.
 
     Chat History:
     {chat_history}
 
-    Current Query:
+    Current Question:
     {current_question}
 
-    if the current question is a greetings don't condense the question
+    Note: A greeting should not be condensed. Greetings include phrases like "hello," "hi," "greetings," and "hey."
+
     Condensed Question:
 
     """
