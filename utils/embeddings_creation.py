@@ -419,7 +419,10 @@ class Retrival:
             return Constants.NO_CUNKS_SYSTEM_MESSAGE.format(name_1=user_name, input=user_input)
 
     def condensed_question_prompt(self, chat_history, current_question):
-        return Constants.CONDESED_QUESTION.format(chat_history=chat_history, current_question=current_question)
+        # greetings = ["hello", "hi", "greetings", "hey"]
+        # if any(greeting in current_question.lower() for greeting in greetings):
+        #     return current_question, False
+        return Constants.CONDESED_QUESTION.format(chat_history=chat_history, current_question=current_question), True
 
     def generate_response(self, prompt):
         response = openai.Completion.create(
@@ -483,7 +486,9 @@ class VectorDBBuilder:
         retrival = Retrival()
         complete_history, history_question = retrival.chat_history_formated(chat_history)
         try:
-            text = retrival.generate_response(retrival.condensed_question_prompt(history_question, text))
+            text, status = retrival.condensed_question_prompt(history_question, text)
+            if status:
+                text = retrival.generate_response(text)
             embedding = retrival.genrate_embeddings_from_text(text)
             chunks = retrival.find_similar_chunks(embedding, resource_id)
             documents =  " ".join([row.document for row in chunks])
@@ -492,18 +497,23 @@ class VectorDBBuilder:
             response =retrival.generate_response(formatted_message)
             return response, chunks, text
         except openai.error.InvalidRequestError as e:
-            LOGGING.error(f"Error while generating response for query: {text}: Error {e}", exc_info=True)
-            LOGGING.info(f"Retrying without chat history")
-            formatted_message = retrival.format_prompt(user_name, documents, text, "")
-            response = retrival.generate_response(formatted_message)
-            return response, chunks, text
-        except openai.error.InvalidRequestError as e:
-            LOGGING.error(f"Error while generating response for query: {text}: Error {e}", exc_info=True)
-            LOGGING.info(f"Retrying without chat history and only 3 chunks")
-            documents =  " ".join([row.document for row in chunks[3]])
-            formatted_message = retrival.format_prompt(user_name, documents, text, "")
-            response = retrival.generate_response(formatted_message)
-            return response, chunks, text
+            try:
+                LOGGING.error(f"Error while generating response for query: {text}: Error {e}", exc_info=True)
+                LOGGING.info(f"Retrying without chat history")
+                formatted_message = retrival.format_prompt(user_name, documents, text, "")
+                response = retrival.generate_response(formatted_message)
+                return response, chunks, text
+            except openai.error.InvalidRequestError as e:
+                for attempt in range(3, 1, -1):  # Try with 3, then 2 chunks if errors continue
+                    try:
+                        documents = " ".join([row.document for row in chunks[:attempt]])
+                        formatted_message = retrival.format_prompt(user_name, documents, text, "")
+                        response = retrival.generate_response(formatted_message)
+                        return response, chunks, text
+                    except openai.error.InvalidRequestError as e:
+                        LOGGING.info(f"Retrying with {attempt-1} chunks due to error: {e}")
+                        continue  # Continue to the next attempt with fewer chunks
+
         except Exception as e:
             LOGGING.error(f"Error while generating response for query: {text}: Error {e}", exc_info=True)
             return str(e)
