@@ -91,36 +91,7 @@ connectionString = f"postgresql://{encoded_user}:{encoded_password}@{db_settings
 
 def transcribe_audio(audio_bytes, language="en-US"):
     try:
-        # from openai import OpenAI
-        # client = OpenAI()
-
-        # audio_file = open("speech.mp3", "rb")
-        # import whisper
-
-        # model = whisper.load_model("base")
-
-        # Transcribe audio
-        # result = model.transcribe(audio_bytes)
-
         transcript = openai.Audio.translate(file=audio_bytes, model="whisper-1")
-        # import pdb; pdb.set_trace()
-        # headers = {
-        #     "Authorization": f"Bearer {settings.OPENAI_API_KEY}",
-        #     "Content-Type": "application/json",
-        # }
-        # data = {
-        #     "model": "whisper-1",
-        #     "file":audio_bytes, 
-        #     "response_format":"text"
-        # }
-
-        # response = requests.post("https://api.openai.com/v1/audio_transcription_endpoint", headers=headers, json=data)
-        # import pdb; pdb.set_trace()
-        # if response.status_code == 200:
-        #     transcript = response.json()
-        #     print(transcript)
-        # else:
-        #     print("Error transcribing audio:", response.text)
         return transcript
     except Exception as e:
         print("Transcription error:", str(e))
@@ -258,8 +229,14 @@ class VectorBuilder:
         LOGGING.info(f"Audio tranceiption started for url: {url}")
 
         transcription = transcribe_audio(audio_file)
-        summary = Retrival().generate_response(
-            Constants.TRANSCTION_PROMPT.format(transcription=transcription, youtube_url=url))
+        words = transcription.text.split()
+        chunks = [words[i:i + 1500] for i in range(0, len(words), 1500)]
+        summary = ''
+        LOGGING.info(f"youtube Video url:{url} transcriptions splited into: {len(chunks)}")
+        for chunk in chunks:
+            text_chunks = ' '.join(chunk)
+            summary_chunk, tokens_uasage = Retrival().generate_response(Constants.TRANSCTION_PROMPT.format(transcription=text_chunks, youtube_url=url))
+            summary=summary+" "+summary_chunk
         return summary
    
     def load_documents(self, url, file, type, id, transcription=""):
@@ -413,10 +390,10 @@ class Retrival:
     def format_prompt(self, user_name, context_chunks, user_input, chat_history):
         if context_chunks:
             LOGGING.info("chunks availabe")
-        return Constants.SYSTEM_MESSAGE.format(name_1=user_name, input=user_input, context=context_chunks, chat_history=chat_history)
-        # else:
-        #     LOGGING.info("chunks not availabe")
-        #     return Constants.NO_CUNKS_SYSTEM_MESSAGE.format(name_1=user_name, input=user_input)
+            return Constants.SYSTEM_MESSAGE.format(name_1=user_name, input=user_input, context=context_chunks, chat_history=chat_history)
+        else:
+            LOGGING.info("chunks not availabe")
+            return Constants.NO_CUNKS_SYSTEM_MESSAGE.format(name_1=user_name, input=user_input)
 
     def condensed_question_prompt(self, chat_history, current_question):
         # greetings = ["hello", "hi", "greetings", "hey"]
@@ -424,14 +401,14 @@ class Retrival:
         #     return current_question, False
         return Constants.CONDESED_QUESTION.format(chat_history=chat_history, current_question=current_question), True
 
-    def generate_response(self, prompt):
+    def generate_response(self, prompt, tokens=2000):
         response = openai.Completion.create(
             engine="gpt-3.5-turbo-instruct",  # Use an appropriate engine
             prompt=prompt,
             temperature=0.1,
-            max_tokens=2000  # Adjust as necessary
+            max_tokens=tokens  # Adjust as necessary
         )
-        return response.choices[0].text.strip()
+        return response.choices[0].text.strip(), response.get("usage")
 
     def chat_history_formated(self, chat_history):
             complete_chat_history =(f""" 
@@ -488,28 +465,28 @@ class VectorDBBuilder:
         try:
             text, status = retrival.condensed_question_prompt(history_question, text)
             if status:
-                text = retrival.generate_response(text)
+                text, tokens_uasage = retrival.generate_response(text)
             embedding = retrival.genrate_embeddings_from_text(text)
             chunks = retrival.find_similar_chunks(embedding, resource_id)
             documents =  " ".join([row.document for row in chunks])
             LOGGING.info(f"Similarity score for the query: {text}. Score: {' '.join([str(row.similarity) for row in chunks])} ")
             formatted_message = retrival.format_prompt(user_name, documents, text, complete_history)
-            response =retrival.generate_response(formatted_message)
-            return response, chunks, text
+            response, tokens_uasage =retrival.generate_response(formatted_message)
+            return response, chunks, text, tokens_uasage
         except openai.error.InvalidRequestError as e:
             try:
                 LOGGING.error(f"Error while generating response for query: {text}: Error {e}", exc_info=True)
                 LOGGING.info(f"Retrying without chat history")
                 formatted_message = retrival.format_prompt(user_name, documents, text, "")
-                response = retrival.generate_response(formatted_message)
-                return response, chunks, text
+                response, tokens_uasage = retrival.generate_response(formatted_message)
+                return response, chunks, text, tokens_uasage
             except openai.error.InvalidRequestError as e:
                 for attempt in range(3, 1, -1):  # Try with 3, then 2 chunks if errors continue
                     try:
                         documents = " ".join([row.document for row in chunks[:attempt]])
                         formatted_message = retrival.format_prompt(user_name, documents, text, "")
-                        response = retrival.generate_response(formatted_message)
-                        return response, chunks, text
+                        response,tokens_uasage = retrival.generate_response(formatted_message)
+                        return response, chunks, text, tokens_uasage
                     except openai.error.InvalidRequestError as e:
                         LOGGING.info(f"Retrying with {attempt-1} chunks due to error: {e}")
                         continue  # Continue to the next attempt with fewer chunks
