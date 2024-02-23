@@ -3512,6 +3512,12 @@ class ResourceFileManagementViewSet(GenericViewSet):
         url = request.GET.get("url")
         return get_youtube_url(url)
    
+    def retrieve(self, request, pk):
+        """GET method: retrieve an object or instance of the Product model"""
+        team_member = self.get_object()
+        serializer = self.get_serializer(team_member)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
 #
 class CategoryViewSet(viewsets.ModelViewSet):
     queryset = Category.objects.prefetch_related("subcategory_category").all()
@@ -3603,7 +3609,7 @@ class EmbeddingsViewSet(viewsets.ModelViewSet):
         collection_id = request.GET.get("resource_file")
         collection = LangchainPgCollection.objects.filter(name=str(collection_id)).first()
         if collection:
-            embeddings = LangchainPgEmbedding.objects.filter(collection_id=collection.uuid).values("embedding", "document")
+            embeddings = LangchainPgEmbedding.objects.filter(collection_id=collection.uuid).values("document")
         return Response(embeddings)
 
 
@@ -3633,9 +3639,9 @@ class EmbeddingsViewSet(viewsets.ModelViewSet):
       
             # print(chat_history)
             # chat_history = history.condensed_question if history else ""
-            summary, chunks, condensed_question = VectorDBBuilder.get_input_embeddings(query, user_name, resource_id, history)
+            summary, chunks, condensed_question, prompt_usage = VectorDBBuilder.get_input_embeddings(query, user_name, resource_id, history)
             data = {"user_map": UserOrganizationMap.objects.get(id=map_id).id, "resource": resource_id, "query": query, 
-                    "query_response": summary, "condensed_question":condensed_question}
+                    "query_response": summary, "condensed_question":condensed_question, "prompt_usage": prompt_usage}
             messages_serializer = MessagesSerializer(data=data)
             messages_serializer.is_valid(raise_exception=True)
             message_instance = messages_serializer.save()  # This returns the Messages model instance
