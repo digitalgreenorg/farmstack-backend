@@ -336,7 +336,6 @@ class ResourceFile(TimeStampMixin):
     transcription = models.CharField(max_length=10000,null=True, blank=True)
     embeddings_status = models.CharField(max_length=20, null=True, choices=EMBEDDINGS_STATUS, default="in-progress")
     embeddings_status_reason = models.CharField(max_length=1000, null=True)
-
     def __str__(self) -> str:
         return self.file.name
     
@@ -461,7 +460,16 @@ class Messages(TimeStampMixin):
     input_language_detected = models.CharField(max_length=20, null=True)
     retrieved_chunks = models.ManyToManyField(LangchainPgEmbedding, null=True)
     condensed_question = models.CharField(max_length=20000, null=True)
+    prompt_usage = models.JSONField(default={}, null=True)
 
     # class Meta:
     #     table_name = "messages"
+
+# class MessageEmbedding(models.Model):
+#     message = models.ForeignKey(Messages, on_delete=models.CASCADE)
+#     embedding = models.ForeignKey(LangchainPgEmbedding, on_delete=models.CASCADE)
+#     similarity = models.FloatField()
+    
+#     class Meta:
+#         db_table = 'datahub_messages_retrieved_chunks'
 

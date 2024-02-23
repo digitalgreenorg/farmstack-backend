@@ -3640,9 +3640,9 @@ class EmbeddingsViewSet(viewsets.ModelViewSet):
       
             # print(chat_history)
             # chat_history = history.condensed_question if history else ""
-            summary, chunks, condensed_question = VectorDBBuilder.get_input_embeddings(query, user_name, resource_id, history)
+            summary, chunks, condensed_question, prompt_usage = VectorDBBuilder.get_input_embeddings(query, user_name, resource_id, history)
             data = {"user_map": UserOrganizationMap.objects.get(id=map_id).id, "resource": resource_id, "query": query, 
-                    "query_response": summary, "condensed_question":condensed_question}
+                    "query_response": summary, "condensed_question":condensed_question, "prompt_usage": prompt_usage}
             messages_serializer = MessagesSerializer(data=data)
             messages_serializer.is_valid(raise_exception=True)
             message_instance = messages_serializer.save()  # This returns the Messages model instance
