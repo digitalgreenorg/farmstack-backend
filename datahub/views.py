@@ -3512,6 +3512,13 @@ class ResourceFileManagementViewSet(GenericViewSet):
         url = request.GET.get("url")
         return get_youtube_url(url)
    
+    def retrieve(self, request, pk):
+        """GET method: retrieve an object or instance of the Product model"""
+        team_member = self.get_object()
+        serializer = self.get_serializer(team_member)
+        # serializer.is_valid(raise_exception=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
 #
 class CategoryViewSet(viewsets.ModelViewSet):
     queryset = Category.objects.prefetch_related("subcategory_category").all()
