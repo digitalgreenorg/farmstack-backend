@@ -3516,7 +3516,6 @@ class ResourceFileManagementViewSet(GenericViewSet):
         """GET method: retrieve an object or instance of the Product model"""
         team_member = self.get_object()
         serializer = self.get_serializer(team_member)
-        # serializer.is_valid(raise_exception=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
 #
