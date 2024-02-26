@@ -224,8 +224,8 @@ For example:
         Current conversation:
         follow up input: \n{input}\n
         
-        Remember, If the current conversation starts with a greeting or wishes, warmly welcome the user and explain your capabilities else you didn't get the context to generate the answer for the input.
-        If you didn't get the context: 
+        Remember, If you didn't get the context: 
+        
         Avoid the "sorry" route. Instead, cleverly mention the lapse in your training or kindly suggest a rephrasing of their question. 
         For example:
         - "Seems like that particular topic wasn't in my last update.🤔"
