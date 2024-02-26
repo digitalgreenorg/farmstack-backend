@@ -63,7 +63,7 @@
       .topLine {
         /* border-radius: 10px 10px 0px 0px; */
         /* border: none; */
-        background: #00ab55;
+        background: #00a94f;
         height: 11px;
       }
       .contentBox {
@@ -81,7 +81,7 @@
       }
       .yelloHead {
         font-size: 16px;
-        color: #00ab55;
+        color: #00a94f;
         font-weight: 700;
         line-height: 16.64px;
       }
@@ -105,7 +105,7 @@
       .bottomLine {
         /* border-radius: 0px 0px 10px 10px; */
         /* border: none; */
-        background: #00ab55;
+        background: #00a94f;
         height: 11px;
         /* margin-bottom: 53px; */
       }
@@ -137,19 +137,14 @@
         font-weight: 600;
       }
       .whiteButton {
-        border: 1px solid #00ab55;
-        color: #00ab55;
+        border: 1px solid #00a94f;
+        color: #00a94f;
         padding: 10px 50px;
         font-weight: 600;
       }
-      .logo {
-        margin: 33px auto 0px auto;
-        /* width: 400px; */
-        /* border: 1px solid red; */
-      }
       .bottomMostLine {
         height: 11px;
-        background-color: #00ab55;
+        background-color: #00a94f;
         /* min-width: 564px; */
         min-width: 400px;
         margin: auto;
@@ -182,6 +177,22 @@
           padding: 2px;
         }
       }
+      .logo {
+        text-align: center;
+        margin: 15px auto;
+      }
+      .logo img {
+        max-width: 100%;
+        display: block;
+        margin: 0 auto;
+        width: 55px;
+      }
+      .image-text {
+        font-size: 10px;
+        color: #333;
+        white-space: nowrap;
+        margin-top: 5px; /* Adjust the margin-top as needed */
+      }
     </style>
   </head>
   <body>
@@ -200,19 +211,29 @@
                   <div>
                     <div class="blackHead">Hi {{ participant_admin_name }}</div>
                     <div class="font12px margint5px">
-                      Your received a request from {{ participant_admin_name }} to join in your network as participant
+                      Your received a request from {{ participant_admin_name }}
+                      to join in your network as participant
                     </div>
                   </div>
                 </div>
                 <div class="bottomLine"></div>
               </div>
 
-              <div class="logo">
-                <img
-                  src="https://i.ibb.co/k6HLNWp/Farmstack.png"
-                  alt="FarmStack"
-                />
-              </div>
+              <table class="logo">
+                <tr>
+                  <td>
+                    <img
+                      src="https://i.postimg.cc/Z5Jw7mMN/vistaar-logo.png"
+                      alt="Powered by FarmStack"
+                    />
+                  </td>
+                </tr>
+                <tr>
+                  <td>
+                    <div class="image-text">Powered by FarmStack</div>
+                  </td>
+                </tr>
+              </table>
             </td>
           </tr>
           <tr style="background-color: #eaeff2">

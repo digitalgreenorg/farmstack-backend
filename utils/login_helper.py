@@ -1,10 +1,12 @@
 # utils module for accounts app
 import datetime
+import logging
 
 import pyotp
 from django.conf import settings
 from django.core.cache import cache
 
+LOGGER = logging.getLogger(__name__)
 
 class generateKey:
     """Generates OTP"""
@@ -73,3 +75,5 @@ def user_suspension(
         },
         suspension_duration,
     )
+    LOGGER.critical(f"User suspended for invalid otp attempts user_email: {email}")
+

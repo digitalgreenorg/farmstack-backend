@@ -13,6 +13,7 @@
     <title>template</title>
     <style>
       @import url("https://fonts.googleapis.com/css2?family=Inter:wght@100;200;300;400;500;600;700;800;900&display=swap");
+
       body {
         font-family: "Inter", sans-serif;
         font-style: normal;
@@ -23,6 +24,7 @@
         height: 100vh;
         /* border: 1px solid red; */
       }
+
       .mainBox {
         /* border: 2px solid red; */
         margin: 0 auto;
@@ -31,6 +33,7 @@
         border-spacing: 0;
         box-shadow: 0px 10px 15px rgba(0, 0, 0, 0.5);
       }
+
       .biggerCard {
         /* height: 90vh; */
         /* width: 500px; */
@@ -45,12 +48,14 @@
         text-align: center;
         position: relative;
       }
+
       .title {
         font-size: 24px;
         font-weight: 400;
         /* line-height: 33px; */
         color: #4d4d4d;
       }
+
       .card {
         background-color: white;
         border: none;
@@ -61,41 +66,50 @@
         overflow: hidden;
         width: 550px;
       }
+
       .font16px {
         font-size: 16px;
       }
+
       .font14px {
         font-size: 14px;
       }
+
       .font12px {
         font-size: 12px;
       }
+
       .topLine {
         /* border-radius: 10px 10px 0px 0px; */
         /* border: none; */
-        background: #00ab55;
+        background: #00a94f;
         height: 11px;
       }
+
       .contentBox {
         font-size: 16px;
         /* max-width: 277px; */
       }
+
       .blackHead {
         color: #4d4d4d;
         font-weight: 700;
         line-height: 16.64px;
         margin-bottom: 5px;
       }
+
       .yelloHead {
-        color: #00ab55;
+        color: #00a94f;
         font-weight: 700;
         font-size: 14px;
         line-height: 16.64px;
       }
+
       .font12px {
         font-size: 16px;
         line-height: 16.64px;
       }
+
       .desc {
         color: #4d4d4d;
         font-size: 14px;
@@ -103,13 +117,15 @@
         line-height: 16.64px;
         margin-top: 9px;
       }
+
       .bottomLine {
         /* border-radius: 0px 0px 10px 10px; */
         /* border: none; */
-        background: #00ab55;
+        background: #00a94f;
         height: 11px;
         /* margin-bottom: 53px; */
       }
+
       .margin15px {
         margin-bottom: 15px;
       }
@@ -117,15 +133,18 @@
       .textCenter {
         text-align: center;
       }
+
       .queriesBox {
         width: 380px;
         margin: 0px auto 33px auto;
       }
+
       .eachQuery {
         margin-bottom: 33px;
       }
+
       .yellowButton {
-        background-color: #00ab55;
+        background-color: #00a94f;
         /* height: 35px; */
         padding: 10px 50px;
         color: white !important;
@@ -136,23 +155,19 @@
         width: 160px;
         margin: auto;
         box-sizing: content-box;
-
       }
+
       .whiteButton {
-        border: 1px solid #00ab55;
-        color: #00ab55;
+        border: 1px solid #00a94f;
+        color: #00a94f;
         padding: 10px;
         font-weight: 400;
         font-size: 12px;
       }
-      .logo {
-        margin: 33px auto;
-        /* width: 400px; */
-        /* border: 1px solid red; */
-      }
+
       .bottomMostLine {
         height: 11px;
-        background-color: #00ab55;
+        background-color: #00a94f;
         /* min-width: 564px; */
         min-width: 400px;
         margin: auto;
@@ -167,32 +182,58 @@
         /* border-top-left-radius: 10px !important; */
         /* border-top-right-radius: 10px !important; */
       }
+
       tbody tr:last-child td:last-child {
         /* border: 1px solid red; */
         /* border-bottom-left-radius: 10px !important; */
         /* border-bottom-right-radius: 10px !important; */
       }
+
       .font14bold {
         font-size: 14px;
         font-weight: 600;
         color: #3d4a52;
       }
+
       .font14light {
         font-size: 14px;
         font-weight: 400;
         color: #3d4a52;
       }
+
       a {
         text-decoration: none;
         color: #3d4a52;
       }
+
       @media screen and (max-width: 480px) {
         .biggerCard {
           padding: 10px 2px 0 2px;
         }
       }
+
+      .logo {
+        text-align: center;
+        margin: 15px auto;
+      }
+
+      .logo img {
+        max-width: 100%;
+        display: block;
+        margin: 0 auto;
+        width: 55px;
+      }
+
+      .image-text {
+        font-size: 10px;
+        color: #333;
+        white-space: nowrap;
+        margin-top: 5px;
+        /* Adjust the margin-top as needed */
+      }
     </style>
   </head>
+
   <body>
     <div class="container">
       <!-- hello -->
@@ -208,17 +249,18 @@
                 <div class="topLine"></div>
                 <div class="contentBox textCenter">
                   <div style="padding: 33px">
-                    <div class="blackHead  font16px">
+                    <div class="blackHead font16px">
                       Hi {{ participant_admin_name }}
                     </div>
                     <div class="font14px">
-                      {{ datahub_name }} has added your organisation as a {{as_user}}. <br />
+                      {{ datahub_name }} has added your organisation as a
+                      {{as_user}}. <br />
                       Click the “Login to datahub” button below to finish
                       setting up your account. We will log you in right away!
                     </div>
                   </div>
                   <div class="queriesBox">
-                    <div style="margin-bottom: 33px;" class="blackHead font14px">
+                    <div style="margin-bottom: 33px" class="blackHead font14px">
                       What can you do as a {{as_user}}?
                     </div>
                     <div>
@@ -259,23 +301,40 @@
 
                       <div>
                         <!-- <button class='yellowButton'>Contact us</button> -->
-                        <a target="_blank" class="yellowButton" href="{{ datahub_site }}/participant/login/">Login to datahub</a>
+                        <a
+                          target="_blank"
+                          class="yellowButton"
+                          href="{{ datahub_site }}/login/"
+                          >Login to datahub</a
+                        >
                       </div>
                     </div>
                   </div>
                 </div>
                 <div class="bottomLine"></div>
               </div>
-              <div class="logo">
-                <img
-                  src="https://i.ibb.co/k6HLNWp/Farmstack.png"
-                  alt="FarmStack"
-                />
-              </div>
+
+              <table class="logo">
+                <tr>
+                  <td>
+                    <img
+                      src="https://i.postimg.cc/Z5Jw7mMN/vistaar-logo.png"
+                      alt="Powered by FarmStack"
+                    />
+                  </td>
+                </tr>
+                <tr>
+                  <td>
+                    <div class="image-text">Powered by FarmStack</div>
+                  </td>
+                </tr>
+              </table>
             </td>
           </tr>
           <tr style="background-color: #eaeff2">
-            <td><div class="bottomMostLine"></div></td>
+            <td>
+              <div class="bottomMostLine"></div>
+            </td>
           </tr>
         </tbody>
       </table>

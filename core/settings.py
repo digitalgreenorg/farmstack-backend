@@ -67,7 +67,8 @@ INSTALLED_APPS = [
     "datahub",
     "participant",
     "microsite",
-    "connectors"
+    "connectors",
+    "django_apscheduler"
 ]
 # Use nose to run all tests
 TEST_RUNNER = "django_nose.NoseTestSuiteRunner"
@@ -117,7 +118,7 @@ DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.postgresql",
         "NAME": "postgres",
-        "USER": os.environ.get("POSTGRES_USER", "test"),
+        "USER": os.environ.get("POSTGRES_USER", "postgres"),
         "PASSWORD": os.environ.get("POSTGRES_PASSWORD", "test"),
         "HOST": os.environ.get("POSTGRES_HOST", "db"),
         "PORT": os.environ.get("POSTGRES_PORT", "5432"),
@@ -205,6 +206,10 @@ STANDARDISED_FILES_URL = os.path.join(PROTECTED_MEDIA_URL, "standardised/")
 
 RESOLUTIONS_ATTACHMENT_URL = os.path.join(SUPPORT_RESOLUTIONS, "resolutions/")
 SUPPORT_TICKET_FILES_URL = os.path.join(SUPPORT_TICKET_V2, "support/")
+RESOURCES_URL = "users/resources/"
+RESOURCES_AUDIOS = "users/resources/audios/"
+
+RESOURCES_AUDIOS = os.path.join(MEDIA_URL, "users/resources/audios/")
 
 # os.makedirs(CONNECTOR_FILES_URL)
 
@@ -217,6 +222,8 @@ if not os.path.exists(TEMP_CONNECTOR_URL):
     os.makedirs(TEMP_CONNECTOR_URL)
 if not os.path.exists(CONNECTOR_FILES_URL):
     os.makedirs(CONNECTOR_FILES_URL)
+if not os.path.exists(RESOURCES_AUDIOS):
+    os.makedirs(RESOURCES_AUDIOS)
 
 # Template Files.
 SINGLE_PULL_PROVIDER_TEMPLATE_XML = os.path.join(
@@ -263,7 +270,6 @@ REST_FRAMEWORK = {
     # "DEFAULT_PERMISSION_CLASSES": [
     #     "rest_framework.permissions.AllowAny"
     # ],
-    # Comment this line for test, stage and prod environments
     "DEFAULT_PERMISSION_CLASSES": [
         "rest_framework.permissions.IsAuthenticated"
     ],
@@ -359,6 +365,7 @@ LOGGING = {
         "django": {
             "handlers": ["file", "console"],
             "level": "INFO",
+            "propagate":False
         },
     },
 }
@@ -393,3 +400,12 @@ if not os.path.exists(TEMP_FILE_PATH):
 
 if not os.path.exists("logs"):
     os.makedirs("logs")  # create the logs directory
+
+SAGUBAGU_API_KEY = os.environ.get("SAGUBAGU_API_KEY",'')
+OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY",'')
+YOUTUBE_API_KEY = os.environ.get("YOUTUBE_API_KEY",'')
+CELERY_BROKER_URL = os.environ.get("CELERY_BROKER_URL",'')
+
+CELERY_BROKER_URL = f'redis://{os.environ.get("REDIS_SERVICE", "loaclhost")}:6379/0'
+
+# CELERY_BROKER_URL = 'redis://localhost:6379/0'

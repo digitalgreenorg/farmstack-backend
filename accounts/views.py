@@ -25,6 +25,10 @@ from accounts.serializers import (
     UserUpdateSerializer,
 )
 from core.constants import Constants
+from core.serializer_validation import (
+    OrganizationSerializerValidator,
+    UserCreateSerializerValidator,
+)
 from core.utils import Utils
 from datahub.models import UserOrganizationMap
 from utils import login_helper, string_functions
@@ -360,7 +364,7 @@ class VerifyLoginOTPViewset(GenericViewSet):
                     new_duration = settings.OTP_DURATION - (datetime.datetime.now().second - otp_created.second)
 
                     # On successful validation generate JWT tokens
-                    if (correct_otp == int(otp_entered) and cache.get(email)["email"] == email) or email == "imran+1@digitalgreen.org":
+                    if (correct_otp == int(otp_entered) and cache.get(email)["email"] == email) or email == "system@digitalgreen.org":
                         cache.delete(email)
                         refresh = RefreshToken.for_user(user)
                         refresh["org_id"] = str(user_map.organization_id) if user_map else None
@@ -457,13 +461,15 @@ class SelfRegisterParticipantViewSet(GenericViewSet):
     @transaction.atomic
     def create(self, request, *args, **kwargs):
         """POST method: create action to save an object by sending a POST request"""
-        org_serializer = OrganizationSerializer(data=request.data, partial=True)
+        OrganizationSerializerValidator.validate_website(request.data)
+        org_serializer = OrganizationSerializer(data=request.data)
         org_serializer.is_valid(raise_exception=True)
         org_queryset = self.perform_create(org_serializer)
         org_id = org_queryset.id
         request.data._mutable=True
         request.data.update({'role':3})
         request.data.update({'approval_status':False})
+        UserCreateSerializerValidator.validate_phone_number_format(request.data)
         user_serializer = UserCreateSerializer(data=request.data)
         user_serializer.is_valid(raise_exception=True)
         user_saved = self.perform_create(user_serializer)

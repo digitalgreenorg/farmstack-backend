@@ -5,7 +5,6 @@ import time
 import urllib
 from inspect import formatannotationrelativeto
 from urllib import parse
-
 import pandas as pd
 import requests
 import sendgrid
@@ -18,6 +17,9 @@ from rest_framework.response import Response
 from sendgrid.helpers.mail import Content, Email, Mail
 
 from core.constants import Constants
+import secrets
+import hashlib
+import json
 
 LOGGER = logging.getLogger(__name__)
 
@@ -177,10 +179,10 @@ def csv_and_xlsx_file_validatation(file_obj):
     try:
         name = file_obj.name
         if name.endswith(".xlsx") or name.endswith(".xls"):
-            df = pd.read_excel(file_obj, header=0, nrows=21)
+            df = pd.read_excel(file_obj, header=0, nrows=6)
         else:
             df = pd.read_csv(
-                file_obj, encoding="unicode_escape", header=0, nrows=21)
+                file_obj, encoding="unicode_escape", header=0, nrows=6)
         if len(df) < 5:
             return False
     except Exception as error:
@@ -189,18 +191,21 @@ def csv_and_xlsx_file_validatation(file_obj):
     return True
 
 
-def read_contents_from_csv_or_xlsx_file(file_path):
+def read_contents_from_csv_or_xlsx_file(file_path, standardisation_config={}):
     """This function reads the file and return the contents as dict"""
     dataframe = pd.DataFrame([])
     try:
         if file_path.endswith(".xlsx") or file_path.endswith(".xls"):
-            content = pd.read_excel(file_path, index_col=None, nrows=21).head(
-                2) if file_path else dataframe
+            content = pd.read_excel(file_path, index_col=None, nrows=2) if file_path else dataframe
+        elif file_path.endswith(".csv"):
+            content = pd.read_csv(file_path, index_col=False, nrows=2) if file_path else dataframe
         else:
-            content = pd.read_csv(file_path, index_col=False, nrows=21).head(
-                2) if file_path else dataframe
+            return []
         content = content.drop(content.filter(regex='Unnamed').columns, axis=1)
         content = content.fillna("")
+        mask_columns = [key for key, value in standardisation_config.items() if value.get('masked', False)]
+        if mask_columns:
+            content[mask_columns] = "######"
     except Exception as error:
         logging.error("Invalid file ERROR: %s", error)
         return []
@@ -224,3 +229,23 @@ def timer(func):
         return result
     # return reference to the wrapper function
     return wrapper
+
+def generate_api_key(length=32):
+    api_key = secrets.token_hex(length)
+    return api_key
+
+def generate_hash_key_for_dashboard(pk, data, role_id=3, logged=False):
+    data["pk"] = pk
+    data["role_id"] = role_id
+    data["logged"] = logged
+    data_string = json.dumps(data)
+    # Create a hashlib SHA-256 hash object
+    # hash_obj = hashlib.sha256()
+    # # Update the hash object with the data as bytes
+    # hash_obj.update(data_string.encode('utf-8'))
+    # # Get the hexadecimal representation of the hash
+    # hash_key = hash_obj.hexdigest()
+    hash_key = hash(data_string)
+    print(hash_key)
+    return hash_key
+

@@ -1,20 +1,20 @@
 <!DOCTYPE html>
-<html lang='en'>
+<html lang="en">
   <head>
-    <meta charset='UTF-8' />
-    <meta http-equiv='X-UA-Compatible' content='IE=edge' />
-    <meta name='viewport' content='width=device-width, initial-scale=1.0' />
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <link
-      href='https://cdn.jsdelivr.net/npm/bootstrap@5.2.0/dist/css/bootstrap.min.css'
-      rel='stylesheet'
-      integrity='sha384-gH2yIJqKdNHPEq0n4Mqa/HGKIhSkIHeL5AyhkYV8i59U5AR6csBvApHHNl/vI1Bx'
-      crossorigin='anonymous'
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.0/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+      integrity="sha384-gH2yIJqKdNHPEq0n4Mqa/HGKIhSkIHeL5AyhkYV8i59U5AR6csBvApHHNl/vI1Bx"
+      crossorigin="anonymous"
     />
     <title>template</title>
     <style>
-      @import url('https://fonts.googleapis.com/css2?family=Inter:wght@100;200;300;400;500;600;700;800;900&display=swap');
+      @import url("https://fonts.googleapis.com/css2?family=Inter:wght@100;200;300;400;500;600;700;800;900&display=swap");
       body {
-        font-family: 'Inter', sans-serif;
+        font-family: "Inter", sans-serif;
         font-style: normal;
         padding: 0;
         margin: 0;
@@ -74,7 +74,7 @@
       .topLine {
         /* border-radius: 10px 10px 0px 0px; */
         /* border: none; */
-        background: #00ab55;
+        background: #00a94f;
         height: 11px;
       }
       .contentBox {
@@ -88,7 +88,7 @@
         margin-bottom: 5px;
       }
       .yelloHead {
-        color: #00ab55;
+        color: #00a94f;
         font-weight: 700;
         font-size: 14px;
         line-height: 16.64px;
@@ -109,7 +109,7 @@
       .bottomLine {
         /* border-radius: 0px 0px 10px 10px; */
         /* border: none; */
-        background: #00ab55;
+        background: #00a94f;
         height: 11px;
         /* margin-bottom: 53px; */
       }
@@ -128,7 +128,7 @@
         margin-bottom: 33px;
       }
       .yellowButton {
-        background-color: #00ab55;
+        background-color: #00a94f;
         /* height: 35px; */
         padding: 10px;
         color: white !important;
@@ -142,23 +142,18 @@
         /* height: 35px; */
       }
       .whiteButton {
-        border: 1px solid #00ab55;
-        color: #00ab55;
+        border: 1px solid #00a94f;
+        color: #00a94f;
         padding: 10px;
         font-weight: 400;
         font-size: 12px;
       }
-      .yellowButton:hover{
+      .yellowButton:hover {
         cursor: pointer;
-      }
-      .logo {
-        margin: 33px auto;
-        /* width: 400px; */
-        /* border: 1px solid red; */
       }
       .bottomMostLine {
         height: 11px;
-        background-color: #00ab55;
+        background-color: #00a94f;
         /* min-width: 564px; */
         min-width: 400px;
         margin: auto;
@@ -195,45 +190,61 @@
         color: #3d4a52 !important;
         display: block;
       }
-      input[type=text]:focus {
-          border:none !important;
-          outline: none !important;
-	  /* width: 10p; */
-        }
+      input[type="text"]:focus {
+        border: none !important;
+        outline: none !important;
+        /* width: 10p; */
+      }
       @media screen and (max-width: 480px) {
         .biggerCard {
           padding: 2px 2px 0 2px;
         }
       }
+      .logo {
+        text-align: center;
+        margin: 15px auto;
+      }
+      .logo img {
+        max-width: 100%;
+        display: block;
+        margin: 0 auto;
+        width: 55px;
+      }
+      .image-text {
+        font-size: 10px;
+        color: #333;
+        white-space: nowrap;
+        margin-top: 5px; /* Adjust the margin-top as needed */
+      }
     </style>
   </head>
   <body>
-    <div class='container'>
+    <div class="container">
       <!-- hello -->
-      <table cell class='mainBox'>
+      <table cell class="mainBox">
         <tbody>
-          <tr class='biggerCard'>
+          <tr class="biggerCard">
             <td>
               <!-- <div class='title'>
                 &lt;Datahub name&gt;has invited you to join as a participiant.
                 datahub name .
               </div> -->
-              <div class='card'>
-                <div class='topLine'></div>
-                <div class='contentBox textCenter'>
-                  <div style='padding: 33px'>
-                    <div class='blackHead font16px'>
+              <div class="card">
+                <div class="topLine"></div>
+                <div class="contentBox textCenter">
+                  <div style="padding: 33px">
+                    <div class="blackHead font16px">
                       Hi {{ participant_admin_name }}
                     </div>
-                    <div class='font14px'>Verify your login</div>
+                    <div class="font14px">Verify your login</div>
                   </div>
-                  <div class='queriesBox'>
+                  <div class="queriesBox">
                     <div>
-                      <div class='eachQuery'>
-                        <div class='yelloHead font14px'>
+                      <div class="eachQuery">
+                        <div class="yelloHead font14px">
                           Email verification code
                         </div>
-                        <div class='desc'>
+                        <div class="desc">
                           To continue with your email verification, please enter
                           the following code.
                         </div>
@@ -242,9 +253,10 @@
                         <!-- <div>
                           123123
                         </div> -->
-                        <div style='
-                            border: 1px solid #00ab55;
-                            color: #00ab55;
+                        <div
+                          style="
+                            border: 1px solid #00a94f;
+                            color: #00a94f;
                             background: white;
                             width: 130px;
                             margin: 33px auto;
@@ -255,53 +267,76 @@
                             text-align: center;
                             font-size: 16px;
                             height: 35px;
-                            outline: none;'
-                         id='otpValue'>
-                            <span style="margin: 6px 38px; display: flex; align-item: center; justify-content: center; ">{{ otp }}</span>
+                            outline: none;
+                          "
+                          id="otpValue"
+                        >
+                          <span
+                            style="
+                              margin: 6px 38px;
+                              display: flex;
+                              align-item: center;
+                              justify-content: center;
+                            "
+                            >{{ otp }}</span
+                          >
                         </div>
                       </div>
-                      <div onclick='clickToCopy()' >
+                      <div onclick="clickToCopy()">
                         <!-- <button class='yellowButton'>Contact us</button> -->
-                        <div target='_blank' class='yellowButton' href='{{ datahub_site }}/contact/'>Copy</div>
+                        <div
+                          target="_blank"
+                          class="yellowButton"
+                          href="{{ datahub_site }}/home/contact/"
+                        >
+                          Copy
+                        </div>
                       </div>
                     </div>
                   </div>
                 </div>
-                <div class='bottomLine'></div>
+                <div class="bottomLine"></div>
               </div>
-              <div class='logo'>
-                <img
-                  src='https://i.ibb.co/k6HLNWp/Farmstack.png'
-                  alt='FarmStack'
-                />
-              </div>
+
+              <table class="logo">
+                <tr>
+                  <td>
+                    <img
+                      src="https://i.postimg.cc/Z5Jw7mMN/vistaar-logo.png"
+                      alt="Powered by FarmStack"
+                    />
+                  </td>
+                </tr>
+                <tr>
+                  <td>
+                    <div class="image-text">Powered by FarmStack</div>
+                  </td>
+                </tr>
+              </table>
             </td>
           </tr>
-          <tr style='background-color: #eaeff2'>
-            <td><div class='bottomMostLine'></div></td>
+          <tr style="background-color: #eaeff2">
+            <td><div class="bottomMostLine"></div></td>
           </tr>
         </tbody>
       </table>
     </div>
     <script
-      src='https://cdn.jsdelivr.net/npm/bootstrap@5.2.0/dist/js/bootstrap.bundle.min.js'
-      integrity='sha384-A3rJD856KowSb7dwlZdYEkO39Gagi7vIsF0jrRAoQmDKKtQBHUuLZ9AsSv4jD4Xa'
-      crossorigin='anonymous'
+      src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.0/dist/js/bootstrap.bundle.min.js"
+      integrity="sha384-A3rJD856KowSb7dwlZdYEkO39Gagi7vIsF0jrRAoQmDKKtQBHUuLZ9AsSv4jD4Xa"
+      crossorigin="anonymous"
     ></script>
   </body>
   <script>
     function clickToCopy() {
-  // Get the text field
-  var copyText = document.getElementById('otpValue');
+      // Get the text field
+      var copyText = document.getElementById("otpValue");
       console.log(copyText);
-  // Select the text field
-  copyText.select();
-  copyText.setSelectionRange(0, 999999); // For mobile devices
+      // Select the text field
+      copyText.select();
+      copyText.setSelectionRange(0, 999999); // For mobile devices
 
-
-  navigator.clipboard.writeText(copyText.value);
-  
-
-}
+      navigator.clipboard.writeText(copyText.value);
+    }
   </script>
 </html>

@@ -1,23 +1,32 @@
 import ast
 import csv
+import gzip
 import json
 import logging
 import operator
 import os
+import pickle
 import re
 import shutil
 import sys
+import threading
 from calendar import c
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from functools import reduce
 from pickle import TRUE
-from urllib.parse import unquote
-import json
+from urllib.parse import parse_qs, unquote, urlparse
+import uuid
+
 import django
+import numpy as np
 import pandas as pd
 from django.conf import settings
 from django.contrib.admin.utils import get_model_from_relation
+from django.core.cache import cache
 from django.core.files.base import ContentFile
 from django.db import transaction
+
+# from django.http import HttpResponse
 from django.db.models import (
     DEFERRED,
     CharField,
@@ -35,12 +44,16 @@ from django.db.models.functions import Concat
 # from django.db.models.functions import Index, Substr
 from django.http import JsonResponse
 from django.shortcuts import render
+import requests
 from drf_braces.mixins import MultipleSerializersViewMixin
+from jsonschema import ValidationError
 from psycopg2 import connect
 from psycopg2.extensions import ISOLATION_LEVEL_AUTOCOMMIT
 from python_http_client import exceptions
-from rest_framework import generics, pagination, status
+from pytube import Channel, Playlist, YouTube
+from rest_framework import generics, pagination, status, viewsets
 from rest_framework.decorators import action
+from rest_framework.exceptions import ValidationError
 from rest_framework.parsers import JSONParser, MultiPartParser
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
@@ -56,12 +69,18 @@ from accounts.serializers import (
 from connectors.models import Connectors
 from connectors.serializers import ConnectorsListSerializer
 from core.constants import Constants, NumericalConstants
+from core.serializer_validation import (
+    OrganizationSerializerValidator,
+    UserCreateSerializerValidator,
+)
 from core.settings import BASE_DIR
 from core.utils import (
     CustomPagination,
     Utils,
     csv_and_xlsx_file_validatation,
     date_formater,
+    generate_api_key,
+    generate_hash_key_for_dashboard,
     read_contents_from_csv_or_xlsx_file,
 )
 from datahub.models import (
@@ -70,10 +89,12 @@ from datahub.models import (
     DatasetV2,
     DatasetV2File,
     Organization,
+    Resource,
     StandardisationTemplate,
     UserOrganizationMap,
 )
 from datahub.serializers import (
+    DatahubDatasetFileDashboardFilterSerializer,
     DatahubDatasetsSerializer,
     DatahubDatasetsV2Serializer,
     DatahubThemeSerializer,
@@ -92,12 +113,17 @@ from datahub.serializers import (
     PolicyDocumentSerializer,
     RecentDatasetListSerializer,
     RecentSupportTicketSerializer,
+    ResourceAPIBuilderSerializer,
+    ResourceFileSerializer,
+    ResourceSerializer,
+    ResourceUsagePolicySerializer,
     StandardisationTemplateUpdateSerializer,
     StandardisationTemplateViewSerializer,
     TeamMemberCreateSerializer,
     TeamMemberDetailsSerializer,
     TeamMemberListSerializer,
     TeamMemberUpdateSerializer,
+    UsageUpdatePolicySerializer,
     UserOrganizationCreateSerializer,
     UserOrganizationMapSerializer,
 )
@@ -108,18 +134,49 @@ from participant.serializers import (
 )
 from utils import custom_exceptions, file_operations, string_functions, validators
 from utils.authentication_services import authenticate_user
-from utils.file_operations import check_file_name_length
+from utils.embeddings_creation import VectorDBBuilder
+from utils.file_operations import (
+    check_file_name_length,
+    filter_dataframe_for_dashboard_counties,
+    generate_fsp_dashboard,
+    generate_knfd_dashboard,
+    generate_omfp_dashboard,
+)
 from utils.jwt_services import http_request_mutation
+from utils.youtube_helper import get_youtube_url
 
-from .models import Policy, UsagePolicy
+from .models import (
+    Category,
+    DatasetSubCategoryMap,
+    LangchainPgCollection,
+    LangchainPgEmbedding,
+    Messages,
+    Policy,
+    ResourceFile,
+    ResourceSubCategoryMap,
+    ResourceUsagePolicy,
+    SubCategory,
+    UsagePolicy,
+)
 from .serializers import (
+    APIBuilderSerializer,
+    CategorySerializer,
+    LangChainEmbeddingsSerializer,
+    MessagesChunksRetriveSerializer,
+    MessagesRetriveSerializer,
+    MessagesSerializer,
+    ParticipantCostewardSerializer,
     PolicySerializer,
+    ResourceFileSerializer,
+    ResourceListSerializer,
+    ResourceUsagePolicyDetailSerializer,
+    SubCategorySerializer,
     UsagePolicyDetailSerializer,
     UsagePolicySerializer,
 )
 
+# Replace 'YOUR_API_KEY' with your actual API key
 LOGGER = logging.getLogger(__name__)
-
 con = None
 
 
@@ -140,10 +197,16 @@ class TeamMemberViewSet(GenericViewSet):
 
     def create(self, request, *args, **kwargs):
         """POST method: create action to save an object by sending a POST request"""
-        serializer = TeamMemberCreateSerializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        serializer.save()
-        return Response(serializer.data, status=status.HTTP_201_CREATED)
+        try:
+            serializer = TeamMemberCreateSerializer(data=request.data)
+            serializer.is_valid(raise_exception=True)
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        except ValidationError as e:
+            return Response(e.detail, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            LOGGER.error(e,exc_info=True)
+            return Response(str(e), status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     def list(self, request, *args, **kwargs):
         """GET method: query all the list of objects from the Product model"""
@@ -166,12 +229,18 @@ class TeamMemberViewSet(GenericViewSet):
 
     def update(self, request, *args, **kwargs):
         """PUT method: update or send a PUT request on an object of the Product model"""
-        instance = self.get_object()
-        # request.data["role"] = UserRole.objects.get(role_name=request.data["role"]).id
-        serializer = TeamMemberUpdateSerializer(instance, data=request.data, partial=True)
-        serializer.is_valid(raise_exception=True)
-        serializer.save()
-        return Response(serializer.data, status=status.HTTP_201_CREATED)
+        try:
+            instance = self.get_object()
+            # request.data["role"] = UserRole.objects.get(role_name=request.data["role"]).id
+            serializer = TeamMemberUpdateSerializer(instance, data=request.data, partial=True)
+            serializer.is_valid(raise_exception=True)
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        except ValidationError as e:
+            return Response(e.detail, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            LOGGER.error(e,exc_info=True)
+            return Response(str(e), status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     def destroy(self, request, pk):
         """DELETE method: delete an object"""
@@ -217,6 +286,7 @@ class OrganizationViewSet(GenericViewSet):
                 with transaction.atomic():
                     # create organization and userorganizationmap object
                     print("Creating org & user_org_map")
+                    OrganizationSerializerValidator.validate_website(request.data)
                     org_serializer = OrganizationSerializer(data=request.data, partial=True)
                     org_serializer.is_valid(raise_exception=True)
                     org_queryset = self.perform_create(org_serializer)
@@ -225,7 +295,7 @@ class OrganizationViewSet(GenericViewSet):
                         data={
                             Constants.USER: user_obj.id,
                             Constants.ORGANIZATION: org_queryset.id,
-                        } # type: ignore
+                        }  # type: ignore
                     )
                     user_org_serializer.is_valid(raise_exception=True)
                     self.perform_create(user_org_serializer)
@@ -235,11 +305,12 @@ class OrganizationViewSet(GenericViewSet):
                         "organization": org_serializer.data,
                     }
                     return Response(data, status=status.HTTP_201_CREATED)
-
-
-        except Exception as error:
-            LOGGER.error(error, exc_info=True)
-            return Response(str(error), status=status.HTTP_400_BAD_REQUEST)
+                
+        except ValidationError as e:
+            return Response(e.detail, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            LOGGER.error(e,exc_info=True)
+            return Response(str(e), status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     def list(self, request, *args, **kwargs):
         """GET method: query the list of Organization objects"""
@@ -262,10 +333,9 @@ class OrganizationViewSet(GenericViewSet):
             user_obj = User.objects.get(id=pk, status=True)
             user_org_queryset = UserOrganizationMap.objects.prefetch_related(
                 Constants.USER, Constants.ORGANIZATION
-            ).filter(organization__status=True, user=pk)
+            ).filter(user=pk)
 
-
-            if not user_org_queryset: 
+            if not user_org_queryset:
                 data = {Constants.USER: {"id": user_obj.id}, Constants.ORGANIZATION: "null"}
                 return Response(data, status=status.HTTP_200_OK)
 
@@ -287,27 +357,32 @@ class OrganizationViewSet(GenericViewSet):
             UserOrganizationMap.objects.prefetch_related(Constants.USER, Constants.ORGANIZATION).filter(user=pk).all()
         )
 
-        if not user_org_queryset:  
-            return Response({}, status=status.HTTP_404_NOT_FOUND) # 310-360 not covered 4
-
+        if not user_org_queryset:
+            return Response({}, status=status.HTTP_404_NOT_FOUND)  # 310-360 not covered 4
+        OrganizationSerializerValidator.validate_website(request.data)
         organization_serializer = OrganizationSerializer(
             Organization.objects.get(id=user_org_queryset.first().organization_id),
             data=request.data,
             partial=True,
         )
-
-        organization_serializer.is_valid(raise_exception=True)
-        self.perform_create(organization_serializer)
-        data = {
-            Constants.USER: {"id": pk},
-            Constants.ORGANIZATION: organization_serializer.data,
-            "user_map": user_org_queryset.first().id,
-            "org_id": user_org_queryset.first().organization_id,
-        }
-        return Response(
-            data,
-            status=status.HTTP_201_CREATED,
-        )
+        try:
+            organization_serializer.is_valid(raise_exception=True)
+            self.perform_create(organization_serializer)
+            data = {
+                Constants.USER: {"id": pk},
+                Constants.ORGANIZATION: organization_serializer.data,
+                "user_map": user_org_queryset.first().id,
+                "org_id": user_org_queryset.first().organization_id,
+            }
+            return Response(
+                data,
+                status=status.HTTP_201_CREATED,
+            )
+        except ValidationError as e:
+            return Response(e.detail, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            LOGGER.error(e,exc_info=True)
+            return Response(str(e), status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     def destroy(self, request, pk):
         """DELETE method: delete an object"""
@@ -348,10 +423,12 @@ class ParticipantViewSet(GenericViewSet):
     @transaction.atomic
     def create(self, request, *args, **kwargs):
         """POST method: create action to save an object by sending a POST request"""
+        OrganizationSerializerValidator.validate_website(request.data)
         org_serializer = OrganizationSerializer(data=request.data, partial=True)
         org_serializer.is_valid(raise_exception=True)
         org_queryset = self.perform_create(org_serializer)
         org_id = org_queryset.id
+        UserCreateSerializerValidator.validate_phone_number_format(request.data)
         user_serializer = UserCreateSerializer(data=request.data)
         user_serializer.is_valid(raise_exception=True)
         user_saved = self.perform_create(user_serializer)
@@ -393,9 +470,11 @@ class ParticipantViewSet(GenericViewSet):
                 subject=Constants.PARTICIPANT_ORG_ADDITION_SUBJECT
                         + os.environ.get(Constants.DATAHUB_NAME, Constants.datahub_name),
             )
-        except Exception as error:
-            LOGGER.error(error, exc_info=True)
-            return Response({"message": ["An error occured"]}, status=status.HTTP_200_OK)
+        except ValidationError as e:
+            return Response(e.detail, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            LOGGER.error(e,exc_info=True)
+            return Response(str(e), status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
         return Response(user_org_serializer.data, status=status.HTTP_201_CREATED)
 
@@ -426,6 +505,9 @@ class ParticipantViewSet(GenericViewSet):
                 .order_by("-user__updated_at")
                 .all()
             )
+            page = self.paginate_queryset(roles)
+            participant_serializer = ParticipantCostewardSerializer(page, many=True)
+            return self.get_paginated_response(participant_serializer.data)
         else:
             roles = (
                 UserOrganizationMap.objects.select_related(Constants.USER, Constants.ORGANIZATION)
@@ -438,7 +520,6 @@ class ParticipantViewSet(GenericViewSet):
                 )
                 .order_by("-user__updated_at")
                 .all()
-
             )
 
         page = self.paginate_queryset(roles)
@@ -467,6 +548,7 @@ class ParticipantViewSet(GenericViewSet):
             user_serializer = self.get_serializer(participant, data=request.data, partial=True)
             user_serializer.is_valid(raise_exception=True)
             organization = Organization.objects.get(id=request.data.get(Constants.ID))
+            OrganizationSerializerValidator.validate_website(request.data)
             organization_serializer = OrganizationSerializer(organization, data=request.data, partial=True)
             organization_serializer.is_valid(raise_exception=True)
             user_data = self.perform_create(user_serializer)
@@ -502,9 +584,12 @@ class ParticipantViewSet(GenericViewSet):
                 Constants.ORGANIZATION: organization_serializer.data,
             }
             return Response(data, status=status.HTTP_201_CREATED)
-        except Exception as error:
-            LOGGER.error(error, exc_info=True)
-            return Response({"message": ["An error occured"]}, status=status.HTTP_200_OK)
+        except ValidationError as e:
+            return Response(e.detail, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            LOGGER.error(e,exc_info=True)
+            return Response(str(e), status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
 
     @authenticate_user(model=Organization)
     def destroy(self, request, pk):
@@ -639,7 +724,8 @@ class MailInvitationViewSet(GenericViewSet):
                 },
                 status=status.HTTP_200_OK,
             )
-
+        except ValidationError as e:
+            return Response(e.detail, status=status.HTTP_400_BAD_REQUEST)
         except Exception as error:
             LOGGER.error(error, exc_info=True)
             return Response(
@@ -671,7 +757,8 @@ class DropDocumentView(GenericViewSet):
                 {key: [f"{file_name} uploading in progress ..."]},
                 status=status.HTTP_201_CREATED,
             )
-
+        except ValidationError as e:
+            return Response(e.detail, status=status.HTTP_400_BAD_REQUEST)
         except Exception as error:
             LOGGER.error(error, exc_info=True)
 
@@ -750,6 +837,8 @@ class DocumentSaveView(GenericViewSet):
                     {"message": "Documents and content saved!"},
                     status=status.HTTP_201_CREATED,
                 )
+        except ValidationError as e:
+            return Response(e.detail, status=status.HTTP_400_BAD_REQUEST)
         except Exception as error:
             LOGGER.error(error, exc_info=True)
 
@@ -837,6 +926,8 @@ class DatahubThemeView(GenericViewSet):
             # user.save()
             return Response(data, status=status.HTTP_201_CREATED)
 
+        except ValidationError as e:
+            return Response(e.detail, status=status.HTTP_400_BAD_REQUEST)
         except Exception as error:
             LOGGER.error(error, exc_info=True)
 
@@ -948,10 +1039,16 @@ class SupportViewSet(GenericViewSet):
 
     def create(self, request, *args, **kwargs):
         """POST method: create action to save an object by sending a POST request"""
-        serializer = self.get_serializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        self.perform_create(serializer)
-        return Response(serializer.data, status=status.HTTP_201_CREATED)
+        try:
+            serializer = self.get_serializer(data=request.data)
+            serializer.is_valid(raise_exception=True)
+            self.perform_create(serializer)
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        except ValidationError as e:
+            return Response(e.detail, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            LOGGER.error(e,exc_info=True)
+            return Response(str(e), status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     @action(detail=False, methods=["post"])
     def filters_tickets(self, request, *args, **kwargs):
@@ -969,7 +1066,7 @@ class SupportViewSet(GenericViewSet):
                 .all()
             )
         except django.core.exceptions.FieldError as error:  # type: ignore
-            logging.error(f"Error while filtering the ticketd ERROR: {error}")
+            LOGGER.error(f"Error while filtering the ticketd ERROR: {error}")
             return Response(f"Invalid filter fields: {list(request.data.keys())}", status=400)
 
         page = self.paginate_queryset(data)
@@ -978,11 +1075,17 @@ class SupportViewSet(GenericViewSet):
 
     def update(self, request, *args, **kwargs):
         """PUT method: update or send a PUT request on an object of the Product model"""
-        instance = self.get_object()
-        serializer = self.get_serializer(instance, data=request.data, partial=True)
-        serializer.is_valid(raise_exception=True)
-        self.perform_create(serializer)
-        return Response(serializer.data, status=status.HTTP_201_CREATED)
+        try:
+            instance = self.get_object()
+            serializer = self.get_serializer(instance, data=request.data, partial=True)
+            serializer.is_valid(raise_exception=True)
+            self.perform_create(serializer)
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        except ValidationError as e:
+            return Response(e.detail, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            LOGGER.error(e,exc_info=True)
+            return Response(str(e), status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     def list(self, request, *args, **kwargs):
         """GET method: query all the list of objects from the Product model"""
@@ -1080,11 +1183,17 @@ class DatahubDatasetsViewSet(GenericViewSet):
                     },
                     400,
                 )
-        data[Constants.APPROVAL_STATUS] = Constants.APPROVED
-        serializer = self.get_serializer(data=data)
-        serializer.is_valid(raise_exception=True)
-        self.perform_create(serializer)
-        return Response(serializer.data, status=status.HTTP_201_CREATED)
+        try:
+            data[Constants.APPROVAL_STATUS] = Constants.APPROVED
+            serializer = self.get_serializer(data=data)
+            serializer.is_valid(raise_exception=True)
+            self.perform_create(serializer)
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        except ValidationError as e:
+            return Response(e.detail, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            LOGGER.error(e,exc_info=True)
+            return Response(str(e), status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     @http_request_mutation
     def list(self, request, *args, **kwargs):
@@ -1273,7 +1382,7 @@ class DatahubDatasetsViewSet(GenericViewSet):
                     .all()
                 )
         except Exception as error:  # type: ignore
-            logging.error("Error while filtering the datasets. ERROR: %s", error)
+            LOGGER.error("Error while filtering the datasets. ERROR: %s", error)
             return Response(f"Invalid filter fields: {list(request.data.keys())}", status=500)
 
         page = self.paginate_queryset(data)
@@ -1329,7 +1438,7 @@ class DatahubDatasetsViewSet(GenericViewSet):
                 else:
                     category_detail = []
             except Exception as error:  # type: ignore
-                logging.error("Error while filtering the datasets. ERROR: %s", error)
+                LOGGER.error("Error while filtering the datasets. ERROR: %s", error)
                 return Response(f"Invalid filter fields: {list(request.data.keys())}", status=500)
             return Response(
                 {
@@ -1384,7 +1493,7 @@ class DatahubDatasetsViewSet(GenericViewSet):
                 .all()
             )
         except Exception as error:  # type: ignore
-            logging.error("Error while filtering the datasets. ERROR: %s", error)
+            LOGGER.error("Error while filtering the datasets. ERROR: %s", error)
             return Response(
                 f"Invalid filter fields: {list(request.data.keys())}",
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -1490,7 +1599,7 @@ class DatasetV2ViewSet(GenericViewSet):
     """
 
     serializer_class = DatasetV2Serializer
-    queryset = DatasetV2.objects.all()
+    queryset = DatasetV2.objects.prefetch_related('dataset_cat_map',  'dataset_cat_map__sub_category', 'dataset_cat_map__sub_category__category').all()
     pagination_class = CustomPagination
 
     @action(detail=False, methods=["post"])
@@ -1632,9 +1741,9 @@ class DatasetV2ViewSet(GenericViewSet):
             dataset_file = DatasetV2File.objects.get(id=request.data.get("id"))
             file_path = str(dataset_file.file)
             if file_path.endswith(".xlsx") or file_path.endswith(".xls"):
-                df = pd.read_excel(os.path.join(settings.DATASET_FILES_URL, file_path), index_col=None)
+                df = pd.read_excel(os.path.join(settings.DATASET_FILES_URL, file_path), index_col=None, nrows=1)
             else:
-                df = pd.read_csv(os.path.join(settings.DATASET_FILES_URL, file_path), index_col=False)
+                df = pd.read_csv(os.path.join(settings.DATASET_FILES_URL, file_path), index_col=False, nrows=1)
             df.columns = df.columns.astype(str)
             result = df.columns.tolist()
             return Response(result, status=status.HTTP_200_OK)
@@ -1734,16 +1843,22 @@ class DatasetV2ViewSet(GenericViewSet):
         **Endpoint**
         [ref]: /datahub/dataset/v2/
         """
-        serializer = self.get_serializer(
-            data=request.data,
-            context={
-                "standardisation_template": request.data.get("standardisation_template"),
-                "standardisation_config": request.data.get("standardisation_config"),
-            },
-        )
-        serializer.is_valid(raise_exception=True)
-        serializer.save()
-        return Response(serializer.data, status=status.HTTP_201_CREATED)
+        try:
+            serializer = self.get_serializer(
+                data=request.data,
+                context={
+                    "standardisation_template": request.data.get("standardisation_template"),
+                    "standardisation_config": request.data.get("standardisation_config"),
+                },
+            )
+            serializer.is_valid(raise_exception=True)
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        except ValidationError as e:
+            return Response(e.detail, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            LOGGER.error(e,exc_info=True)
+            return Response(str(e), status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     @authenticate_user(model=DatasetV2)
     def update(self, request, pk, *args, **kwargs):
@@ -1755,8 +1870,9 @@ class DatasetV2ViewSet(GenericViewSet):
         """
         # setattr(request.data, "_mutable", True)
         try:
-            data = request.data
+            data = request.data.copy()
             to_delete = ast.literal_eval(data.get("deleted", "[]"))
+            sub_categories_map = data.pop("sub_categories_map")
             self.dataset_files(data, to_delete)
             datasetv2 = self.get_object()
             serializer = self.get_serializer(
@@ -1769,11 +1885,21 @@ class DatasetV2ViewSet(GenericViewSet):
                 },
             )
             serializer.is_valid(raise_exception=True)
+            a = DatasetSubCategoryMap.objects.filter(dataset_id=datasetv2).delete()
             serializer.save()
+            sub_categories_map = json.loads(sub_categories_map[0]) if c else []
+            dataset_sub_cat_instances= [
+                DatasetSubCategoryMap(dataset=datasetv2, sub_category=SubCategory.objects.get(id=sub_cat)
+                                       ) for sub_cat in sub_categories_map]
+
+            DatasetSubCategoryMap.objects.bulk_create(dataset_sub_cat_instances)
+
             return Response(serializer.data, status=status.HTTP_201_CREATED)
-        except Exception as error:
-            LOGGER.error(error, exc_info=True)
-            return Response(str(error), status=status.HTTP_400_BAD_REQUEST)
+        except ValidationError as e:
+            return Response(e.detail, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            LOGGER.error(e,exc_info=True)
+            return Response(str(e), status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     # not being used
     @action(detail=False, methods=["delete"])
@@ -1821,6 +1947,7 @@ class DatasetV2ViewSet(GenericViewSet):
         [ref]: /datahub/dataset/v2/<id>/
         """
         user_map = request.GET.get("user_map")
+        type = request.GET.get("type", None)
         obj = self.get_object()
         serializer = self.get_serializer(obj).data
         dataset_file_obj = DatasetV2File.objects.prefetch_related("dataset_v2_file").filter(dataset_id=obj.id)
@@ -1830,7 +1957,7 @@ class DatasetV2ViewSet(GenericViewSet):
             file_path = {}
             file_path["id"] = file.id
             file_path["content"] = read_contents_from_csv_or_xlsx_file(
-                os.path.join(settings.DATASET_FILES_URL, str(file.standardised_file))
+                os.path.join(settings.DATASET_FILES_URL, str(file.standardised_file)), file.standardised_configuration
             )
             file_path["file"] = path_
             file_path["source"] = file.source
@@ -1838,14 +1965,14 @@ class DatasetV2ViewSet(GenericViewSet):
             file_path["accessibility"] = file.accessibility
             file_path["standardised_file"] = os.path.join(settings.DATASET_FILES_URL, str(file.standardised_file))
             file_path["standardisation_config"] = file.standardised_configuration
-            if not user_map:
-                usage_policy = UsagePolicyDetailSerializer(file.dataset_v2_file.all(), many=True).data
-            else:
-                usage_policy = (
-                    file.dataset_v2_file.filter(user_organization_map=user_map).order_by("-updated_at").first()
-                )
-
-                usage_policy = UsagePolicyDetailSerializer(usage_policy).data if usage_policy else {}
+            type_filter = type if type == "api" else "dataset_file"
+            queryset = file.dataset_v2_file.filter(type=type_filter)
+            if user_map:
+                queryset = queryset.filter(user_organization_map=user_map)
+            usage_policy = UsagePolicyDetailSerializer(
+                queryset.order_by("-updated_at").all(),
+                many=True
+            ).data if queryset.exists() else []
             file_path["usage_policy"] = usage_policy
             data.append(file_path)
 
@@ -1872,7 +1999,8 @@ class DatasetV2ViewSet(GenericViewSet):
                     Constants.USER_MAP,
                     Constants.USER_MAP_USER,
                     Constants.USER_MAP_ORGANIZATION,
-                )
+                ).prefetch_related(
+                    'dataset_cat_map')
                 .filter(**data, **filters)
                 .exclude(is_temp=True)
                 .exclude(**exclude_filters)
@@ -1880,13 +2008,13 @@ class DatasetV2ViewSet(GenericViewSet):
                 .reverse()
                 .all()
             )
-            if categories is not None:
-                data = data.filter(
-                    reduce(
-                        operator.or_,
-                        (Q(category__contains=cat) for cat in categories),
-                    )
-                )
+            # if categories is not None:
+            #     data = data.filter(
+            #         reduce(
+            #             operator.or_,
+            #             (Q(category__contains=cat) for cat in categories),
+            #         )
+            #     )
             if on_boarded_by:
                 data = (
                     data.filter(user_map__user__on_boarded_by=user_id)
@@ -1911,7 +2039,7 @@ class DatasetV2ViewSet(GenericViewSet):
                         else data
                     )
         except Exception as error:  # type: ignore
-            logging.error("Error while filtering the datasets. ERROR: %s", error, exc_info=True)
+            LOGGER.error("Error while filtering the datasets. ERROR: %s", error, exc_info=True)
             return Response(f"Invalid filter fields: {list(request.data.keys())}", status=500)
         page = self.paginate_queryset(data)
         participant_serializer = DatahubDatasetsV2Serializer(page, many=True)
@@ -1963,7 +2091,7 @@ class DatasetV2ViewSet(GenericViewSet):
             else:
                 category_detail = []
         except Exception as error:  # type: ignore
-            logging.error("Error while filtering the datasets. ERROR: %s", error)
+            LOGGER.error("Error while filtering the datasets. ERROR: %s", error)
             return Response(f"Invalid filter fields: {list(request.data.keys())}", status=500)
         return Response({"geography": geography, "category_detail": category_detail}, status=200)
 
@@ -2005,7 +2133,7 @@ class DatasetV2ViewSet(GenericViewSet):
     #         participant_serializer = DatahubDatasetsV2Serializer(page, many=True)
     #         return self.get_paginated_response(participant_serializer.data)
     #     except Exception as error:  # type: ignore
-    #         logging.error("Error while filtering the datasets. ERROR: %s", error)
+    #         LOGGER.error("Error while filtering the datasets. ERROR: %s", error)
     #         return Response(
     #             f"Invalid filter fields: {list(request.data.keys())}",
     #             status=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -2088,9 +2216,9 @@ class DatasetV2ViewSetOps(GenericViewSet):
                     .filter(dataset_id__in=dataset_ids)
                     .filter(Q(file__endswith=".xls") | Q(file__endswith=".xlsx") | Q(file__endswith=".csv"))
                     .filter(
-                        Q(accessibility__in=["public", "registered"]) | 
-                        Q(dataset__user_map_id=user_map) |
-                        Q(dataset_v2_file__approval_status="approved")
+                        Q(accessibility__in=["public", "registered"])
+                        | Q(dataset__user_map_id=user_map)
+                        | Q(dataset_v2_file__approval_status="approved")
                     )
                     .values(
                         "id",
@@ -2172,7 +2300,7 @@ class DatasetV2ViewSetOps(GenericViewSet):
             return Response(result.to_json(orient="records", index=False), status=status.HTTP_200_OK)
 
         except Exception as e:
-            logging.error(str(e), exc_info=True)
+            LOGGER.error(str(e), exc_info=True)
             return Response({"error": str(e)}, status=500)
 
     @action(detail=False, methods=["get"])
@@ -2216,11 +2344,17 @@ class StandardisationTemplateView(GenericViewSet):
     queryset = StandardisationTemplate.objects.all()
 
     def create(self, request, *args, **kwargs):
-        serializer = self.get_serializer(data=request.data, many=True)
-        serializer.is_valid(raise_exception=True)
-        serializer.save()
-        LOGGER.info("Standardisation Template Created Successfully.")
-        return Response(serializer.data, status=status.HTTP_201_CREATED)
+        try:
+            serializer = self.get_serializer(data=request.data, many=True)
+            serializer.is_valid(raise_exception=True)
+            serializer.save()
+            LOGGER.info("Standardisation Template Created Successfully.")
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        except ValidationError as e:
+            return Response(e.detail, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            LOGGER.error(e,exc_info=True)
+            return Response(str(e), status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     @action(detail=False, methods=["put"])
     def update_standardisation_template(self, request, *args, **kwargs):
@@ -2280,11 +2414,17 @@ class DatasetV2View(GenericViewSet):
     pagination_class = CustomPagination
 
     def create(self, request, *args, **kwargs):
-        serializer = self.get_serializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        serializer.save()
-        LOGGER.info("Dataset created Successfully.")
-        return Response(serializer.data, status=status.HTTP_201_CREATED)
+        try:
+            serializer = self.get_serializer(data=request.data)
+            serializer.is_valid(raise_exception=True)
+            serializer.save()
+            LOGGER.info("Dataset created Successfully.")
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        except ValidationError as e:
+            return Response(e.detail, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            LOGGER.error(e,exc_info=True)
+            return Response(str(e), status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     def retrieve(self, request, *args, **kwargs):
         serializer = DatasetV2DetailNewSerializer(instance=self.get_object())
@@ -2295,15 +2435,26 @@ class DatasetV2View(GenericViewSet):
         # setattr(request.data, "_mutable", True)
         try:
             instance = self.get_object()
-            data = request.data
+            data = request.data.copy()
+            sub_categories_map = data.pop("sub_categories_map")
             data["is_temp"] = False
             serializer = self.get_serializer(instance, data=data, partial=True)
             serializer.is_valid(raise_exception=True)
+            DatasetSubCategoryMap.objects.filter(dataset_id=instance).delete()
             serializer.save()
+            # sub_categories_map = json.loads(sub_categories_map[0]) if c else []
+            dataset_sub_cat_instances= [
+                DatasetSubCategoryMap(dataset=instance, sub_category=SubCategory.objects.get(id=sub_cat)
+                                       ) for sub_cat in sub_categories_map]
+
+            DatasetSubCategoryMap.objects.bulk_create(dataset_sub_cat_instances)
+
             return Response(serializer.data, status=status.HTTP_200_OK)
-        except Exception as error:
-            LOGGER.error(error, exc_info=True)
-            return Response(str(error), status=status.HTTP_400_BAD_REQUEST)
+        except ValidationError as e:
+            return Response(e.detail, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            LOGGER.error(e,exc_info=True)
+            return Response(str(e), status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     @authenticate_user(model=DatasetV2)
     def destroy(self, request, *args, **kwargs):
@@ -2319,17 +2470,63 @@ class DatasetV2View(GenericViewSet):
     def requested_datasets(self, request, *args, **kwargs):
         try:
             user_map_id = request.data.get("user_map")
+            policy_type = request.data.get("type", None)
+            if policy_type == "api":
+                dataset_file_id = request.data.get("dataset_file")
+                requested_recieved = (
+                    UsagePolicy.objects.select_related(
+                        "dataset_file",
+                        "dataset_file__dataset",
+                        "user_organization_map__organization",
+                    )
+                    .filter(dataset_file__dataset__user_map_id=user_map_id, dataset_file_id=dataset_file_id)
+                    .values(
+                        "id",
+                        "approval_status",
+                        "accessibility_time",
+                        "updated_at",
+                        "created_at",
+                        dataset_id=F("dataset_file__dataset_id"),
+                        dataset_name=F("dataset_file__dataset__name"),
+                        file_name=F("dataset_file__file"),
+                        organization_name=F("user_organization_map__organization__name"),
+                        organization_email=F("user_organization_map__organization__org_email"),
+                        organization_phone_number=F("user_organization_map__organization__phone_number"),
+                    )
+                    .order_by("-updated_at")
+                )
+                response_data = []
+                for values in requested_recieved:
+                    org = {
+                        "org_email": values["organization_email"],
+                        "name": values["organization_name"],
+                        "phone_number": values["organization_phone_number"],
+                    }
+                    values.pop("organization_email")
+                    values.pop("organization_name")
+                    values.pop("organization_phone_number")
+                    values["file_name"] = values.get("file_name", "").split("/")[-1]
+
+                    values["organization"] = org
+                    response_data.append(values)
+                return Response(
+                    {
+                        "recieved": response_data,
+                    },
+                    200,
+                )
             requested_sent = (
                 UsagePolicy.objects.select_related(
                     "dataset_file",
                     "dataset_file__dataset",
                     "user_organization_map__organization",
                 )
-                .filter(user_organization_map=user_map_id)
+                .filter(user_organization_map=user_map_id, type="dataset_file")
                 .values(
                     "approval_status",
                     "updated_at",
                     "accessibility_time",
+                    "type",
                     dataset_id=F("dataset_file__dataset_id"),
                     dataset_name=F("dataset_file__dataset__name"),
                     file_name=F("dataset_file__file"),
@@ -2345,12 +2542,13 @@ class DatasetV2View(GenericViewSet):
                     "dataset_file__dataset",
                     "user_organization_map__organization",
                 )
-                .filter(dataset_file__dataset__user_map_id=user_map_id)
+                .filter(dataset_file__dataset__user_map_id=user_map_id, type="dataset_file")
                 .values(
                     "id",
                     "approval_status",
                     "accessibility_time",
                     "updated_at",
+                    "type",
                     dataset_id=F("dataset_file__dataset_id"),
                     dataset_name=F("dataset_file__dataset__name"),
                     file_name=F("dataset_file__file"),
@@ -2390,6 +2588,226 @@ class DatasetV2View(GenericViewSet):
     #     serializer = self.get_serializer(page, many=True).exclude(is_temp = True)
     #     return self.get_paginated_response(serializer.data)
 
+    @http_request_mutation
+    @action(detail=True, methods=["post"])
+    def get_dashboard_chart_data(self, request, pk, *args, **kwargs):
+        try:
+            filters = True
+            role_id = request.META.get("role_id")
+            map_id = request.META.get("map_id")
+            dataset_file_obj = DatasetV2File.objects.get(id=pk)
+            dataset_file = str(dataset_file_obj.file)
+            if role_id != str(1):
+                if UsagePolicy.objects.filter(
+                                                user_organization_map=map_id,
+                                                dataset_file_id=pk,
+                                                approval_status="approved"
+                                            ).order_by("-updated_at").first():
+                    filters=True
+                elif DatasetV2File.objects.select_related("dataset").filter(id=pk, dataset__user_map_id=map_id).first():
+                    filters =  True
+                else:
+                    filters = False
+            # Create a dictionary mapping dataset types to dashboard generation functions
+            dataset_type_to_dashboard_function = {
+                "omfp": generate_omfp_dashboard,
+                "fsp": generate_fsp_dashboard,
+                "knfd": generate_knfd_dashboard,
+                "kiamis": "generate_kiamis_dashboard",
+            }
+
+            # Determine the dataset type based on the filename
+            dataset_type = None
+            for key in dataset_type_to_dashboard_function:
+                if key in dataset_file.lower():
+                    dataset_type = key
+                    break
+
+            # If dataset_type is not found, return an error response
+            if dataset_type is None:
+                return Response(
+                    "Requested resource is currently unavailable. Please try again later.",
+                    status=status.HTTP_200_OK,
+                )
+
+            # Generate the base hash key
+            hash_key = generate_hash_key_for_dashboard(
+                dataset_type if role_id == str(1) else pk,
+                request.data, role_id, filters
+            )
+
+            # Check if the data is already cached
+            cache_data = cache.get(hash_key, {})
+            if cache_data:
+                LOGGER.info("Dashboard details found in cache", exc_info=True)
+                return Response(cache_data, status=status.HTTP_200_OK)
+
+            # Get the appropriate dashboard generation function
+            dashboard_generator = dataset_type_to_dashboard_function.get(dataset_type)
+
+            if dashboard_generator and dataset_type != 'kiamis':
+                # Generate the dashboard data using the selected function
+                return dashboard_generator(
+                    dataset_file if role_id != str(1) else self.get_consolidated_file(dataset_type),
+                    request.data, hash_key, filters
+                )
+
+            # serializer = DatahubDatasetFileDashboardFilterSerializer(data=request.data)
+            # serializer.is_valid(raise_exception=True)
+            counties = []
+            sub_counties = []
+            gender = []
+            value_chain = []
+
+            # if serializer.data.get("county"):
+            counties = request.data.get("county")
+
+            # if serializer.data.get("sub_county"):
+            sub_counties = request.data.get("sub_county")
+
+            # if serializer.data.get("gender"):
+            gender = request.data.get("gender")
+
+            # if serializer.data.get("value_chain"):
+            value_chain = request.data.get("value_chain")
+            cols_to_read = ['Gender', 'Constituency', 'Millet', 'County', 'Sub County', 'Crop Production',
+                            'farmer_mobile_number',
+                            'Livestock Production', 'Ducks', 'Other Sheep', 'Total Area Irrigation', 'Family',
+                            'Ward',
+                            'Other Money Lenders', 'Micro-finance institution', 'Self (Salary or Savings)',
+                            "Natural rivers and stream", "Water Pan",
+                            'NPK', 'Superphosphate', 'CAN',
+                            'Urea', 'Other', 'Do you insure your crops?',
+                            'Do you insure your farm buildings and other assets?', 'Other Dual Cattle',
+                            'Cross breed Cattle', 'Cattle boma',
+                            'Small East African Goats', 'Somali Goat', 'Other Goat', 'Chicken -Indigenous',
+                            'Chicken -Broilers', 'Chicken -Layers', 'Highest Level of Formal Education',
+                            'Maize food crop', "Beans", 'Cassava', 'Sorghum', 'Potatoes', 'Cowpeas']
+            if role_id == str(1):
+                dataset_file = self.get_consolidated_file("kiamis")
+            try:
+                if dataset_file.endswith(".xlsx") or dataset_file.endswith(".xls"):
+                    df = pd.read_excel(os.path.join(settings.DATASET_FILES_URL, dataset_file))
+                elif dataset_file.endswith(".csv"):
+                    df = pd.read_csv(os.path.join(settings.DATASET_FILES_URL, dataset_file), usecols=cols_to_read,
+                                     low_memory=False)
+                    # df.columns = df.columns.str.strip()
+                else:
+                    return Response(
+                        "Unsupported file please use .xls or .csv.",
+                        status=status.HTTP_400_BAD_REQUEST,
+                    )
+                df['Ducks'] = pd.to_numeric(df['Ducks'], errors='coerce')
+                df['Other Sheep'] = pd.to_numeric(df['Other Sheep'], errors='coerce')
+                df['Family'] = pd.to_numeric(df['Family'], errors='coerce')
+                df['Other Money Lenders'] = pd.to_numeric(df['Other Money Lenders'], errors='coerce')
+                df['Micro-finance institution'] = pd.to_numeric(df['Micro-finance institution'], errors='coerce')
+                df['Self (Salary or Savings)'] = pd.to_numeric(df['Self (Salary or Savings)'], errors='coerce')
+                df['Natural rivers and stream'] = pd.to_numeric(df['Natural rivers and stream'], errors='coerce')
+                df["Water Pan"] = pd.to_numeric(df["Water Pan"], errors='coerce')
+                df['Total Area Irrigation'] = pd.to_numeric(df['Total Area Irrigation'], errors='coerce')
+                df['NPK'] = pd.to_numeric(df['NPK'], errors='coerce')
+                df['Superphosphate'] = pd.to_numeric(df['Superphosphate'], errors='coerce')
+                df['CAN'] = pd.to_numeric(df['CAN'], errors='coerce')
+                df['Urea'] = pd.to_numeric(df['Urea'], errors='coerce')
+                df['Other'] = pd.to_numeric(df['Other'], errors='coerce')
+                df['Other Dual Cattle'] = pd.to_numeric(df['Other Dual Cattle'], errors='coerce')
+                df['Cross breed Cattle'] = pd.to_numeric(df['Cross breed Cattle'], errors='coerce')
+                df['Cattle boma'] = pd.to_numeric(df['Cattle boma'], errors='coerce')
+                df['Small East African Goats'] = pd.to_numeric(df['Small East African Goats'], errors='coerce')
+                df['Somali Goat'] = pd.to_numeric(df['Somali Goat'], errors='coerce')
+                df['Other Goat'] = pd.to_numeric(df['Other Goat'], errors='coerce')
+                df['Chicken -Indigenous'] = pd.to_numeric(df['Chicken -Indigenous'], errors='coerce')
+                df['Chicken -Broilers'] = pd.to_numeric(df['Chicken -Broilers'], errors='coerce')
+                df['Chicken -Layers'] = pd.to_numeric(df['Chicken -Layers'], errors='coerce')
+                df['Do you insure your crops?'] = pd.to_numeric(df['Do you insure your crops?'], errors='coerce')
+                df['Highest Level of Formal Education'] = pd.to_numeric(df['Highest Level of Formal Education'],
+                                                                        errors='coerce')
+                df['Do you insure your farm buildings and other assets?'] = pd.to_numeric(
+                    df['Do you insure your farm buildings and other assets?'], errors='coerce')
+
+                data = filter_dataframe_for_dashboard_counties(
+                    df=df,
+                    counties=counties if counties else [],
+                    sub_counties=sub_counties if sub_counties else [],
+                    gender=gender if gender else [],
+                    value_chain=value_chain if value_chain else [],
+                    hash_key=hash_key,
+                    filters=filters
+                )
+            except Exception as e:
+                LOGGER.error(e, exc_info=True)
+                return Response(
+                    f"Something went wrong, please try again. {e}",
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            return Response(
+                data,
+                status=status.HTTP_200_OK,
+            )
+
+        except DatasetV2File.DoesNotExist as e:
+            LOGGER.error(e, exc_info=True)
+            return Response(
+                "No dataset file for the provided id.",
+                status=status.HTTP_404_NOT_FOUND,
+            )
+        except Exception as e:
+            LOGGER.error(e, exc_info=True)
+            return Response(
+                f"Something went wrong, please try again. {e}",
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+    
+    def get_consolidated_file(self, name):
+        consolidated_file = f"consolidated_{name}.csv" 
+        dataframes = []
+        thread_list = []
+        combined_df = pd.DataFrame([])
+        try:
+            if os.path.exists(os.path.join(settings.DATASET_FILES_URL, consolidated_file)):
+                LOGGER.info(f"{consolidated_file} file available")
+                return consolidated_file
+            else:
+                dataset_file_objects = (
+                    DatasetV2File.objects
+                    .select_related("dataset")
+                    .filter(dataset__name__icontains=name, file__iendswith=".csv")
+                    .values_list('file', flat=True).distinct()  # Flatten the list of values
+                )
+                def read_csv_file(file_path):
+                    chunk_size = 50000
+                    chunk_df = pd.DataFrame([])
+                    chunks = 0
+                    try:
+                        LOGGER.info(f"{file_path} Consolidation started")
+                        for chunk in pd.read_csv(file_path, chunksize=chunk_size):
+                            # Append the processed chunk to the combined DataFrame
+                            chunk_df = pd.concat([chunk_df, chunk], ignore_index=True)
+                            chunks = chunks+1
+                        LOGGER.info(f"{file_path} Consolidated {chunks} chunks")
+                        dataframes.append(chunk_df)
+                    except Exception as e:
+                        LOGGER.error(f"Error reading CSV file {file_path}", exc_info=True)
+                for csv_file in dataset_file_objects:
+                    file_path = os.path.join(settings.DATASET_FILES_URL, csv_file)
+                    thread = threading.Thread(target=read_csv_file, args=(file_path,))
+                    thread_list.append(thread)
+                    thread.start()
+
+                # Wait for all threads to complete
+                for thread in thread_list:
+                    thread.join()
+            combined_df = pd.concat(dataframes, ignore_index=True)
+            combined_df.to_csv(os.path.join(settings.DATASET_FILES_URL, consolidated_file), index=False)
+            LOGGER.info(f"{consolidated_file} file created")
+            return consolidated_file
+        except Exception as e:
+            LOGGER.error(f"Error occoured while creating {consolidated_file}", exc_info=True)
+            return Response(
+                    "Requested resource is currently unavailable. Please try again later.",
+                    status=500,
+                )
 
 class DatasetFileV2View(GenericViewSet):
     queryset = DatasetV2File.objects.all()
@@ -2403,18 +2821,23 @@ class DatasetFileV2View(GenericViewSet):
                 {"message": f"File name should not be more than {NumericalConstants.FILE_NAME_LENGTH} characters."},
                 status=status.HTTP_400_BAD_REQUEST,
             )
-
-        serializer = self.get_serializer(data=request.data, partial=True)
-        serializer.is_valid(raise_exception=True)
-        serializer.save()
-        data = serializer.data
-        instance = DatasetV2File.objects.get(id=data.get("id"))
-        instance.standardised_file = instance.file  # type: ignore
-        instance.file_size = os.path.getsize(os.path.join(settings.DATASET_FILES_URL, str(instance.file)))
-        instance.save()
-        LOGGER.info("Dataset created Successfully.")
-        data = DatasetFileV2NewSerializer(instance)
-        return Response(data.data, status=status.HTTP_201_CREATED)
+        try:
+            serializer = self.get_serializer(data=request.data, partial=True)
+            serializer.is_valid(raise_exception=True)
+            serializer.save()
+            data = serializer.data
+            instance = DatasetV2File.objects.get(id=data.get("id"))
+            instance.standardised_file = instance.file  # type: ignore
+            instance.file_size = os.path.getsize(os.path.join(settings.DATASET_FILES_URL, str(instance.file)))
+            instance.save()
+            LOGGER.info("Dataset created Successfully.")
+            data = DatasetFileV2NewSerializer(instance)
+            return Response(data.data, status=status.HTTP_201_CREATED)
+        except ValidationError as e:
+            return Response(e.detail, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            LOGGER.error(e,exc_info=True)
+            return Response(str(e), status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     @authenticate_user(model=DatasetV2File)
     def update(self, request, *args, **kwargs):
@@ -2424,58 +2847,61 @@ class DatasetFileV2View(GenericViewSet):
             instance = self.get_object()
             # Generate the file and write the path to standardised file.
             standardised_configuration = request.data.get("standardised_configuration")
-            mask_columns = request.data.get(
-                "mask_columns",
-            )
+            # mask_columns = request.data.get(
+            #     "mask_columns",
+            # )
             config = request.data.get("config")
             file_path = str(instance.file)
+            if standardised_configuration:
+                if file_path.endswith(".xlsx") or file_path.endswith(".xls"):
+                    df = pd.read_excel(os.path.join(settings.DATASET_FILES_URL, file_path), index_col=None)
+                else:
+                    df = pd.read_csv(os.path.join(settings.DATASET_FILES_URL, file_path), index_col=False)
 
-            if file_path.endswith(".xlsx") or file_path.endswith(".xls"):
-                df = pd.read_excel(os.path.join(settings.DATASET_FILES_URL, file_path), index_col=None)
+                df.rename(columns=standardised_configuration, inplace=True)
+                df.columns = df.columns.astype(str)
+                df = df.drop(df.filter(regex="Unnamed").columns, axis=1)
+
+                if not os.path.exists(os.path.join(settings.DATASET_FILES_URL, instance.dataset.name, instance.source)):
+                    os.makedirs(os.path.join(settings.DATASET_FILES_URL, instance.dataset.name, instance.source))
+
+                file_name = os.path.basename(file_path).replace(".", "_standerdise.")
+                if file_path.endswith(".csv"):
+                    df.to_csv(
+                        os.path.join(
+                            settings.DATASET_FILES_URL,
+                            instance.dataset.name,
+                            instance.source,
+                            file_name,
+                        )
+                    )  # type: ignore
+                else:
+                    df.to_excel(
+                        os.path.join(
+                            settings.DATASET_FILES_URL,
+                            instance.dataset.name,
+                            instance.source,
+                            file_name,
+                        )
+                    )  # type: ignore
+                # data = request.data
+                standardised_file_path = os.path.join(instance.dataset.name, instance.source, file_name)
+                data["file_size"] = os.path.getsize(os.path.join(settings.DATASET_FILES_URL, str(standardised_file_path)))
             else:
-                df = pd.read_csv(os.path.join(settings.DATASET_FILES_URL, file_path), index_col=False)
-
-            df[mask_columns] = "######"
-
-            df.rename(columns=standardised_configuration, inplace=True)
-            df.columns = df.columns.astype(str)
-            df = df.drop(df.filter(regex="Unnamed").columns, axis=1)
-
-            if not os.path.exists(os.path.join(settings.DATASET_FILES_URL, instance.dataset.name, instance.source)):
-                os.makedirs(os.path.join(settings.DATASET_FILES_URL, instance.dataset.name, instance.source))
-
-            file_name = os.path.basename(file_path).replace(".", "_standerdise.")
-            if file_path.endswith(".csv"):
-                df.to_csv(
-                    os.path.join(
-                        settings.DATASET_FILES_URL,
-                        instance.dataset.name,
-                        instance.source,
-                        file_name,
-                    )
-                )  # type: ignore
-            else:
-                df.to_excel(
-                    os.path.join(
-                        settings.DATASET_FILES_URL,
-                        instance.dataset.name,
-                        instance.source,
-                        file_name,
-                    )
-                )  # type: ignore
-
-            # data = request.data
-            standardised_file_path = os.path.join(instance.dataset.name, instance.source, file_name)
+                file_name = os.path.basename(file_path)
+                standardised_file_path = os.path.join(instance.dataset.name, instance.source, file_name)
+                # data["file_size"] = os.path.getsize(os.path.join(settings.DATASET_FILES_URL, str(standardised_file_path)))
             data["standardised_configuration"] = config
-            data["file_size"] = os.path.getsize(os.path.join(settings.DATASET_FILES_URL, str(standardised_file_path)))
             serializer = self.get_serializer(instance, data=data, partial=True)
             serializer.is_valid(raise_exception=True)
             serializer.save()
             DatasetV2File.objects.filter(id=serializer.data.get("id")).update(standardised_file=standardised_file_path)
             return Response(serializer.data, status=status.HTTP_200_OK)
-        except Exception as error:
-            LOGGER.error(error, exc_info=True)
-            return Response(str(error), status=status.HTTP_400_BAD_REQUEST)
+        except ValidationError as e:
+            return Response(e.detail, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            LOGGER.error(e,exc_info=True)
+            return Response(str(e), status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     def list(self, request, *args, **kwargs):
         data = DatasetV2File.objects.filter(dataset=request.GET.get("dataset")).values("id", "file")
@@ -2490,6 +2916,7 @@ class DatasetFileV2View(GenericViewSet):
         except Exception as error:
             LOGGER.error(error, exc_info=True)
             return Response(str(error), status=status.HTTP_400_BAD_REQUEST)
+
     # @action(detail=False, methods=["put"])
     @authenticate_user(model=DatasetV2File)
     def patch(self, request, *args, **kwargs):
@@ -2511,7 +2938,31 @@ class UsagePolicyListCreateView(generics.ListCreateAPIView):
 
 class UsagePolicyRetrieveUpdateDestroyView(generics.RetrieveUpdateDestroyAPIView):
     queryset = UsagePolicy.objects.all()
-    serializer_class = UsagePolicySerializer
+    serializer_class = UsageUpdatePolicySerializer
+    api_builder_serializer_class = APIBuilderSerializer
+
+    @authenticate_user(model=UsagePolicy)
+    def patch(self, request, *args, **kwargs):
+        instance = self.get_object()
+        approval_status = request.data.get('approval_status')
+        policy_type = request.data.get('type', None)
+        instance.api_key = None
+        try:
+            if policy_type == 'api':
+                if approval_status == 'approved':
+                    instance.api_key = generate_api_key()
+            serializer = self.api_builder_serializer_class(instance, data=request.data, partial=True)
+            serializer.is_valid(raise_exception=True)
+            serializer.save()
+            return Response(serializer.data, status=200)
+
+        except ValidationError as e:
+            LOGGER.error(e, exc_info=True)
+            return Response(e.detail, status=status.HTTP_400_BAD_REQUEST)
+
+        except Exception as error:
+            LOGGER.error(error, exc_info=True)
+            return Response(str(error), status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 class DatahubNewDashboard(GenericViewSet):
@@ -2563,10 +3014,10 @@ class DatahubNewDashboard(GenericViewSet):
                     )
                     .count()
                 )
-            logging.info("Participants Metrics completed")
+            LOGGER.info("Participants Metrics completed")
             return result
         except Exception as error:  # type: ignore
-            logging.error(
+            LOGGER.error(
                 "Error while filtering the participants. ERROR: %s",
                 error,
                 exc_info=True,
@@ -2595,10 +3046,10 @@ class DatahubNewDashboard(GenericViewSet):
                 )
             else:
                 query = query.filter(user_map__user__on_boarded_by=None).exclude(user_map__user__role_id=6)
-            logging.info("Datasets Metrics completed")
+            LOGGER.info("Datasets Metrics completed")
             return query
         except Exception as error:  # type: ignore
-            logging.error("Error while filtering the datasets. ERROR: %s", error, exc_info=True)
+            LOGGER.error("Error while filtering the datasets. ERROR: %s", error, exc_info=True)
             raise Exception(str(error))
 
     def connector_metrics(self, data, dataset_query, request):
@@ -2718,3 +3169,602 @@ class DatahubNewDashboard(GenericViewSet):
         except Exception as error:
             LOGGER.error(error, exc_info=True)
             return Response({}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+# @http_request_mutation
+class ResourceManagementViewSet(GenericViewSet):
+    """
+    Resource Management viewset.
+    """
+
+    queryset = Resource.objects.prefetch_related().all()
+    serializer_class = ResourceSerializer
+    pagination_class = CustomPagination
+   
+    @http_request_mutation
+    @transaction.atomic
+    def create(self, request, *args, **kwargs):
+        try:
+            user_map = request.META.get("map_id")
+            # request.data._mutable = True
+            data = request.data.copy()
+            files = request.FILES.getlist('files')  # 'files' is the key used in FormData
+            data["files"] = files
+            data["user_map"] = user_map
+
+            serializer = self.get_serializer(data=data)
+            serializer.is_valid(raise_exception=True)
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        except ValidationError as e:
+            LOGGER.error(e, exc_info=True)
+            return Response(e, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            LOGGER.error(e, exc_info=True)
+            return Response(str(e), status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    @transaction.atomic
+    def update(self, request, *args, **kwargs):
+        try:
+            instance = self.get_object()
+            data = request.data.copy()
+            sub_categories_map = data.pop("sub_categories_map")
+            serializer = self.get_serializer(instance, data=data, partial=True)
+            serializer.is_valid(raise_exception=True)
+            serializer.save()
+            resource_id=serializer.data.get("id")
+            ResourceSubCategoryMap.objects.filter(resource=instance).delete()
+            
+            sub_categories_map = json.loads(sub_categories_map[0]) if sub_categories_map else []
+            resource_sub_cat_instances= [
+                ResourceSubCategoryMap(resource=instance, sub_category=SubCategory.objects.get(id=sub_cat)
+                                       ) for sub_cat in sub_categories_map]
+            ResourceSubCategoryMap.objects.bulk_create(resource_sub_cat_instances)
+
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        except ValidationError as e:
+            return Response(e.detail, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            LOGGER.error(e, exc_info=True)
+            return Response(str(e), status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    @http_request_mutation
+    def list(self, request, *args, **kwargs):
+        try:
+            user_map = request.META.get("map_id")
+            if request.GET.get("others", None):
+                queryset = Resource.objects.exclude(user_map=user_map).order_by("-updated_at")
+            else:
+                queryset = Resource.objects.filter(user_map=user_map).order_by("-updated_at")
+
+            page = self.paginate_queryset(queryset)
+            serializer = ResourceListSerializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
+        except ValidationError as e:
+            return Response(e.detail, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            LOGGER.error(e)
+            return Response(str(e), status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    def destroy(self, request, *args, **kwargs):
+        resource = self.get_object()
+        resource.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+    
+    @http_request_mutation
+    def retrieve(self, request, *args, **kwargs):
+        user_map = request.META.get("map_id")
+        resource = self.get_object()
+        serializer = self.get_serializer(resource)
+        data = serializer.data.copy()
+        try:
+            if str(resource.user_map_id) == str(user_map):
+                resource_usage_policy = (
+                ResourceUsagePolicy.objects.select_related(
+                    "resource",
+                )
+                .filter(resource=resource)
+                .values(
+                    "id",
+                    "approval_status",
+                    "accessibility_time",
+                    "updated_at",
+                    "type",
+                    "api_key",
+                    "created_at",
+                    "resource_id",
+                    resource_title=F("resource__title"),
+                    organization_name=F("user_organization_map__organization__name"),
+                    organization_email=F("user_organization_map__organization__org_email"),
+                    organization_phone_number=F("user_organization_map__organization__phone_number"),
+                )
+                .order_by("-updated_at")
+            )
+                # data["retrival"] = MessagesChunksRetriveSerializer(Messages.objects.filter(resource_id=resource.id).order_by("-created_at").all(), many=True).data
+            else:
+                resource_usage_policy = (
+                ResourceUsagePolicy.objects.select_related(
+                    "resource"
+                )
+                .filter(user_organization_map_id=user_map, resource=resource)
+                .values(
+                    "id",
+                    "approval_status",
+                    "updated_at",
+                    "accessibility_time",
+                    "type",
+                    "resource_id",
+                    "api_key",
+                    organization_name=F("user_organization_map__organization__name"),
+                    organization_email=F("user_organization_map__organization__org_email"),
+                    organization_phone_number=F("user_organization_map__organization__phone_number"),
+                )
+                .order_by("-updated_at")
+            )
+            data["resource_usage_policy"] = resource_usage_policy
+            print(data.get(resource_usage_policy))
+            return Response(data, status=status.HTTP_200_OK)
+        except Exception as error:
+            LOGGER.error("Issue while Retrive Resource details", exc_info=True)
+            return Response(
+                f"Issue while Retrive Retrive Resource details {error}",
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+        
+    @http_request_mutation
+    @action(detail=False, methods=["post"])
+    def resources_filter(self, request, *args, **kwargs):
+        try:
+            data =request.data
+            user_map = request.META.get("map_id")
+            categories = data.pop(Constants.CATEGORY, None)
+            others = data.pop(Constants.OTHERS, "")
+            filters = {key: value for key, value in data.items() if value}
+            query_set = self.get_queryset().filter(**filters).order_by("-updated_at")
+            if categories:
+                query_set = query_set.filter(
+                    reduce(
+                        operator.or_,
+                        (Q(category__contains=cat) for cat in categories),
+                    )
+                )
+            query_set = query_set.exclude(user_map=user_map) if others else query_set.filter(
+                user_map=user_map)
+            
+            page = self.paginate_queryset(query_set)
+            serializer = self.get_serializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
+        except ValidationError as e:
+            return Response(e.detail, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            LOGGER.error(e)
+            return Response(str(e), status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    @action(detail=False, methods=["post"])
+    def requested_resources(self, request, *args, **kwargs):
+        try:
+            user_map_id = request.data.get("user_map")
+            # policy_type = request.data.get("type", None)
+            # resource_id = request.data.get("resource")
+            requested_recieved = (
+                ResourceUsagePolicy.objects.select_related(
+                    "resource",
+                )
+                .filter(resource__user_map_id=user_map_id)
+                .values(
+                    "id",
+                    "approval_status",
+                    "accessibility_time",
+                    "updated_at",
+                    "type",
+                    "created_at",
+                    "resource_id",
+                    resource_title=F("resource__title"),
+                    organization_name=F("user_organization_map__organization__name"),
+                    organization_email=F("user_organization_map__organization__org_email"),
+                    organization_phone_number=F("user_organization_map__organization__phone_number"),
+                )
+                .order_by("-updated_at")
+            )
+            
+            requested_sent = (
+                ResourceUsagePolicy.objects.select_related(
+                    "resource"
+                )
+                .filter(user_organization_map_id=user_map_id)
+                .values(
+                    "id",
+                    "approval_status",
+                    "updated_at",
+                    "accessibility_time",
+                    "type",
+                    "resource_id",
+                    resource_title=F("resource__title"),
+                    organization_name=F("resource__user_map__organization__name"),
+                    organization_email=F("resource__user_map__organization__org_email"),
+                )
+                .order_by("-updated_at")
+            )
+
+            return Response(
+                {
+                    "sent":requested_sent,
+                    "recieved": requested_recieved,
+                },
+                200,
+            )
+        except Exception as error:
+            LOGGER.error("Issue while Retrive Resource requeted data", exc_info=True)
+            return Response(
+                f"Issue while Retrive Resource requeted data {error}",
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+
+class ResourceFileManagementViewSet(GenericViewSet):
+    """
+    Resource File Management
+    """
+
+    queryset = ResourceFile.objects.all()
+    serializer_class = ResourceFileSerializer
+
+    @http_request_mutation
+    @transaction.atomic
+    def create(self, request, *args, **kwargs):
+        try:
+            data = request.data.copy()
+            resource = data.get("resource")
+            if data.get("type") == "youtube":
+                youtube_urls_response = get_youtube_url(data.get("url"))
+                if youtube_urls_response.status_code == 400:
+                    return youtube_urls_response
+                youtube_urls = youtube_urls_response.data
+                playlist_urls = [{"resource": resource, "type":"youtube", **row} for row in youtube_urls]
+                for row in playlist_urls:
+                    serializer = self.get_serializer(data=row)
+                    serializer.is_valid(raise_exception=True)
+                    serializer.save()
+                    LOGGER.info(f"Embeding creation started for youtube url: {row.get('url')}")
+                    VectorDBBuilder.create_vector_db.delay(serializer.data)
+                return Response(serializer.data, status=status.HTTP_201_CREATED)
+            else:
+                serializer = self.get_serializer(data=request.data, partial=True)
+                serializer.is_valid(raise_exception=True)
+                serializer.save()
+                VectorDBBuilder.create_vector_db.delay(serializer.data)
+                return Response(serializer.data, status=status.HTTP_201_CREATED)
+        except ValidationError as e:
+            return Response(e.detail, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            LOGGER.error(e,exc_info=True)
+            return Response(str(e), status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    
+    @transaction.atomic
+    def destroy(self, request, *args, **kwargs):
+        instance = self.get_object()
+        resourcefile_id = instance.id
+        collections_to_delete = LangchainPgCollection.objects.filter(name=resourcefile_id)
+        collections_to_delete.delete()
+        instance.delete()
+
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+    @action(detail=False, methods=["post"])
+    def resource_live_api_export(self, request):
+        """This is an API to fetch the data from an External API with an auth token
+        and store it in JSON format."""
+        try:
+            url = request.data.get("url")
+            auth_type = request.data.get("auth_type")
+            title = request.data.get("title")
+            source = request.data.get("source")
+            file_name = request.data.get("file_name")
+            resource = request.data.get("resource")
+            if auth_type == 'NO_AUTH':
+                response = requests.get(url)
+            elif auth_type == 'API_KEY':
+                headers = {request.data.get(
+                    "api_key_name"): request.data.get("api_key_value")}
+                response = requests.get(url, headers=headers)
+            elif auth_type == 'BEARER':
+                headers = {"Authorization": "Bearer " +
+                                            request.data.get("token")}
+                response = requests.get(url, headers=headers)
+
+            # response = requests.get(url)
+            if response.status_code in [200, 201]:
+                try:
+                    data = response.json()
+                except ValueError:
+                    data = response.text
+                file_path = settings.RESOURCES_URL +f"file {str(uuid.uuid4())}.json"
+                format = "w" if os.path.exists(file_path) else "x"
+                os.makedirs(os.path.dirname(file_path), exist_ok=True)
+                with open(file_path, format) as outfile:
+                    if type(data) == list:
+                        json.dump(data, outfile)
+                    else:
+                        outfile.write(json.dumps(data))  
+                if resource:
+                    with open(file_path, "rb") as outfile:  # Open the file in binary read mode
+                        # Wrap the file content using Django's ContentFile
+                        django_file = ContentFile(outfile.read(), name=f"{file_name}.json")  # You can give it any name you prefer
+
+                        # Prepare data for serializer
+                        serializer_data = {"resource": resource, "type": "api", "file": django_file}
+
+                        # Initialize and validate serializer
+                        serializer = ResourceFileSerializer(data=serializer_data)
+                        serializer.is_valid(raise_exception=True)
+                        serializer.save()
+                        VectorDBBuilder.create_vector_db.delay(serializer.data)
+                        return JsonResponse(serializer.data, status=status.HTTP_200_OK)
+                return Response(file_path)
+            LOGGER.error("Failed to fetch data from api")
+            return Response({"message": f"API Response: {response.json()}"}, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            LOGGER.error(
+                f"Failed to fetch data from api ERROR: {e} and input fields: {request.data}")
+            return Response({"message": f"API Response: {e}"}, status=status.HTTP_400_BAD_REQUEST)
+
+    @action(detail=False, methods=["get"])
+    def fetch_videos(self, request):
+        url = request.GET.get("url")
+        return get_youtube_url(url)
+   
+    def retrieve(self, request, pk):
+        """GET method: retrieve an object or instance of the Product model"""
+        team_member = self.get_object()
+        serializer = self.get_serializer(team_member)
+        # serializer.is_valid(raise_exception=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+#
+class CategoryViewSet(viewsets.ModelViewSet):
+    queryset = Category.objects.prefetch_related("subcategory_category").all()
+    serializer_class = CategorySerializer
+
+    @action(detail=False, methods=["get"])
+    def categories_and_sub_categories(self, request):
+        categories_with_subcategories = {}
+        # Retrieve all categories and their related subcategories
+        categories = Category.objects.all()
+
+        for category in categories:
+            # Retrieve the names of all subcategories related to this category
+            subcategory_names = [sub_category.name for sub_category in SubCategory.objects.filter(category=category).all()]
+            # Assign the list of subcategory names to the category name in the dictionary
+            categories_with_subcategories[category.name] = subcategory_names
+
+        return Response(categories_with_subcategories, 200)
+
+class SubCategoryViewSet(viewsets.ModelViewSet):
+    queryset = SubCategory.objects.all()
+    serializer_class = SubCategorySerializer
+    permission_classes=[]
+
+    @action(detail=False, methods=["post"])
+    def dump_categories(self, request):
+        data=request.data
+        for category_name, sub_categories in data.items():
+            category, created = Category.objects.get_or_create(name=category_name)
+            print(category)
+            for sub_category_name in sub_categories:
+                SubCategory.objects.get_or_create(category=category, name=sub_category_name)
+        return Response("Data dumped")
+    
+    @action(detail=False, methods=["get"])
+    @transaction.atomic
+    def dump_resource_categories_map(self, request):
+    # Parse the category JSON field
+        resources = Resource.objects.all()
+        for resource in resources:
+            categories = resource.category
+            for category_name, sub_category_names in categories.items():
+                category = Category.objects.filter(name=category_name).first()
+                for sub_category_name in sub_category_names:
+                    # Find the corresponding SubCategory instance
+                    try:
+                        sub_category = SubCategory.objects.filter(name=sub_category_name, category=category).first()
+                        print(sub_category)
+                        print(resource)
+                        if sub_category:
+                            ResourceSubCategoryMap.objects.get_or_create(
+                                sub_category=sub_category,
+                                resource=resource
+                            )
+                    except SubCategory.DoesNotExist:
+                        print(f"SubCategory '{sub_category_name}' does not exist.")
+        return Response("Data dumped")
+
+    @action(detail=False, methods=["get"])
+    @transaction.atomic
+    def dump_dataset_map(self, request):
+    # Parse the category JSON field
+        resources = DatasetV2.objects.all()
+        for resource in resources:
+            categories = resource.category
+            for category_name, sub_category_names in categories.items():
+                category = Category.objects.filter(name=category_name).first()
+                for sub_category_name in sub_category_names:
+                    # Find the corresponding SubCategory instance
+                    try:
+                        sub_category = SubCategory.objects.filter(name=sub_category_name, category=category).first()
+                        if sub_category:
+                            DatasetSubCategoryMap.objects.get_or_create(
+                                sub_category=sub_category,
+                                dataset=resource
+                            )
+                    except SubCategory.DoesNotExist:
+                        print(f"SubCategory '{sub_category_name}' does not exist.")
+        return Response("Data dumped")
+
+class EmbeddingsViewSet(viewsets.ModelViewSet):
+    queryset = LangchainPgEmbedding.objects.all()
+    serializer_class = LangChainEmbeddingsSerializer
+    lookup_field = 'uuid'  # Specify the UUID field as the lookup field
+
+    @action(detail=False, methods=['get'])
+    def embeddings_and_chunks(self, request):
+        embeddings = []
+        collection_id = request.GET.get("resource_file")
+        collection = LangchainPgCollection.objects.filter(name=str(collection_id)).first()
+        if collection:
+            embeddings = LangchainPgEmbedding.objects.filter(collection_id=collection.uuid).values("document")
+        return Response(embeddings)
+
+
+    @action(detail=False, methods=['post'])
+    def get_embeddings(self, request):
+        # Use the 'uuid' field to look up the instance
+        # instance = self.get_object()
+        uuid=request.data.get("uuid")
+        data = LangchainPgEmbedding.objects.filter(uuid=uuid).values("embedding", "document")
+        # print(data)
+        # import pdb; pdb.set_trace()
+        # serializer = self.get_serializer(data)
+        return Response(data)
+    
+    @http_request_mutation
+    @action(detail=False, methods=['post'])
+    def chat_api(self, request):
+        map_id = request.META.get("map_id")
+        user_id = request.META.get("user_id")
+        data=request.data
+        query = request.data.get("query")
+        resource_id = request.data.get("resource")
+        try:
+            user_name = User.objects.get(id=user_id).first_name
+            history = Messages.objects.filter(user_map=map_id).order_by("-created_at")
+            history = history.filter(resource_id=resource_id).first() if resource_id else history.first()
+      
+            # print(chat_history)
+            # chat_history = history.condensed_question if history else ""
+            summary, chunks, condensed_question, prompt_usage = VectorDBBuilder.get_input_embeddings(query, user_name, resource_id, history)
+            data = {"user_map": UserOrganizationMap.objects.get(id=map_id).id, "resource": resource_id, "query": query, 
+                    "query_response": summary, "condensed_question":condensed_question, "prompt_usage": prompt_usage}
+            messages_serializer = MessagesSerializer(data=data)
+            messages_serializer.is_valid(raise_exception=True)
+            message_instance = messages_serializer.save()  # This returns the Messages model instance
+            data =  messages_serializer.data
+            if chunks:
+                message_instance.retrieved_chunks.set(chunks.values_list("uuid", flat=True))
+            return Response(data)
+        except ValidationError as e:
+            return Response(e.detail, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            LOGGER.error(e,exc_info=True)
+            return Response(f"Error During the execution: {str(e)}", status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    
+    @http_request_mutation
+    @action(detail=False, methods=['post'])
+    def chat_histroy(self, request):
+        try:
+            map_id = request.META.get("map_id")
+            resource_id = request.data.get("resource")
+            history = Messages.objects.filter(user_map=map_id, bot_type="vistaar").order_by("created_at")
+            if resource_id:
+                history = history.filter(resource_id=resource_id).all()
+            else:
+                history = history.filter(resource_id__isnull=True).all()
+            total = len(history)
+            slice = 0 if total <= 10 else total-10
+            history = history[slice:total]
+            messages_serializer = MessagesRetriveSerializer(history, many=True)
+            return Response(messages_serializer.data)
+        except ValidationError as e:
+            return Response(e.detail, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            LOGGER.error(e,exc_info=True)
+            return Response(str(e), status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    
+    @action(detail=False, methods=['get'])
+    def dump_embeddings(self, request):
+        # queryset = ResourceFile.objects.all()
+        from django.db import models
+        from django.db.models.functions import Cast
+
+        queryset = ResourceFile.objects.exclude(
+            id__in=Subquery(
+                LangchainPgCollection.objects.annotate(
+                    uuid_name=Cast('name', models.UUIDField())
+                ).values('uuid_name')
+            )
+        ).all()
+        serializer = ResourceFileSerializer(queryset, many=True)
+        data=serializer.data
+        total_files = len(data)
+        count=0
+        for row in data:
+            count +=1
+            VectorDBBuilder.create_vector_db(row)
+            print(f"resource {row} is completed")
+            print(f"{count} completed out of {total_files}")
+        return Response("embeddings created for all the files")
+    
+class ResourceUsagePolicyListCreateView(generics.ListCreateAPIView):
+    queryset = ResourceUsagePolicy.objects.all()
+    serializer_class = ResourceUsagePolicySerializer
+
+class ResourceUsagePolicyRetrieveUpdateDestroyView(generics.RetrieveUpdateDestroyAPIView):
+    queryset = ResourceUsagePolicy.objects.all()
+    serializer_class = ResourceUsagePolicySerializer
+    api_builder_serializer_class = ResourceAPIBuilderSerializer
+
+    @authenticate_user(model=ResourceUsagePolicy)
+    def patch(self, request, *args, **kwargs):
+        # import pdb;pdb.set_trace()
+        instance = self.get_object()
+        approval_status = request.data.get('approval_status')
+        policy_type = request.data.get('type', None)
+        instance.api_key = None
+        try:
+            if approval_status == 'approved':
+                instance.api_key = generate_api_key()
+            serializer = self.api_builder_serializer_class(instance, data=request.data, partial=True)
+            serializer.is_valid(raise_exception=True)
+            serializer.save()
+            return Response(serializer.data, status=200)
+
+        except ValidationError as e:
+            LOGGER.error(e, exc_info=True)
+            return Response(e.detail, status=status.HTTP_400_BAD_REQUEST)
+
+        except Exception as error:
+            LOGGER.error(error, exc_info=True)
+            return Response(str(error), status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+class MessagesViewSet(generics.RetrieveUpdateDestroyAPIView):
+    queryset = Messages.objects.all()
+    serializer_class = MessagesSerializer
+
+    def delete(self, request, *args, **kwargs):
+        return Response("You don't have access to delete the chat history", status=status.HTTP_400_BAD_REQUEST)
+
+    def patch(self, request, *args, **kwargs):
+        try:
+            instance = self.get_object()
+            serializer = MessagesRetriveSerializer(instance, data=request.data, partial=True)
+            serializer.is_valid(raise_exception=True)
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        except Exception as error:
+            LOGGER.error(error, exc_info=True)
+            return Response(str(error), status=status.HTTP_400_BAD_REQUEST)
+
+class MessagesCreateViewSet(generics.ListCreateAPIView):
+    queryset = Messages.objects.all()
+    serializer_class = MessagesSerializer
+    pagination_class = CustomPagination
+
+    @http_request_mutation
+    def list(self, request, *args, **kwargs):
+        resource_id = request.GET.get("resource")
+        user_map = request.META.get("map_id")
+        if resource_id:
+            queryset = Messages.objects.filter(resource_id=resource_id).order_by("-created_at").all()
+        else:
+            queryset = Messages.objects.filter(user_map=user_map).order_by("-created_at").all()
+        page = self.paginate_queryset(queryset)
+        serializer = MessagesChunksRetriveSerializer(page, many=True)
+        return self.get_paginated_response(serializer.data)
