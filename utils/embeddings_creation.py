@@ -405,7 +405,7 @@ class Retrival:
         response = openai.Completion.create(
             engine="gpt-3.5-turbo-instruct",  # Use an appropriate engine
             prompt=prompt,
-            # temperature=0.1,
+            temperature=0.1,
             max_tokens=tokens  # Adjust as necessary
         )
         return response.choices[0].text.strip(), response.get("usage")

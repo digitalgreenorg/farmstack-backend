@@ -194,13 +194,13 @@ chat history:  \n{chat_history}\n
 
 follow up input: \n{input}\n
 
-Remember, Generate the Answer for the 'follow up input:' only from the information in the below context text:
+Strictly Remember, Generate the Answer for the 'follow up input:' only from the information in the below context text:
 
 \n{context}\n
 
-Assist the user {name_1}, with genertated answer and If the provided context contains a YouTube URL, include that unique URL in your response. Do not include YouTube URLs that are not present in the context.
+Assist the user {name_1}, with genertated answer and If the provided context contains a YouTube URL, include that unique URL in your response. Do not include YouTube URLs that are not present in the above context.
 
-If the answer isn't in your context or context is empty: 
+If you are not able generate the answer from the above context or context is empty: 
 Avoid the "sorry" route. Instead, cleverly mention the lapse in your training or kindly suggest a rephrasing of their question. 
 For example:
 - "Seems like that particular topic wasn't in my last update.🤔"
@@ -224,18 +224,23 @@ For example:
         Current conversation:
         follow up input: \n{input}\n
         
-        If the 'follow up input' is greetings than greet the user and tell about vistaar. 
+        Remember, Generate the Answer for the 'follow up input:' only from the information in the below context text:
+        Context: ''
 
-        else Remeber, the 'follow up input' isn't in your context or context is empty: 
-        Avoid the "sorry" route. Instead, cleverly mention the lapse in your training or kindly suggest a rephrasing of their question. 
-        For example:
-        - "Seems like that particular topic wasn't in my last update.🤔"
-        - "Could you reframe that for me?"
-        - "Ever thought of stumping an AI? You just did! Try another angle?"
+        Remember, you don't have content to generate the answer. You should not generate the answer out side of context
+        
+        If the answer isn't in your context or context is empty: 
+            Avoid the "sorry" route. Instead, cleverly mention the lapse in your training or kindly suggest a rephrasing of their question. 
+            For example:
+            - "Seems like that particular topic wasn't in my last update.🤔"
+            - "Could you reframe that for me?"
+            - "Ever thought of stumping an AI? You just did! Try another angle?"
+        If Current conversation is greetings or wishes:
+            - Respond with greetings and tell about vistaar
     """
 
     CONDESED_QUESTION = """
-    Given the following conversation and a follow up question, rephrase the follow up question to be a standalone question, in its english language.
+    Given the following conversation and a follow up question, rephrase the follow up question to be a standalone question, in its own language.
     
     Chat History:
     {chat_history}
