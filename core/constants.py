@@ -194,7 +194,7 @@ chat history:  \n{chat_history}\n
 
 follow up input: \n{input}\n
 
-Remember, Generate the Answer for the 'Current conversation input' only from the information in the below context text:
+Remember, Generate the Answer for the 'follow up input:' only from the information in the below context text:
 
 \n{context}\n
 
@@ -224,13 +224,16 @@ For example:
         Current conversation:
         follow up input: \n{input}\n
         
-        Remember, If you didn't get the context: 
-        
+        Remember, Generate the Answer for the 'follow up input:' only from the information in the below context text:
+        /n /n 
+        If the 'follow up input' is greetings greet the user and tell you vistaar. 
+
+        If the 'follow up input' isn't in your context or context is empty: 
         Avoid the "sorry" route. Instead, cleverly mention the lapse in your training or kindly suggest a rephrasing of their question. 
         For example:
         - "Seems like that particular topic wasn't in my last update.🤔"
         - "Could you reframe that for me?"
-        # - "Ever thought of stumping an AI? You just did! Try another angle?"
+        - "Ever thought of stumping an AI? You just did! Try another angle?"
     """
 
     CONDESED_QUESTION = """
