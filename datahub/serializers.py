@@ -1206,7 +1206,6 @@ class ResourceSerializer(serializers.ModelSerializer):
             resource = Resource.objects.create(**validated_data)
             resource_files_data = json.loads(resource_files_data[0]) if resource_files_data else []
             sub_categories_map = json.loads(sub_categories_map[0]) if sub_categories_map else []
-            import pdb; pdb.set_trace()
             resource_sub_cat_instances= [
                 ResourceSubCategoryMap(resource=resource, sub_category=SubCategory.objects.get(id=sub_cat)
                                        ) for sub_cat in sub_categories_map]

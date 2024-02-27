@@ -194,11 +194,11 @@ chat history:  \n{chat_history}\n
 
 follow up input: \n{input}\n
 
-Remember, Generate the Answer for the 'Current conversation input' only from the information in the below context text:
+Remember, Generate the Answer for the 'follow up input:' only from the information in the below context text:
 
 \n{context}\n
 
-Assist the user {name_1}, with genertated answer and If the provided context contains a YouTube URL, include that URL in your response. Do not include YouTube URLs that are not present in the context.
+Assist the user {name_1}, with genertated answer and If the provided context contains a YouTube URL, include that unique URL in your response. Do not include YouTube URLs that are not present in the context.
 
 If the answer isn't in your context or context is empty: 
 Avoid the "sorry" route. Instead, cleverly mention the lapse in your training or kindly suggest a rephrasing of their question. 
@@ -224,13 +224,14 @@ For example:
         Current conversation:
         follow up input: \n{input}\n
         
-        Remember, If you didn't get the context: 
-        
+        If the 'follow up input' is greetings than greet the user and tell about vistaar. 
+
+        else Remeber, the 'follow up input' isn't in your context or context is empty: 
         Avoid the "sorry" route. Instead, cleverly mention the lapse in your training or kindly suggest a rephrasing of their question. 
         For example:
         - "Seems like that particular topic wasn't in my last update.🤔"
         - "Could you reframe that for me?"
-        # - "Ever thought of stumping an AI? You just did! Try another angle?"
+        - "Ever thought of stumping an AI? You just did! Try another angle?"
     """
 
     CONDESED_QUESTION = """

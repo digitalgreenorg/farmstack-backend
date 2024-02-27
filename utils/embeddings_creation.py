@@ -221,7 +221,6 @@ class VectorBuilder:
             LOGGING.info(f"Audio file not available for url: {url}")
             video = pytube.YouTube(url)
             video_stream = video.streams.filter(only_audio=True).first()
-            # import pdb; pdb.set_trace()
 
             video_stream.download(filename=output_audio_file_mp3)
             LOGGING.info(f"Audio file downloaded for url: {url}")
@@ -406,7 +405,7 @@ class Retrival:
         response = openai.Completion.create(
             engine="gpt-3.5-turbo-instruct",  # Use an appropriate engine
             prompt=prompt,
-            temperature=0.1,
+            # temperature=0.1,
             max_tokens=tokens  # Adjust as necessary
         )
         return response.choices[0].text.strip(), response.get("usage")
