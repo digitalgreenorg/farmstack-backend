@@ -333,7 +333,7 @@ class ResourceFile(TimeStampMixin):
     file_size = models.PositiveIntegerField(null=True, blank=True)
     type = models.CharField(max_length=20, null=True, choices=RESOURCE_URL_TYPE, default="file")
     url = models.CharField(max_length=200, null=True)
-    transcription = models.CharField(max_length=10000,null=True, blank=True)
+    transcription = models.CharField(max_length=20000,null=True, blank=True)
     embeddings_status = models.CharField(max_length=20, null=True, choices=EMBEDDINGS_STATUS, default="in-progress")
     embeddings_status_reason = models.CharField(max_length=1000, null=True)
     def __str__(self) -> str:
