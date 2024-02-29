@@ -30,7 +30,7 @@ from core.serializer_validation import (
     UserCreateSerializerValidator,
 )
 from core.utils import Utils
-from datahub.models import UserOrganizationMap
+from participant.models import UserOrganizationMap
 from utils import login_helper, string_functions
 from utils.jwt_services import http_request_mutation
 
@@ -44,15 +44,16 @@ from core.utils import (
     date_formater,
     read_contents_from_csv_or_xlsx_file,
 )
-from datahub.models import (
+from participant.models import (
     DatahubDocuments,
-    Datasets,
     DatasetV2,
     DatasetV2File,
     Organization,
     UserOrganizationMap,
 )
-from datahub.serializers import (
+
+from datasets.models import Datasets
+from participant.serializers import (
     DatahubDatasetsSerializer,
     DatahubDatasetsV2Serializer,
     DatahubThemeSerializer,

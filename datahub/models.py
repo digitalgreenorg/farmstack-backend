@@ -77,7 +77,7 @@ class UserOrganizationMap(TimeStampMixin):
     """UserOrganizationMap model for mapping User and Organization model"""
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    user = models.ForeignKey(User, on_delete=models.CASCADE,related_name="datahub_org_map_user")
     organization = models.ForeignKey(Organization, on_delete=models.CASCADE)
 
 
@@ -385,7 +385,7 @@ class LangchainPgCollection(models.Model):
     # resource_file = models.ForeignKey(ResourceFile, on_delete=models.PROTECT, related_name="resource_file_collections")
 
     class Meta:
-        db_table = 'langchain_pg_collection'
+        db_table = 'langchain_pg_collection_datahub'
 
 
 class LangchainPgEmbedding(models.Model):
@@ -397,7 +397,7 @@ class LangchainPgEmbedding(models.Model):
     uuid = models.UUIDField(primary_key=True)
 
     class Meta:
-        db_table = 'langchain_pg_embedding'
+        db_table = 'langchain_pg_embedding_datahub'
 
     # def __str__(self):
     #     return f"LangchainPgEmbedding(uuid={self.uuid}, document={self.document})"
