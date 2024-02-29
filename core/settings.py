@@ -119,10 +119,10 @@ DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.postgresql",
         "NAME": "postgres",
-        "USER": "postgres",
-        "PASSWORD": "$farmstack@!21",
-        "HOST": "dev-vistaar.digitalgreen.org",
-        "PORT": "7000",
+        "USER": os.environ.get("POSTGRES_USER", "postgres"),
+        "PASSWORD": os.environ.get("POSTGRES_PASSWORD", "test"),
+        "HOST": os.environ.get("POSTGRES_HOST", "db"),
+        "PORT": os.environ.get("POSTGRES_PORT", "5432"),
         "OPTIONS": {
             "client_encoding": "UTF8",
         },
@@ -403,8 +403,8 @@ if not os.path.exists("logs"):
     os.makedirs("logs")  # create the logs directory
 
 SAGUBAGU_API_KEY = os.environ.get("SAGUBAGU_API_KEY",'')
-OPENAI_API_KEY="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"
-YOUTUBE_API_KEY="AIzaSyDI6Bo4rmjJp9k_2tw9AfPFc7Km5eh7Ltc"
+OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY",'')
+YOUTUBE_API_KEY = os.environ.get("YOUTUBE_API_KEY",'')
 CELERY_BROKER_URL = os.environ.get("CELERY_BROKER_URL",'')
 
 CELERY_BROKER_URL = f'redis://{os.environ.get("REDIS_SERVICE", "loaclhost")}:6379/0'
