@@ -1,32 +1,29 @@
 # from langchain.document_loaders import PdfLoader
 import argparse
-from concurrent.futures import ThreadPoolExecutor, as_completed
 import concurrent.futures
-import pytube
-
 import csv
 import json
 import logging
 import os
 import re
 import subprocess
+import tempfile
 import time
+from concurrent.futures import ThreadPoolExecutor, as_completed
+from contextlib import contextmanager
 from urllib.parse import quote_plus
 from uuid import UUID
-from docx import Document
 
-import os
-import requests
-import tempfile
-from contextlib import contextmanager
 import certifi
 import openai
+import pytube
 import pytz
 import requests
+from bs4 import BeautifulSoup
 from django.db import models
 from django.db.models import OuterRef, Subquery
 from django.db.models.functions import Cast
-from bs4 import BeautifulSoup
+from docx import Document
 
 # from langchain.vectorstores import Chroma
 from dotenv import load_dotenv
@@ -47,8 +44,7 @@ from langchain.text_splitter import (
     CharacterTextSplitter,
     RecursiveCharacterTextSplitter,
 )
-from langchain.vectorstores.pgvector import DistanceStrategy, PGVector
-
+from langchain.vectorstores.pgvector import DistanceStrategy
 from pgvector.django import CosineDistance, L2Distance
 from psycopg.conninfo import make_conninfo
 from reportlab.lib import colors
@@ -62,11 +58,14 @@ from requests import Request, Session
 from requests.adapters import HTTPAdapter
 from sqlalchemy.dialects.postgresql import dialect
 from urllib3.util import Retry
-from celery import shared_task
 
+from celery import shared_task
 from core import settings
 from core.constants import Constants
 from datahub.models import LangchainPgCollection, LangchainPgEmbedding, ResourceFile
+from utils.chain_builder import ChainBuilder
+from langchain.prompts import PromptTemplate
+from utils.pgvector import PGVector
 # from openai import OpenAI
 LOGGING = logging.getLogger(__name__)
 
@@ -88,6 +87,35 @@ retriever = ''
 
 # Construct the connection string
 connectionString = f"postgresql://{encoded_user}:{encoded_password}@{db_settings['HOST']}:{db_settings['PORT']}/{db_settings['NAME']}"
+
+
+def load_vector_db(resource_id):
+    embeddings = OpenAIEmbeddings(model=embedding_model)
+
+    LOGGING.info("Looking into resource: {resource_id} embeddings")
+    collection_ids = LangchainPgCollection.objects.filter(
+        name__in=Subquery(
+            ResourceFile.objects.filter(resource=resource_id)
+            .annotate(string_id=Cast('id', output_field=models.CharField()))
+            .values('string_id')
+        )
+    ).values_list('uuid', flat=True)
+    vector_db = PGVector(
+            collection_name=str("2a24e282-969a-49f7-8a27-c588c4244ac4"),
+            connection_string=connectionString,
+            embedding_function=embeddings,
+        )
+    print("2a24e282-969a-49f7-8a27-c588c4244ac4")
+    # retriever = vector_db.as_retriever(search_type="similarity_score_threshold")
+    # docs = retriever.get_relevant_documents("tell me about Sorghum Advanced Farming")
+    # print(docs)
+    # retrival = Retrival()
+
+    # similar_chunks = LangchainPgEmbedding.objects.annotate(
+    #             similarity=CosineDistance("embedding", embedding)
+    #         ).order_by("similarity").filter(similarity__lt=0.17, collection_id=str(collection_ids[6])).defer("cmetadata").all()[:5]
+    import pdb; pdb.set_trace()
+    return vector_db
 
 def transcribe_audio(audio_bytes, language="en-US"):
     try:
@@ -388,12 +416,12 @@ class Retrival:
             return similar_chunks
 
     def format_prompt(self, user_name, context_chunks, user_input, chat_history):
-        if context_chunks:
-            LOGGING.info("chunks availabe")
-            return Constants.SYSTEM_MESSAGE.format(name_1=user_name, input=user_input, context=context_chunks, chat_history=chat_history)
-        else:
-            LOGGING.info("chunks not availabe")
-            return Constants.NO_CUNKS_SYSTEM_MESSAGE.format(name_1=user_name, input=user_input)
+        # if context_chunks:
+        #     LOGGING.info("chunks availabe")
+        return Constants.LATEST_PROMPT.format(name_1=user_name, input=user_input, context=context_chunks, chat_history=chat_history)
+        # else:
+        #     LOGGING.info("chunks not availabe")
+        #     return Constants.NO_CUNKS_SYSTEM_MESSAGE.format(name_1=user_name, input=user_input)
 
     def condensed_question_prompt(self, chat_history, current_question):
         # greetings = ["hello", "hi", "greetings", "hey"]
@@ -494,4 +522,54 @@ class VectorDBBuilder:
         except Exception as e:
             LOGGING.error(f"Error while generating response for query: {text}: Error {e}", exc_info=True)
             return str(e)
-   
+    
+    # def get_input_embeddings_using_chain(text, user_name=None, resource_id=None, chat_history=None):
+    #     retrival = Retrival()
+    #     prompt_template = PromptTemplate(input_variables=["name_1", "context",  "input"],
+    #         template=Constants.SYSTEM_MESSAGE_CHAIN,
+    #         )
+    #     complete_history, history_question = retrival.chat_history_formated(chat_history)
+    #     complete_history=[] 
+    #     complete_history.append((chat_history.condensed_question, chat_history.query_response))
+
+    #     qa, retriver = ChainBuilder.create_qa_chain(
+    #             vector_db = load_vector_db(resource_id),
+    #             retriever_count=5,
+    #             model_name=Constants.GPT_3_5_TURBO,
+    #             temperature=Constants.TEMPERATURE,
+    #             max_tokens=Constants.MAX_TOKENS,
+    #             chain_type="stuff",
+    #             prompt_template=prompt_template,
+    #         )
+    #     import asyncio
+
+    #     def sync_async(coroutine):
+    #         try:
+    #             loop = asyncio.get_running_loop()
+    #         except RuntimeError:  # No running event loop
+    #             loop = asyncio.new_event_loop()
+    #             asyncio.set_event_loop(loop)
+    #             result = loop.run_until_complete(coroutine)
+    #             loop.close()
+    #         else:
+    #             result = asyncio.run_coroutine_threadsafe(coroutine, loop).result()
+    #         return result
+    #     task = qa.ainvoke(
+    #             {
+    #                 "question": text,
+    #                 "chat_history": complete_history,
+    #                 "input": text,
+    #                 "name_1": user_name,
+    #             }
+    #         )
+    #     result = sync_async(task)
+    #     import pdb; pdb.set_trace()
+
+    #     for item in result['items']:  # Hypothetical structure; adjust based on actual structure
+    #         # document = item['document']
+    #         # metadata = item['metadata']
+    #         uuid = item['uuid'] 
+    #         print(uuid)
+    #     return result["answer"], result["source_documents"], result["generated_question"], {}
+
+    
