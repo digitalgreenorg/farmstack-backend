@@ -1,4 +1,4 @@
-from datahub.models import Policy
+from participant.models import Policy
 from rest_framework.reverse import reverse
 from django.test import Client, TestCase
 import json

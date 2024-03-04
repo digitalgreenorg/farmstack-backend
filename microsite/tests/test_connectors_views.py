@@ -9,7 +9,7 @@ from rest_framework.reverse import reverse
 
 from accounts.models import User, UserRole
 from connectors.models import Connectors, ConnectorsMap
-from datahub.models import DatasetV2, DatasetV2File, Organization, UserOrganizationMap
+from participant.models import DatasetV2, DatasetV2File, Organization, UserOrganizationMap
 from participant.tests.test_util import TestUtils
 
 LOGGER = logging.getLogger(__name__)

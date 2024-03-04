@@ -6,10 +6,12 @@ from uuid import uuid4
 
 from _pytest.monkeypatch import MonkeyPatch
 from accounts.models import User, UserRole
-from datahub.models import Datasets, Organization, UserOrganizationMap
+from participant.models import Organization, UserOrganizationMap
+from datasets.models import Datasets
 from django.test import Client, TestCase
 from django.urls import reverse
-from participant.models import Connectors, SupportTicket
+# TODO - REMOVED IMOPORT TO CONNECTOR MODEL TO AVOID CIRCULAR IMPORT
+# from participant.models import Connectors, SupportTicket
 from requests import request
 from requests_toolbelt.multipart.encoder import MultipartEncoder
 from rest_framework import serializers

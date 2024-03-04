@@ -44,15 +44,16 @@ from core.utils import (
     date_formater,
     read_contents_from_csv_or_xlsx_file,
 )
-from datahub.models import (
+from participant.models import (
     DatahubDocuments,
-    Datasets,
     DatasetV2,
     DatasetV2File,
     Organization,
     UserOrganizationMap,
 )
-from datahub.serializers import (
+
+from datasets.models import Datasets
+from participant.serializers import (
     DatahubDatasetsSerializer,
     DatahubDatasetsV2Serializer,
     DatahubThemeSerializer,

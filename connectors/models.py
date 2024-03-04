@@ -5,7 +5,7 @@ from django.db import models
 from accounts.models import User
 from core import settings
 from core.base_models import TimeStampMixin
-from datahub.models import DatasetV2File
+from participant.models import DatasetV2File
 
 # Create your models here.
 

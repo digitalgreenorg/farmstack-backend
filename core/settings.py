@@ -65,6 +65,7 @@ INSTALLED_APPS = [
     # custom apps
     "accounts",
     "datahub",
+    "datasets",
     "participant",
     "microsite",
     "connectors",
@@ -129,7 +130,7 @@ DATABASES = {
 }
 
 # Password validation
-# https://docs.djangoproject.com/en/4.0/ref/settings/#auth-password-validators
+# https://docs.djangoproject.com/en/4.0/ref/settings/#auth-password-v\alidators
 
 AUTH_PASSWORD_VALIDATORS = [
     {

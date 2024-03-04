@@ -25,7 +25,7 @@ from connectors.serializers import (
 from core import settings
 from core.constants import Constants
 from core.utils import CustomPagination
-from datahub.models import Datasets
+from datasets.models import Datasets
 from utils.authentication_services import authenticate_user
 from utils.jwt_services import http_request_mutation
 from rest_framework.exceptions import ValidationError

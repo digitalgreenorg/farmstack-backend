@@ -66,7 +66,7 @@ from celery import shared_task
 
 from core import settings
 from core.constants import Constants
-from datahub.models import LangchainPgCollection, LangchainPgEmbedding, ResourceFile
+from participant.models import LangchainPgCollection, LangchainPgEmbedding, ResourceFile
 # from openai import OpenAI
 LOGGING = logging.getLogger(__name__)
 
