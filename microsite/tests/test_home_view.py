@@ -2,7 +2,7 @@ from rest_framework.reverse import reverse
 from django.test import Client, TestCase
 from rest_framework import status
 import json
-from datahub.models import Organization, UserOrganizationMap
+from participant.models import Organization, UserOrganizationMap
 from accounts.models import User, UserRole
 
 org_for_participant = {

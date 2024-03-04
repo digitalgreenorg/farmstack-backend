@@ -1,7 +1,7 @@
 from django.test import SimpleTestCase
 from django.urls import resolve, reverse
 from accounts.views import RegisterViewset
-from datahub.views import ParticipantViewSet
+from participant.views import ParticipantViewSet
 from django.test import SimpleTestCase
 from django.urls import resolve, reverse
 

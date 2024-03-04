@@ -8,7 +8,7 @@ from django.shortcuts import render
 from _pytest.monkeypatch import MonkeyPatch
 from django.db import models
 from accounts.models import User, UserManager, UserRole
-from datahub.models import Datasets, Organization, UserOrganizationMap
+from participant.models import Datasets, Organization, UserOrganizationMap
 from datahub.views import ParticipantViewSet
 from django.test import Client, TestCase
 from django.test.client import encode_multipart

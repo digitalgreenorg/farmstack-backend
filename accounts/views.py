@@ -30,7 +30,7 @@ from core.serializer_validation import (
     UserCreateSerializerValidator,
 )
 from core.utils import Utils
-from datahub.models import UserOrganizationMap
+from participant.models import UserOrganizationMap
 from utils import login_helper, string_functions
 from utils.jwt_services import http_request_mutation
 
