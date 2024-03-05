@@ -26,7 +26,7 @@ from rest_framework_simplejwt.serializers import TokenRefreshSerializer
 from rest_framework_simplejwt.tokens import AccessToken, RefreshToken
 
 from core.constants import Constants
-from datahub.models import DatasetV2File, UsagePolicy, UserOrganizationMap
+from participant.models import DatasetV2File, UsagePolicy, UserOrganizationMap
 from utils.jwt_services import http_request_mutation
 
 # @http_request_mutation

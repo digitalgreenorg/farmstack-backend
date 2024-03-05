@@ -77,7 +77,7 @@ class UserOrganizationMap(TimeStampMixin):
     """UserOrganizationMap model for mapping User and Organization model"""
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="datahub_org_map_user")
     organization = models.ForeignKey(Organization, on_delete=models.CASCADE)
 
 
@@ -203,17 +203,17 @@ class CustomStorage(Storage):
     # def size(self, name):
     #     path = self.path(name)
     #     return os.path.getsize(path)
-        
+
     def exists(self, name):
         """
         Check if a file with the given name already exists in the storage.
         """
         return os.path.exists(name)
-    
+
     def url(self, url):
         return url
 
-    def _save(self, name, content): 
+    def _save(self, name, content):
         # Save file to a directory outside MEDIA_ROOT
         full_path = os.path.join(settings.DATASET_FILES_URL, name)
         directory = os.path.dirname(full_path)
@@ -260,7 +260,7 @@ class DatasetV2File(TimeStampMixin):
     def dataset_directory_path(instance, filename):
         # file will be uploaded to MEDIA_ROOT/user_<id>/<filename>
         return f"{settings.DATASET_FILES_URL}/{instance.dataset.name}/{instance.source}/{filename}"
-    
+
     def get_upload_path(instance, filename):
         return f"{instance.dataset.name}/{instance.source}/{filename}"
 
@@ -268,12 +268,12 @@ class DatasetV2File(TimeStampMixin):
         # set the user_id before saving
         storage = CustomStorage(self.dataset.name, self.source)
         self.file.storage = storage # type: ignore
-        
+
         # if self.file:
         #     # Get the file size
         #     size = self.file.size
         #     self.file_size = size
-        
+
         super().save(*args, **kwargs)
 
     SOURCES = [
@@ -291,7 +291,7 @@ class DatasetV2File(TimeStampMixin):
     standardised_configuration = models.JSONField(default = dict)
     accessibility = models.CharField(max_length=255, null=True, choices=USAGE_POLICY_APPROVAL_STATUS, default="public")
     connection_details = models.JSONField(default=dict, null=True)
-    
+
 class UsagePolicy(TimeStampMixin):
     """
     Policy documentation Model.
@@ -324,7 +324,7 @@ class Resource(TimeStampMixin):
 
 class ResourceFile(TimeStampMixin):
     """
-    Resource Files Model -- Has a one to many relation 
+    Resource Files Model -- Has a one to many relation
     -- 1 resource can have multiple resource files.
     """
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
@@ -338,7 +338,7 @@ class ResourceFile(TimeStampMixin):
     embeddings_status_reason = models.CharField(max_length=1000, null=True)
     def __str__(self) -> str:
         return self.file.name
-    
+
 class DatasetV2FileReload(TimeStampMixin):
     dataset_file = models.ForeignKey(DatasetV2File, on_delete=models.CASCADE, related_name="dataset_file")
 
@@ -385,7 +385,7 @@ class LangchainPgCollection(models.Model):
     # resource_file = models.ForeignKey(ResourceFile, on_delete=models.PROTECT, related_name="resource_file_collections")
 
     class Meta:
-        db_table = 'langchain_pg_collection'
+        db_table = 'langchain_pg_collection_datahub'
 
 
 class LangchainPgEmbedding(models.Model):
@@ -397,7 +397,7 @@ class LangchainPgEmbedding(models.Model):
     uuid = models.UUIDField(primary_key=True)
 
     class Meta:
-        db_table = 'langchain_pg_embedding'
+        db_table = 'langchain_pg_embedding_datahub'
 
     # def __str__(self):
     #     return f"LangchainPgEmbedding(uuid={self.uuid}, document={self.document})"

@@ -1,7 +1,7 @@
 from rest_framework.reverse import reverse
 from django.test import Client, TestCase
 import json
-from datahub.models import DatasetV2, Organization, UserOrganizationMap
+from participant.models import DatasetV2, Organization, UserOrganizationMap
 from accounts.models import User, UserRole
 from participant.tests.test_util import TestUtils
 from _pytest.monkeypatch import MonkeyPatch

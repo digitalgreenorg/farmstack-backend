@@ -65,6 +65,7 @@ INSTALLED_APPS = [
     # custom apps
     "accounts",
     "datahub",
+    "datasets",
     "participant",
     "microsite",
     "connectors",

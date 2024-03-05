@@ -11,10 +11,10 @@ from connectors.models import Connectors, ConnectorsMap
 from connectors.serializers import OrganizationRetriveSerializer
 from core import settings
 from core.utils import Constants
-from datahub.models import (
+from datasets.models import Datasets
+from participant.models import (
     Category,
     DatahubDocuments,
-    Datasets,
     DatasetV2,
     LangchainPgCollection,
     LangchainPgEmbedding,
@@ -26,7 +26,7 @@ from datahub.models import (
     SubCategory,
     UserOrganizationMap,
 )
-from datahub.serializers import CategorySerializer, DatasetV2FileSerializer
+from participant.serializers import CategorySerializer, DatasetV2FileSerializer
 
 from .models import FeedBack
 

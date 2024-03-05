@@ -9,7 +9,7 @@ from rest_framework.reverse import reverse
 from rest_framework_simplejwt.tokens import RefreshToken
 
 from accounts.models import User, UserRole
-from datahub.models import Organization, UserOrganizationMap
+from participant.models import Organization, UserOrganizationMap
 from participant.models import Resolution, SupportTicketV2
 
 

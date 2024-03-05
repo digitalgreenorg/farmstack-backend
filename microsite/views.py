@@ -38,10 +38,10 @@ from core.utils import (
     generate_hash_key_for_dashboard,
     read_contents_from_csv_or_xlsx_file,
 )
-from datahub.models import (
+from datasets.models import Datasets
+from participant.models import (
     Category,
     DatahubDocuments,
-    Datasets,
     DatasetV2,
     DatasetV2File,
     Messages,
@@ -53,7 +53,7 @@ from datahub.models import (
     UsagePolicy,
     UserOrganizationMap,
 )
-from datahub.serializers import (
+from participant.serializers import (
     CategorySerializer,
     DatahubDatasetsV2Serializer,
     DatasetV2Serializer,

@@ -9,8 +9,8 @@ from accounts.models import User
 from connectors.models import Connectors, ConnectorsMap
 from core import settings
 from core.constants import Constants
-from datahub.models import DatasetV2, DatasetV2File, Organization, UserOrganizationMap
-from datahub.serializers import DatasetV2FileSerializer
+from participant.models import DatasetV2, DatasetV2File, Organization, UserOrganizationMap
+from participant.serializers import DatasetV2FileSerializer
 from django.db.models import Subquery, Min, Count
 from django.db import models
 

@@ -6,8 +6,8 @@ from rest_framework.response import Response
 
 from connectors.models import Connectors
 from core.constants import Constants
-from datahub.models import (
-    Datasets,
+from datasets.models import Datasets
+from participant.models import (
     DatasetV2,
     DatasetV2File,
     Organization,

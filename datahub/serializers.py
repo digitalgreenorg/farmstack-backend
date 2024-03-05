@@ -38,7 +38,9 @@ from datahub.models import (
     StandardisationTemplate,
     UserOrganizationMap,
 )
-from participant.models import Connectors, SupportTicket
+# from participant.models import Connectors, SupportTicket
+# TODO - REMOVED IMPORT TO CONNECTOR MODEL TO AVOID CIRCULAR IMPORT
+from participant.models import  SupportTicket
 from utils.custom_exceptions import NotFoundException
 from utils.embeddings_creation import VectorDBBuilder
 from utils.file_operations import create_directory, move_directory
