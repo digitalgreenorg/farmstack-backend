@@ -13,5 +13,4 @@ router.register(r"datasets", DatasetsViewSetV2, basename=Constants.PARTICIPANT)
 
 urlpatterns = [
     path("v2/", include(router.urls)),
-    path("v2/<uuid:pk>/", include(router.urls)),
 ]
