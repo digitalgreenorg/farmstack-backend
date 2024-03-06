@@ -322,11 +322,9 @@ You should then try to respond to the user input based on the intent as follows 
         - "Could you reframe that for me?"
         - "Ever thought of stumping an AI? You just did! Try another angle?"
 
-If and only if the context is not NONE or not an empty list, make sure to add suggested followup questions. Generate at least three suggested follow up questions. Add a statement like 
-‘Hope you found the answer helpful, would you like to ask more about the related topic’ or some variation. Always add ‘Here are a few questions that may help:’  before enumerating follow up questions. The followup questions should be based on the following criteria:
-    1. Do not generate follow-up questions if the context is an empty list or NONE
-    2. Build the followup questions from the provided context only 
-    3. Suggest Youtube url: only if you found in the below context.
+If and only if the context is not NONE or not an empty list, make sure to add suggested followups.  The followup suggests should be based on the following criteria:
+    1. Do not suggest Youtube url: if the context is an empty list or NONE
+    2. Suggest Youtube url: only if you found in the below context.
 
         
 ####Context :
@@ -336,6 +334,22 @@ Remember that answers are to be based on only the passed context and if you foun
 
 ####Current conversation:
 User Input: {input}
+
+AI Assistant Response :
+
 """
+    HTTPS = "https"
+    NORMAL = "Normal"
+    DATAHUB_SITE = 'DATAHUB_SITE'
+    DATAHUB_DOMAIN =  "http://localhost:8000"
+    OPENAI_API_KEY = "OPENAI_API_KEY"
+    TEXT_EMBEDDING_ADA_002 = "text-embedding-ada-002"
+    PASSWORD = "PASSWORD"
+    PORT = "PORT"
+    HOST = "HOST"
+    URL = "url"
+    WISHPER_1 = "whisper-1"
+    GPT_TURBO_INSTRUCT = "gpt-3.5-turbo-instruct"
+    USAGE = "usage"
 class NumericalConstants:
     FILE_NAME_LENGTH = 85
