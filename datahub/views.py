@@ -3516,7 +3516,6 @@ class ResourceFileManagementViewSet(GenericViewSet):
         """GET method: retrieve an object or instance of the Product model"""
         team_member = self.get_object()
         serializer = self.get_serializer(team_member)
-        # serializer.is_valid(raise_exception=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
 #
@@ -3610,7 +3609,7 @@ class EmbeddingsViewSet(viewsets.ModelViewSet):
         collection_id = request.GET.get("resource_file")
         collection = LangchainPgCollection.objects.filter(name=str(collection_id)).first()
         if collection:
-            embeddings = LangchainPgEmbedding.objects.filter(collection_id=collection.uuid).values("document")
+            embeddings = LangchainPgEmbedding.objects.filter(collection_id=collection.uuid).values("embedding","document")
         return Response(embeddings)
 
 
