@@ -161,7 +161,7 @@ existing_job = scheduler.get_job("fetch_data_job")
 #     )
 
 # Define the cron expression for weekly recurrence on Sundays at a specific time, for example, every Sunday at 8:00 AM
-cron_expression = '0 8 * * 0'  # Minute: 0, Hour: 8, Day of week: Sunday
+cron_expression = '0 8 * * 3'  # Minute: 0, Hour: 8, Day of week: Sunday
 
 if not existing_job or existing_job.next_run_time is None or existing_job.next_run_time < timezone.now():
     scheduler.add_job(
