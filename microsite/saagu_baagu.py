@@ -91,7 +91,7 @@ def fetch_and_save_data():
             
             # Check if scans list is empty
             if not data.get("scans"):
-                print(f"No data found for dates: {from_date} to {to_date}")
+                # print(f"No data found for dates: {from_date} to {to_date}")
                 # Increment dates by 5 days for next iteration
                 base_start_date += timedelta(days=2)
                 base_end_date = base_start_date + timedelta(days=1)
@@ -118,13 +118,13 @@ def fetch_and_save_data():
                     analysis=scan_data.get("analysis")  # Save analysis as JSON
                 )
             
-            print(f"Succesfully dumped data from API for dates: {from_date} to {to_date}")
+            # print(f"Succesfully dumped data from API for dates: {from_date} to {to_date}")
             # Increment dates by 5 days for next iteration
             base_start_date += timedelta(days=2)
             base_end_date = base_start_date + timedelta(days=1)
             
         else:
-            print(f"Failed to fetch data from API for dates: {from_date} to {to_date}")
+            # print(f"Failed to fetch data from API for dates: {from_date} to {to_date}")
             break
 
 # Scheduler setup
@@ -188,8 +188,8 @@ class Command(BaseCommand):
         if last_inspection and (last_inspection.created_at.date() == today_date - timedelta(days=1) \
             or last_inspection.created_at.date() == today_date):
             # self.stdout.write(self.style.WARNING('No need to fetch data from the API as it was already fetched yesterday'))
-            LOGGER.info(f'No need to fetch data from the API as it was already fetched for {today_date - timedelta(days=1)}')
-            print(f'No need to fetch data from the API as it was already fetched for {today_date - timedelta(days=1)}')
+            LOGGER.info(f'Sagu_Bagu: No need to fetch data from the API as it was already fetched for {today_date - timedelta(days=1)}')
+            # print(f'No need to fetch data from the API as it was already fetched for {today_date - timedelta(days=1)}')
             return
         
         # Condition 2: Fetch data from the API
@@ -216,8 +216,8 @@ class Command(BaseCommand):
 
                     if not data.get("scans"):
                         # self.stdout.write(self.style.WARNING('No data found for the specified date range'))
-                        LOGGER.warning(f'No data found for the specified date range: {from_date} to {to_date}')
-                        print(f'No data found for the specified date range: {from_date} to {to_date}')
+                        LOGGER.warning(f'Sagu_Bagu: No data found for the specified date range: {from_date} to {to_date}')
+                        # print(f'No data found for the specified date range: {from_date} to {to_date}')
                         from_date += timedelta(days=2)
                         if from_date == today_date - timedelta(days=1):
                             to_date = from_date
@@ -244,12 +244,12 @@ class Command(BaseCommand):
                         )
 
                     # self.stdout.write(self.style.SUCCESS('Data fetched and saved successfully'))
-                    LOGGER.info(f'Data fetched and saved successfully for date range: {from_date} to {to_date}')
-                    print(f'Data fetched and saved successfully for date range: {from_date} to {to_date}')
+                    LOGGER.info(f'Sagu_Bagu: Data fetched and saved successfully for date range: {from_date} to {to_date}')
+                    # print(f'Data fetched and saved successfully for date range: {from_date} to {to_date}')
                 else:
                     # self.stdout.write(self.style.ERROR('Failed to fetch data from the API'))
-                    LOGGER.error(f'Failed to fetch data from the API for date range: {from_date} to {to_date}')
-                    print(f'Failed to fetch data from the API for date range: {from_date} to {to_date}')
+                    LOGGER.error(f'Sagu_Bagu: Failed to fetch data from the API for date range: {from_date} to {to_date}')
+                    # print(f'Failed to fetch data from the API for date range: {from_date} to {to_date}')
                 
                 from_date += timedelta(days=2)
                 if from_date == today_date - timedelta(days=1):
@@ -293,7 +293,7 @@ class ScanHistoryAPIView(APIView):
         
         all_inspections = Inspection.objects.all()
         inspections = all_inspections.filter(inspection_date_time__gte=from_date, 
-                                                 inspection_date_time__lte=to_date)
+                                                 inspection_date_time__lte=to_date).distinct('unique_id')
         
         serializer = InspectionSerializer(inspections, many=True)
         response_data = {'scans': serializer.data}
