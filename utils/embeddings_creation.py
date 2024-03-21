@@ -66,6 +66,19 @@ from datahub.models import LangchainPgCollection, LangchainPgEmbedding, Resource
 from utils.chain_builder import ChainBuilder
 from langchain.prompts import PromptTemplate
 from utils.pgvector import PGVector
+from langchain.retrievers.merger_retriever import MergerRetriever
+
+from langchain.retrievers import (
+ContextualCompressionRetriever,
+MergerRetriever,
+)
+from langchain.retrievers.document_compressors import DocumentCompressorPipeline
+
+from langchain_community.document_transformers import (
+    EmbeddingsClusteringFilter,
+    EmbeddingsRedundantFilter,
+)
+
 # from openai import OpenAI
 LOGGING = logging.getLogger(__name__)
 
@@ -100,22 +113,48 @@ def load_vector_db(resource_id):
             .values('string_id')
         )
     ).values_list('uuid', flat=True)
-    vector_db = PGVector(
-            collection_name=str("2a24e282-969a-49f7-8a27-c588c4244ac4"),
+    # vector_db = PGVector(
+    #         collection_name=collection_ids,
+    #         connection_string=connectionString,
+    #         embedding_function=embeddings,
+    #     )
+    # # a = vector_db.similarity_search_with_score("Tell me about wheat varities")
+    # retriever = vector_db.as_retriever(search_args={'k':5})
+    # return retriever
+    embeddings = OpenAIEmbeddings()
+
+    def setup_retriever(collection_id):
+        vector_db = PGVector(
+            collection_name=str(collection_id),
             connection_string=connectionString,
             embedding_function=embeddings,
         )
-    print("2a24e282-969a-49f7-8a27-c588c4244ac4")
-    # retriever = vector_db.as_retriever(search_type="similarity_score_threshold")
-    # docs = retriever.get_relevant_documents("tell me about Sorghum Advanced Farming")
-    # print(docs)
-    # retrival = Retrival()
-
-    # similar_chunks = LangchainPgEmbedding.objects.annotate(
-    #             similarity=CosineDistance("embedding", embedding)
-    #         ).order_by("similarity").filter(similarity__lt=0.17, collection_id=str(collection_ids[6])).defer("cmetadata").all()[:5]
+        retriever = vector_db.as_retriever(search_type="similarity", search_args={'k':5})
+        return retriever
+    retrievals=[]
+    # Use ThreadPoolExecutor to run setup_retriever concurrently
+    with ThreadPoolExecutor(max_workers=10) as executor:
+        # Create a future for each setup_retriever call
+        future_to_collection_id = {executor.submit(setup_retriever, collection_id): collection_id for collection_id in collection_ids}
+        
+        for future in as_completed(future_to_collection_id):
+            collection_id = future_to_collection_id[future]
+            try:
+                retriever = future.result()  # Retrieve the result from the future
+                retrievals.append(retriever)  # Add the successfully created retriever to the list
+            except Exception as exc:
+                LOGGING.error(f'{collection_id} generated an exception: {exc}')
+  
+    merge_retriever = MergerRetriever(retrievers = retrievals)
+    filter = EmbeddingsRedundantFilter(embeddings=embeddings)
+    pipeline = DocumentCompressorPipeline(transformers=[filter])
+    compression_retriever = ContextualCompressionRetriever(
+                            base_compressor=pipeline, base_retriever=merge_retriever)
+    a = compression_retriever.similarity_search_with_score("Tell me about wheat varities")
+    print(a)
     import pdb; pdb.set_trace()
-    return vector_db
+    return compression_retriever
+
 
 def transcribe_audio(audio_bytes, language="en-US"):
     try:
@@ -523,53 +562,48 @@ class VectorDBBuilder:
             LOGGING.error(f"Error while generating response for query: {text}: Error {e}", exc_info=True)
             return str(e)
     
-    # def get_input_embeddings_using_chain(text, user_name=None, resource_id=None, chat_history=None):
-    #     retrival = Retrival()
-    #     prompt_template = PromptTemplate(input_variables=["name_1", "context",  "input"],
-    #         template=Constants.SYSTEM_MESSAGE_CHAIN,
-    #         )
-    #     complete_history, history_question = retrival.chat_history_formated(chat_history)
-    #     complete_history=[] 
-    #     complete_history.append((chat_history.condensed_question, chat_history.query_response))
+    def get_input_embeddings_using_chain(text, user_name=None, resource_id=None, chat_history=None):
+        retrival = Retrival()
+        prompt_template = PromptTemplate(input_variables=["name_1", "context",  "input"],
+            template=Constants.LATEST_PROMPT,
+            )
+        complete_history, history_question = retrival.chat_history_formated(chat_history)
+        complete_history=[] 
+        complete_history.append((chat_history.condensed_question, chat_history.query_response))
 
-    #     qa, retriver = ChainBuilder.create_qa_chain(
-    #             vector_db = load_vector_db(resource_id),
-    #             retriever_count=5,
-    #             model_name=Constants.GPT_3_5_TURBO,
-    #             temperature=Constants.TEMPERATURE,
-    #             max_tokens=Constants.MAX_TOKENS,
-    #             chain_type="stuff",
-    #             prompt_template=prompt_template,
-    #         )
-    #     import asyncio
+        qa, retriver = ChainBuilder.create_qa_chain(
+                vector_db = load_vector_db(resource_id),
+                retriever_count=5,
+                model_name=Constants.GPT_3_5_TURBO,
+                temperature=Constants.TEMPERATURE,
+                max_tokens=Constants.MAX_TOKENS,
+                chain_type="stuff",
+                prompt_template=prompt_template,
+            )
+        import asyncio
 
-    #     def sync_async(coroutine):
-    #         try:
-    #             loop = asyncio.get_running_loop()
-    #         except RuntimeError:  # No running event loop
-    #             loop = asyncio.new_event_loop()
-    #             asyncio.set_event_loop(loop)
-    #             result = loop.run_until_complete(coroutine)
-    #             loop.close()
-    #         else:
-    #             result = asyncio.run_coroutine_threadsafe(coroutine, loop).result()
-    #         return result
-    #     task = qa.ainvoke(
-    #             {
-    #                 "question": text,
-    #                 "chat_history": complete_history,
-    #                 "input": text,
-    #                 "name_1": user_name,
-    #             }
-    #         )
-    #     result = sync_async(task)
-    #     import pdb; pdb.set_trace()
+        def sync_async(coroutine):
+            try:
+                loop = asyncio.get_running_loop()
+            except RuntimeError:  # No running event loop
+                loop = asyncio.new_event_loop()
+                asyncio.set_event_loop(loop)
+                result = loop.run_until_complete(coroutine)
+                loop.close()
+            else:
+                result = asyncio.run_coroutine_threadsafe(coroutine, loop).result()
+            return result
+        task = qa.ainvoke(
+                {
+                    "question": text,
+                    "chat_history": complete_history,
+                    "input": text,
+                    "name_1": user_name,
+                }
+            )
+        result = sync_async(task)
+        # import pdb; pdb.set_trace()
 
-    #     for item in result['items']:  # Hypothetical structure; adjust based on actual structure
-    #         # document = item['document']
-    #         # metadata = item['metadata']
-    #         uuid = item['uuid'] 
-    #         print(uuid)
-    #     return result["answer"], result["source_documents"], result["generated_question"], {}
+        return result["answer"], result["source_documents"], result["generated_question"], {}
 
     

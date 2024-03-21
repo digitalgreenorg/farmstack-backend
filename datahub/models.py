@@ -395,12 +395,13 @@ class LangchainPgEmbedding(models.Model):
     cmetadata = models.JSONField()
     custom_id = models.CharField(max_length=255)
     uuid = models.UUIDField(primary_key=True)
+    __table_args__ = {'extend_existing': True}
 
     class Meta:
         db_table = 'langchain_pg_embedding'
 
-    # def __str__(self):
-    #     return f"LangchainPgEmbedding(uuid={self.uuid}, document={self.document})"
+    def __str__(self):
+        return f"LangchainPgEmbedding(uuid={self.uuid}, collection_id={self.custom_id})"
 
 # class Conversation(TimeStampMixin):
 #     BOT_CHOICES = (

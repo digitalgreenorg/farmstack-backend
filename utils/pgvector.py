@@ -87,7 +87,13 @@ def _get_embedding_collection_store(vector_dimension: Optional[int] = None) -> A
         def get_by_name(
             cls, session: Session, name: str
         ) -> Optional["CollectionStore"]:
-            return session.query(cls).filter(cls.name == name).first()  # type: ignore
+            return session.query(cls).filter(cls.name == str(name)).first()  # type: ignore
+        
+        @classmethod
+        def get_by_names(
+            cls, session: Session, name: str
+        ) -> Optional["CollectionStore"]:
+            return session.query(cls).filter(cls.name__in == name) # type: ignore
 
         @classmethod
         def get_or_create(
@@ -582,7 +588,6 @@ class PGVector(VectorStore):
             collection = self.get_collection(session)
             if not collection:
                 raise ValueError("Collection not found")
-
             filter_by = self.EmbeddingStore.collection_id == collection.uuid
 
             if filter is not None:

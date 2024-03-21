@@ -1,8 +1,8 @@
 import asyncio
 
-from AI.open_ai_utils import load_vector_db
-from AI.retriever.chain_builder import ChainBuilder
-from AI.utils import chat_history_formated
+from ai.open_ai_utils import load_vector_db
+from ai.retriever.chain_builder import ChainBuilder
+from ai.utils import chat_history_formated
 from core.constants import Constants
 from langchain import PromptTemplate
 

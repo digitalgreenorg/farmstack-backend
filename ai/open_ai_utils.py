@@ -15,6 +15,7 @@ from urllib.parse import quote_plus
 from uuid import UUID
 
 import certifi
+from ai.retriever.chain_builder import CustomRetriever
 import openai
 import pytz
 import requests
@@ -74,7 +75,7 @@ embedding_model = Constants.TEXT_EMBEDDING_ADA_002
 embeddings = OpenAIEmbeddings(model=embedding_model)
 # client = OpenAI(api_key=settings.OPENAI_API_KEY)
 
-db_settings = settings.DATABASES[Constants.DEFAULT]
+db_settings = settings.DATABASES["default"]
 encoded_user = quote_plus(db_settings[Constants.USER.upper()])
 encoded_password = quote_plus(db_settings[Constants.PASSWORD])
 retriever = ''
@@ -104,7 +105,7 @@ def transcribe_audio(self, audio_bytes, language="en-US"):
         return str(e)
     
 
-def generate_response(self, prompt, tokens=2000):
+def generate_response(prompt, tokens=2000):
     response = openai.Completion.create(
         engine=Constants.GPT_TURBO_INSTRUCT,  # Use an appropriate engine
         prompt=prompt,
@@ -126,7 +127,14 @@ def load_vector_db(resource_id):
         )
     ).values_list('uuid', flat=True)
     retrievals = []
-    
+    vector_db = PGVector(
+            collection_name=str("e7d810ae-3fee-4412-b9a8-04f0935e7acf"),
+            connection_string=connectionString,
+            embedding_function=embeddings,
+        )
+    print(LangchainPgEmbedding.objects.filter(collection_id='e7d810ae-3fee-4412-b9a8-04f0935e7acf').values('document'))
+    retriever = vector_db.as_retriever(search_type="similarity", search_kwargs={"k": 5, "score_threshold":0.5})
+    return retriever
     def setup_retriever(collection_id):
         vector_db = PGVector(
             collection_name=str(collection_id),
@@ -148,17 +156,20 @@ def load_vector_db(resource_id):
                 retrievals.append(retriever)  # Add the successfully created retriever to the list
             except Exception as exc:
                 print(f'{collection_id} generated an exception: {exc}')
+    # import pdb; pdb.set_trace()
+    # lotr = MergerRetriever(retrievers=retrievals)
+    # lotr = CustomRetriever(retrievals)
+    custom_retriever = MergerRetriever(retrievers = retrievals)
 
-    lotr = MergerRetriever(retrievers=retrievals)
-    return lotr
+    return retrievals
 
 
-def genrate_embeddings_from_text(self, text):
+def genrate_embeddings_from_text(text):
     response = openai.Embedding.create(input=text, model=embedding_model)
     embedding = response['data'][0]['embedding']
     return embedding
 
-def find_similar_chunks(self, input_embedding, resource_id,  top_n=5):
+def find_similar_chunks(input_embedding, resource_id,  top_n=5):
     # Assuming you have a similarity function or custom SQL to handle vector comparison
     if resource_id:
         LOGGING.info("Looking into resource: {resource_id} embeddings")
@@ -171,7 +182,7 @@ def find_similar_chunks(self, input_embedding, resource_id,  top_n=5):
         ).values_list('uuid', flat=True)
         # Use these IDs to filter LangchainPgEmbedding objects
         similar_chunks = LangchainPgEmbedding.objects.annotate(
-            similarity=CosineSimilarity("embedding", input_embedding)
+            similarity=CosineDistance("embedding", input_embedding)
         ).order_by("similarity").filter(similarity__lt=0.17, collection_id__in=collection_ids).defer("cmetadata").all()[:top_n]
         return similar_chunks
     else:

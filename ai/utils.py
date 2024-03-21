@@ -11,7 +11,7 @@ from reportlab.pdfgen import canvas
 from reportlab.platypus import Paragraph, SimpleDocTemplate
 LOGGING = logging.getLogger(__name__)
 
-def download_file(self, file_url, local_file_path):
+def download_file(file_url, local_file_path):
     try:
         with open(local_file_path, 'w'):
             pass 
@@ -48,7 +48,7 @@ def download_file(self, file_url, local_file_path):
 
     return None
 
-def build_pdf(self, transcript, local_file_path):
+def build_pdf( transcript, local_file_path):
     try:
         with open(local_file_path, 'w'):
             pass 
@@ -79,13 +79,13 @@ def build_pdf(self, transcript, local_file_path):
     return None
 
 
-def resolve_file_path(self, file):
+def resolve_file_path(file):
     domain = os.environ.get(Constants.DATAHUB_SITE, Constants.DATAHUB_DOMAIN)
     return file if file.startswith(domain) else domain + file
 
 
 
-def chat_history_formated(self, chat_history):
+def chat_history_formated(chat_history):
     complete_chat_history =(f""" 
     Human: {chat_history.query or ''} 
     Assistant: {chat_history.query_response or 'No response'}""" 
@@ -98,14 +98,14 @@ def chat_history_formated(self, chat_history):
     return complete_chat_history, questions_chat_history
 
 
-def condensed_question_prompt(self, chat_history, current_question):
+def condensed_question_prompt(chat_history, current_question):
     # greetings = ["hello", "hi", "greetings", "hey"]
     # if any(greeting in current_question.lower() for greeting in greetings):
     #     return current_question, False
     return Constants.CONDESED_QUESTION.format(chat_history=chat_history, current_question=current_question), True
 
 
-def format_prompt(self, user_name, context_chunks, user_input, chat_history):
+def format_prompt(user_name, context_chunks, user_input, chat_history):
     # if context_chunks:
     #     LOGGING.info("chunks availabe")
     return Constants.LATEST_PROMPT.format(name_1=user_name, input=user_input, context=context_chunks, chat_history=chat_history)
