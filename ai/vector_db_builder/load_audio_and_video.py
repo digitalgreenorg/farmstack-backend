@@ -2,7 +2,7 @@
 import logging
 import os
 import re
-from AI.open_ai_utils import generate_response
+from ai.open_ai_utils import generate_response
 from core.constants import Constants
 import pytube
 
