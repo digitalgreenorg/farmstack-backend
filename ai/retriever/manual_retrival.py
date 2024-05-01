@@ -42,7 +42,18 @@ class Retrival:
                     except openai.error.InvalidRequestError as e:
                         LOGGING.info(f"Retrying with {attempt-1} chunks due to error: {e}")
                         continue  # Continue to the next attempt with fewer chunks
+        except Exception as e:
+            LOGGING.error(f"Error while generating response for query: {text}: Error {e}", exc_info=True)
+            return str(e)
+    
 
+    def get_chunks(text, user_name=None, resource_id=None, chat_history=None):
+        text=text.replace("\n", " ") # type: ignore
+        documents, chunks = "", []
+        retrival = Retrival()
+        try:
+            response = get_quadrant_db_chunks(text)
+            return response, chunks, text, tokens_uasage
         except Exception as e:
             LOGGING.error(f"Error while generating response for query: {text}: Error {e}", exc_info=True)
             return str(e)

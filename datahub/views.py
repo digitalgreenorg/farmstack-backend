@@ -137,6 +137,7 @@ from participant.serializers import (
 from utils import custom_exceptions, file_operations, string_functions, validators
 from utils.authentication_services import authenticate_user
 from utils.embeddings_creation import VectorDBBuilder
+from ai.vector_db_builder.vector_build import create_vector_db
 from utils.file_operations import (
     check_file_name_length,
     filter_dataframe_for_dashboard_counties,
@@ -3427,13 +3428,19 @@ class ResourceFileManagementViewSet(GenericViewSet):
                     serializer.is_valid(raise_exception=True)
                     serializer.save()
                     LOGGER.info(f"Embeding creation started for youtube url: {row.get('url')}")
-                    VectorDBBuilder.create_vector_db.delay(serializer.data)
+                    serializer_data = serializer.data
+                    serializer_data["state"] = data.get("state")
+                    serializer_data["crop"] = data.get("crop")
+                    create_vector_db(serializer_data)
                 return Response(serializer.data, status=status.HTTP_201_CREATED)
             else:
                 serializer = self.get_serializer(data=request.data, partial=True)
                 serializer.is_valid(raise_exception=True)
                 serializer.save()
-                VectorDBBuilder.create_vector_db.delay(serializer.data)
+                serializer_data = serializer.data
+                serializer_data["state"] = data.get("state")
+                serializer_data["crop"] = data.get("crop")
+                create_vector_db(serializer_data)
                 return Response(serializer.data, status=status.HTTP_201_CREATED)
         except ValidationError as e:
             return Response(e.detail, status=status.HTTP_400_BAD_REQUEST)
@@ -3634,34 +3641,30 @@ class EmbeddingsViewSet(viewsets.ModelViewSet):
         data=request.data
         query = request.data.get("query")
         resource_id = request.data.get("resource")
+        filters = request.data.get("filters", {})
+
         try:
             user_name = User.objects.get(id=user_id).first_name
             history = Messages.objects.filter(user_map=map_id).order_by("-created_at")
             history = history.filter(resource_id=resource_id).first() if resource_id else history.first()
-      
-            # print(chat_history)
-            # chat_history = history.condensed_question if history else ""
+
             if request.data.get("chain"):
                 # summary, chunks, condensed_question, prompt_usage = ConversationRetrival.get_input_embeddings_using_chain(query, user_name, resource_id, history)
-                summary, chunks, condensed_question, prompt_usage = VectorDBBuilder.get_input_embeddings_using_chain(query, user_name, resource_id, history)
+                summary, chunks, condensed_question, metadata = VectorDBBuilder.get_input_embeddings_using_chain(query, user_name, resource_id, history, filters)
 
             else:
-                summary, chunks, condensed_question, prompt_usage = VectorDBBuilder.get_input_embeddings(query, user_name, resource_id, history)
+                summary, chunks, condensed_question, metadata = VectorDBBuilder.get_input_embeddings_test(query, user_name, resource_id, history, filters)
                 # summary, chunks, condensed_question, prompt_usage = Retrival.get_input_embeddings(query, user_name, resource_id, history)
             data = {"user_map": UserOrganizationMap.objects.get(id=map_id).id, "resource": resource_id, "query": query, 
-                    "query_response": summary, "condensed_question":condensed_question, "prompt_usage": prompt_usage}
+                    "query_response": summary, "condensed_question":condensed_question, "output": metadata}
             messages_serializer = MessagesSerializer(data=data)
             messages_serializer.is_valid(raise_exception=True)
             message_instance = messages_serializer.save()  # This returns the Messages model instance
             data =  messages_serializer.data
 
             if request.data.get("chain") and chunks:
-
-                queryset = LangchainPgEmbedding.objects.filter(
-                    document__in=[row.page_content for row in chunks], 
-                ).values_list("uuid", flat=True)
-
-                message_instance.retrieved_chunks.set(queryset)
+                embeddings_id = [row.embeddings_id for row in chunks]
+                message_instance.retrieved_chunks.set(embeddings_id)
             elif chunks:
                 message_instance.retrieved_chunks.set(chunks.values_list("uuid", flat=True))
             return Response(data)

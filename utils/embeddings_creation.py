@@ -62,7 +62,7 @@ from urllib3.util import Retry
 from celery import shared_task
 from core import settings
 from core.constants import Constants
-from datahub.models import LangchainPgCollection, LangchainPgEmbedding, ResourceFile
+from datahub.models import LangchainPgCollection, LangchainPgEmbedding, OutputParser, ResourceFile
 from utils.chain_builder import ChainBuilder
 from langchain.prompts import PromptTemplate
 from utils.pgvector import PGVector
@@ -78,6 +78,8 @@ from langchain_community.document_transformers import (
     EmbeddingsClusteringFilter,
     EmbeddingsRedundantFilter,
 )
+from langchain_core.output_parsers import JsonOutputParser
+
 
 # from openai import OpenAI
 LOGGING = logging.getLogger(__name__)
@@ -102,7 +104,7 @@ retriever = ''
 connectionString = f"postgresql://{encoded_user}:{encoded_password}@{db_settings['HOST']}:{db_settings['PORT']}/{db_settings['NAME']}"
 
 
-def load_vector_db(resource_id):
+def load_vector_db(resource_id, filters):
     embeddings = OpenAIEmbeddings(model=embedding_model)
 
     LOGGING.info("Looking into resource: {resource_id} embeddings")
@@ -113,14 +115,13 @@ def load_vector_db(resource_id):
             .values('string_id')
         )
     ).values_list('uuid', flat=True)
-    # vector_db = PGVector(
-    #         collection_name=collection_ids,
-    #         connection_string=connectionString,
-    #         embedding_function=embeddings,
-    #     )
-    # # a = vector_db.similarity_search_with_score("Tell me about wheat varities")
-    # retriever = vector_db.as_retriever(search_args={'k':5})
-    # return retriever
+    vector_db = PGVector(
+            collection_name="ALL",
+            connection_string=connectionString,
+            embedding_function=embeddings,
+        )
+    retriever = vector_db.as_retriever(search_args={'k':5},search_type="similarity_score_threshold", search_kwargs={"filter": filters, "score_threshold": 0.8})
+    return retriever, vector_db
     embeddings = OpenAIEmbeddings()
 
     def setup_retriever(collection_id):
@@ -151,8 +152,6 @@ def load_vector_db(resource_id):
     compression_retriever = ContextualCompressionRetriever(
                             base_compressor=pipeline, base_retriever=merge_retriever)
     a = compression_retriever.similarity_search_with_score("Tell me about wheat varities")
-    print(a)
-    import pdb; pdb.set_trace()
     return compression_retriever
 
 
@@ -196,15 +195,22 @@ class VectorBuilder:
     def get_embeddings(self, embeddings, docs, collection_name, connection_string, resource):
         for document in docs:
             document.metadata["url"] = resource.get("url")
+            document.metadata["type"] = resource.get("type")
+            document.metadata["state"] = resource.get("state")
+            document.metadata["crop"] = resource.get("crop")
+            document.metadata["resource_file_id"] = resource.get("id")
+
         retriever = PGVector.from_documents(
         embedding=embeddings,
         documents=docs,
-        collection_name=collection_name,
+        collection_name="ALL",
         connection_string=connection_string,
     )
 
     def download_file(self, file_url, local_file_path):
         try:
+            import pdb; pdb.set_trace()
+
             with open(local_file_path, 'w'):
                 pass 
             if re.match(r"(https?://|www\.)", file_url) is None:
@@ -336,6 +342,7 @@ class VectorBuilder:
                 LOGGING.error(f"Unsupported input type: {type}")
                 return f"Unsupported input type: {type}", "failed"
         except Exception as e:
+
             LOGGING.error(f"Faild lo load the documents: {str(e)}")
             return str(e), "failed"
 
@@ -431,8 +438,9 @@ class Retrival:
         embedding = response['data'][0]['embedding']
         return embedding
 
-    def find_similar_chunks(self, input_embedding, resource_id,  top_n=5):
+    def find_similar_chunks(self, input_embedding, resource_id,  top_n=5, filters={}):
         # Assuming you have a similarity function or custom SQL to handle vector comparison
+
         if resource_id:
             LOGGING.info("Looking into resource: {resource_id} embeddings")
             collection_ids = LangchainPgCollection.objects.filter(
@@ -445,13 +453,13 @@ class Retrival:
             # Use these IDs to filter LangchainPgEmbedding objects
             similar_chunks = LangchainPgEmbedding.objects.annotate(
                 similarity=CosineDistance("embedding", input_embedding)
-            ).order_by("similarity").filter(similarity__lt=0.17, collection_id__in=collection_ids).defer("cmetadata").all()[:top_n]
+            ).order_by("similarity").filter(similarity__lt=0.17, collection_id__in=collection_ids, **filters).defer("cmetadata").all()[:top_n]
             return similar_chunks
         else:
             LOGGING.info("Looking into all embeddings")
             similar_chunks = LangchainPgEmbedding.objects.annotate(
                 similarity=CosineDistance("embedding", input_embedding)
-            ).order_by("similarity").filter(similarity__lt=0.17).defer('cmetadata').all()[:top_n]
+            ).order_by("similarity").filter(similarity__lt=0.17,  **filters).defer('cmetadata').all()[:top_n]
             return similar_chunks
 
     def format_prompt(self, user_name, context_chunks, user_input, chat_history):
@@ -562,17 +570,21 @@ class VectorDBBuilder:
             LOGGING.error(f"Error while generating response for query: {text}: Error {e}", exc_info=True)
             return str(e)
     
-    def get_input_embeddings_using_chain(text, user_name=None, resource_id=None, chat_history=None):
+    def get_input_embeddings_using_chain(text, user_name=None, resource_id=None, chat_history=None, filters={}):
         retrival = Retrival()
+        parser = JsonOutputParser(pydantic_object=OutputParser)
+
         prompt_template = PromptTemplate(input_variables=["name_1", "context",  "input"],
             template=Constants.LATEST_PROMPT,
+            partial_variables={"format_instructions": parser.get_format_instructions()},
             )
-        complete_history, history_question = retrival.chat_history_formated(chat_history)
+        # complete_history, history_question = retrival.chat_history_formated(chat_history)
         complete_history=[] 
-        complete_history.append((chat_history.condensed_question, chat_history.query_response))
-
+        if chat_history:
+            complete_history.append((chat_history.condensed_question, chat_history.query_response))
+        retriver, vector_db = load_vector_db(resource_id, filters)
         qa, retriver = ChainBuilder.create_qa_chain(
-                vector_db = load_vector_db(resource_id),
+                vector_db = retriver,
                 retriever_count=5,
                 model_name=Constants.GPT_3_5_TURBO,
                 temperature=Constants.TEMPERATURE,
@@ -602,8 +614,59 @@ class VectorDBBuilder:
                 }
             )
         result = sync_async(task)
-        # import pdb; pdb.set_trace()
+        filters["type"] = "youtube"
+        response = vector_db.similarity_search_with_score(result["generated_question"], filter=filters)
+        print(result["answer"])
+        print(type(result["answer"]))
 
-        return result["answer"], result["source_documents"], result["generated_question"], {}
+        answer =  json.loads(result["answer"]) if isinstance(result["answer"], str) else result["answer"] 
+        youtube_url = ''
+        if response and response[0][1] <= 0.17:
+            youtube_url = response[0][0].metadata.get("url", '')
+        metadata = {
+            "youtube_url": youtube_url,
+            "query_response": answer.get("response"),
+            "condensed_question": result.get("generated_question"),
+            "follow_up_questions": answer.get("follw_up_questions")  # Note: Check the spelling of "follow_up_questions" in your source.
+        }
 
+        return answer.get("response"), result["source_documents"], result["generated_question"], metadata
+
+    def get_input_embeddings_test(text, user_name=None, resource_id=None, chat_history=None, filters={}):
+        text=text.replace("\n", " ") # type: ignore
+        documents, chunks = "", []
+        retrival = Retrival()
+        complete_history, history_question = retrival.chat_history_formated(chat_history)
+        try:
+            text, status = retrival.condensed_question_prompt(history_question, text)
+            if status:
+                text, tokens_uasage = retrival.generate_response(text)
+            embedding = retrival.genrate_embeddings_from_text(text)
+            chunks = retrival.find_similar_chunks(embedding, resource_id, filters)
+            documents =  " ".join([row.document for row in chunks])
+            LOGGING.info(f"Similarity score for the query: {text}. Score: {' '.join([str(row.similarity) for row in chunks])} ")
+            formatted_message = retrival.format_prompt(user_name, documents, text, complete_history)
+            response, tokens_uasage =retrival.generate_response(formatted_message)
+            return response, chunks, text, tokens_uasage
+        except openai.error.InvalidRequestError as e:
+            try:
+                LOGGING.error(f"Error while generating response for query: {text}: Error {e}", exc_info=True)
+                LOGGING.info(f"Retrying without chat history")
+                formatted_message = retrival.format_prompt(user_name, documents, text, "")
+                response, tokens_uasage = retrival.generate_response(formatted_message)
+                return response, chunks, text, tokens_uasage
+            except openai.error.InvalidRequestError as e:
+                for attempt in range(3, 1, -1):  # Try with 3, then 2 chunks if errors continue
+                    try:
+                        documents = " ".join([row.document for row in chunks[:attempt]])
+                        formatted_message = retrival.format_prompt(user_name, documents, text, "")
+                        response,tokens_uasage = retrival.generate_response(formatted_message)
+                        return response, chunks, text, tokens_uasage
+                    except openai.error.InvalidRequestError as e:
+                        LOGGING.info(f"Retrying with {attempt-1} chunks due to error: {e}")
+                        continue  # Continue to the next attempt with fewer chunks
+
+        except Exception as e:
+            LOGGING.error(f"Error while generating response for query: {text}: Error {e}", exc_info=True)
+            return str(e)
     

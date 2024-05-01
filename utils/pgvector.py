@@ -61,6 +61,14 @@ class BaseModel(Base):
 
 _classes: Any = None
 
+class Document:
+    def __init__(self, page_content, metadata, embeddings_id='', score=0):
+        self.page_content = page_content
+        self.metadata = metadata
+        self.embeddings_id = embeddings_id
+        self.score=score
+    def __str__(self):
+        return f"Document(embeddings_id={self.embeddings_id}, metadata={self.metadata}, page_content={self.page_content[:100]}...)"
 
 def _get_embedding_collection_store(vector_dimension: Optional[int] = None) -> Any:
     global _classes
@@ -501,7 +509,8 @@ class PGVector(VectorStore):
     ) -> List[Tuple[Document, float]]:
         results = self.__query_collection(embedding=embedding, k=k, filter=filter)
 
-        return self._results_to_docs_and_scores(results)
+        docs = self._results_to_docs_and_scores(results)
+        return docs
 
     def _results_to_docs_and_scores(self, results: Any) -> List[Tuple[Document, float]]:
         """Return docs and scores from results."""
@@ -510,8 +519,11 @@ class PGVector(VectorStore):
                 Document(
                     page_content=result.EmbeddingStore.document,
                     metadata=result.EmbeddingStore.cmetadata,
+                    embeddings_id=result.EmbeddingStore.uuid,
+                    score=result.distance,
                 ),
                 result.distance if self.embedding_function is not None else None,
+
             )
             for result in results
         ]

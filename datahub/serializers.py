@@ -1136,6 +1136,7 @@ class ResourceSubCategoryMapSerializer(serializers.ModelSerializer):
         fields = "__all__"
 
 class ResourceSerializer(serializers.ModelSerializer):
+    
     class OrganizationRetriveSerializer(serializers.ModelSerializer):
         class Meta:
             model = Organization
@@ -1149,9 +1150,7 @@ class ResourceSerializer(serializers.ModelSerializer):
     resources = ResourceFileSerializer(many=True, read_only=True)
     uploaded_files = serializers.ListField(child=serializers.JSONField(), write_only=True, required=False)
     files = serializers.ListField(child=serializers.ListField(), write_only=True, required=False)
-
     sub_categories_map = serializers.ListField(write_only=True)
-
     organization = OrganizationRetriveSerializer(
         allow_null=True, required=False, read_only=True, source="user_map.organization"
     )
@@ -1189,8 +1188,10 @@ class ResourceSerializer(serializers.ModelSerializer):
         ).filter(subcategory_category__resource_sub_category_map__resource=instance.id).distinct().all()
         serializer = CategorySerializer(category_and_sub_category, many=True)
         return serializer.data
+    
     def get_content_files_count(self, resource):
         return ResourceFile.objects.filter(resource=resource.id).values('type').annotate(count=Count('type'))
+    
     def construct_file_path(self, instance, filename):
         # Generate a unique string to append to the filename
         unique_str = get_random_string(length=8)
@@ -1203,6 +1204,9 @@ class ResourceSerializer(serializers.ModelSerializer):
             resource_files_data = validated_data.pop("uploaded_files")
             resource_files = validated_data.pop("files")
             sub_categories_map=validated_data.pop("sub_categories_map")
+            state=validated_data.pop("state")
+            crop=validated_data.pop("crop")
+
             resource = Resource.objects.create(**validated_data)
             resource_files_data = json.loads(resource_files_data[0]) if resource_files_data else []
             sub_categories_map = json.loads(sub_categories_map[0]) if sub_categories_map else []
@@ -1224,7 +1228,10 @@ class ResourceSerializer(serializers.ModelSerializer):
                         serializer.is_valid(raise_exception=True)
                         serializer.save()
                         LOGGER.info(f"Embeding creation started for youtube url: {row.get('url')}")
-                        VectorDBBuilder.create_vector_db.delay(serializer.data)
+                        serializer_data = serializer.data
+                        serializer_data["state"] = state
+                        serializer_data["crop"] = crop
+                        VectorDBBuilder.create_vector_db.delay(serializer_data)
                 elif resource_file.get("type") == "api":
                     with open(resource_file.get("file").replace("/media/", ''), "rb") as outfile:  # Open the file in binary read mode
                         # Wrap the file content using Django's ContentFile
@@ -1234,55 +1241,30 @@ class ResourceSerializer(serializers.ModelSerializer):
                         serializer = ResourceFileSerializer(data=serializer_data, partial=True)
                         serializer.is_valid(raise_exception=True)
                         serializer.save()
+
                         LOGGER.info(f"Embeding creation started for youtube url: {resource_file.get('file')}")
-                        VectorDBBuilder.create_vector_db.delay(serializer.data)
+                        serializer_data["state"] = state
+                        serializer_data["crop"] = crop
+                        VectorDBBuilder.create_vector_db.delay(serializer_data)
                 else:
                     serializer = ResourceFileSerializer(data={"resource": resource.id, **resource_file}, partial=True)
                     serializer.is_valid(raise_exception=True)
                     serializer.save()
                     LOGGER.info(f"Embeding creation started for url: {resource_file.get('url')} or file: {resource_file.get('url')}")
-                    VectorDBBuilder.create_vector_db.delay(serializer.data)
+                    serializer_data["state"] = state
+                    serializer_data["crop"] = crop
+                    VectorDBBuilder.create_vector_db.delay(serializer_data)
             for file in resource_files[0]:
                 data = {"resource":resource.id, "file":file, "type": "file"}
                 serializer = ResourceFileSerializer(data = data)
                 serializer.is_valid(raise_exception=True)
                 serializer.save()
-                VectorDBBuilder.create_vector_db.delay(serializer.data)
-            return resource
+                serializer_data["state"] = state
+                serializer_data["crop"] = crop
+                VectorDBBuilder.create_vector_db.delay(serializer_data)
         except Exception as e:
             LOGGER.error(e,exc_info=True)
             return e
-    # def update(self, instance, validated_data):
-    #     uploaded_files_data = validated_data.pop('uploaded_files', [])
-
-    #     for attr, value in validated_data.items():
-    #         setattr(instance, attr, value)
-    #     instance.save()
-
-    #     # Handle existing files
-    #     # import pdb; pdb.set_trace()
-    #     existing_file_ids = []
-    #     for file_data in uploaded_files_data:
-    #         file_id = file_data.get('id', None)
-    #         if file_id and file_data.get('delete', None):  # Existing file
-    #             existing_file = ResourceFile.objects.get(id=file_id)
-    #             existing_file_ids.append(existing_file.id)
-    #             # Update file attributes if needed
-    #         else:  # New file
-    #             ResourceFile.objects.create(resource=instance, file=file_data['file'])
-
-    #     # Handle deletion of files not present in uploaded_files_data
-    #     unwanted_files = ResourceFile.objects.filter(resource=instance).exclude(id__in=existing_file_ids)
-    #     unwanted_files.delete()
-    #     return instance
-
-
-# class ResourceFileSerializer(serializers.ModelSerializer):
-#     class Meta:
-#         model = ResourceFile
-#         fields = "__all__"
-
-
 
 class ParticipantCostewardSerializer(serializers.ModelSerializer):
     user_id = serializers.PrimaryKeyRelatedField(
@@ -1340,7 +1322,6 @@ class ResourceUsagePolicySerializer(serializers.ModelSerializer):
         model = ResourceUsagePolicy
         fields = "__all__"
 
-
 class ResourceAPIBuilderSerializer(serializers.ModelSerializer):
     class Meta:
         model = ResourceUsagePolicy
@@ -1350,11 +1331,6 @@ def get_random_string(length=8):
     characters = string.ascii_letters + string.digits
     unique_str = ''.join(secrets.choice(characters) for _ in range(length))
     return quote(unique_str, safe='')
-
-# class ConversationSerializer(serializers.ModelSerializer):
-#     class Meta:
-#         model = Conversation
-#         fields = "__all__"
 
 class MessagesSerializer(serializers.ModelSerializer):
     class Meta:

@@ -62,6 +62,7 @@ from utils.chain_builder import ChainBuilder
 from langchain.prompts import PromptTemplate
 from utils.pgvector import PGVector
 from langchain.retrievers.merger_retriever import MergerRetriever
+from langchain_community.vectorstores import Qdrant
 
 # from openai import OpenAI
 LOGGING = logging.getLogger(__name__)
@@ -76,6 +77,7 @@ embeddings = OpenAIEmbeddings(model=embedding_model)
 # client = OpenAI(api_key=settings.OPENAI_API_KEY)
 
 db_settings = settings.DATABASES["default"]
+# quadrant_settings = settings.DATABASES["quadrant"]
 encoded_user = quote_plus(db_settings[Constants.USER.upper()])
 encoded_password = quote_plus(db_settings[Constants.PASSWORD])
 retriever = ''
@@ -83,18 +85,50 @@ retriever = ''
 
 # Construct the connection string
 connectionString = f"postgresql://{encoded_user}:{encoded_password}@{db_settings[Constants.HOST]}:{db_settings[Constants.PORT]}/{db_settings[Constants.NAME.upper()]}"
+# qudrant_url = f"http://{quadrant_settings[Constants.HOST]}:{quadrant_settings[Constants.PORT]}"  # Change this to the actual URL if not local
+qudrant_url="http://localhost:6333"
 embeddings = OpenAIEmbeddings()
 
 
-def get_embeddings(self, docs, collection_name, resource):
+def get_embeddings(docs, collection_name, resource):
     for document in docs:
         document.metadata[Constants.URL] = resource.get(Constants.URL)
-    retriever = PGVector.from_documents(
-    embedding=embeddings,
-    documents=docs,
-    collection_name=collection_name,
-    connection_string=connectionString,
-)
+    for document in docs:
+        document.metadata["source"] =  resource.get("url") if resource.get("url") else resource.get("file")
+        document.metadata["context-type"] = "video/pdf" if resource.get("type") =="youtube" else "text/pdf"
+        document.metadata["country"] = resource.get("country",'').lower().strip()
+        document.metadata["state"] = resource.get("state", '').lower().strip()
+        document.metadata["distict"] = resource.get("district", '').lower().strip()
+        document.metadata["category"] = resource.get("category", '').lower().strip()
+        document.metadata["sub_category"] = resource.get("sub_category",'').lower().strip()
+        document.metadata["resource_file"] = resource.get("id",'')
+
+    # Load the embedding model 
+    model_name = "BAAI/bge-large-en"
+    model_kwargs = {'device': 'cpu'}
+    encode_kwargs = {'normalize_embeddings': False}
+    # from langchain.embeddings import HuggingFaceBgeEmbeddings
+
+    # embeddings = HuggingFaceBgeEmbeddings(
+    #     model_name=model_name,
+    #     model_kwargs=model_kwargs,
+    #     encode_kwargs=encode_kwargs
+    # )
+    # retriever = PGVector.from_documents(
+    # embedding=embeddings,
+    # documents=docs,
+    # collection_name=collection_name,
+    # connection_string=connectionString,
+    # )
+    import pdb; pdb.set_trace()
+    qdrant = Qdrant.from_documents(
+        docs,
+        embeddings,
+        url=qudrant_url,
+        prefer_grpc=True,
+        collection_name="ALL",
+        force_recreate=True,
+    )
 
 def transcribe_audio(self, audio_bytes, language="en-US"):
     try:
@@ -192,3 +226,14 @@ def find_similar_chunks(input_embedding, resource_id,  top_n=5):
         ).order_by("similarity").filter(similarity__lt=0.17).defer('cmetadata').all()[:top_n]
         return similar_chunks
 
+def get_quadrant_db_chunks(text, filters={}):
+    qdrant = Qdrant(
+        embeddings,
+        url=qudrant_url,
+        prefer_grpc=True,
+        collection_name="ALL",
+        force_recreate=True,
+    )
+    # retriever = qdrant.as_retriever(search_args={'k':5},search_type="similarity_score_threshold", search_kwargs={"filter": filters, "score_threshold": 0.8})
+    documents = qdrant.similarity_search(text)
+    return documents

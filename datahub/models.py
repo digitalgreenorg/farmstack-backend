@@ -353,16 +353,17 @@ class SubCategory(TimeStampMixin):
     category = models.ForeignKey(Category, on_delete=models.CASCADE, related_name="subcategory_category")
 
 
+class ResourceSubCategoryMap(TimeStampMixin):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    sub_category = models.ForeignKey(SubCategory, on_delete=models.CASCADE, related_name="resource_sub_category_map")
+    resource = models.ForeignKey(Resource, on_delete=models.CASCADE, related_name="resource_cat_map")
+
+
 class DatasetSubCategoryMap(TimeStampMixin):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     sub_category = models.ForeignKey(SubCategory, on_delete=models.CASCADE, related_name="dataset_sub_category_map")
     dataset = models.ForeignKey(DatasetV2, on_delete=models.CASCADE, related_name="dataset_cat_map")
 
-
-class ResourceSubCategoryMap(TimeStampMixin):
-    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    sub_category = models.ForeignKey(SubCategory, on_delete=models.CASCADE, related_name="resource_sub_category_map")
-    resource = models.ForeignKey(Resource, on_delete=models.CASCADE, related_name="resource_cat_map")
 
 class ResourceUsagePolicy(TimeStampMixin):
     """
@@ -440,29 +441,14 @@ class Messages(TimeStampMixin):
     bot_reference = models.CharField(max_length=50, null=True)
     query = models.CharField(max_length=10000, null=True)
     translated_message = models.CharField(max_length=10000, null=True)
-    # message_input_time = models.DateTimeField(null=True)
-    # input_speech_to_text_start_time = models.DateTimeField(null=True)
-    # input_speech_to_text_end_time = models.DateTimeField(null=True)
-    # input_translation_start_time = models.DateTimeField(null=True)
-    # input_translation_end_time = models.DateTimeField(null=True)
     query_response = models.CharField(max_length=10000, null=True)
-    # message_translated_response = models.CharField(max_length=10000, null=True)
-    # response_translation_start_time = models.DateTimeField(null=True)
-    # response_translation_end_time = models.DateTimeField(null=True)
-    # response_text_to_speech_start_time = models.DateTimeField(null=True)
-    # response_text_to_speech_end_time = models.DateTimeField(null=True)
-    # message_response_time = models.DateTimeField(null=True)
-    # main_bot_logic_start_time = models.DateTimeField(null=True)
-    # main_bot_logic_end_time = models.DateTimeField(null=True)
-    # video_retrieval_start_time = models.DateTimeField(null=True)
-    # video_retrieval_end_time = models.DateTimeField(null=True)
     feedback = models.CharField(max_length=4096, null=True)
     input_type = models.CharField(max_length=20, choices=INPUT_TYPES, null=True)
     input_language_detected = models.CharField(max_length=20, null=True)
     retrieved_chunks = models.ManyToManyField(LangchainPgEmbedding, null=True)
     condensed_question = models.CharField(max_length=20000, null=True)
     prompt_usage = models.JSONField(default={}, null=True)
-
+    output = models.JSONField(default={}, null=True)
     # class Meta:
     #     table_name = "messages"
 
@@ -474,3 +460,8 @@ class Messages(TimeStampMixin):
 #     class Meta:
 #         db_table = 'datahub_messages_retrieved_chunks'
 
+from langchain_core.pydantic_v1 import BaseModel, Field
+
+class OutputParser(BaseModel):
+    response: str = Field(description="AI Assistant Response")
+    follw_up_questions: list = Field(description="Follow-up questions, give users examples of at least list of 3 questions which they can ask as a follow-up. Remember Build those questions from the provided context only other wise give empty")

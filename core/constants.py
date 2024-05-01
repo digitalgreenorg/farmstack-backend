@@ -322,20 +322,19 @@ You should then try to respond to the user input based on the intent as follows 
         - "Could you reframe that for me?"
         - "Ever thought of stumping an AI? You just did! Try another angle?"
 
-If and only if the context is not NONE or not an empty list, make sure to add suggested followups.  The followup suggests should be based on the following criteria:
-    1. Do not suggest Youtube url: if the context is an empty list or NONE
-    2. Suggest Youtube url: only if you found in the below context.
-
         
 ####Context :
 {context}
 
-Remember that answers are to be based on only the passed context and if you found any Youtube url in the above context suggest it as well, otherwise are generally about driving a conversation.
+Remember that answers are to be based on only the passed context. otherwise are generally about driving a conversation.
+
+####History conversation:
+History Input: {chat_history}
 
 ####Current conversation:
 User Input: {input}
 
-AI Assistant Response :
+{format_instructions}
 
 """
     HTTPS = "https"
