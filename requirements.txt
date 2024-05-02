@@ -40,7 +40,6 @@ deprecation==2.1.0
 dill==0.3.6
 distlib==0.3.4
 Django==4.1.5
-django-apscheduler==0.6.2
 django-configurations==2.3.2
 django-cors-headers==3.13.0
 django-environ==0.9.0

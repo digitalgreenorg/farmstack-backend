@@ -67,8 +67,7 @@ INSTALLED_APPS = [
     "datahub",
     "participant",
     "microsite",
-    "connectors",
-    "django_apscheduler"
+    "connectors"
 ]
 # Use nose to run all tests
 TEST_RUNNER = "django_nose.NoseTestSuiteRunner"
