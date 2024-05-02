@@ -242,10 +242,10 @@ class LoginViewset(GenericViewSet):
             return Response(status=status.HTTP_204_NO_CONTENT)
         return Response(["Invalid User id"], 400)
     
-    @action(detail=False, methods=["get"])
+    @action(detail=False, methods=["post"])
     def bot_login(self, request, *args, **kwargs):
         """POST method: to save a newly registered user"""
-        email=request.GET.get("email")
+        email=request.data.get("email")
         user_obj = User.objects.filter(email=email)
         user = user_obj.first()
         if not user:
