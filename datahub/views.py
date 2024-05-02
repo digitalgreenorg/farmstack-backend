@@ -134,7 +134,7 @@ from participant.serializers import (
 )
 from utils import custom_exceptions, file_operations, string_functions, validators
 from utils.authentication_services import authenticate_user
-from utils.embeddings_creation import VectorDBBuilder
+from utils.embeddings_creation import Retrival, VectorDBBuilder
 from utils.file_operations import (
     check_file_name_length,
     filter_dataframe_for_dashboard_counties,
@@ -174,7 +174,10 @@ from .serializers import (
     UsagePolicyDetailSerializer,
     UsagePolicySerializer,
 )
-
+from django.db import models
+from django.db.models import OuterRef, Subquery
+from django.db.models.functions import Cast
+from pgvector.django import CosineDistance, L2Distance
 # Replace 'YOUR_API_KEY' with your actual API key
 LOGGER = logging.getLogger(__name__)
 con = None
@@ -3602,16 +3605,6 @@ class EmbeddingsViewSet(viewsets.ModelViewSet):
     queryset = LangchainPgEmbedding.objects.all()
     serializer_class = LangChainEmbeddingsSerializer
     lookup_field = 'uuid'  # Specify the UUID field as the lookup field
-
-    @action(detail=False, methods=['get'])
-    def embeddings_and_chunks(self, request):
-        embeddings = []
-        collection_id = request.GET.get("resource_file")
-        collection = LangchainPgCollection.objects.filter(name=str(collection_id)).first()
-        if collection:
-            embeddings = LangchainPgEmbedding.objects.filter(collection_id=collection.uuid).values("embedding","document")
-        return Response(embeddings)
-
 
     @action(detail=False, methods=['post'])
     def get_embeddings(self, request):

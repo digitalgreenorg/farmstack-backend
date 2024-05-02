@@ -44,6 +44,8 @@ from datahub.models import (
     Datasets,
     DatasetV2,
     DatasetV2File,
+    LangchainPgCollection,
+    LangchainPgEmbedding,
     Messages,
     Organization,
     Policy,
@@ -84,7 +86,7 @@ from microsite.serializers import (
     UserSerializer,
 )
 from utils import custom_exceptions, file_operations
-from utils.embeddings_creation import VectorDBBuilder
+from utils.embeddings_creation import Retrival, VectorDBBuilder
 from utils.file_operations import (
     check_file_name_length,
     filter_dataframe_for_dashboard_counties,
@@ -93,7 +95,10 @@ from utils.file_operations import (
     generate_omfp_dashboard,
 )
 from utils.jwt_services import http_request_mutation
-
+from django.db import models
+from django.db.models import OuterRef, Subquery
+from django.db.models.functions import Cast
+from pgvector.django import CosineDistance, L2Distance
 LOGGER = logging.getLogger(__name__)
 
 
@@ -1222,6 +1227,53 @@ class ResourceMicrositeViewSet(GenericViewSet):
             LOGGER.error(f"Error occured in ResourceMicrositeViewSet resources_filter ERROR: {e}", exc_info=True)
             return Response(str(e), status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
+
+    @action(detail=False, methods=['get'])
+    def get_content(self, request):
+        embeddings = []
+        email = request.GET.get("email")
+        query = request.GET.get("query")
+        email=request.GET.get("email")
+        user_obj = User.objects.filter(email=email)
+        user = user_obj.first()
+        data = (
+                ResourceFile.objects.select_related(
+                    "resource",
+                    "resource__user_map",
+                    "resource__user_map__user"
+                )
+            )
+        if not user:
+            return []
+        elif user.on_boarded_by:
+            data = (
+                data.filter(
+                    Q(resource__user_map__user__on_boarded_by=user.id)
+                    | Q(resource__user_map__user_id=user.id)
+                    )
+            )
+        else:
+            data = (
+                data.filter(resource__user_map__user__on_boarded_by=None).exclude(resource__user_map__user__role_id=6)
+            )
+        resource_file_ids = data.values_list("id", flat=True).all()
+        collection_ids = LangchainPgCollection.objects.filter(
+        name__in=Subquery(
+            ResourceFile.objects.filter(id__in=resource_file_ids)
+            .annotate(string_id=Cast('id', output_field=models.CharField()))
+            .values('string_id')
+        )
+        ).values_list('uuid', flat=True)
+        retrival = Retrival()
+        embedding = retrival.genrate_embeddings_from_text(query)
+
+        similar_chunks = (LangchainPgEmbedding.objects.annotate(
+                    similarity=CosineDistance("embedding", embedding)
+                ).order_by("similarity").filter(similarity__lt=0.17, collection_id__in=collection_ids)
+        .values("document", "cmetadata", "similarity").all()[:5]
+        # .defer("cmetadata").all()[:5]
+        )
+        return Response(similar_chunks)
 
 
 # Created a new class to return data from kde, agnext and krishitantra data stored in json format in utils folder
