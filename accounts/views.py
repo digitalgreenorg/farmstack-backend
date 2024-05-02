@@ -241,8 +241,21 @@ class LoginViewset(GenericViewSet):
             user.save()
             return Response(status=status.HTTP_204_NO_CONTENT)
         return Response(["Invalid User id"], 400)
-
-
+    
+    @action(detail=False, methods=["get"])
+    def bot_login(self, request, *args, **kwargs):
+        """POST method: to save a newly registered user"""
+        email=request.GET.get("email")
+        user_obj = User.objects.filter(email=email)
+        user = user_obj.first()
+        if not user:
+            return Response(
+                {"email": "User not registered"},
+                status=status.HTTP_401_UNAUTHORIZED,
+            )
+        serializer = UserCreateSerializer(user)
+        return Response(serializer.data)
+    
 @permission_classes([])
 class ResendOTPViewset(GenericViewSet):
     """ResendOTPViewset for users to register"""
