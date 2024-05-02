@@ -1276,7 +1276,7 @@ class ResourceMicrositeViewSet(GenericViewSet):
         similar_chunks = (LangchainPgEmbedding.objects.annotate(
                     similarity=CosineDistance("embedding", embedding)
                 ).order_by("similarity").filter(similarity__lt=0.17, collection_id__in=collection_ids)
-        .values("document", "cmetadata", "similarity").all()[:12]
+        .values("document", "cmetadata", "similarity", "uuid").all()[:12]
         # .defer("cmetadata").all()[:5]
         )
         return Response(similar_chunks)
