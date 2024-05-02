@@ -3606,53 +3606,6 @@ class EmbeddingsViewSet(viewsets.ModelViewSet):
     serializer_class = LangChainEmbeddingsSerializer
     lookup_field = 'uuid'  # Specify the UUID field as the lookup field
 
-    @action(detail=False, methods=['get'])
-    def get_chunks(self, request):
-        embeddings = []
-        email = request.GET.get("email")
-        query = request.GET.get("query")
-        email=request.GET.get("email")
-        user_obj = User.objects.filter(email=email)
-        user = user_obj.first()
-        data = (
-                ResourceFile.objects.select_related(
-                    "resource",
-                    "resource__user_map",
-                    "resource__user_map__user"
-                )
-            )
-        if not user:
-            return []
-        elif user.on_boarded_by:
-            data = (
-                data.filter(
-                    Q(resource__user_map__user__on_boarded_by=user.id)
-                    | Q(resource__user_map__user_id=user.id)
-                    )
-            )
-        else:
-            data = (
-                data.filter(resource__user_map__user__on_boarded_by=None).exclude(resource__user_map__user__role_id=6)
-            )
-        resource_file_ids = data.values_list("id", flat=True).all()
-        collection_ids = LangchainPgCollection.objects.filter(
-        name__in=Subquery(
-            ResourceFile.objects.filter(id__in=resource_file_ids)
-            .annotate(string_id=Cast('id', output_field=models.CharField()))
-            .values('string_id')
-        )
-        ).values_list('uuid', flat=True)
-        retrival = Retrival()
-        embedding = retrival.genrate_embeddings_from_text(query)
-
-        similar_chunks = (LangchainPgEmbedding.objects.annotate(
-                    similarity=CosineDistance("embedding", embedding)
-                ).order_by("similarity").filter(similarity__lt=0.17, collection_id__in=collection_ids)
-        .values("document", "cmetadata", "similarity")
-        # .defer("cmetadata").all()[:5]
-        )
-        return Response(similar_chunks)
-
     @action(detail=False, methods=['post'])
     def get_embeddings(self, request):
         # Use the 'uuid' field to look up the instance
