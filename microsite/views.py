@@ -1228,12 +1228,11 @@ class ResourceMicrositeViewSet(GenericViewSet):
             return Response(str(e), status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
-    @action(detail=False, methods=['get'])
+    @action(detail=False, methods=["post"])
     def get_content(self, request):
         embeddings = []
-        email = request.GET.get("email")
-        query = request.GET.get("query")
-        email=request.GET.get("email")
+        email = request.data.get("email")
+        query = request.data.get("query")
         user_obj = User.objects.filter(email=email)
         user = user_obj.first()
         data = (
@@ -1244,8 +1243,15 @@ class ResourceMicrositeViewSet(GenericViewSet):
                 )
             )
         if not user:
-            return []
+            return Response([])
         elif user.on_boarded_by:
+            data = (
+                data.filter(
+                    Q(resource__user_map__user__on_boarded_by=user.on_boarded_by)
+                    | Q(resource__user_map__user_id=user.on_boarded_by)
+                    )
+            )
+        elif user.role_id == 6:
             data = (
                 data.filter(
                     Q(resource__user_map__user__on_boarded_by=user.id)

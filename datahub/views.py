@@ -3671,6 +3671,14 @@ class EmbeddingsViewSet(viewsets.ModelViewSet):
             return Response(str(e), status=status.HTTP_500_INTERNAL_SERVER_ERROR)
     
     @action(detail=False, methods=['get'])
+    def embeddings_and_chunks(self, request):
+        embeddings = []
+        collection_id = request.GET.get("resource_file")
+        collection = LangchainPgCollection.objects.filter(name=str(collection_id)).first()
+        if collection:
+            embeddings = LangchainPgEmbedding.objects.filter(collection_id=collection.uuid).values("embedding","document")
+        return Response(embeddings)
+    @action(detail=False, methods=['get'])
     def dump_embeddings(self, request):
         # queryset = ResourceFile.objects.all()
         from django.db import models
