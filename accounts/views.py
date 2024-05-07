@@ -480,8 +480,6 @@ class SelfRegisterParticipantViewSet(GenericViewSet):
         org_queryset = self.perform_create(org_serializer)
         org_id = org_queryset.id
         request.data._mutable=True
-        request.data.update({'role':3})
-        request.data.update({'approval_status':False})
         UserCreateSerializerValidator.validate_phone_number_format(request.data)
         user_serializer = UserCreateSerializer(data=request.data)
         user_serializer.is_valid(raise_exception=True)
