@@ -120,7 +120,6 @@ def get_embeddings(docs, collection_name, resource):
     # collection_name=collection_name,
     # connection_string=connectionString,
     # )
-    import pdb; pdb.set_trace()
     qdrant = Qdrant.from_documents(
         docs,
         embeddings,

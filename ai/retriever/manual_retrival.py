@@ -5,6 +5,7 @@ import openai
 from ai.utils import chat_history_formated, condensed_question_prompt, format_prompt
 
 LOGGING = logging.getLogger(__name__)
+qudrant_url="http://localhost:6333"
 
 class Retrival:
 
@@ -58,3 +59,5 @@ class Retrival:
             LOGGING.error(f"Error while generating response for query: {text}: Error {e}", exc_info=True)
             return str(e)
     
+class QuadrantRetrival:
+    def retrieve_chunks():
