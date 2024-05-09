@@ -51,7 +51,6 @@ class UserCreateSerializer(serializers.ModelSerializer):
             "subscription",
             "profile_picture",
             "on_boarded",
-            "approval_status",
             "on_boarded_by"
         )
         # fields = "__all__"

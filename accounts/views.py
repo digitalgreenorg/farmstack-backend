@@ -192,6 +192,10 @@ class LoginViewset(GenericViewSet):
                         },
                         status=status.HTTP_403_FORBIDDEN,
                     )
+            gen_key = login_helper.generateKey()
+            otp = gen_key.returnValue().get("OTP")
+            login_helper.set_user_otp(email, otp, settings.OTP_DURATION)
+
             return Response(
                 {
                     "id": user.id,
@@ -201,8 +205,7 @@ class LoginViewset(GenericViewSet):
                 status=status.HTTP_201_CREATED,
             )
             # generate and send OTP to the the user
-            gen_key = login_helper.generateKey()
-            otp = gen_key.returnValue().get("OTP")
+            
             full_name = string_functions.get_full_name(user.first_name, user.last_name)
             data = {"otp": otp, "participant_admin_name": full_name}
 
