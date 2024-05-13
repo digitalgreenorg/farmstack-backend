@@ -20,8 +20,8 @@ services:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
       POSTGRES_HOST_AUTH_METHOD: trust
-      SENDGRID_API_KEY: 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
-      EMAIL_HOST_USER: varunramesh.07@gmail.com
+      SENDGRID_API_KEY: {your sendgrid key}
+      EMAIL_HOST_USER: {your sendgrid registered email}
     links:
       - db:db
     networks:
