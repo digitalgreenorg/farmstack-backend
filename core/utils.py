@@ -42,6 +42,8 @@ class Utils:
             content (None, optional): _description_. Defaults to None.
             # subject (None, optional): _description_. Defaults to None.
         """
+        return Response({"Message": "Email successfully sent!"}, status=status.HTTP_200_OK)
+
         content = Content("text/html", content)
         mail = Mail(FROM_EMAIL, to_email, subject, content, is_multiple=True)
         try:

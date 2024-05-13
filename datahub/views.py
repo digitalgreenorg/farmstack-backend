@@ -593,66 +593,125 @@ class ParticipantViewSet(GenericViewSet):
             LOGGER.error(e,exc_info=True)
             return Response(str(e), status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-
     @authenticate_user(model=Organization)
     def destroy(self, request, pk):
-        """DELETE method: delete an object"""
-        participant = self.get_object()
-        user_organization = (
-            UserOrganizationMap.objects.select_related(Constants.ORGANIZATION).filter(user_id=pk).first()
-        )
-        organization = Organization.objects.get(id=user_organization.organization_id)
-        if participant.status:
-            participant.status = False
-            try:
-                if participant.on_boarded_by:
-                    datahub_admin = participant.on_boarded_by
-                else:
-                    datahub_admin = User.objects.filter(role_id=1).first()
-                admin_full_name = string_functions.get_full_name(datahub_admin.first_name, datahub_admin.last_name)
-                participant_full_name = string_functions.get_full_name(participant.first_name, participant.last_name)
+        """DELETE method: hard delete an object"""
+        try:
+            participant = self.get_object()
+            user_organization = (
+                UserOrganizationMap.objects.select_related(Constants.ORGANIZATION).filter(user_id=pk).first()
+            )
+            organization = Organization.objects.get(id=user_organization.organization_id)
 
-                data = {
-                    Constants.datahub_name: os.environ.get(Constants.DATAHUB_NAME, Constants.datahub_name),
-                    "participant_admin_name": participant_full_name,
-                    "participant_organization_name": organization.name,
-                    "datahub_admin": admin_full_name,
-                    Constants.datahub_site: os.environ.get(Constants.DATAHUB_SITE, Constants.datahub_site),
-                }
+            if participant.on_boarded_by:
+                datahub_admin = participant.on_boarded_by
+            else:
+                datahub_admin = User.objects.filter(role_id=1).first()
 
-                # delete data & trigger_email
-                self.perform_create(participant)
-                email_render = render(
-                    request,
-                    Constants.DATAHUB_ADMIN_DELETES_PARTICIPANT_ORGANIZATION,
-                    data,
-                )
-                mail_body = email_render.content.decode("utf-8")
-                Utils().send_email(
-                    to_email=participant.email,
-                    content=mail_body,
-                    subject=Constants.PARTICIPANT_ORG_DELETION_SUBJECT
-                            + os.environ.get(Constants.DATAHUB_NAME, Constants.datahub_name),
-                )
+            admin_full_name = string_functions.get_full_name(datahub_admin.first_name, datahub_admin.last_name)
+            participant_full_name = string_functions.get_full_name(participant.first_name, participant.last_name)
 
-                # Set the on_boarded_by_id to null if co_steward is deleted
-                User.objects.filter(on_boarded_by=pk).update(on_boarded_by=None)
+            data = {
+                Constants.datahub_name: os.environ.get(Constants.DATAHUB_NAME, Constants.datahub_name),
+                "participant_admin_name": participant_full_name,
+                "participant_organization_name": organization.name,
+                "datahub_admin": admin_full_name,
+                Constants.datahub_site: os.environ.get(Constants.DATAHUB_SITE, Constants.datahub_site),
+            }
 
-                return Response(
-                    {"message": ["Participant deleted"]},
-                    status=status.HTTP_204_NO_CONTENT,
-                )
-            except Exception as error:
-                LOGGER.error(error, exc_info=True)
-                return Response({"message": ["Internal server error"]}, status=500)
+            # Prepare email before deleting
+            email_render = render(
+                request,
+                Constants.DATAHUB_ADMIN_DELETES_PARTICIPANT_ORGANIZATION,
+                data,
+            )
+            mail_body = email_render.content.decode("utf-8")
 
-        elif participant.status is False:
-            return Response(
-                {"message": ["participant/co-steward already deleted"]},
-                status=status.HTTP_204_NO_CONTENT,
+            # Hard delete participant and related data
+            participant.delete()  # This deletes the participant record
+            organization.delete()
+            # Send email notification
+            Utils().send_email(
+                to_email=participant.email,
+                content=mail_body,
+                subject=Constants.PARTICIPANT_ORG_DELETION_SUBJECT
+                        + os.environ.get(Constants.DATAHUB_NAME, Constants.datahub_name),
             )
 
-        return Response({"message": ["Internal server error"]}, status=500)
+            # Update related users who are on_boarded_by the deleted participant
+            User.objects.filter(on_boarded_by=pk).update(on_boarded_by=None)
+
+            return Response(
+                {"message": ["Participant deleted"]},
+                status=status.HTTP_204_NO_CONTENT,
+            )
+        except Organization.DoesNotExist:
+            return Response({"message": ["Organization not found"]}, status=status.HTTP_404_NOT_FOUND)
+        except UserOrganizationMap.DoesNotExist:
+            return Response({"message": ["User organization mapping not found"]}, status=status.HTTP_404_NOT_FOUND)
+        except Exception as error:
+            LOGGER.error(error, exc_info=True)
+            return Response({"message": ["Internal server error"]}, status=500)
+
+    # @authenticate_user(model=Organization)
+    # def destroy(self, request, pk):
+    #     """DELETE method: delete an object"""
+    #     participant = self.get_object()
+    #     user_organization = (
+    #         UserOrganizationMap.objects.select_related(Constants.ORGANIZATION).filter(user_id=pk).first()
+    #     )
+    #     organization = Organization.objects.get(id=user_organization.organization_id)
+    #     if participant.status:
+    #         participant.status = False
+    #         try:
+    #             if participant.on_boarded_by:
+    #                 datahub_admin = participant.on_boarded_by
+    #             else:
+    #                 datahub_admin = User.objects.filter(role_id=1).first()
+    #             admin_full_name = string_functions.get_full_name(datahub_admin.first_name, datahub_admin.last_name)
+    #             participant_full_name = string_functions.get_full_name(participant.first_name, participant.last_name)
+
+    #             data = {
+    #                 Constants.datahub_name: os.environ.get(Constants.DATAHUB_NAME, Constants.datahub_name),
+    #                 "participant_admin_name": participant_full_name,
+    #                 "participant_organization_name": organization.name,
+    #                 "datahub_admin": admin_full_name,
+    #                 Constants.datahub_site: os.environ.get(Constants.DATAHUB_SITE, Constants.datahub_site),
+    #             }
+
+    #             # delete data & trigger_email
+    #             self.perform_create(participant)
+    #             email_render = render(
+    #                 request,
+    #                 Constants.DATAHUB_ADMIN_DELETES_PARTICIPANT_ORGANIZATION,
+    #                 data,
+    #             )
+    #             mail_body = email_render.content.decode("utf-8")
+    #             Utils().send_email(
+    #                 to_email=participant.email,
+    #                 content=mail_body,
+    #                 subject=Constants.PARTICIPANT_ORG_DELETION_SUBJECT
+    #                         + os.environ.get(Constants.DATAHUB_NAME, Constants.datahub_name),
+    #             )
+
+    #             # Set the on_boarded_by_id to null if co_steward is deleted
+    #             User.objects.filter(on_boarded_by=pk).update(on_boarded_by=None)
+
+    #             return Response(
+    #                 {"message": ["Participant deleted"]},
+    #                 status=status.HTTP_204_NO_CONTENT,
+    #             )
+    #         except Exception as error:
+    #             LOGGER.error(error, exc_info=True)
+    #             return Response({"message": ["Internal server error"]}, status=500)
+
+    #     elif participant.status is False:
+    #         return Response(
+    #             {"message": ["participant/co-steward already deleted"]},
+    #             status=status.HTTP_204_NO_CONTENT,
+    #         )
+
+    #     return Response({"message": ["Internal server error"]}, status=500)
 
     @action(detail=False, methods=["post"], permission_classes=[AllowAny])
     def get_list_co_steward(self, request, *args, **kwargs):
