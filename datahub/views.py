@@ -3235,8 +3235,33 @@ class ResourceManagementViewSet(GenericViewSet):
     def list(self, request, *args, **kwargs):
         try:
             user_map = request.META.get("map_id")
+            user_id = request.META.get("user_id")
+            user_obj = User.objects.get(id=user_id)
+         
             if request.GET.get("others", None):
-                queryset = Resource.objects.exclude(user_map=user_map).order_by("-updated_at")
+                queryset = (
+                    Resource.objects.select_related(
+                        "user_map",
+                        "user_map__user"
+                        )
+                    )
+                if user_obj.on_boarded_by:
+                    queryset = (
+                        queryset.filter(
+                            Q(user_map__user__on_boarded_by=user_obj.on_boarded_by)
+                            | Q(user_map__user_id=user_obj.on_boarded_by)
+                            ).exclude(user_map=user_map)
+                    )
+                elif user_obj.role_id==6:
+                    queryset = (
+                        queryset.filter(
+                            Q(user_map__user__on_boarded_by=user_obj.id)
+                            )
+                    )
+                elif user_obj.role_id ==1:
+                    queryset = Resource.objects.exclude(user_map=user_map).order_by("-updated_at")
+                else:
+                    queryset = queryset.filter(user_map__user__on_boarded_by=None).exclude(user_map__user__role_id=6).exclude(user_map=user_map)
             else:
                 queryset = Resource.objects.filter(user_map=user_map).order_by("-updated_at")
 
