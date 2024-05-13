@@ -1,6 +1,6 @@
 
 import logging
-from ai.open_ai_utils import find_similar_chunks, generate_response, genrate_embeddings_from_text
+from ai.open_ai_utils import find_similar_chunks, generate_response, genrate_embeddings_from_text, get_quadrant_db_chunks, get_quadrant_db_file_chunks
 import openai
 from ai.utils import chat_history_formated, condensed_question_prompt, format_prompt
 
@@ -49,15 +49,23 @@ class Retrival:
     
 
     def get_chunks(text, user_name=None, resource_id=None, chat_history=None):
+        pass
+    
+class QuadrantRetrival:
+    def retrieve_chunks(self, file_ids, text):
         text=text.replace("\n", " ") # type: ignore
-        documents, chunks = "", []
-        retrival = Retrival()
         try:
-            response = get_quadrant_db_chunks(text)
-            return response, chunks, text, tokens_uasage
+            chunks = get_quadrant_db_chunks(file_ids, text)
+            return chunks
         except Exception as e:
             LOGGING.error(f"Error while generating response for query: {text}: Error {e}", exc_info=True)
             return str(e)
+        
+    def embeddings_and_chunks(self, resource_file_id):
+        try:
+            chunks = get_quadrant_db_file_chunks(resource_file_id)
+            return chunks
+        except Exception as e:
+            LOGGING.error(f"Error while retriving chunks for file_id: {resource_file_id}: Error {e}", exc_info=True)
+            return str(e)
     
-class QuadrantRetrival:
-    def retrieve_chunks():

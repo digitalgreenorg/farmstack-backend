@@ -63,6 +63,8 @@ from langchain.prompts import PromptTemplate
 from utils.pgvector import PGVector
 from langchain.retrievers.merger_retriever import MergerRetriever
 from langchain_community.vectorstores import Qdrant
+from qdrant_client import QdrantClient
+from qdrant_client.http.models import Filter, FieldCondition, Match 
 
 # from openai import OpenAI
 LOGGING = logging.getLogger(__name__)
@@ -225,14 +227,49 @@ def find_similar_chunks(input_embedding, resource_id,  top_n=5):
         ).order_by("similarity").filter(similarity__lt=0.17).defer('cmetadata').all()[:top_n]
         return similar_chunks
 
-def get_quadrant_db_chunks(text, filters={}):
+def get_quadrant_db_chunks(file_ids, text, filters={}):
+   
+
+    qdrant_client = QdrantClient(
+            url=qudrant_url,
+            prefer_grpc=True,
+        )
     qdrant = Qdrant(
-        embeddings,
-        url=qudrant_url,
-        prefer_grpc=True,
+        embeddings=embeddings,
+        client=qdrant_client,
         collection_name="ALL",
-        force_recreate=True,
     )
-    # retriever = qdrant.as_retriever(search_args={'k':5},search_type="similarity_score_threshold", search_kwargs={"filter": filters, "score_threshold": 0.8})
-    documents = qdrant.similarity_search(text)
+   
+    documents = qdrant.similarity_search_with_score(text)
+
     return documents
+
+def get_quadrant_db_file_chunks(file_ids):
+    # qdrant = Qdrant(
+    #     embeddings,
+    #     url=qudrant_url,
+    #     prefer_grpc=True,
+    #     collection_name="ALL",
+    #     force_recreate=True,
+    # )
+    # documents = qdrant.similarity_search_with_score(text)
+
+    # Create a connection to the database
+    # db = Database(qudrant_url)
+
+    # Define the metadata criteria for the chunks you want to retrieve
+    metadata_criteria = {
+        'resource_file': file_ids # Adjusted to include only files and images
+    }
+    qdrant_client = QdrantClient(
+            url=qudrant_url,
+            prefer_grpc=True,
+
+        )
+    results = qdrant_client.search(
+        collection_name="ALL",
+        filter=metadata_criteria,
+        top=10  # Adjust as necessary to fetch more results
+    )
+    return results
+
