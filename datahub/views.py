@@ -3768,3 +3768,11 @@ class MessagesCreateViewSet(generics.ListCreateAPIView):
         page = self.paginate_queryset(queryset)
         serializer = MessagesChunksRetriveSerializer(page, many=True)
         return self.get_paginated_response(serializer.data)
+
+
+def telegram_dashboard(request):
+    return render(request, 'streamlit.html', {'url': os.getenv("TELEGRAM_URL")})
+
+def coco_dashboard(request):
+    return render(request, 'streamlit.html', {'url':os.getenv("COCO_URL")})
+
