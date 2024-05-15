@@ -314,7 +314,7 @@ class Resource(TimeStampMixin):
     """
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     title = models.CharField(max_length=100)
-    description = models.TextField(max_length=250)
+    description = models.TextField(max_length=2048)
     user_map = models.ForeignKey(UserOrganizationMap, on_delete=models.CASCADE)
     category = models.JSONField(default=dict)
     accessibility = models.CharField(max_length=255, null=True, choices=USAGE_POLICY_APPROVAL_STATUS, default="public")
