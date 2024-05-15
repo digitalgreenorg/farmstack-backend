@@ -424,7 +424,7 @@ def populate_dropdown(data):
 # Main function to create the dashboard
 def main():
     # Link to external CSS file
-    with open("streamlit/coco/style.css", "r") as f:
+    with open("./style.css", "r") as f:
         css = f.read()
     st.markdown(f'<style>{css}</style>', unsafe_allow_html=True)
     col1, col2, col4, col5, col6, col7 = st.columns([1, 1, 1, 1, 1, 1])
