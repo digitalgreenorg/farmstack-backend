@@ -3776,3 +3776,8 @@ def telegram_dashboard(request):
 def coco_dashboard(request):
     return render(request, 'streamlit.html', {'url':os.getenv("COCO_URL")})
 
+def farmer_registry_dashboard(request):
+    return render(request, 'streamlit.html', {'url': os.getenv("FARMER_REGISTRY_URL")})
+
+def da_registry_dashboard(request):
+    return render(request, 'streamlit.html', {'url': os.getenv("DA_REGISTRY_URL")})

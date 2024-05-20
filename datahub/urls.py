@@ -39,6 +39,8 @@ from datahub.views import (
     UsagePolicyRetrieveUpdateDestroyView,
     telegram_dashboard,
     coco_dashboard,
+    farmer_registry_dashboard,
+    da_registry_dashboard
 )
 
 router = DefaultRouter()
@@ -76,5 +78,7 @@ urlpatterns = [
     path('messages/', MessagesCreateViewSet.as_view(), name='messages_create'),
     path('streamlit/telegram_bot_dashboard/', telegram_dashboard, name='streamlit_telegram_dashboard'),
     path('streamlit/coco_dashboard/', coco_dashboard, name='streamlit_coco_dashboard'),
+    path('streamlit/farmer_registry_dashboard/', farmer_registry_dashboard, name='streamlit_farmer_registry_dashboard'),
+    path('streamlit/da_registry_dashboard/', da_registry_dashboard, name='streamlit_da_registry_dashboard'),
 
 ]
