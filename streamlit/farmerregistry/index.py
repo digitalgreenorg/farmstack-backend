@@ -433,6 +433,11 @@ def calculate_counts(data):
         if livestock_type not in livestock_with_location[region]:
             livestock_with_location[region][livestock_type] = 0
         livestock_with_location[region][livestock_type] += livestock_count
+
+    for region in livestock_with_location:
+        if None in livestock_with_location[region]:
+            del livestock_with_location[region][None]
+
     return {
             "farmer_related_data":farmer_related_data,
             "combine_counts_dict":combine_counts_dict,
@@ -827,6 +832,7 @@ with col33:
 
 with col34:
     livestock_df = pd.DataFrame(result["livestock_with_location"]).transpose()
+    # print("livestock_df-->",livestock_df)
 
     if not livestock_df.empty:
         livestock_df = livestock_df.reset_index().rename(columns={'index': 'Location'})
