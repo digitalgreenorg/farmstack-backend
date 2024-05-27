@@ -51,7 +51,7 @@ def create_vector_db(resource_file, chunk_size=1000, chunk_overlap=200):
         if status == "completed":
             texts = split_documents(documents, chunk_size, chunk_overlap)
             LOGGING.info(f"Documents split completed for Resource ID: {resource_id}")
-            embedded_chunk = get_embeddings(texts, resource_file)
+            embedded_chunk = get_embeddings(texts, resource_file, str(resource_id))
             if embedded_chunk != {}:
                 LOGGING.info(f"Embeddings creation completed for Resource ID: {resource_id}")
                 # inserting embedding in vector db
