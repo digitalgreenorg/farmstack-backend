@@ -1,6 +1,6 @@
 import tempfile
 import logging
-from ai.open_ai_utils import get_embeddings, generate_response
+from ai.open_ai_utils import get_embeddings, insert_chunking_in_db
 from ai.vector_db_builder.load_audio_and_video import LoadAudioAndVideo
 from ai.utils import build_pdf, download_file, resolve_file_path
 from ai.vector_db_builder.load_documents import LoadDocuments
@@ -31,18 +31,11 @@ from langchain.document_loaders import (
     UnstructuredHTMLLoader,
 )
 
-# from langchain.document_loaders import TextLoader
-from langchain.embeddings.openai import OpenAIEmbeddings
 from langchain.text_splitter import (
     RecursiveCharacterTextSplitter,
 )
-
-from celery import shared_task
-from core.constants import Constants
-from utils.pgvector import PGVector
 from contextlib import contextmanager
 
-# from openai import OpenAI
 LOGGING = logging.getLogger(__name__)
 
 
@@ -57,10 +50,18 @@ def create_vector_db(resource_file, chunk_size=1000, chunk_overlap=200):
         LOGGING.info(f"Documents loaded for Resource ID: {resource_id}")
         if status == "completed":
             texts = split_documents(documents, chunk_size, chunk_overlap)
-            LOGGING.info(f"Documents splict completed for Resource ID: {resource_id}")
-            get_embeddings(texts, str(resource_file.get("id")), resource_file)
-            LOGGING.info(f"Embeddings creation completed for Resource ID: {resource_id}")
-            documents="Embeddings Created Sucessfully"
+            LOGGING.info(f"Documents split completed for Resource ID: {resource_id}")
+            embedded_chunk = get_embeddings(texts, resource_file)
+            if embedded_chunk != {}:
+                LOGGING.info(f"Embeddings creation completed for Resource ID: {resource_id}")
+                # inserting embedding in vector db
+                chunk_insertation = insert_chunking_in_db(embedded_chunk)
+                if chunk_insertation:
+                    documents="Embeddings Created Sucessfully"
+                else:
+                    documents="Unable to update Embeddings"
+            else:
+                documents="Unable to create Embeddings"
         data = ResourceFile.objects.filter(id=resource_id).update(
         embeddings_status=status,
         embeddings_status_reason=documents
