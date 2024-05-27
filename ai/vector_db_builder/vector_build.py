@@ -64,26 +64,26 @@ def create_vector_db(resource_file, chunk_size=1000, chunk_overlap=200):
         LOGGING.info(f"Resource file ID: {resource_id} and updated with: {documents}")
     return data
 
-def load_documents(url, file, type, id, transcription=""):
+def load_documents(url, file, doc_type, id, transcription=""):
     try:
-        if type == 'api':
+        if doc_type == 'api':
             absolute_path = os.path.join(settings.MEDIA_ROOT, file.replace("/media/", ''))
             loader = JSONLoader(file_path=absolute_path,  jq_schema='.', text_content=False)
             return loader.load(), "completed"
-        elif type in ['youtube', 'pdf', 'website', "file"]:
+        elif doc_type in ['youtube', 'pdf', 'website', "file"]:
             with temporary_file(suffix=".pdf") as temp_pdf_path:
-                if type == 'youtube':
+                if doc_type == 'youtube':
                     summary = LoadAudioAndVideo().generate_transcriptions_summary(url)
                     build_pdf(summary, temp_pdf_path)
                     ResourceFile.objects.filter(id=id).update(transcription=summary)
                     loader = PyMuPDFLoader(temp_pdf_path)  # Assuming PyMuPDFLoader is defined elsewhere
-                elif type == 'pdf':
+                elif doc_type == 'pdf':
                     download_file(url, temp_pdf_path)
                     loader = PyMuPDFLoader(temp_pdf_path)  # Assuming PyMuPDFLoader is defined elsewhere
-                elif type == 'file':
+                elif doc_type == 'file':
                     file_path = resolve_file_path(file)
                     loader, format = LoadDocuments().load_by_file_extension(file_path, temp_pdf_path)
-                elif type == "website":
+                elif doc_type == "website":
                     doc_text = ""
                     web_site_loader = WebsiteLoader()
                     main_content, web_links = web_site_loader.process_website_content(url)
@@ -93,8 +93,8 @@ def load_documents(url, file, type, id, transcription=""):
                     loader = PyMuPDFLoader(temp_pdf_path)  # Assuming PyMuPDFLoader is defined elsewhere
                 return loader.load(), "completed"
         else:
-            LOGGING.error(f"Unsupported input type: {type}")
-            return f"Unsupported input type: {type}", "failed"
+            LOGGING.error(f"Unsupported input type: {doc_type}")
+            return f"Unsupported input type: {doc_type}", "failed"
     except Exception as e:
         LOGGING.error(f"Faild lo load the documents: {str(e)}")
         return str(e), "failed"
