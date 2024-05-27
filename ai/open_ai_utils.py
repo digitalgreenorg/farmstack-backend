@@ -159,87 +159,87 @@ def generate_response(prompt, tokens=2000):
 
 # Commentend out Not required
 
-# def load_vector_db(resource_id):
-#     embeddings = OpenAIEmbeddings(model=embedding_model)
+def load_vector_db(resource_id):
+    embeddings = OpenAIEmbeddings(model=embedding_model)
 
-#     LOGGING.info("Looking into resource: {resource_id} embeddings")
-#     collection_ids = LangchainPgCollection.objects.filter(
-#         name__in=Subquery(
-#             ResourceFile.objects.filter(resource=resource_id)
-#             .annotate(string_id=Cast('id', output_field=models.CharField()))
-#             .values('string_id')
-#         )
-#     ).values_list('uuid', flat=True)
-#     retrievals = []
-#     vector_db = PGVector(
-#             collection_name=str("e7d810ae-3fee-4412-b9a8-04f0935e7acf"),
-#             connection_string=connectionString,
-#             embedding_function=embeddings,
-#         )
-#     print(LangchainPgEmbedding.objects.filter(collection_id='e7d810ae-3fee-4412-b9a8-04f0935e7acf').values('document'))
-#     retriever = vector_db.as_retriever(search_type="similarity", search_kwargs={"k": 5, "score_threshold":0.5})
-#     return retriever
-#     def setup_retriever(collection_id):
-#         vector_db = PGVector(
-#             collection_name=str(collection_id),
-#             connection_string=connectionString,
-#             embedding_function=embeddings,
-#         )
-#         retriever = vector_db.as_retriever(search_type="similarity_score_threshold", search_kwargs={"score_threshold": 0.5, "k": 5})
-#         return retriever
+    LOGGING.info("Looking into resource: {resource_id} embeddings")
+    collection_ids = LangchainPgCollection.objects.filter(
+        name__in=Subquery(
+            ResourceFile.objects.filter(resource=resource_id)
+            .annotate(string_id=Cast('id', output_field=models.CharField()))
+            .values('string_id')
+        )
+    ).values_list('uuid', flat=True)
+    retrievals = []
+    vector_db = PGVector(
+            collection_name=str("e7d810ae-3fee-4412-b9a8-04f0935e7acf"),
+            connection_string=connectionString,
+            embedding_function=embeddings,
+        )
+    print(LangchainPgEmbedding.objects.filter(collection_id='e7d810ae-3fee-4412-b9a8-04f0935e7acf').values('document'))
+    retriever = vector_db.as_retriever(search_type="similarity", search_kwargs={"k": 5, "score_threshold":0.5})
+    return retriever
+    def setup_retriever(collection_id):
+        vector_db = PGVector(
+            collection_name=str(collection_id),
+            connection_string=connectionString,
+            embedding_function=embeddings,
+        )
+        retriever = vector_db.as_retriever(search_type="similarity_score_threshold", search_kwargs={"score_threshold": 0.5, "k": 5})
+        return retriever
 
-#     # Use ThreadPoolExecutor to run setup_retriever concurrently
-#     with ThreadPoolExecutor(max_workers=10) as executor:
-#         # Create a future for each setup_retriever call
-#         future_to_collection_id = {executor.submit(setup_retriever, collection_id): collection_id for collection_id in collection_ids}
+    # Use ThreadPoolExecutor to run setup_retriever concurrently
+    with ThreadPoolExecutor(max_workers=10) as executor:
+        # Create a future for each setup_retriever call
+        future_to_collection_id = {executor.submit(setup_retriever, collection_id): collection_id for collection_id in collection_ids}
 
-#         for future in as_completed(future_to_collection_id):
-#             collection_id = future_to_collection_id[future]
-#             try:
-#                 retriever = future.result()  # Retrieve the result from the future
-#                 retrievals.append(retriever)  # Add the successfully created retriever to the list
-#             except Exception as exc:
-#                 print(f'{collection_id} generated an exception: {exc}')
-#     # import pdb; pdb.set_trace()
-#     # lotr = MergerRetriever(retrievers=retrievals)
-#     # lotr = CustomRetriever(retrievals)
-#     custom_retriever = MergerRetriever(retrievers = retrievals)
+        for future in as_completed(future_to_collection_id):
+            collection_id = future_to_collection_id[future]
+            try:
+                retriever = future.result()  # Retrieve the result from the future
+                retrievals.append(retriever)  # Add the successfully created retriever to the list
+            except Exception as exc:
+                print(f'{collection_id} generated an exception: {exc}')
+    # import pdb; pdb.set_trace()
+    # lotr = MergerRetriever(retrievers=retrievals)
+    # lotr = CustomRetriever(retrievals)
+    custom_retriever = MergerRetriever(retrievers = retrievals)
 
-#     return retrievals
+    return retrievals
 
 # Older OpenAI version
-# def genrate_embeddings_from_text(text):
-#     response = openai.Embedding.create(input=text, model=embedding_model)
-#     embedding = response['data'][0]['embedding']
-#     return embedding
+def genrate_embeddings_from_text(text):
+    response = openai.Embedding.create(input=text, model=embedding_model)
+    embedding = response['data'][0]['embedding']
+    return embedding
 
 
 # Need To confirm why it is required
 
-# def find_similar_chunks(input_embedding, resource_id,  top_n=5):
-#     # Assuming you have a similarity function or custom SQL to handle vector comparison
-#     if resource_id:
-#         LOGGING.info("Looking into resource: {resource_id} embeddings")
-#         collection_ids = LangchainPgCollection.objects.filter(
-#             name__in=Subquery(
-#                 ResourceFile.objects.filter(resource=resource_id)
-#                 .annotate(string_id=Cast('id', output_field=models.CharField()))
-#                 .values('string_id')
-#             )
-#         ).values_list('uuid', flat=True)
-#         # Use these IDs to filter LangchainPgEmbedding objects
-#         similar_chunks = LangchainPgEmbedding.objects.annotate(
-#             similarity=CosineDistance("embedding", input_embedding)
-#         ).order_by("similarity").filter(similarity__lt=0.17, collection_id__in=collection_ids).defer("cmetadata").all()[:top_n]
-#         return similar_chunks
-#     else:
-#         LOGGING.info("Looking into all embeddings")
-#         similar_chunks = LangchainPgEmbedding.objects.annotate(
-#             similarity=CosineSimilarity("embedding", input_embedding)
-#         ).order_by("similarity").filter(similarity__lt=0.17).defer('cmetadata').all()[:top_n]
-#         return similar_chunks
+def find_similar_chunks(input_embedding, resource_id,  top_n=5):
+    # Assuming you have a similarity function or custom SQL to handle vector comparison
+    if resource_id:
+        LOGGING.info("Looking into resource: {resource_id} embeddings")
+        collection_ids = LangchainPgCollection.objects.filter(
+            name__in=Subquery(
+                ResourceFile.objects.filter(resource=resource_id)
+                .annotate(string_id=Cast('id', output_field=models.CharField()))
+                .values('string_id')
+            )
+        ).values_list('uuid', flat=True)
+        # Use these IDs to filter LangchainPgEmbedding objects
+        similar_chunks = LangchainPgEmbedding.objects.annotate(
+            similarity=CosineDistance("embedding", input_embedding)
+        ).order_by("similarity").filter(similarity__lt=0.17, collection_id__in=collection_ids).defer("cmetadata").all()[:top_n]
+        return similar_chunks
+    else:
+        LOGGING.info("Looking into all embeddings")
+        similar_chunks = LangchainPgEmbedding.objects.annotate(
+            similarity=CosineSimilarity("embedding", input_embedding)
+        ).order_by("similarity").filter(similarity__lt=0.17).defer('cmetadata').all()[:top_n]
+        return similar_chunks
 
-def query_qdrant_collection_v2(query, category, sub_category, state, k, threshold=0.4):
+def query_qdrant_collection(query, category, sub_category, state, k, threshold=0.4):
     collection_name = qdrant_settings.get('COLLECTION_NAME')
     qdrant_client, points = create_qdrant_client(collection_name)
     openai_client = openai.Client(api_key=settings.OPENAI_API_KEY)
