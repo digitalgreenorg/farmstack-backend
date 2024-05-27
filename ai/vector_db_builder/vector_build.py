@@ -7,22 +7,8 @@ from ai.vector_db_builder.load_documents import LoadDocuments
 from ai.vector_db_builder.load_website import WebsiteLoader
 from core import settings
 from datahub.models import ResourceFile
-from utils.pgvector import PGVector
-
 import logging
 import os
-from urllib.parse import quote_plus
-from uuid import UUID
-
-import openai
-
-from docx import Document
-
-# from langchain.vectorstores import Chroma
-from dotenv import load_dotenv
-
-# from langchain import PromptTemplate
-# from langchain.docstore.document import Document
 from langchain.document_loaders import (
     BSHTMLLoader,
     CSVLoader,
@@ -52,6 +38,7 @@ def create_vector_db(resource_file, chunk_size=1000, chunk_overlap=200):
             texts = split_documents(documents, chunk_size, chunk_overlap)
             LOGGING.info(f"Documents split completed for Resource ID: {resource_id}")
             embedded_chunk = get_embeddings(texts, resource_file, str(resource_id))
+            # One more step is added to parse insertation error
             if embedded_chunk != {}:
                 LOGGING.info(f"Embeddings creation completed for Resource ID: {resource_id}")
                 # inserting embedding in vector db
@@ -129,10 +116,10 @@ def temporary_file(suffix=""):
     fd, path = tempfile.mkstemp(suffix=suffix)
     try:
         os.close(fd)  # Close file descriptor
-        print(f"Temporary file created at {path}")
+        LOGGING.info(f"Temporary file created at {path}")
         yield path
     finally:
         # Check if the file still exists before attempting to delete
         if os.path.exists(path):
             os.remove(path)
-            print(f"Temporary file {path} deleted.")
+            LOGGING.info(f"Temporary file {path} deleted.")
