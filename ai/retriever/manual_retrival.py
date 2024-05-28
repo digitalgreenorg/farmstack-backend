@@ -1,6 +1,6 @@
 
 import logging
-from ai.open_ai_utils import find_similar_chunks, generate_response, genrate_embeddings_from_text, query_qdrant_collection
+from ai.open_ai_utils import find_similar_chunks, generate_response, genrate_embeddings_from_text, query_qdrant_collection,qdrant_collection_get_by_file_id
 import openai
 from ai.utils import chat_history_formated, condensed_question_prompt, format_prompt
 
@@ -62,7 +62,7 @@ class QuadrantRetrival:
         
     def embeddings_and_chunks(self, resource_file_id):
         try:
-            chunks = query_qdrant_collection(resource_file_id)
+            chunks = qdrant_collection_get_by_file_id(resource_file_id)
             return chunks
         except Exception as e:
             LOGGING.error(f"Error while retriving chunks for file_id: {resource_file_id}: Error {e}", exc_info=True)

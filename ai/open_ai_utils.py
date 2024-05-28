@@ -267,3 +267,24 @@ def query_qdrant_collection(query, sub_category, state, k=6, threshold=0.0):
         LOGGING.error(f"Exception occured in qdrant db connection {str(e)}")
         return []
     return search_data
+
+
+def qdrant_collection_get_by_file_id(resource_file_id, page=1):
+    collection_name = qdrant_settings.get('COLLECTION_NAME')
+    qdrant_client, points = create_qdrant_client(collection_name)
+    try:
+        search_data = qdrant_client.scroll(
+                collection_name=collection_name,
+                scroll_filter=Filter(
+                    must=[
+                        FieldCondition(key="resource_file", match=MatchValue(value=resource_file_id)),
+                    ]
+                ),
+                limit=20,
+                with_payload=True,
+                with_vectors=False,
+            )
+    except Exception as e:
+        LOGGING.error(f"Exception occured in qdrant db connection {str(e)}")
+        return []
+    return search_data
