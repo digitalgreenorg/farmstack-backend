@@ -66,6 +66,7 @@ def create_vector_db(resource_file, chunk_size=1000, chunk_overlap=200):
 
 def load_documents(url, file, doc_type, id, transcription=""):
     try:
+        
         if doc_type == 'api':
             absolute_path = os.path.join(settings.MEDIA_ROOT, file.replace("/media/", ''))
             loader = JSONLoader(file_path=absolute_path,  jq_schema='.', text_content=False)
@@ -73,10 +74,14 @@ def load_documents(url, file, doc_type, id, transcription=""):
         elif doc_type in ['youtube', 'pdf', 'website', "file"]:
             with temporary_file(suffix=".pdf") as temp_pdf_path:
                 if doc_type == 'youtube':
-                    summary = LoadAudioAndVideo().generate_transcriptions_summary(url)
-                    build_pdf(summary, temp_pdf_path)
-                    ResourceFile.objects.filter(id=id).update(transcription=summary)
-                    loader = PyMuPDFLoader(temp_pdf_path)  # Assuming PyMuPDFLoader is defined elsewhere
+                    if not transcription:
+                        summary = LoadAudioAndVideo().generate_transcriptions_summary(url)
+                        build_pdf(summary, temp_pdf_path)
+                        ResourceFile.objects.filter(id=id).update(transcription=summary)
+                        loader = PyMuPDFLoader(temp_pdf_path)  # Assuming PyMuPDFLoader is defined elsewhere
+                    else:
+                        build_pdf(transcription, temp_pdf_path)
+                        loader = PyMuPDFLoader(temp_pdf_path)  # Assuming PyMuPDFLoader is defined elsewhere
                 elif doc_type == 'pdf':
                     download_file(url, temp_pdf_path)
                     loader = PyMuPDFLoader(temp_pdf_path)  # Assuming PyMuPDFLoader is defined elsewhere

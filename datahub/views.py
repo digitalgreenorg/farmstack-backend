@@ -3422,7 +3422,7 @@ class ResourceFileManagementViewSet(GenericViewSet):
                 if youtube_urls_response.status_code == 400:
                     return youtube_urls_response
                 youtube_urls = youtube_urls_response.data
-                playlist_urls = [{"resource": resource, "type":"youtube", **row} for row in youtube_urls]
+                playlist_urls = [{"resource": resource, "type":"youtube", "transcription": data.get("transcription"), **row} for row in youtube_urls]
                 for row in playlist_urls:
                     serializer = self.get_serializer(data=row)
                     serializer.is_valid(raise_exception=True)

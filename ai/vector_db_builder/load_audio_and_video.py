@@ -2,7 +2,7 @@
 import logging
 import os
 import re
-from ai.open_ai_utils import generate_response
+from ai.open_ai_utils import generate_response, transcribe_audio
 from core.constants import Constants
 import pytube
 
@@ -35,7 +35,8 @@ class LoadAudioAndVideo:
         audio_file = open(output_audio_file_mp3, "rb")
         LOGGING.info(f"Audio tranceiption started for url: {url}")
 
-        transcription = self.transcribe_audio(audio_file)
+        transcription = transcribe_audio(audio_file)
+        print(transcription)
         words = transcription.text.split()
         chunks = [words[i:i + 1500] for i in range(0, len(words), 1500)]
         summary = ''
@@ -45,3 +46,5 @@ class LoadAudioAndVideo:
             summary_chunk, tokens_uasage = generate_response(Constants.TRANSCTION_PROMPT.format(transcription=text_chunks, youtube_url=url))
             summary=summary+" "+summary_chunk
         return summary
+   
+  

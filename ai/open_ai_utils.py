@@ -29,6 +29,7 @@ qdrant_settings = settings.DATABASES["vector_db"]
 encoded_user = quote_plus(db_settings[Constants.USER.upper()])
 encoded_password = quote_plus(db_settings[Constants.PASSWORD])
 
+openai_client = openai.Client(api_key=settings.OPENAI_API_KEY)
 
 def get_embeddings(docs, resource, file_id):
     embedded_data = {}
@@ -62,7 +63,7 @@ def get_embeddings(docs, resource, file_id):
                 embedded_data[idx+start] = {}
                 embedded_data[idx+start]['text'] = text
                 embedded_data[idx+start]['vector'] = data.embedding
-                embedded_data[idx+start]["source"] =  resource.get("url") if resource.get("url") else resource.get("file")
+                embedded_data[idx+start]["url"] =  resource.get("url") if resource.get("url") else resource.get("file")
                 embedded_data[idx+start]["context-type"] = "video/pdf" if resource.get("type") =="youtube" else "text/pdf"
                 embedded_data[idx+start]["country"] = resource.get("country",'').lower().strip()
                 embedded_data[idx+start]["state"] = resource.get("state", '').lower().strip()
@@ -70,7 +71,6 @@ def get_embeddings(docs, resource, file_id):
                 embedded_data[idx+start]["category"] = resource.get("category", '').lower().strip()
                 embedded_data[idx+start]["sub_category"] = resource.get("sub_category",'').lower().strip()
                 embedded_data[idx+start]["resource_file"] = file_id
-                embedded_data[idx+start][Constants.URL] = resource.get(Constants.URL)
             start += idx+1
     return embedded_data
 
@@ -123,9 +123,11 @@ def insert_chunking_in_db(documents: dict):
                         "sub_category": data.get('sub_category'), 
                         "state": data.get('state', ''),
                         "resource_file":data.get('resource_file',''),
-                        "distict":data.get('distict',''),
+                        "district":data.get('district',''),
                         "country":data.get('country',''),
-                        "resource_file":data.get('resource_file','')
+                        "resource_file":data.get('resource_file',''),
+                        "context-type": data.get('context-type',''),
+                        "source": data.get('url','')
                         },
             )
             for idx, data in enumerate(documents.values())
@@ -137,24 +139,24 @@ def insert_chunking_in_db(documents: dict):
         return False
 
 
-def transcribe_audio(self, audio_bytes, language="en-US"):
+def transcribe_audio(audio_bytes, language="en-US"):
     try:
-        transcript = openai.Audio.translate(
-            file=audio_bytes, model=Constants.WISHPER_1)
-        return transcript
+        transcription = openai_client.audio.transcriptions.create(
+                         model=Constants.WISHPER_1, file=audio_bytes)
+        return transcription
     except Exception as e:
         print("Transcription error:", str(e))
         return str(e)
 
 
 def generate_response(prompt, tokens=2000):
-    response = openai.Completion.create(
-        engine=Constants.GPT_TURBO_INSTRUCT,  # Use an appropriate engine
+
+    response = openai_client.completions.create(
+        model=Constants.GPT_TURBO_INSTRUCT,  # Use an appropriate engine
         prompt=prompt,
         temperature=0.1,
-        max_tokens=tokens  # Adjust as necessary
     )
-    return response.choices[0].text.strip(), response.get(Constants.USAGE)
+    return response.choices[0].text.strip(), {}
 
 
 # Commentend out Not required
@@ -239,22 +241,32 @@ def find_similar_chunks(input_embedding, resource_id,  top_n=5):
         ).order_by("similarity").filter(similarity__lt=0.17).defer('cmetadata').all()[:top_n]
         return similar_chunks
 
-def query_qdrant_collection(query, sub_category, state, k=6, threshold=0.0):
+def query_qdrant_collection(query, sub_category, state, k=6, threshold=0.3):
     collection_name = qdrant_settings.get('COLLECTION_NAME')
     qdrant_client, points = create_qdrant_client(collection_name)
-    openai_client = openai.Client(api_key=settings.OPENAI_API_KEY)
     vector = openai_client.embeddings.create(
         input=[query],
         model=Constants.TEXT_EMBEDDING_3_SMALL,
     ).data[0].embedding
     # sub_category = re.sub(r'[^a-zA-Z0-9_]', '-', sub_category)
-    qdrant_filter = Filter(must=[FieldCondition(key="sub_category", match=MatchValue(
-        value=sub_category,),), FieldCondition(key="state", match=MatchValue(value=state,),),])
     if sub_category is None or sub_category == "":
         qdrant_filter = Filter(must=[FieldCondition(
             key="state", match=MatchValue(value=state,),),])
+        youtube_filter= Filter(must=[
+        FieldCondition(key="state", match=MatchValue(value=state,),),
+        FieldCondition(key="context-type", match=MatchValue(value="video/pdf",),)
+        ])
+    else: 
+        qdrant_filter = Filter(must=[FieldCondition(key="sub_category", match=MatchValue(
+        value=sub_category,),), FieldCondition(key="state", match=MatchValue(value=state,),),])
+        youtube_filter= Filter(must=[
+        FieldCondition(key="sub_category", match=MatchValue(value=sub_category,),),
+        FieldCondition(key="state", match=MatchValue(value=state,),),
+        FieldCondition(key="context-type", match=MatchValue(value="video/pdf",),)
+        ])
     LOGGING.info(
         f"Collection and filter name for qdrant is {state},  {sub_category}, {k}, {threshold}")
+
     try:
         search_data = qdrant_client.search(
             collection_name=collection_name,
@@ -263,12 +275,29 @@ def query_qdrant_collection(query, sub_category, state, k=6, threshold=0.0):
             score_threshold=threshold,
             limit=k
         )
+        search_youtube_data = qdrant_client.search(
+            collection_name=collection_name,
+            query_vector=vector,
+            query_filter=youtube_filter,
+            score_threshold=threshold,
+            limit=2
+        )
+        yotube_url=[ item[1]["source"] for result in search_youtube_data for item in result ]
     except Exception as e:
         LOGGING.error(f"Exception occured in qdrant db connection {str(e)}")
         return []
-    return search_data
+    results = extract_texts(search_data)
+    results["yotube_url"]=yotube_url
+    return results
 
-
+def extract_texts(search_data):
+    texts, reference = [], []
+    for result in search_data:
+        for item in result:
+            if item[0] == "payload" and "text" in item[1]:
+                texts.append(item[1]["text"])
+                reference.append(item[1]["source"])
+    return {"chunks": texts, "reference": set(reference)}
 def qdrant_collection_get_by_file_id(resource_file_id, page=1):
     collection_name = qdrant_settings.get('COLLECTION_NAME')
     qdrant_client, points = create_qdrant_client(collection_name)
