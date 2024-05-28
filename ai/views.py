@@ -12,13 +12,18 @@ class EmbeddingsViewSet(ModelViewSet):
     @action(detail=False, methods=['get'])
     def embeddings_and_chunks(self, request):
         collection_id = request.GET.get("resource_file")
+        page_number = request.GET.get("page")
+        if page_number and page_number !="":
+            page_num = int(page_number)
+        else:
+            page_num =1
         # Define the metadata criteria for the chunks you want to retrieve
-        metadata_criteria = {
-            'resource_file': collection_id  # Adjusted to include only files and images
-        }
+        # metadata_criteria = {
+        #     'resource_file': collection_id  # Adjusted to include only files and images
+        # }
 
         # Retrieve chunks based on the metadata
-        chunks = QuadrantRetrival().embeddings_and_chunks(collection_id)
+        chunks = QuadrantRetrival().embeddings_and_chunks(collection_id, page_num)
         return Response(chunks)
 
     

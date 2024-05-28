@@ -281,6 +281,7 @@ def qdrant_collection_get_by_file_id(resource_file_id, page=1):
                     ]
                 ),
                 limit=20,
+                offset=(page-1)*20,
                 with_payload=True,
                 with_vectors=False,
             )

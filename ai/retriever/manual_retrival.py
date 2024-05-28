@@ -60,9 +60,9 @@ class QuadrantRetrival:
             LOGGING.error(f"Error while generating response for query: {text}: Error {e}", exc_info=True)
             return str(e)
         
-    def embeddings_and_chunks(self, resource_file_id):
+    def embeddings_and_chunks(self, resource_file_id, page_num):
         try:
-            chunks = qdrant_collection_get_by_file_id(resource_file_id)
+            chunks = qdrant_collection_get_by_file_id(resource_file_id, page=page_num)
             return chunks
         except Exception as e:
             LOGGING.error(f"Error while retriving chunks for file_id: {resource_file_id}: Error {e}", exc_info=True)
