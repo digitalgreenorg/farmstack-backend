@@ -3430,7 +3430,10 @@ class ResourceFileManagementViewSet(GenericViewSet):
                     LOGGER.info(f"Embeding creation started for youtube url: {row.get('url')}")
                     serializer_data = serializer.data
                     serializer_data["state"] = data.get("state")
-                    serializer_data["crop"] = data.get("crop")
+                    serializer_data["category"] = data.get("category")
+                    serializer_data["sub_category"] = data.get("sub_category")
+                    serializer_data["country"] = data.get("country")
+                    serializer_data["district"] = data.get("district")
                     create_vector_db(serializer_data)
                 return Response(serializer.data, status=status.HTTP_201_CREATED)
             else:
@@ -3439,7 +3442,10 @@ class ResourceFileManagementViewSet(GenericViewSet):
                 serializer.save()
                 serializer_data = serializer.data
                 serializer_data["state"] = data.get("state")
-                serializer_data["crop"] = data.get("crop")
+                serializer_data["category"] = data.get("category")
+                serializer_data["sub_category"] = data.get("sub_category")
+                serializer_data["country"] = data.get("country")
+                serializer_data["district"] = data.get("district")
                 create_vector_db(serializer_data)
                 return Response(serializer.data, status=status.HTTP_201_CREATED)
         except ValidationError as e:
@@ -3506,7 +3512,7 @@ class ResourceFileManagementViewSet(GenericViewSet):
                         serializer = ResourceFileSerializer(data=serializer_data)
                         serializer.is_valid(raise_exception=True)
                         serializer.save()
-                        VectorDBBuilder.create_vector_db.delay(serializer.data)
+                        create_vector_db.delay(serializer.data)
                         return JsonResponse(serializer.data, status=status.HTTP_200_OK)
                 return Response(file_path)
             LOGGER.error("Failed to fetch data from api")

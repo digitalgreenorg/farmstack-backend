@@ -1205,7 +1205,10 @@ class ResourceSerializer(serializers.ModelSerializer):
             resource_files = validated_data.pop("files")
             sub_categories_map=validated_data.pop("sub_categories_map")
             state=validated_data.pop("state")
-            crop=validated_data.pop("crop")
+            district=validated_data.pop("district")
+            category=validated_data.pop("category")
+            sub_category=validated_data.pop("sub_category")
+            country=validated_data.pop("country")
 
             resource = Resource.objects.create(**validated_data)
             resource_files_data = json.loads(resource_files_data[0]) if resource_files_data else []
@@ -1230,7 +1233,10 @@ class ResourceSerializer(serializers.ModelSerializer):
                         LOGGER.info(f"Embeding creation started for youtube url: {row.get('url')}")
                         serializer_data = serializer.data
                         serializer_data["state"] = state
-                        serializer_data["crop"] = crop
+                        serializer_data["category"] =category
+                        serializer_data["sub_category"] = sub_category
+                        serializer_data["country"] = country
+                        serializer_data["district"] = district
                         VectorDBBuilder.create_vector_db.delay(serializer_data)
                 elif resource_file.get("type") == "api":
                     with open(resource_file.get("file").replace("/media/", ''), "rb") as outfile:  # Open the file in binary read mode
@@ -1244,7 +1250,10 @@ class ResourceSerializer(serializers.ModelSerializer):
 
                         LOGGER.info(f"Embeding creation started for youtube url: {resource_file.get('file')}")
                         serializer_data["state"] = state
-                        serializer_data["crop"] = crop
+                        serializer_data["category"] =category
+                        serializer_data["sub_category"] = sub_category
+                        serializer_data["country"] = country
+                        serializer_data["district"] = district
                         VectorDBBuilder.create_vector_db.delay(serializer_data)
                 else:
                     serializer = ResourceFileSerializer(data={"resource": resource.id, **resource_file}, partial=True)
@@ -1252,7 +1261,10 @@ class ResourceSerializer(serializers.ModelSerializer):
                     serializer.save()
                     LOGGER.info(f"Embeding creation started for url: {resource_file.get('url')} or file: {resource_file.get('url')}")
                     serializer_data["state"] = state
-                    serializer_data["crop"] = crop
+                    serializer_data["category"] =category
+                    serializer_data["sub_category"] = sub_category
+                    serializer_data["country"] = country
+                    serializer_data["district"] = district
                     VectorDBBuilder.create_vector_db.delay(serializer_data)
             for file in resource_files[0]:
                 data = {"resource":resource.id, "file":file, "type": "file"}
@@ -1260,7 +1272,10 @@ class ResourceSerializer(serializers.ModelSerializer):
                 serializer.is_valid(raise_exception=True)
                 serializer.save()
                 serializer_data["state"] = state
-                serializer_data["crop"] = crop
+                serializer_data["category"] =category
+                serializer_data["sub_category"] = sub_category
+                serializer_data["country"] = country
+                serializer_data["district"] = district
                 VectorDBBuilder.create_vector_db.delay(serializer_data)
         except Exception as e:
             LOGGER.error(e,exc_info=True)
