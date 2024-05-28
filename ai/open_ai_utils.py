@@ -239,7 +239,7 @@ def find_similar_chunks(input_embedding, resource_id,  top_n=5):
         ).order_by("similarity").filter(similarity__lt=0.17).defer('cmetadata').all()[:top_n]
         return similar_chunks
 
-def query_qdrant_collection(query, category, sub_category, state, k, threshold=0.4):
+def query_qdrant_collection(query, sub_category, state, k=6, threshold=0.0):
     collection_name = qdrant_settings.get('COLLECTION_NAME')
     qdrant_client, points = create_qdrant_client(collection_name)
     openai_client = openai.Client(api_key=settings.OPENAI_API_KEY)
@@ -247,17 +247,17 @@ def query_qdrant_collection(query, category, sub_category, state, k, threshold=0
         input=[query],
         model=Constants.TEXT_EMBEDDING_3_SMALL,
     ).data[0].embedding
-    sub_category = re.sub(r'[^a-zA-Z0-9_]', '-', sub_category)
-    qdrant_filter = Filter(must=[FieldCondition(key="category", match=MatchValue(value=category,),), FieldCondition(key="sub_category", match=MatchValue(
+    # sub_category = re.sub(r'[^a-zA-Z0-9_]', '-', sub_category)
+    qdrant_filter = Filter(must=[FieldCondition(key="sub_category", match=MatchValue(
         value=sub_category,),), FieldCondition(key="state", match=MatchValue(value=state,),),])
     if sub_category is None or sub_category == "":
         qdrant_filter = Filter(must=[FieldCondition(
             key="state", match=MatchValue(value=state,),),])
     LOGGING.info(
-        f"Collection and filter name for qdrant is {state},  {sub_category}, {category}, {k}, {threshold}")
+        f"Collection and filter name for qdrant is {state},  {sub_category}, {k}, {threshold}")
     try:
         search_data = qdrant_client.search(
-            collection_name=state,
+            collection_name=collection_name,
             query_vector=vector,
             query_filter=qdrant_filter,
             score_threshold=threshold,
