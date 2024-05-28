@@ -1,28 +1,14 @@
 import tempfile
 import logging
-from ai.open_ai_utils import get_embeddings, generate_response
+from ai.open_ai_utils import get_embeddings, insert_chunking_in_db
 from ai.vector_db_builder.load_audio_and_video import LoadAudioAndVideo
 from ai.utils import build_pdf, download_file, resolve_file_path
 from ai.vector_db_builder.load_documents import LoadDocuments
 from ai.vector_db_builder.load_website import WebsiteLoader
 from core import settings
 from datahub.models import ResourceFile
-from utils.pgvector import PGVector
-
 import logging
 import os
-from urllib.parse import quote_plus
-from uuid import UUID
-
-import openai
-
-from docx import Document
-
-# from langchain.vectorstores import Chroma
-from dotenv import load_dotenv
-
-# from langchain import PromptTemplate
-# from langchain.docstore.document import Document
 from langchain.document_loaders import (
     BSHTMLLoader,
     CSVLoader,
@@ -31,18 +17,11 @@ from langchain.document_loaders import (
     UnstructuredHTMLLoader,
 )
 
-# from langchain.document_loaders import TextLoader
-from langchain.embeddings.openai import OpenAIEmbeddings
 from langchain.text_splitter import (
     RecursiveCharacterTextSplitter,
 )
-
-from celery import shared_task
-from core.constants import Constants
-from utils.pgvector import PGVector
 from contextlib import contextmanager
 
-# from openai import OpenAI
 LOGGING = logging.getLogger(__name__)
 
 
@@ -57,10 +36,19 @@ def create_vector_db(resource_file, chunk_size=1000, chunk_overlap=200):
         LOGGING.info(f"Documents loaded for Resource ID: {resource_id}")
         if status == "completed":
             texts = split_documents(documents, chunk_size, chunk_overlap)
-            LOGGING.info(f"Documents splict completed for Resource ID: {resource_id}")
-            get_embeddings(texts, str(resource_file.get("id")), resource_file)
-            LOGGING.info(f"Embeddings creation completed for Resource ID: {resource_id}")
-            documents="Embeddings Created Sucessfully"
+            LOGGING.info(f"Documents split completed for Resource ID: {resource_id}")
+            embedded_chunk = get_embeddings(texts, resource_file, str(resource_id))
+            # One more step is added to parse insertation error
+            if embedded_chunk != {}:
+                LOGGING.info(f"Embeddings creation completed for Resource ID: {resource_id}")
+                # inserting embedding in vector db
+                chunk_insertation = insert_chunking_in_db(embedded_chunk)
+                if chunk_insertation:
+                    documents="Embeddings Created Sucessfully"
+                else:
+                    documents="Unable to update Embeddings"
+            else:
+                documents="Unable to create Embeddings"
         data = ResourceFile.objects.filter(id=resource_id).update(
         embeddings_status=status,
         embeddings_status_reason=documents
@@ -76,26 +64,26 @@ def create_vector_db(resource_file, chunk_size=1000, chunk_overlap=200):
         LOGGING.info(f"Resource file ID: {resource_id} and updated with: {documents}")
     return data
 
-def load_documents(url, file, type, id, transcription=""):
+def load_documents(url, file, doc_type, id, transcription=""):
     try:
-        if type == 'api':
+        if doc_type == 'api':
             absolute_path = os.path.join(settings.MEDIA_ROOT, file.replace("/media/", ''))
             loader = JSONLoader(file_path=absolute_path,  jq_schema='.', text_content=False)
             return loader.load(), "completed"
-        elif type in ['youtube', 'pdf', 'website', "file"]:
+        elif doc_type in ['youtube', 'pdf', 'website', "file"]:
             with temporary_file(suffix=".pdf") as temp_pdf_path:
-                if type == 'youtube':
+                if doc_type == 'youtube':
                     summary = LoadAudioAndVideo().generate_transcriptions_summary(url)
                     build_pdf(summary, temp_pdf_path)
                     ResourceFile.objects.filter(id=id).update(transcription=summary)
                     loader = PyMuPDFLoader(temp_pdf_path)  # Assuming PyMuPDFLoader is defined elsewhere
-                elif type == 'pdf':
+                elif doc_type == 'pdf':
                     download_file(url, temp_pdf_path)
                     loader = PyMuPDFLoader(temp_pdf_path)  # Assuming PyMuPDFLoader is defined elsewhere
-                elif type == 'file':
+                elif doc_type == 'file':
                     file_path = resolve_file_path(file)
                     loader, format = LoadDocuments().load_by_file_extension(file_path, temp_pdf_path)
-                elif type == "website":
+                elif doc_type == "website":
                     doc_text = ""
                     web_site_loader = WebsiteLoader()
                     main_content, web_links = web_site_loader.process_website_content(url)
@@ -105,8 +93,8 @@ def load_documents(url, file, type, id, transcription=""):
                     loader = PyMuPDFLoader(temp_pdf_path)  # Assuming PyMuPDFLoader is defined elsewhere
                 return loader.load(), "completed"
         else:
-            LOGGING.error(f"Unsupported input type: {type}")
-            return f"Unsupported input type: {type}", "failed"
+            LOGGING.error(f"Unsupported input type: {doc_type}")
+            return f"Unsupported input type: {doc_type}", "failed"
     except Exception as e:
         LOGGING.error(f"Faild lo load the documents: {str(e)}")
         return str(e), "failed"
@@ -128,10 +116,10 @@ def temporary_file(suffix=""):
     fd, path = tempfile.mkstemp(suffix=suffix)
     try:
         os.close(fd)  # Close file descriptor
-        print(f"Temporary file created at {path}")
+        LOGGING.info(f"Temporary file created at {path}")
         yield path
     finally:
         # Check if the file still exists before attempting to delete
         if os.path.exists(path):
             os.remove(path)
-            print(f"Temporary file {path} deleted.")
+            LOGGING.info(f"Temporary file {path} deleted.")

@@ -126,6 +126,14 @@ DATABASES = {
             "client_encoding": "UTF8",
         },
     },
+    "vector_db":{
+        "NAME":"QDRANT",
+        "HOST":os.environ.get("QDRANT_HOST", "localhost"),
+        "PORT_GRPC":os.environ.get("QDRANT_PORT_GRPC", "5439"),
+        "PORT_HTTP":os.environ.get("QDRANT_PORT_HTTP", "5438"),
+        "GRPC_CONNECT":os.environ.get("GRPC_CONNECT", True),
+        "COLLECTION_NAME":os.environ.get("VECTOR_DB_COLLECTION_NAME", "ALL"),
+    }
 }
 
 # Password validation
@@ -405,7 +413,7 @@ SAGUBAGU_API_KEY = os.environ.get("SAGUBAGU_API_KEY",'')
 OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY",'')
 YOUTUBE_API_KEY = os.environ.get("YOUTUBE_API_KEY",'')
 CELERY_BROKER_URL = os.environ.get("CELERY_BROKER_URL",'')
-
+FILE_UPLOAD_MAX_MEMORY_SIZE = 25 * 1024 * 1024 # 25 Mb limit
 CELERY_BROKER_URL = f'redis://{os.environ.get("REDIS_SERVICE", "loaclhost")}:6379/0'
 
 # CELERY_BROKER_URL = 'redis://localhost:6379/0'

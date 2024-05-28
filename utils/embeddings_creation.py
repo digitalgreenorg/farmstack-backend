@@ -85,7 +85,7 @@ from langchain_core.output_parsers import JsonOutputParser
 LOGGING = logging.getLogger(__name__)
 
 load_dotenv()
-open_ai=openai.Audio()
+# open_ai=openai.Audio()
 os.environ["OPENAI_API_KEY"] = settings.OPENAI_API_KEY
 
 openai.api_key = settings.OPENAI_API_KEY

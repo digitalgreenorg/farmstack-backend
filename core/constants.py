@@ -343,6 +343,7 @@ User Input: {input}
     DATAHUB_DOMAIN =  "http://localhost:8000"
     OPENAI_API_KEY = "OPENAI_API_KEY"
     TEXT_EMBEDDING_ADA_002 = "text-embedding-ada-002"
+    TEXT_EMBEDDING_3_SMALL = "text-embedding-3-small"
     PASSWORD = "PASSWORD"
     PORT = "PORT"
     HOST = "HOST"
