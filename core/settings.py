@@ -413,7 +413,7 @@ SAGUBAGU_API_KEY = os.environ.get("SAGUBAGU_API_KEY",'')
 OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY",'')
 YOUTUBE_API_KEY = os.environ.get("YOUTUBE_API_KEY",'')
 CELERY_BROKER_URL = os.environ.get("CELERY_BROKER_URL",'')
-FILE_UPLOAD_MAX_MEMORY_SIZE = 10 * 1024 * 1024 # 10 Mb limit
+FILE_UPLOAD_MAX_MEMORY_SIZE = 25 * 1024 * 1024 # 10 Mb limit
 CELERY_BROKER_URL = f'redis://{os.environ.get("REDIS_SERVICE", "loaclhost")}:6379/0'
 
 # CELERY_BROKER_URL = 'redis://localhost:6379/0'
