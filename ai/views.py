@@ -8,6 +8,7 @@ from datahub.models import ResourceFile
 
 class EmbeddingsViewSet(ModelViewSet):
     lookup_field = 'uuid'  # Specify the UUID field as the lookup field
+    permission_classes=[]
 
     @action(detail=False, methods=['get'])
     def embeddings_and_chunks(self, request):
@@ -25,11 +26,17 @@ class EmbeddingsViewSet(ModelViewSet):
     @action(detail=False, methods=["post"])
     def get_content(self, request):
         embeddings = []
+
         email = request.data.get("email")
         query = request.data.get("query")
-        state = request.data.get("state")
-        sub_category = request.data.get("sub_category")
+        country = request.data.get("country", "").lower()
+        state = request.data.get("state", "").lower()
+        category = request.data.get("category", "").lower()
+        sub_category = request.data.get("sub_category", "").lower()
+        district = request.data.get("district", "").lower()
+
         user_obj = User.objects.filter(email=email)
+        resource_file_ids=[]
         user = user_obj.first()
         data = (
                 ResourceFile.objects.select_related(
@@ -38,26 +45,26 @@ class EmbeddingsViewSet(ModelViewSet):
                     "resource__user_map__user"
                 )
             )
-        if not user:
-            return Response([])
-        elif user.on_boarded_by:
-            data = (
-                data.filter(
-                    Q(resource__user_map__user__on_boarded_by=user.on_boarded_by)
-                    | Q(resource__user_map__user_id=user.on_boarded_by)
-                    )
-            )
-        elif user.role_id == 6:
-            data = (
-                data.filter(
-                    Q(resource__user_map__user__on_boarded_by=user.id)
-                    | Q(resource__user_map__user_id=user.id)
-                    )
-            )
-        else:
-            data = (
-                data.filter(resource__user_map__user__on_boarded_by=None).exclude(resource__user_map__user__role_id=6)
-            )
-        resource_file_ids = list(data.values_list("id", flat=True).all())
-        chunks = QuadrantRetrival().retrieve_chunks(resource_file_ids, query, state, sub_category)
+        # if not user:
+        #     return Response([])
+        # elif user.on_boarded_by:
+        #     data = (
+        #         data.filter(
+        #             Q(resource__user_map__user__on_boarded_by=user.on_boarded_by)
+        #             | Q(resource__user_map__user_id=user.on_boarded_by)
+        #             )
+        #     )
+        # elif user.role_id == 6:
+        #     data = (
+        #         data.filter(
+        #             Q(resource__user_map__user__on_boarded_by=user.id)
+        #             | Q(resource__user_map__user_id=user.id)
+        #             )
+        #     )
+        # else:
+        #     data = (
+        #         data.filter(resource__user_map__user__on_boarded_by=None).exclude(resource__user_map__user__role_id=6)
+        #     )
+        # resource_file_ids = list(data.values_list("id", flat=True).all())
+        chunks = QuadrantRetrival().retrieve_chunks(resource_file_ids, query, country, state,district, category, sub_category)
         return Response(chunks)

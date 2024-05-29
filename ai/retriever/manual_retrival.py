@@ -51,13 +51,13 @@ class Retrival:
         pass
     
 class QuadrantRetrival:
-    def retrieve_chunks(self, file_ids, text, state, sub_category):
-        text=text.replace("\n", " ") # type: ignore
+    def retrieve_chunks(self, resource_file_ids, query, country, state,district, category, sub_category):
+        query=query.replace("\n", " ") # type: ignore
         try:
-            chunks = query_qdrant_collection(query=text, state=state, sub_category=sub_category)
+            chunks = query_qdrant_collection(resource_file_ids, query, country, state,district, category, sub_category)
             return chunks
         except Exception as e:
-            LOGGING.error(f"Error while generating response for query: {text}: Error {e}", exc_info=True)
+            LOGGING.error(f"Error while generating response for query: {query}: Error {e}", exc_info=True)
             return str(e)
         
     def embeddings_and_chunks(self, resource_file_id):

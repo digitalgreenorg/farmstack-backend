@@ -383,6 +383,7 @@ class VerifyLoginOTPViewset(GenericViewSet):
                                 "user": user.id,
                                 "user_map": user_map.id if user_map else None,
                                 "org_id": user_map.organization_id if user_map else None,
+                                "country": user_map.organization.address.get("country") if user_map else None,
                                 "email": user.email,
                                 "status": user.status,
                                 "on_boarded": user.on_boarded,

@@ -3430,8 +3430,8 @@ class ResourceFileManagementViewSet(GenericViewSet):
                     LOGGER.info(f"Embeding creation started for youtube url: {row.get('url')}")
                     serializer_data = serializer.data
                     serializer_data["state"] = data.get("state")
-                    serializer_data["category"] = data.get("category")
-                    serializer_data["sub_category"] = data.get("sub_category")
+                    serializer_data["category"] = data.get("category_id")
+                    serializer_data["sub_category"] = data.get("sub_category_id")
                     serializer_data["country"] = data.get("country")
                     serializer_data["district"] = data.get("district")
                     create_vector_db(serializer_data)
@@ -3442,8 +3442,8 @@ class ResourceFileManagementViewSet(GenericViewSet):
                 serializer.save()
                 serializer_data = serializer.data
                 serializer_data["state"] = data.get("state")
-                serializer_data["category"] = data.get("category")
-                serializer_data["sub_category"] = data.get("sub_category")
+                serializer_data["category"] = data.get("category_id")
+                serializer_data["sub_category"] = data.get("sub_category_id")
                 serializer_data["country"] = data.get("country")
                 serializer_data["district"] = data.get("district")
                 create_vector_db(serializer_data)

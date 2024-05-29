@@ -36,7 +36,6 @@ class LoadAudioAndVideo:
         LOGGING.info(f"Audio tranceiption started for url: {url}")
 
         transcription = transcribe_audio(audio_file)
-        print(transcription)
         words = transcription.text.split()
         chunks = [words[i:i + 1500] for i in range(0, len(words), 1500)]
         summary = ''

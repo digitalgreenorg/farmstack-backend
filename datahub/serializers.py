@@ -1206,8 +1206,8 @@ class ResourceSerializer(serializers.ModelSerializer):
             sub_categories_map=validated_data.pop("sub_categories_map")
             state=validated_data.pop("state")
             district=validated_data.pop("district")
-            category=validated_data.pop("category")
-            sub_category=validated_data.pop("sub_category")
+            category=validated_data.pop("category_id")
+            sub_category=validated_data.pop("sub_category_id")
             country=validated_data.pop("country")
 
             resource = Resource.objects.create(**validated_data)

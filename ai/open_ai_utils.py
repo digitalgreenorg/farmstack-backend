@@ -11,7 +11,7 @@ from django.db import models
 from django.db.models import Subquery
 from django.db.models.functions import Cast
 from qdrant_client import QdrantClient
-from qdrant_client.http.models import Distance, VectorParams, Batch, PointStruct, OptimizersConfigDiff, HnswConfigDiff, PayloadSchemaType, SearchParams, Filter, FieldCondition, MatchValue
+from qdrant_client.http.models import Distance, VectorParams, Batch, PointStruct, OptimizersConfigDiff, HnswConfigDiff, PayloadSchemaType, SearchParams, Filter, FieldCondition, MatchValue, MatchAny
 from dotenv import load_dotenv
 from langchain.embeddings.openai import OpenAIEmbeddings
 from pgvector.django import CosineDistance
@@ -241,7 +241,7 @@ def find_similar_chunks(input_embedding, resource_id,  top_n=5):
         ).order_by("similarity").filter(similarity__lt=0.17).defer('cmetadata').all()[:top_n]
         return similar_chunks
 
-def query_qdrant_collection(query, sub_category, state, k=6, threshold=0.3):
+def query_qdrant_collection(resource_file_ids, query, country, state, district, category, sub_category, k=6, threshold=0.0):
     collection_name = qdrant_settings.get('COLLECTION_NAME')
     qdrant_client, points = create_qdrant_client(collection_name)
     vector = openai_client.embeddings.create(
@@ -249,23 +249,29 @@ def query_qdrant_collection(query, sub_category, state, k=6, threshold=0.3):
         model=Constants.TEXT_EMBEDDING_3_SMALL,
     ).data[0].embedding
     # sub_category = re.sub(r'[^a-zA-Z0-9_]', '-', sub_category)
-    if sub_category is None or sub_category == "":
-        qdrant_filter = Filter(must=[FieldCondition(
-            key="state", match=MatchValue(value=state,),),])
-        youtube_filter= Filter(must=[
-        FieldCondition(key="state", match=MatchValue(value=state,),),
-        FieldCondition(key="context-type", match=MatchValue(value="video/pdf",),)
-        ])
-    else: 
-        qdrant_filter = Filter(must=[FieldCondition(key="sub_category", match=MatchValue(
-        value=sub_category,),), FieldCondition(key="state", match=MatchValue(value=state,),),])
-        youtube_filter= Filter(must=[
-        FieldCondition(key="sub_category", match=MatchValue(value=sub_category,),),
-        FieldCondition(key="state", match=MatchValue(value=state,),),
-        FieldCondition(key="context-type", match=MatchValue(value="video/pdf",),)
-        ])
-    LOGGING.info(
-        f"Collection and filter name for qdrant is {state},  {sub_category}, {k}, {threshold}")
+    filter_conditions = []
+    if sub_category:
+        filter_conditions.append(FieldCondition(key="resource_file", match=MatchAny(value=resource_file_ids)))
+    if sub_category:
+        filter_conditions.append(FieldCondition(key="sub_category", match=MatchValue(value=sub_category)))
+    if category:
+        filter_conditions.append(FieldCondition(key="category", match=MatchValue(value=category)))
+    if state:
+        filter_conditions.append(FieldCondition(key="state", match=MatchValue(value=state)))
+    if district:
+        filter_conditions.append(FieldCondition(key="district", match=MatchValue(value=district)))
+    # if context_type:
+    #     filter_conditions.append(FieldCondition(key="context-type", match=MatchValue(value=context_type)))
+    if country:
+        filter_conditions.append(FieldCondition(key="country", match=MatchValue(value=country)))
+
+    qdrant_filter = Filter(must=filter_conditions)
+
+    youtube_filter_conditions = filter_conditions.copy()
+    youtube_filter_conditions.append(FieldCondition(key="context-type", match=MatchValue(value="video/pdf")))
+    youtube_filter = Filter(must=youtube_filter_conditions)
+
+    LOGGING.info(f"Collection and filter details: state={state}, sub_category={sub_category}, k={k}, threshold={threshold}")
 
     try:
         search_data = qdrant_client.search(
@@ -282,22 +288,31 @@ def query_qdrant_collection(query, sub_category, state, k=6, threshold=0.3):
             score_threshold=threshold,
             limit=2
         )
-        yotube_url=[ item[1]["source"] for result in search_youtube_data for item in result ]
+        yotube_url=[item[1]["source"] for result in search_youtube_data for item in result if item[0] == "payload"]
     except Exception as e:
         LOGGING.error(f"Exception occured in qdrant db connection {str(e)}")
         return []
-    results = extract_texts(search_data)
+    results = extract_text_id_score(search_data)
     results["yotube_url"]=yotube_url
     return results
 
-def extract_texts(search_data):
-    texts, reference = [], []
+
+def extract_text_id_score(search_data):
+    results, reference = [], []
     for result in search_data:
+        data = {}
         for item in result:
-            if item[0] == "payload" and "text" in item[1]:
-                texts.append(item[1]["text"])
+            if item[0] == "id":
+                data["id"] = item[1]
+            elif item[0] == "score":
+                data["score"] = item[1]
+            elif item[0] == "payload" and "text" in item[1]:
+                data["text"] = item[1]["text"]
                 reference.append(item[1]["source"])
-    return {"chunks": texts, "reference": set(reference)}
+
+        results.append(data)
+
+    return {"chunks": results, "reference": set(reference)}
 def qdrant_collection_get_by_file_id(resource_file_id, page=1):
     collection_name = qdrant_settings.get('COLLECTION_NAME')
     qdrant_client, points = create_qdrant_client(collection_name)
