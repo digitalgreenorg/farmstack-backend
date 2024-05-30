@@ -43,7 +43,7 @@ class EmbeddingsViewSet(ModelViewSet):
         return Response(chunks)
     
     @action(detail=False, methods=["GET"])
-    def get_crops(self, request):
+    def get_crops_menue(self, request):
         state=request.GET.get("state")
         country=request.GET.get("country")
         result=[]
