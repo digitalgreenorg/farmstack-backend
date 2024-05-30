@@ -250,7 +250,7 @@ def query_qdrant_collection(resource_file_ids, query, country, state, district, 
     ).data[0].embedding
     # sub_category = re.sub(r'[^a-zA-Z0-9_]', '-', sub_category)
     filter_conditions = []
-    if sub_category:
+    if resource_file_ids:
         filter_conditions.append(FieldCondition(key="resource_file", match=MatchAny(value=resource_file_ids)))
     if sub_category:
         filter_conditions.append(FieldCondition(key="sub_category", match=MatchValue(value=sub_category)))

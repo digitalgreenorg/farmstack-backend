@@ -66,6 +66,7 @@ from .models import (  # Conversation,
 
 LOGGER = logging.getLogger(__name__)
 
+from ai.vector_db_builder.vector_build import create_vector_db
 
 class OrganizationRetriveSerializer(serializers.ModelSerializer):
     """_summary_
@@ -1204,11 +1205,11 @@ class ResourceSerializer(serializers.ModelSerializer):
             resource_files_data = validated_data.pop("uploaded_files")
             resource_files = validated_data.pop("files")
             sub_categories_map=validated_data.pop("sub_categories_map")
-            state=validated_data.pop("state")
-            district=validated_data.pop("district")
-            category=validated_data.pop("category_id")
-            sub_category=validated_data.pop("sub_category_id")
-            country=validated_data.pop("country")
+            state=validated_data.get("category").get("state")
+            district=validated_data.get("category").get("district")
+            category=validated_data.get("category").get("category_id")
+            sub_category=validated_data.get("category").get("sub_category_id")
+            country=validated_data.get("category").get("country")
 
             resource = Resource.objects.create(**validated_data)
             resource_files_data = json.loads(resource_files_data[0]) if resource_files_data else []
@@ -1230,6 +1231,8 @@ class ResourceSerializer(serializers.ModelSerializer):
                         serializer = ResourceFileSerializer(data=row, partial=True)
                         serializer.is_valid(raise_exception=True)
                         serializer.save()
+                        serializer_data = serializer.data
+
                         LOGGER.info(f"Embeding creation started for youtube url: {row.get('url')}")
                         serializer_data = serializer.data
                         serializer_data["state"] = state
@@ -1237,7 +1240,7 @@ class ResourceSerializer(serializers.ModelSerializer):
                         serializer_data["sub_category"] = sub_category
                         serializer_data["country"] = country
                         serializer_data["district"] = district
-                        VectorDBBuilder.create_vector_db.delay(serializer_data)
+                        create_vector_db(serializer_data)
                 elif resource_file.get("type") == "api":
                     with open(resource_file.get("file").replace("/media/", ''), "rb") as outfile:  # Open the file in binary read mode
                         # Wrap the file content using Django's ContentFile
@@ -1247,6 +1250,7 @@ class ResourceSerializer(serializers.ModelSerializer):
                         serializer = ResourceFileSerializer(data=serializer_data, partial=True)
                         serializer.is_valid(raise_exception=True)
                         serializer.save()
+                        serializer_data = serializer.data
 
                         LOGGER.info(f"Embeding creation started for youtube url: {resource_file.get('file')}")
                         serializer_data["state"] = state
@@ -1254,29 +1258,33 @@ class ResourceSerializer(serializers.ModelSerializer):
                         serializer_data["sub_category"] = sub_category
                         serializer_data["country"] = country
                         serializer_data["district"] = district
-                        VectorDBBuilder.create_vector_db.delay(serializer_data)
+                        create_vector_db(serializer_data)
                 else:
                     serializer = ResourceFileSerializer(data={"resource": resource.id, **resource_file}, partial=True)
                     serializer.is_valid(raise_exception=True)
                     serializer.save()
+                    serializer_data = serializer.data
+
                     LOGGER.info(f"Embeding creation started for url: {resource_file.get('url')} or file: {resource_file.get('url')}")
                     serializer_data["state"] = state
                     serializer_data["category"] =category
                     serializer_data["sub_category"] = sub_category
                     serializer_data["country"] = country
                     serializer_data["district"] = district
-                    VectorDBBuilder.create_vector_db.delay(serializer_data)
+                    create_vector_db(serializer_data)
             for file in resource_files[0]:
                 data = {"resource":resource.id, "file":file, "type": "file"}
                 serializer = ResourceFileSerializer(data = data)
                 serializer.is_valid(raise_exception=True)
                 serializer.save()
+                serializer_data = serializer.data
+
                 serializer_data["state"] = state
                 serializer_data["category"] =category
                 serializer_data["sub_category"] = sub_category
                 serializer_data["country"] = country
                 serializer_data["district"] = district
-                VectorDBBuilder.create_vector_db.delay(serializer_data)
+                create_vector_db(serializer_data)
         except Exception as e:
             LOGGER.error(e,exc_info=True)
             return e
