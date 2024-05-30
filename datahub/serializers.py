@@ -1285,10 +1285,10 @@ class ResourceSerializer(serializers.ModelSerializer):
                 serializer_data["country"] = country
                 serializer_data["district"] = district
                 create_vector_db(serializer_data)
+            return resource
         except Exception as e:
             LOGGER.error(e,exc_info=True)
             return e
-
 class ParticipantCostewardSerializer(serializers.ModelSerializer):
     user_id = serializers.PrimaryKeyRelatedField(
         queryset=models.User.objects.all(),

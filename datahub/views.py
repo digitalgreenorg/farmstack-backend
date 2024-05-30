@@ -3194,7 +3194,6 @@ class ResourceManagementViewSet(GenericViewSet):
             files = request.FILES.getlist('files')  # 'files' is the key used in FormData
             data["files"] = files
             data["user_map"] = user_map
-
             serializer = self.get_serializer(data=data)
             serializer.is_valid(raise_exception=True)
             serializer.save()
@@ -3417,6 +3416,7 @@ class ResourceFileManagementViewSet(GenericViewSet):
         try:
             data = request.data.copy()
             resource = data.get("resource")
+            
             if data.get("type") == "youtube":
                 youtube_urls_response = get_youtube_url(data.get("url"))
                 if youtube_urls_response.status_code == 400:
