@@ -49,8 +49,10 @@ class EmbeddingsViewSet(ModelViewSet):
         result=[]
         if state:
             result = self.get_state_crops(state)
+
         elif country:
             result = self.get_country_crops(country)
+
         return Response(result)
     
     def get_country_crops(self, country):
