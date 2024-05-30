@@ -68,7 +68,8 @@ INSTALLED_APPS = [
     "participant",
     "microsite",
     "connectors",
-    "django_apscheduler"
+    "django_apscheduler",
+    "ai"
 ]
 # Use nose to run all tests
 TEST_RUNNER = "django_nose.NoseTestSuiteRunner"
@@ -132,7 +133,7 @@ DATABASES = {
         "PORT_GRPC":os.environ.get("QDRANT_PORT_GRPC", "5439"),
         "PORT_HTTP":os.environ.get("QDRANT_PORT_HTTP", "5438"),
         "GRPC_CONNECT":os.environ.get("GRPC_CONNECT", True),
-        "COLLECTION_NAME":os.environ.get("VECTOR_DB_COLLECTION_NAME", "ALL"),
+        "COLLECTION_NAME":os.environ.get("VECTOR_DB_COLLECTION_NAME", "GLOBAL_ALL"),
     }
 }
 
