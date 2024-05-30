@@ -51,10 +51,10 @@ class Retrival:
         pass
     
 class QuadrantRetrival:
-    def retrieve_chunks(self, resource_file_ids, query, country, state,district, category, sub_category):
+    def retrieve_chunks(self, resource_file_ids, query, country, state,district, category):
         query=query.replace("\n", " ") # type: ignore
         try:
-            chunks = query_qdrant_collection(resource_file_ids, query, country, state,district, category, sub_category)
+            chunks = query_qdrant_collection(resource_file_ids, query, country, state,district, category)
             return chunks
         except Exception as e:
             LOGGING.error(f"Error while generating response for query: {query}: Error {e}", exc_info=True)

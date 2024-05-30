@@ -241,7 +241,7 @@ def find_similar_chunks(input_embedding, resource_id,  top_n=5):
         ).order_by("similarity").filter(similarity__lt=0.17).defer('cmetadata').all()[:top_n]
         return similar_chunks
 
-def query_qdrant_collection(resource_file_ids, query, country, state, district, category, sub_category, k=6, threshold=0.0):
+def query_qdrant_collection(resource_file_ids, query, country, state, district, category, k=6, threshold=0.0):
     collection_name = qdrant_settings.get('COLLECTION_NAME')
     qdrant_client, points = create_qdrant_client(collection_name)
     vector = openai_client.embeddings.create(
@@ -251,9 +251,8 @@ def query_qdrant_collection(resource_file_ids, query, country, state, district, 
     # sub_category = re.sub(r'[^a-zA-Z0-9_]', '-', sub_category)
     filter_conditions = []
     if resource_file_ids:
-        filter_conditions.append(FieldCondition(key="resource_file", match=MatchAny(value=resource_file_ids)))
-    if sub_category:
-        filter_conditions.append(FieldCondition(key="sub_category", match=MatchValue(value=sub_category)))
+        file_ids = [str(row) for row in resource_file_ids]
+        filter_conditions.append(FieldCondition(key="resource_file", match=MatchAny(any=file_ids)))
     if category:
         filter_conditions.append(FieldCondition(key="category", match=MatchValue(value=category)))
     if state:
@@ -271,7 +270,7 @@ def query_qdrant_collection(resource_file_ids, query, country, state, district, 
     youtube_filter_conditions.append(FieldCondition(key="context-type", match=MatchValue(value="video/pdf")))
     youtube_filter = Filter(must=youtube_filter_conditions)
 
-    LOGGING.info(f"Collection and filter details: state={state}, sub_category={sub_category}, k={k}, threshold={threshold}")
+    LOGGING.info(f"Collection and filter details: state={state}, resource_file={resource_file_ids}, k={k}, threshold={threshold}")
 
     try:
         search_data = qdrant_client.search(
