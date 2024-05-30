@@ -46,6 +46,7 @@ class EmbeddingsViewSet(ModelViewSet):
     def get_crops(self, request):
         state=request.GET.get("state")
         country=request.GET.get("country")
+        result=[]
         if state:
             result = self.get_state_crops(state)
         elif country:
