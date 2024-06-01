@@ -21,6 +21,7 @@ from langchain.text_splitter import (
     RecursiveCharacterTextSplitter,
 )
 from contextlib import contextmanager
+from celery import shared_task
 
 LOGGING = logging.getLogger(__name__)
 
