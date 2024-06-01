@@ -1240,7 +1240,7 @@ class ResourceSerializer(serializers.ModelSerializer):
                         serializer_data["sub_category"] = sub_category
                         serializer_data["country"] = country
                         serializer_data["district"] = district
-                        create_vector_db(serializer_data)
+                        create_vector_db.delay(serializer_data)
                 elif resource_file.get("type") == "api":
                     with open(resource_file.get("file").replace("/media/", ''), "rb") as outfile:  # Open the file in binary read mode
                         # Wrap the file content using Django's ContentFile
@@ -1258,7 +1258,7 @@ class ResourceSerializer(serializers.ModelSerializer):
                         serializer_data["sub_category"] = sub_category
                         serializer_data["country"] = country
                         serializer_data["district"] = district
-                        create_vector_db(serializer_data)
+                        create_vector_db.delay(serializer_data)
                 else:
                     serializer = ResourceFileSerializer(data={"resource": resource.id, **resource_file}, partial=True)
                     serializer.is_valid(raise_exception=True)
@@ -1271,7 +1271,7 @@ class ResourceSerializer(serializers.ModelSerializer):
                     serializer_data["sub_category"] = sub_category
                     serializer_data["country"] = country
                     serializer_data["district"] = district
-                    create_vector_db(serializer_data)
+                    create_vector_db.delay(serializer_data)
             for file in resource_files[0]:
                 data = {"resource":resource.id, "file":file, "type": "file"}
                 serializer = ResourceFileSerializer(data = data)
@@ -1284,7 +1284,7 @@ class ResourceSerializer(serializers.ModelSerializer):
                 serializer_data["sub_category"] = sub_category
                 serializer_data["country"] = country
                 serializer_data["district"] = district
-                create_vector_db(serializer_data)
+                create_vector_db.delay(serializer_data)
             return resource
         except Exception as e:
             LOGGER.error(e,exc_info=True)
