@@ -3434,7 +3434,7 @@ class ResourceFileManagementViewSet(GenericViewSet):
                     serializer_data["sub_category"] = data.get("sub_category_id")
                     serializer_data["country"] = data.get("country")
                     serializer_data["district"] = data.get("district")
-                    create_vector_db(serializer_data)
+                    create_vector_db.delay(serializer_data)
                 return Response(serializer.data, status=status.HTTP_201_CREATED)
             else:
                 serializer = self.get_serializer(data=request.data, partial=True)
@@ -3446,7 +3446,7 @@ class ResourceFileManagementViewSet(GenericViewSet):
                 serializer_data["sub_category"] = data.get("sub_category_id")
                 serializer_data["country"] = data.get("country")
                 serializer_data["district"] = data.get("district")
-                create_vector_db(serializer_data)
+                create_vector_db.delay(serializer_data)
                 return Response(serializer.data, status=status.HTTP_201_CREATED)
         except ValidationError as e:
             return Response(e.detail, status=status.HTTP_400_BAD_REQUEST)
@@ -3721,7 +3721,7 @@ class EmbeddingsViewSet(viewsets.ModelViewSet):
         count=0
         for row in data:
             count +=1
-            VectorDBBuilder.create_vector_db(row)
+            VectorDBBuilder.create_vector_db.delay(row)
             print(f"resource {row} is completed")
             print(f"{count} completed out of {total_files}")
         return Response("embeddings created for all the files")
