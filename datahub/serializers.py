@@ -1212,21 +1212,22 @@ class ResourceSerializer(serializers.ModelSerializer):
             country=validated_data.get("category").get("country")
 
             resource = Resource.objects.create(**validated_data)
-            resource_files_data = json.loads(resource_files_data[0]) if resource_files_data else []
-            sub_categories_map = json.loads(sub_categories_map[0]) if sub_categories_map else []
+            resource_files_data = resource_files_data if resource_files_data else []
+            sub_categories_map = sub_categories_map if sub_categories_map else []
             resource_sub_cat_instances= [
                 ResourceSubCategoryMap(resource=resource, sub_category=SubCategory.objects.get(id=sub_cat)
                                        ) for sub_cat in sub_categories_map]
 
             ResourceSubCategoryMap.objects.bulk_create(resource_sub_cat_instances)
-
             for resource_file in resource_files_data:
                 if resource_file.get("type") == "youtube":
-                    youtube_urls_response = get_youtube_url(resource_file.get("url"))
-                    if youtube_urls_response.status_code == 400:
-                        return youtube_urls_response
-                    youtube_urls = youtube_urls_response.data
-                    playlist_urls = [{"resource": resource.id, "type":"youtube", **row} for row in youtube_urls]
+                    # youtube_urls_response = get_youtube_url(resource_file.get("url"))
+                    # if youtube_urls_response.status_code == 400:
+                    #     return youtube_urls_response
+                    # import pdb; pdb.set_trace()
+                    # youtube_urls = [resource_file.get("url")]
+                    # playlist_urls = [{"resource": resource.id, "type":"youtube", **row} for row in youtube_urls]
+                    playlist_urls=[{"resource": resource.id, **resource_file}]
                     for row in playlist_urls:
                         serializer = ResourceFileSerializer(data=row, partial=True)
                         serializer.is_valid(raise_exception=True)
@@ -1271,8 +1272,8 @@ class ResourceSerializer(serializers.ModelSerializer):
                     serializer_data["sub_category"] = sub_category
                     serializer_data["country"] = country
                     serializer_data["district"] = district
-                    create_vector_db.delay(serializer_data)
-            for file in resource_files[0]:
+                    create_vector_db(serializer_data)
+            for file in resource_files:
                 data = {"resource":resource.id, "file":file, "type": "file"}
                 serializer = ResourceFileSerializer(data = data)
                 serializer.is_valid(raise_exception=True)
