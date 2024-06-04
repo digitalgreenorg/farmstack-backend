@@ -17,4 +17,4 @@ EXPOSE 8502
 ENV STREAMLIT_SERVER_PORT=8502
 
 # Run app.py when the container launches
-CMD ["sh", "-c", "streamlit run --server.port=$STREAMLIT_SERVER_PORT index.py"]
+CMD ["sh", "-c", "streamlit run --server.port=$STREAMLIT_SERVER_PORT TelegramBot.py"]
