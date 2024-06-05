@@ -1175,7 +1175,8 @@ class ResourceSerializer(serializers.ModelSerializer):
             "content_files_count",
             "sub_categories_map",
             "categories",
-            "files"
+            "files",
+            "country"
         )
     
     def get_categories(self, instance):
@@ -1212,8 +1213,9 @@ class ResourceSerializer(serializers.ModelSerializer):
             country=validated_data.get("category").get("country")
 
             resource = Resource.objects.create(**validated_data)
-            resource_files_data = resource_files_data if resource_files_data else []
-            sub_categories_map = sub_categories_map if sub_categories_map else []
+            import pdb; pdb.set_trace()
+            resource_files_data = json.loads(resource_files_data[0]) if resource_files_data else []
+            sub_categories_map = json.loads(sub_categories_map[0]) if sub_categories_map else []
             resource_sub_cat_instances= [
                 ResourceSubCategoryMap(resource=resource, sub_category=SubCategory.objects.get(id=sub_cat)
                                        ) for sub_cat in sub_categories_map]
