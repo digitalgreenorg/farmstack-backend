@@ -1213,7 +1213,6 @@ class ResourceSerializer(serializers.ModelSerializer):
             country=validated_data.get("category").get("country")
 
             resource = Resource.objects.create(**validated_data)
-            import pdb; pdb.set_trace()
             resource_files_data = json.loads(resource_files_data[0]) if resource_files_data else []
             sub_categories_map = json.loads(sub_categories_map[0]) if sub_categories_map else []
             resource_sub_cat_instances= [
