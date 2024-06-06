@@ -3417,6 +3417,7 @@ class ResourceFileManagementViewSet(GenericViewSet):
             data = request.data.copy()
             resource = data.get("resource")
             categories=data.pop("category")
+            categories = json.loads(categories[0]) if categories else {}
             state=categories.get("state")
             district=categories.get("district")
             category=categories.get("category_id")
