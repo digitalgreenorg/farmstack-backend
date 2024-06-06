@@ -3416,7 +3416,13 @@ class ResourceFileManagementViewSet(GenericViewSet):
         try:
             data = request.data.copy()
             resource = data.get("resource")
-            
+            categories=data.pop("category")
+            state=categories.get("state")
+            district=categories.get("district")
+            category=categories.get("category_id")
+            country=categories.get("country")
+            sub_category=categories.get("sub_category_id")
+
             if data.get("type") == "youtube":
                 youtube_urls_response = get_youtube_url(data.get("url"))
                 if youtube_urls_response.status_code == 400:
@@ -3429,11 +3435,11 @@ class ResourceFileManagementViewSet(GenericViewSet):
                     serializer.save()
                     LOGGER.info(f"Embeding creation started for youtube url: {row.get('url')}")
                     serializer_data = serializer.data
-                    serializer_data["state"] = data.get("state")
-                    serializer_data["category"] = data.get("category_id")
-                    serializer_data["sub_category"] = data.get("sub_category_id")
-                    serializer_data["country"] = data.get("country")
-                    serializer_data["district"] = data.get("district")
+                    serializer_data["state"] = state
+                    serializer_data["category"] = category
+                    serializer_data["sub_category"] = sub_category
+                    serializer_data["country"] = country
+                    serializer_data["district"] = district
                     create_vector_db.delay(serializer_data)
                 return Response(serializer.data, status=status.HTTP_201_CREATED)
             else:
@@ -3441,11 +3447,11 @@ class ResourceFileManagementViewSet(GenericViewSet):
                 serializer.is_valid(raise_exception=True)
                 serializer.save()
                 serializer_data = serializer.data
-                serializer_data["state"] = data.get("state")
-                serializer_data["category"] = data.get("category_id")
-                serializer_data["sub_category"] = data.get("sub_category_id")
-                serializer_data["country"] = data.get("country")
-                serializer_data["district"] = data.get("district")
+                serializer_data["state"] = state
+                serializer_data["category"] = category
+                serializer_data["sub_category"] = sub_category
+                serializer_data["country"] = country
+                serializer_data["district"] = district
                 create_vector_db.delay(serializer_data)
                 return Response(serializer.data, status=status.HTTP_201_CREATED)
         except ValidationError as e:
