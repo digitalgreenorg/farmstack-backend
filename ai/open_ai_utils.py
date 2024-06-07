@@ -325,7 +325,7 @@ def qdrant_collection_get_by_file_id(resource_file_id, page=1):
                 ),
                 limit=20,
                 with_payload=True,
-                with_vectors=False,
+                with_vectors=True,
             )
     except Exception as e:
         LOGGING.error(f"Exception occured in qdrant db connection {str(e)}")
