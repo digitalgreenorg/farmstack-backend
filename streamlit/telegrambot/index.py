@@ -5,6 +5,7 @@ import pandas as pd
 import plotly.express as px
 from dotenv import load_dotenv
 import os
+import datetime
 load_dotenv()
 
 db_name = os.getenv("DB_NAME")
@@ -48,7 +49,7 @@ SELECT 	da.id as da_id, da.name as da_name,da.gender as da_gender, k.id as kebel
 		z.id as zone_id, rg.id as region_id, ofp.gender as gender, 
 		p.id as practice_id, a.id as advisory_id, r.id as reach_id, 
 		ofp.id as farmer_id,a.label as advisory_label,p.name as practice_name,ad.id as adoption_id,
-        r.created_at as created_at
+        r.created_at as created_at, vc.id AS value_chain_id, vc.name AS value_chain_name, vcc.id AS value_chain_category_id, vcc.name AS value_chain_category_name
 FROM 
     integration_developmentagent da
 INNER JOIN 
@@ -65,6 +66,10 @@ INNER JOIN
     core_reach r ON r.farmer_id = ofp.id
 INNER JOIN 
     core_advisory a ON r.advisory_id = a.id
+INNER JOIN 
+    core_valuechain vc ON a.value_chain_id = vc.id
+INNER JOIN 
+    core_valuechaincategory vcc ON vc.category_id = vcc.id
 INNER JOIN 
 	core_subpractice s ON a.sub_practice_id=s.id
 INNER JOIN 
