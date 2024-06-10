@@ -1273,7 +1273,7 @@ class ResourceSerializer(serializers.ModelSerializer):
                     serializer_data["country"] = country
                     serializer_data["district"] = district
                     create_vector_db(serializer_data)
-            for file in resource_files[0]:
+            for file in resource_files:
                 data = {"resource":resource.id, "file":file, "type": "file"}
                 serializer = ResourceFileSerializer(data = data)
                 serializer.is_valid(raise_exception=True)
