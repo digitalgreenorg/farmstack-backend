@@ -1274,7 +1274,8 @@ class ResourceSerializer(serializers.ModelSerializer):
                     serializer_data["district"] = district
                     create_vector_db.delay(serializer_data)
             print(resource_files)
-            for file in resource_files:
+            for file in resource_files[0]:
+                print(file)
                 data = {"resource":resource.id, "file":file, "type": "file"}
                 serializer = ResourceFileSerializer(data = data)
                 serializer.is_valid(raise_exception=True)
