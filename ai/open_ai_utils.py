@@ -5,7 +5,7 @@ import os
 import re
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from urllib.parse import quote_plus
-from uuid import UUID
+import uuid
 import openai
 from django.db import models
 from django.db.models import Subquery
@@ -107,6 +107,16 @@ def create_qdrant_client(collection_name: str):
             field_name="sub_category",
             field_schema=PayloadSchemaType.KEYWORD,
         )
+        client.create_payload_index(
+            collection_name=collection_name,
+            field_name="resource_file",
+            field_schema=PayloadSchemaType.KEYWORD,
+        )
+        client.create_payload_index(
+            collection_name=collection_name,
+            field_name="country",
+            field_schema=PayloadSchemaType.KEYWORD,
+        )
     return client, points_count
 
 
@@ -114,9 +124,28 @@ def insert_chunking_in_db(documents: dict):
     collection_name = qdrant_settings.get('COLLECTION_NAME')
     qdrant_client, points = create_qdrant_client(collection_name)
     try:
-        points = [
-            PointStruct(
-                id=idx + points,
+        # points = [
+        #     PointStruct(
+        #         id=idx + points,
+        #         vector=data['vector'],
+        #         payload={"text": data['text'], 
+        #                 "category": data.get('category', ''), 
+        #                 "sub_category": data.get('sub_category'), 
+        #                 "state": data.get('state', ''),
+        #                 "resource_file":data.get('resource_file',''),
+        #                 "district":data.get('district',''),
+        #                 "country":data.get('country',''),
+        #                 "resource_file":data.get('resource_file',''),
+        #                 "context-type": data.get('context-type',''),
+        #                 "source": data.get('url','')
+        #                 },
+        #     )
+        #     for idx, data in enumerate(documents.values())
+        # ]
+        points_list = []
+        for idx, data in enumerate(documents.values()):
+            points_list.append(PointStruct(
+                id=str(uuid.uuid4()),
                 vector=data['vector'],
                 payload={"text": data['text'], 
                         "category": data.get('category', ''), 
@@ -129,10 +158,8 @@ def insert_chunking_in_db(documents: dict):
                         "context-type": data.get('context-type',''),
                         "source": data.get('url','')
                         },
-            )
-            for idx, data in enumerate(documents.values())
-        ]
-        qdrant_client.upsert(collection_name, points)
+            ))
+        qdrant_client.upsert(collection_name, points_list)
         return True
     except Exception as e:
         LOGGING.error(f"Exception occured in inserting in collection {str(e)}")
