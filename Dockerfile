@@ -16,7 +16,7 @@ RUN python -m pip install --upgrade pip \
     && pip install python-ldap==3.3.1 \
     && pip install --upgrade pyopenssl \
     && pip install -r requirements.txt
-RUN sudo apt-get install ffmpeg
+RUN apt-get install ffmpeg
 # Set environment variables
 ENV PYTHONUNBUFFERED 1
 
