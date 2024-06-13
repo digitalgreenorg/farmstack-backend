@@ -5,7 +5,7 @@ RUN apt-get update && apt-get install -y libsasl2-dev curl gcc libldap2-dev \
     && DOCKER_CONFIG=${DOCKER_CONFIG:-$HOME/.docker} \
     && mkdir -p $DOCKER_CONFIG/cli-plugins \
     && curl -SL https://github.com/docker/compose/releases/download/v2.2.3/docker-compose-linux-x86_64 -o $DOCKER_CONFIG/cli-plugins/docker-compose \
-    && chmod +x $DOCKER_CONFIG/cli-plugins/docker-compose
+    && chmod +x $DOCKER_CONFIG/cli-plugins/docker-compose && apt-get install ffmpeg
 
 # Set the working directory and copy the application files
 WORKDIR /datahub
@@ -16,7 +16,7 @@ RUN python -m pip install --upgrade pip \
     && pip install python-ldap==3.3.1 \
     && pip install --upgrade pyopenssl \
     && pip install -r requirements.txt
-RUN apt-get install ffmpeg
+
 # Set environment variables
 ENV PYTHONUNBUFFERED 1
 
