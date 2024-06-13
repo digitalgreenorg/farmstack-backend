@@ -3781,7 +3781,7 @@ class EmbeddingsViewSet(viewsets.ModelViewSet):
         count=0
         for row in data:
             count +=1
-            VectorDBBuilder.create_vector_db(row)
+            VectorDBBuilder.create_vector_db.delay(row)
             print(f"resource {row} is completed")
             print(f"{count} completed out of {total_files}")
         return Response("embeddings created for all the files")

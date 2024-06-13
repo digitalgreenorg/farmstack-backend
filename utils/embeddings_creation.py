@@ -66,6 +66,8 @@ from datahub.models import LangchainPgCollection, LangchainPgEmbedding, Resource
 from utils.chain_builder import ChainBuilder
 from langchain.prompts import PromptTemplate
 from utils.pgvector import PGVector
+from pydub import AudioSegment
+
 # from openai import OpenAI
 LOGGING = logging.getLogger(__name__)
 
@@ -230,7 +232,14 @@ class VectorBuilder:
             LOGGING.error(error, exc_info=True)
 
         return None
-    
+    def get_file_size(self, file_path):
+        return os.path.getsize(file_path)
+
+    def split_audio(self, file_path, segment_duration_ms=1000000):  # Default is 1800,000 ms (30 minutes)
+        audio = AudioSegment.from_file(file_path)
+        length_ms = len(audio)
+        return [audio[i:i + segment_duration_ms] for i in range(0, length_ms, segment_duration_ms)]
+
    
     def generate_transcriptions_summary(self, url):
         regex_patterns = [
@@ -244,6 +253,7 @@ class VectorBuilder:
             if match:
                 file_id =  match.group(0)
         output_audio_file_mp3 = f"{settings.RESOURCES_AUDIOS}{file_id}.mp3"
+        output_audio_compress_mp3 = f"{settings.RESOURCES_AUDIOS}{file_id}_compressed.mp3"
 
         if not os.path.exists(output_audio_file_mp3):
             LOGGING.info(f"Audio file not available for url: {url}")
@@ -252,20 +262,47 @@ class VectorBuilder:
 
             video_stream.download(filename=output_audio_file_mp3)
             LOGGING.info(f"Audio file downloaded for url: {url}")
-        audio_file = open(output_audio_file_mp3, "rb")
-        LOGGING.info(f"Audio tranceiption started for url: {url}")
+        LOGGING.info(os.path.getsize(output_audio_file_mp3))
+        max_size_bytes = 25 * 1024 * 1024  # 25 MB
+        file_size = self.get_file_size(output_audio_file_mp3)
+        # import pdb; pdb.set_trace()
+        if file_size > max_size_bytes:
+            audio_segments = self.split_audio(output_audio_file_mp3)
+            LOGGING.info(f"Audio file splited for url: {url}")
+            import io
 
-        transcription = transcribe_audio(audio_file)
-        words = transcription.text.split()
-        chunks = [words[i:i + 1500] for i in range(0, len(words), 1500)]
-        summary = ''
-        LOGGING.info(f"youtube Video url:{url} transcriptions splited into: {len(chunks)}")
-        for chunk in chunks:
-            text_chunks = ' '.join(chunk)
-            summary_chunk, tokens_uasage = Retrival().generate_response(Constants.TRANSCTION_PROMPT.format(transcription=text_chunks, youtube_url=url))
-            summary=summary+" "+summary_chunk
-        return summary
-   
+            transcriptions = []
+            for segment in audio_segments:
+                # Assuming your transcribe_audio function can take an AudioSegment directly
+                # If not, you may need to export the segment to a file first and then pass the file path
+                with tempfile.NamedTemporaryFile(suffix=".mp3", delete=True) as tmp_file:
+                    segment.export(tmp_file.name, format="mp3")
+                    tmp_file.flush() 
+                    with open(tmp_file.name, 'rb') as f:
+                        transcription = transcribe_audio(f)
+                        print("segment transcription completed")
+                        transcriptions.append(transcription.text)
+            
+            # Combine all transcriptions into a single text
+            final_transcription = " ".join(transcriptions)
+        else:
+            # Process the whole file directly if it's not larger than 25 MB
+            final_transcription = transcribe_audio(output_audio_file_mp3)
+        
+            # chunks = [words[i:i + 1500] for i in range(0, len(words), 1500)]
+            # summary = ''
+            # LOGGING.info(f"youtube Video url:{url} transcriptions splited into: {len(chunks)}")
+            # for chunk in chunks:
+            #     text_chunks = ' '.join(chunk)
+            #     summary_chunk, tokens_uasage = Retrival().generate_response(Constants.TRANSCTION_PROMPT.format(transcription=text_chunks, youtube_url=url))
+            #     summary=summary+" "+summary_chunk
+        if len(final_transcription) < 3000:
+            summary_chunk, tokens_uasage = Retrival().generate_response(Constants.TRANSCTION_PROMPT.format(transcription=final_transcription, youtube_url=url))
+            summary=summary_chunk
+        else:
+            summary=final_transcription
+        return summary, file_id
+    
     def load_documents(self, url, file, type, id, transcription=""):
         try:
             if type == 'api':
@@ -275,10 +312,11 @@ class VectorBuilder:
             elif type in ['youtube', 'pdf', 'website', "file"]:
                 with self.temporary_file(suffix=".pdf") as temp_pdf_path:
                     if type == 'youtube':
-                        summary = self.generate_transcriptions_summary(url)
-                        self.build_pdf(summary, temp_pdf_path)
-                        ResourceFile.objects.filter(id=id).update(transcription=summary)
-                        loader = PyMuPDFLoader(temp_pdf_path)  # Assuming PyMuPDFLoader is defined elsewhere
+                        summary, file_id = self.generate_transcriptions_summary(url)
+                        file_path = f"{settings.RESOURCES_AUDIOS}{file_id}.pdf"
+                        self.build_pdf(summary, file_path)
+                        ResourceFile.objects.filter(id=id).update(file=file_path)
+                        loader = PyMuPDFLoader(file_path)  # Assuming PyMuPDFLoader is defined elsewhere
                     elif type == 'pdf':
                         self.download_file(url, temp_pdf_path)
                         loader = PyMuPDFLoader(temp_pdf_path)  # Assuming PyMuPDFLoader is defined elsewhere
