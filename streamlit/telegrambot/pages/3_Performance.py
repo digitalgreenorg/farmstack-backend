@@ -292,7 +292,11 @@ tab1, tab2, tab3 = st.tabs(["Administrative unit performance","DA performance(Wo
 
 with tab1:
     today_utc = pd.Timestamp(datetime.date.today(), tz='UTC')
-    selected_kebele = st.multiselect('Select a Kebele', [kebele['kebele_name'] for kebele in kebele_list if kebele['kebele_name'] != 'All'],key="tab1_multiselect",max_selections=5)
+    # selected_kebele = st.multiselect('Select a Kebele', [kebele['kebele_name'] for kebele in kebele_list if kebele['kebele_name'] != 'All'],key="tab1_multiselect",max_selections=5)
+    kebele_names = [kebele['kebele_name'] for kebele in kebele_list if kebele['kebele_name'] != 'All']
+    default_selection = kebele_names[:5]
+    selected_kebele = st.multiselect('Select a Kebele', kebele_names, default=default_selection, key="tab1_multiselect", max_selections=5)
+
     col1,col2,col3,col4,col5=st.columns(5)
 
     with col1:
@@ -536,7 +540,10 @@ with tab1:
 # tab 2
 with tab2:
     today_utc = pd.Timestamp(datetime.date.today(), tz='UTC')
-    selected_kebele = st.multiselect('Select a Kebele', [kebele['kebele_name'] for kebele in kebele_list if kebele['kebele_name'] != 'All'],key="tab2_multiselect",max_selections=5)
+    # selected_kebele = st.multiselect('Select a Kebele', [kebele['kebele_name'] for kebele in kebele_list if kebele['kebele_name'] != 'All'],key="tab2_multiselect",max_selections=5)
+    kebele_names = [kebele['kebele_name'] for kebele in kebele_list if kebele['kebele_name'] != 'All']
+    default_selection = kebele_names[:5]
+    selected_kebele = st.multiselect('Select a Kebele', kebele_names, default=default_selection, key="tab2_multiselect", max_selections=5)  
     col1,col2,col3,col4=st.columns(4)
 
     with col1:
@@ -625,7 +632,10 @@ with tab3:
     col1,col2,col3=st.columns(3)
 
     with col1:
-        selected_kebele = st.multiselect('Select a Kebele', [kebele['kebele_name'] for kebele in kebele_list if kebele['kebele_name'] != 'All'],key="tab3_multiselect",max_selections=5)
+        # selected_kebele = st.multiselect('Select a Kebele', [kebele['kebele_name'] for kebele in kebele_list if kebele['kebele_name'] != 'All'],key="tab3_multiselect",max_selections=5)
+        kebele_names = [kebele['kebele_name'] for kebele in kebele_list if kebele['kebele_name'] != 'All']
+        default_selection = kebele_names[:5]
+        selected_kebele = st.multiselect('Select a Kebele', kebele_names, default=default_selection, key="tab3_multiselect", max_selections=5)
     with col2:
         selected_value_chain = st.selectbox("Select Value Chain", options=[placeholders["Value Chain"]] + [valuechain['value_chain_name'] for valuechain in filters['Value Chain']],key="value_chain_tab3")
     with col3:
