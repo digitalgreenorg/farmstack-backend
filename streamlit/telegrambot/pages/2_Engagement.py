@@ -148,8 +148,8 @@ def cached_data(query):
     return fetch_data(query)
 
 st.header("Engagements")
-user_role = st.selectbox("User Role", ["National User", "Regional User", "Zone User", "Woreda User"])
-
+# user_role = st.selectbox("User Role", ["National User", "Regional User", "Zone User", "Woreda User"])
+user_role="Woreda User"
 query_one_output = cached_data(queries["query1"])
 query_two_output = cached_data(queries["query2"])
 
