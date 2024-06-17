@@ -15,7 +15,7 @@ db_user = os.getenv("DB_USER")
 db_password = os.getenv("DB_PASSWORD")
 db_host = os.getenv("DB_HOST")
 db_port = os.getenv("DB_PORT")
-
+streamlit_cache_ttl=os.getenv("STREAMLIT_CACHE_TTL")
 
 st.set_page_config(
         layout="wide",
@@ -53,6 +53,8 @@ queries = {
         da.created_at AS created_at,
         dev.id AS dev_id,
         dev.name AS da_name,
+        dev.father_name AS da_father_name,
+        dev.grand_father_name AS da_grand_father_name,
         dev.gender AS da_gender,
         dev.phone_number AS da_phone_number,
         keb.id AS kebele_id,
@@ -99,6 +101,8 @@ SELECT DISTINCT
         da.created_at AS created_at,
         dev.id AS dev_id,
         dev.first_name AS da_name,
+        dev.father_name AS da_father_name,
+        dev.grand_father_name AS da_grand_father_name,
         dev.sex AS da_gender,
         dev.phone_number AS da_phone_number,
         keb.id AS kebele_id,
@@ -139,7 +143,7 @@ SELECT DISTINCT
     """
 }
 
-@st.cache_data
+@st.cache_data(ttl=int(streamlit_cache_ttl))
 def cached_data(query):
     return fetch_data(query)
 
@@ -150,16 +154,20 @@ query_one_output = cached_data(queries["query1"])
 query_two_output = cached_data(queries["query2"])
 
 concatenated_output = pd.concat([query_one_output, query_two_output], ignore_index=True)
+concatenated_output['DA Full Name'] = (concatenated_output['da_name'] + ' ' + 
+                                       concatenated_output['da_father_name'] + ' ' + 
+                                       concatenated_output['da_grand_father_name'])
+# st.write(concatenated_output)
 # concatenated_output.index = range(1, len(concatenated_output) + 1)
 concatenated_output=concatenated_output.drop_duplicates(subset="da_id")
 
 column_mapping = {
-    'da_name': 'DA Name',
+    'DA Full Name': 'DA Name',
     'da_gender': 'Gender',
-    'kebele_name': 'Kebele Name',
-    'woreda_name':'Woreda Name',
-    'zone_name': 'Zone Name',
-    'region_name':'Region Name',
+    'kebele_name': 'Kebele',
+    'woreda_name':'Woreda',
+    'zone_name': 'Zone',
+    'region_name':'Region',
     'da_phone_number':'Phone Number'
 
 }
@@ -193,16 +201,16 @@ if user_role=='National User':
     start_date_utc = pd.Timestamp(start_date, tz='UTC')
     with col2:
         
-        selected_region = st.selectbox("Select Region", ["All"] + sorted(concatenated_output["Region Name"].dropna().unique().tolist()))
-    columns_to_show = ["DA Name", "Gender", "Phone Number",'Kebele Name','Woreda Name','Zone Name','Region Name']
+        selected_region = st.selectbox("Select Region", ["All"] + sorted(concatenated_output["Region"].dropna().unique().tolist()))
+    columns_to_show = ["DA Name", "Gender", "Phone Number",'Region','Zone','Woreda','Kebele']
 elif user_role=='Regional User':
     col3, col4= st.columns([1, 1])
     with col3:
         start_date = select_period(1)
     start_date_utc = pd.Timestamp(start_date, tz='UTC')
     with col4:
-        selected_zone = st.selectbox("Select Zone", ["All"] + sorted(concatenated_output["Zone Name"].dropna().unique().tolist()))
-    columns_to_show = ["DA Name", "Gender", "Phone Number",'Kebele Name','Woreda Name','Zone Name']
+        selected_zone = st.selectbox("Select Zone", ["All"] + sorted(concatenated_output["Zone"].dropna().unique().tolist()))
+    columns_to_show = ["DA Name", "Gender", "Phone Number",'Zone','Woreda','Kebele']
 
 elif user_role=='Zone User':
     col5,col6=st.columns([1,1])
@@ -210,36 +218,37 @@ elif user_role=='Zone User':
         start_date = select_period(1)
     start_date_utc = pd.Timestamp(start_date, tz='UTC')
     with col6:
-        selected_woreda = st.selectbox("Select Woreda", ["All"] + sorted(concatenated_output["Woreda Name"].dropna().unique().tolist()))
-    columns_to_show = ["DA Name", "Gender", "Phone Number",'Kebele Name','Woreda Name']
+        selected_woreda = st.selectbox("Select Woreda", ["All"] + sorted(concatenated_output["Woreda"].dropna().unique().tolist()))
+    columns_to_show = ["DA Name", "Gender", "Phone Number",'Woreda','Kebele']
 elif user_role=='Woreda User':
     col7,col8=st.columns([1,1])
     with col7:
         start_date = select_period(1)
     start_date_utc = pd.Timestamp(start_date, tz='UTC')
     with col8:
-        selected_kebele = st.selectbox("Select Kebele", ["All"] + sorted(concatenated_output["Kebele Name"].dropna().unique().tolist()))
-    columns_to_show = ["DA Name", "Gender", "Phone Number",'Kebele Name']
+        selected_kebele = st.selectbox("Select Kebele", ["All"] + sorted(concatenated_output["Kebele"].dropna().unique().tolist()))
+    columns_to_show = ["DA Name", "Gender", "Phone Number",'Kebele']
 
 filtered_df = concatenated_output
 filtered_df = filtered_df[(filtered_df['created_at'] >= start_date_utc) & (filtered_df['created_at'] <= today_utc)]
 if user_role=='National User':
     if selected_region != "All":
-        filtered_df = filtered_df[filtered_df["Region Name"] == selected_region]
+        filtered_df = filtered_df[filtered_df["Region"] == selected_region]
 if user_role=='Regional User':
     if selected_zone != "All":
-        filtered_df = filtered_df[filtered_df["Zone Name"] == selected_zone]
+        filtered_df = filtered_df[filtered_df["Zone"] == selected_zone]
 if user_role=='Zone User':
     if selected_woreda != "All":
-        filtered_df = filtered_df[filtered_df["Woreda Name"] == selected_woreda]
+        filtered_df = filtered_df[filtered_df["Woreda"] == selected_woreda]
 if user_role=='Woreda User':
     if selected_kebele != "All":
-        filtered_df = filtered_df[filtered_df["Kebele Name"] == selected_kebele]
+        filtered_df = filtered_df[filtered_df["Kebele"] == selected_kebele]
 
 filtered_df = filtered_df.reset_index(drop=True)
 filtered_df.index = range(1, len(filtered_df) + 1)
 filtered_df['Gender'] = filtered_df['Gender'].str.lower()
 gender_counts = filtered_df['Gender'].value_counts()
+st.subheader("Development Agents")
 with open("style.css", "r") as f:
     css = f.read()
 
@@ -329,5 +338,19 @@ def make_pretty_table_order_details(dataframe, columns=None):
         pages = split_frame(dataset, batch_size)
         pagination.dataframe(data=pages[current_page_a - 1], use_container_width=True)
 filtered_df = load_data(filtered_df[columns_to_show])
+
+filtered_df=filtered_df[columns_to_show]
+csv = filtered_df.to_csv(index=False).encode('utf-8')
+
+current_date =datetime.date.today()
+table_title = "Development Agents"
+file_name = f"{current_date}_{table_title}.csv"
+st.download_button(
+    label="Download CSV",
+    data=csv,
+    file_name=file_name,
+    mime='text/csv'
+)
+
 df=make_pretty_table_order_details(filtered_df[columns_to_show])
 st.write("<br>", unsafe_allow_html=True)

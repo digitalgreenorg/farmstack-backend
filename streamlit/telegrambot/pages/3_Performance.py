@@ -15,6 +15,8 @@ db_user = os.getenv("DB_USER")
 db_password = os.getenv("DB_PASSWORD")
 db_host = os.getenv("DB_HOST")
 db_port = os.getenv("DB_PORT")
+streamlit_cache_ttl=os.getenv("STREAMLIT_CACHE_TTL")
+
 st.set_page_config(
         layout="wide",
         initial_sidebar_state="auto",
@@ -22,8 +24,6 @@ st.set_page_config(
         page_icon=None,
     )
 st.header('Performance')
-# tab1, tab2, tab3 = st.tabs(["Administrative unit performance","DA performance(Woreda level only)","Value chain reports"])
-
 
 def connect_to_database():
     """Connect to the PostgreSQL database."""
@@ -184,7 +184,7 @@ queries={
 """
 }
 
-@st.cache_data
+@st.cache_data(ttl=int(streamlit_cache_ttl))
 def cached_data(query):
     return fetch_data(query)
 query_one_output = cached_data(queries["query_1"])
@@ -193,13 +193,26 @@ query_two_output = cached_data(queries["query_2"])
 
 concatenated_output = pd.concat([query_one_output, query_two_output], ignore_index=True)
 concatenated_output=concatenated_output.reset_index(drop=True)
+concatenated_output['created_at'] = pd.to_datetime(concatenated_output['created_at'])
+column_mapping = {
+    'male_reach_count': 'Male Farmers Reached',
+    'female_reach_count': 'Female Farmers Reached',
+    'woreda_name':'Woreda',
+    'da_name':'DA Name',
+    'male_adoption_count':'Male Farmers Adoption',
+    'female_adoption_count':'Female Farmers Adoption',
+    'kebele_name' :'Kebele',
+    'value_chain_name':'Value Chain',
+    'practice_name':'Practice',
+    'access_count':'Access Count',
+    'value_chain_category_name':'Category',
+    'distinct_das':'Distinct DAs',
+
+}
 
 ######################################
 
-# min_created_at = df['created_at'].min()
-# max_created_at = df['created_at'].max()
 
-## Kebeles
 unique_kebele=concatenated_output.groupby(['woreda_id','kebele_id', 'kebele_name']).size().reset_index(name='count')
 unique_kebele = unique_kebele.drop(columns=['count'])
 kebele_list = unique_kebele.to_dict(orient='records')
@@ -243,7 +256,9 @@ placeholders = {
 filters = {
     "Kebele": kebele_list,
     "DA": da_list,
-    "Practice": practice_list
+    "Practice": practice_list,
+    "Value Chain":value_chain_list,
+    "Value Chain Category":unique_value_chain_category_list
 }
 
 
@@ -265,200 +280,294 @@ def select_period(index):
 
     return start_date
 
-col1,col2,col3,col4,col5,col6=st.columns(6)
-kebele_da_mapping = concatenated_output.groupby(['kebele_id'])[['da_id', 'da_name']].apply(lambda x: x.drop_duplicates().to_dict(orient='records')).to_dict()
-kebele_practice_mapping = concatenated_output.groupby(['kebele_id'])[['practice_id', 'practice_name']].apply(lambda x: x.drop_duplicates().to_dict(orient='records')).to_dict()
-kebele_value_chain_mapping=concatenated_output.groupby(['kebele_id'])[['value_chain_id', 'value_chain_name']].apply(lambda x: x.drop_duplicates().to_dict(orient='records')).to_dict()
-kebele_value_chain_category_mapping=concatenated_output.groupby(['kebele_id'])[['value_chain_category_id', 'value_chain_category_name']].apply(lambda x: x.drop_duplicates().to_dict(orient='records')).to_dict()
+def create_selection_widgets(col, options, placeholder):
+    selected = col.selectbox(placeholder, options)
+    return selected
+
+def create_multiselect_widgets(col, options, placeholder):
+    selected = col.multiselect(placeholder, options)
+    return selected
+
 tab1, tab2, tab3 = st.tabs(["Administrative unit performance","DA performance(Woreda level only)","Value chain reports"])
-with col1:
-    selected_kebele = st.selectbox('Select a Kebele', ['All'] + [kebele['kebele_name'] for kebele in kebele_list])
-
-# Filter DAs based on the selected kebele
-if selected_kebele == 'All':
-    filtered_da_list = da_list
-    filtered_practice_list=practice_list
-    filtered_value_chain_list=value_chain_list
-    filtered_value_chain_category_list=unique_value_chain_category_list
-else:
-    selected_kebele_id = [kebele['kebele_id'] for kebele in kebele_list if kebele['kebele_name'] == selected_kebele][0]
-    filtered_da_list = kebele_da_mapping.get(selected_kebele_id, [])
-    filtered_practice_list=kebele_practice_mapping.get(selected_kebele_id,[])
-    filtered_value_chain_list=kebele_value_chain_mapping.get(selected_kebele_id,[])
-    filtered_value_chain_category_list=kebele_value_chain_category_mapping.get(selected_kebele_id,[])
-
-    # st.write(f"DAs in the selected kebele '{selected_kebele}':", len(filtered_da_list))
-
-filters = {
-    "Kebele": kebele_list,
-    "DA": filtered_da_list,
-    "Practice": filtered_practice_list,
-    "Value Chain":filtered_value_chain_list,
-    "Value Chain Category":filtered_value_chain_category_list
-}
-with col2:
-    selected_da = st.selectbox("Select DA", options=[placeholders["DA"]] + [da['da_name'] for da in filters['DA']])
-with col3:
-    selected_practice = st.selectbox("Select Practice", options=[placeholders["Practice"]] + [practice['practice_name'] for practice in filters['Practice']])
-with col4:
-    selected_value_chain = st.selectbox("Select Value Chain", options=[placeholders["Value Chain"]] + [valuechain['value_chain_name'] for valuechain in filters['Value Chain']])
-with col5:
-    selected_value_chain_category = st.selectbox("Select Category", options=[placeholders["Value Chain Category"]] + [valuechaincat['value_chain_category_name'] for valuechaincat in filters['Value Chain Category']])
-with col6:
-    select_period(1)
-
-
 
 with tab1:
+    today_utc = pd.Timestamp(datetime.date.today(), tz='UTC')
+    selected_kebele = st.multiselect('Select a Kebele', [kebele['kebele_name'] for kebele in kebele_list if kebele['kebele_name'] != 'All'],key="tab1_multiselect",max_selections=5)
+    col1,col2,col3,col4,col5=st.columns(5)
+
+    with col1:
+        selected_da = st.selectbox("Select DA", options=[placeholders["DA"]] + [da['da_name'] for da in filters['DA']],key="da_list_tab3")
+    with col2:
+        selected_practice = st.selectbox("Select Practice", options=[placeholders["Practice"]] + [practice['practice_name'] for practice in filters['Practice']],key="practice_list_tab1")
+    with col3:
+        selected_value_chain = st.selectbox("Select Value Chain", options=[placeholders["Value Chain"]] + [valuechain['value_chain_name'] for valuechain in filters['Value Chain']],key="value_chain_tab1")
+    with col4:
+        selected_value_chain_category = st.selectbox("Select Category", options=[placeholders["Value Chain Category"]] + [valuechaincat['value_chain_category_name'] for valuechaincat in filters['Value Chain Category']],key="value_chain_cat_list1")
+    with col5:
+        start_date=select_period(1)
+        start_date_utc = pd.Timestamp(start_date, tz='UTC')
+        # st.write(start_date)
     
+
+    def filter_data(df, kebeles, da, practice, value_chain, value_chain_category, start_date):
+        df=df.copy()
+        if kebeles:
+            df = df[df['kebele_name'].isin(kebeles)]
+        if da and da != placeholders["DA"]:
+            df = df[df['da_name'] == da]
+        if practice and practice != placeholders["Practice"]:
+            df = df[df['practice_name'] == practice]
+        if value_chain and value_chain != placeholders["Value Chain"]:
+            df = df[df['value_chain_name'] == value_chain]
+        if value_chain_category and value_chain_category != placeholders["Value Chain Category"]:
+            df = df[df['value_chain_category_name'] == value_chain_category]
+        if start_date:
+            start_date_utc = pd.Timestamp(start_date, tz='UTC')
+            df = df[(df['created_at'] >= start_date_utc) & (df['created_at'] <= today_utc)]
+        return df
+  
+# Apply filters
+    concatenated_output = filter_data(concatenated_output, selected_kebele, selected_da, selected_practice, selected_value_chain, selected_value_chain_category, start_date)
+
     distinct_das_df = concatenated_output.drop_duplicates(subset="da_id")
 
+    tab11, tab12 = st.tabs(['List View','Graph View'])
+    with tab11:
+        grouped_output = concatenated_output.groupby(
+            ["kebele_id", "kebele_name", 
+            "practice_id", "practice_name", 
+            "value_chain_id", "value_chain_name", 
+            "value_chain_category_id", "value_chain_category_name"
+        ]
+        ).agg(
+            distinct_das=("da_id", "nunique"),
+            access_count=("da_id", "count")
+        ).reset_index()
+        grouped_output = grouped_output.rename(columns=column_mapping)
 
-    grouped_output = concatenated_output.groupby(
-        ["kebele_id", "kebele_name", 
-        "practice_id", "practice_name", 
-        "value_chain_id", "value_chain_name", 
-        "value_chain_category_id", "value_chain_category_name"
-    ]
-    ).agg(
-        distinct_das=("da_id", "nunique"),
-        access_count=("da_id", "count")
-    ).reset_index()
+        column_to_show=['Kebele','Category','Value Chain','Practice','Distinct DAs','Access Count']
+        st.subheader('Advisory Access')
 
-
-    # column_to_show=['DA Name','Kebele Name','Woreda Name','Practice','Value Chain Category','Value Chain']
-    column_to_show=['kebele_name','value_chain_category_name','value_chain_name','practice_name','distinct_das','access_count']
-    st.subheader('Advisory Access')
-    st.dataframe(grouped_output[column_to_show])
-
-
-
-    st.subheader("Advisory Access Graph")
-    # column_to_show=['kebele_name','access_count','created_at']
-    # df = pd.DataFrame(grouped_output[column_to_show])
-
-    # start_date = select_period(1)
-    # df['created_at'] = pd.to_datetime(df['created_at'])
-    # filtered_df = df[df['created_at'] >= pd.to_datetime(start_date)]
-
-    # # Select top 5 kebeles based on access count within the filtered period
-    # top_kebeles = filtered_df.groupby('kebele_name')['access_count'].sum().nlargest(5).index
-    # filtered_df = filtered_df[filtered_df['kebele_name'].isin(top_kebeles)]
-
-    # # Create the Plotly line chart
-    # fig = px.line(filtered_df, x='created_at', y='access_count', color='kebele_name', title='Access Count per Kebele', markers=True)
-
-    # # Display the chart in Streamlit
-    # st.plotly_chart(fig)
-
-    ###########
-    print("col------>",concatenated_output.columns)
-    def reach_counts(df):
-        male_reach_count = df[df['gender'].str.lower() == 'male']['reach_id'].nunique()
-        female_reach_count = df[df['gender'].str.lower() == 'female']['reach_id'].nunique()
-        return pd.Series({
-            'male_reach_count': male_reach_count,
-            'female_reach_count': female_reach_count
-        })
-
-    # Group by kebele, practice, value chain, and category, and apply the custom aggregation function
-    grouped_reach_data = concatenated_output.groupby(
-        ["kebele_id", "kebele_name", 
-        "practice_id", "practice_name", 
-        "value_chain_id", "value_chain_name", 
-        "value_chain_category_id", "value_chain_category_name"]
-    ).apply(reach_counts).reset_index()
-
-    print("dataframe----->",grouped_reach_data)
-    st.subheader("Reach Recorded")
-    st.dataframe(grouped_reach_data)
-#####Graph
+        st.dataframe(grouped_output[column_to_show],width=1000)
+        #####un comment it later
 
 
+        def reach_counts(df):
+            male_reach_count = df[df['gender'].str.lower() == 'male']['reach_id'].nunique()
+            female_reach_count = df[df['gender'].str.lower() == 'female']['reach_id'].nunique()
+            return pd.Series({
+                'male_reach_count': male_reach_count,
+                'female_reach_count': female_reach_count
+            })
+        
+        # Group by specified columns and apply the custom aggregation function
+        grouped_reach_data = concatenated_output.groupby(
+            ["kebele_id", "kebele_name", 
+            "practice_id", "practice_name", 
+            "value_chain_id", "value_chain_name", 
+            "value_chain_category_id", "value_chain_category_name"],
+            as_index=False  # Ensure not to use group keys as index
+        ).apply(reach_counts).reset_index(drop=True)
 
-    def adoption_counts(df):
-        male_adoption_count = df[df['gender'].str.lower() == 'male']['adoption_id'].nunique()
-        female_adoption_count = df[df['gender'].str.lower() == 'female']['adoption_id'].nunique()
-        return pd.Series({
-            'male_adoption_count': male_adoption_count,
-            'female_adoption_count': female_adoption_count
-        })
+        # Define column mapping for renaming
+        column_mapping = {
+            'kebele_name': 'Kebele',
+            'value_chain_category_name': 'Category',
+            'value_chain_name': 'Value Chain',
+            'practice_name': 'Practice',
+            'male_reach_count': 'Male Farmers Reached',
+            'female_reach_count': 'Female Farmers Reached',
+            'male_adoption_count': 'Male Farmers Adoption',
+            'female_adoption_count': 'Female Farmers Adoption',
+            'region_name':'Region Name',
+            'zone_name':'Zone Name',
+            'woreda_name':'Woreda',
+            'da_name':'DA Name',
+            'access_count':'Access Count'
+        }
 
-    # Group by kebele, practice, value chain, and category, and apply the custom aggregation function
-    grouped_adoption_data = concatenated_output.groupby(
-        ["kebele_id", "kebele_name", 
-        "practice_id", "practice_name", 
-        "value_chain_id", "value_chain_name", 
-        "value_chain_category_id", "value_chain_category_name"]
-    ).apply(adoption_counts).reset_index()
 
-    print("grouped_adoption_data----->",grouped_adoption_data)
-    st.subheader("Adoption Recorded")
-    st.dataframe(grouped_adoption_data)
+        columns_to_show = ['Kebele', 'Category', 'Value Chain', 'Practice', 'Male Farmers Reached', 'Female Farmers Reached']
+
+        if grouped_reach_data.empty:
+            st.subheader("Reach Recorded")
+            st.warning("No data available for the selected filters.")
+        else:
+            grouped_reach_data = grouped_reach_data.rename(columns=column_mapping)
+            st.subheader("Reach Recorded")
+            st.dataframe(grouped_reach_data[columns_to_show], width=1000)
+
+        #####Graph
+        def adoption_counts(df):
+            male_adoption_count = df[df['gender'].str.lower() == 'male']['adoption_id'].nunique()
+            female_adoption_count = df[df['gender'].str.lower() == 'female']['adoption_id'].nunique()
+            return pd.Series({
+                'male_adoption_count': male_adoption_count,
+                'female_adoption_count': female_adoption_count
+            })
+
+        # Group by kebele, practice, value chain, and category, and apply the custom aggregation function
+        grouped_adoption_data = concatenated_output.groupby(
+            ["kebele_id", "kebele_name", 
+            "practice_id", "practice_name", 
+            "value_chain_id", "value_chain_name", 
+            "value_chain_category_id", "value_chain_category_name"],
+            as_index=False 
+        ).apply(adoption_counts).reset_index(drop=True)
+        grouped_adoption_data = grouped_adoption_data.rename(columns=column_mapping)
+
+        if grouped_adoption_data.empty:
+            st.subheader("Adoption Recorded")
+            st.warning("No data available for the selected filters.")
+        else:
+            column_to_show=['Kebele','Category','Value Chain','Practice','Male Farmers Adoption','Female Farmers Adoption']
+            # print("grouped_adoption_data----->",grouped_adoption_data)
+            st.subheader("Adoption Recorded")
+            st.dataframe(grouped_adoption_data[column_to_show],width=1000)
 
 ####Graph
+    with tab12:
+        def reach_counts_for_graph(df):
+            male_reach_count = df[df['gender'].str.lower() == 'male']['reach_id'].nunique()
+            female_reach_count = df[df['gender'].str.lower() == 'female']['reach_id'].nunique()
+            return pd.Series({
+                'male_reach_count': male_reach_count,
+                'female_reach_count': female_reach_count
+            }) 
+        grouped_reach_data_for_graph = concatenated_output.groupby(
+            ["kebele_id", "kebele_name", 
+            "practice_id", "practice_name", 
+            "value_chain_id", "value_chain_name", 
+            "value_chain_category_id", "value_chain_category_name"],
+            as_index=False 
+        ).apply(reach_counts_for_graph).reset_index(drop=True)
+        grouped_reach_data_for_graph = grouped_reach_data_for_graph.rename(columns=column_mapping)
+        df_top5 = grouped_reach_data_for_graph
 
-    # grouped_reach_data=grouped_reach_data.fillna(0, inplace=True)
-    df_top5 = grouped_reach_data.head(5)
-    fig = px.bar(
-        df_top5,
-        x='kebele_name',
-        y=['male_reach_count', 'female_reach_count'],
-        title='Reach Recorded Tab1',
-        # labels={'value': 'Reach Count', 'variable': 'Gender'},
-        barmode='group',
-        # color_discrete_map=color_discrete_map
-    )
+        st.subheader("Advisory Access")
+        today_utc = pd.Timestamp(datetime.date.today(), tz='UTC')
+        #change here
+        filtered_df = concatenated_output[(concatenated_output['created_at'] >= start_date_utc) & (concatenated_output['created_at'] <= today_utc)]
+        access_counts = filtered_df.groupby(['kebele_name', 'created_at']).size().reset_index(name='access_count')
+
+        fig = px.line(access_counts, x='created_at', y='access_count', color='kebele_name', markers=True)
+        st.plotly_chart(fig,use_container_width=True)
+
+        if grouped_reach_data_for_graph.empty:
+            st.subheader("Reach Recorded")
+            st.warning("No data available for the selected filters.")
+        else:
+
+            fig = px.bar(
+                df_top5,
+                x='Kebele',
+                y=['Male Farmers Reached', 'Female Farmers Reached'],
+                # title='Reach Recorded Tab1',
+                # labels={'value': 'Reach Count', 'variable': 'Gender'},
+                barmode='group',
+                # color_discrete_map=color_discrete_map
+            )
+
+            # Customize the layout
+            fig.update_layout(
+                xaxis_title='Kebele',
+                yaxis_title='Reach Count',
+                legend_title='Gender',
+                legend=dict(
+                    x=1.0,
+                    y=1.0
+                )
+            )
+            st.subheader("Reach Recorded")
+            # Display the chart in Streamlit
+            st.plotly_chart(fig,use_container_width=True)
+
+        def adoption_counts(df):
+            male_adoption_count = df[df['gender'].str.lower() == 'male']['adoption_id'].nunique()
+            female_adoption_count = df[df['gender'].str.lower() == 'female']['adoption_id'].nunique()
+            return pd.Series({
+                'male_adoption_count': male_adoption_count,
+                'female_adoption_count': female_adoption_count
+            })
+        grouped_adoption_data = concatenated_output.groupby(
+            ["kebele_id", "kebele_name", 
+            "practice_id", "practice_name", 
+            "value_chain_id", "value_chain_name", 
+            "value_chain_category_id", "value_chain_category_name"],
+            as_index=False 
+        ).apply(adoption_counts).reset_index(drop=True)
+        grouped_adoption_data = grouped_adoption_data.rename(columns=column_mapping)
+        df_top5 = grouped_adoption_data
+
+        if grouped_reach_data_for_graph.empty:
+            st.subheader("Adoption Recorded")
+            st.warning("No data available for the selected filters.")
+        else:
+            fig = px.bar(
+                df_top5,
+                x='Kebele',
+                y=['Male Farmers Adoption', 'Female Farmers Adoption'],
+                # title='Adoption Recorded Tab1',
+                # labels={'value': 'Reach Count', 'variable': 'Gender'},
+                barmode='group',
+                # color_discrete_map=color_discrete_map
+            )
+
+            # Customize the layout
+            fig.update_layout(
+                xaxis_title='Kebele',
+                yaxis_title='Adoption Count',
+                legend_title='Gender',
+                legend=dict(
+                    x=1.0,
+                    y=1.0
+                )
+            )
+
+            # Display the chart in Streamlit
+            st.subheader("Adoption Recorded")
+            st.plotly_chart(fig,use_container_width=True)
 
 
 
-    # Customize the layout
-    fig.update_layout(
-        xaxis_title='Kebele Name',
-        yaxis_title='Reach Count',
-        legend_title='Gender',
-        legend=dict(
-            x=1.0,
-            y=1.0
-        )
-    )
-
-    # Display the chart in Streamlit
-    st.plotly_chart(fig)
-
-    df_top5 = grouped_adoption_data.head(10)
-    fig = px.bar(
-        df_top5,
-        x='kebele_name',
-        y=['male_adoption_count', 'female_adoption_count'],
-        title='Adoption Recorded Tab1',
-        # labels={'value': 'Reach Count', 'variable': 'Gender'},
-        barmode='group',
-        # color_discrete_map=color_discrete_map
-    )
-
-
-
-    # Customize the layout
-    fig.update_layout(
-        xaxis_title='Kebele Name',
-        yaxis_title='Adoption Count',
-        legend_title='Gender',
-        legend=dict(
-            x=1.0,
-            y=1.0
-        )
-    )
-
-    # Display the chart in Streamlit
-    st.plotly_chart(fig)
 
 #######################
 
-
-
 # tab 2
 with tab2:
+    today_utc = pd.Timestamp(datetime.date.today(), tz='UTC')
+    selected_kebele = st.multiselect('Select a Kebele', [kebele['kebele_name'] for kebele in kebele_list if kebele['kebele_name'] != 'All'],key="tab2_multiselect",max_selections=5)
+    col1,col2,col3,col4=st.columns(4)
+
+    with col1:
+        selected_da = st.selectbox("Select DA", options=[placeholders["DA"]] + [da['da_name'] for da in filters['DA']],key="da_list_tab1")
+    with col2:
+        selected_practice = st.selectbox("Select Practice", options=[placeholders["Practice"]] + [practice['practice_name'] for practice in filters['Practice']],key="practice_list_tab3")
+    with col3:
+        selected_value_chain = st.selectbox("Select Value Chain", options=[placeholders["Value Chain"]] + [valuechain['value_chain_name'] for valuechain in filters['Value Chain']],key="value_chain_list2")
+    with col4:
+        selected_value_chain_category = st.selectbox("Select Category", options=[placeholders["Value Chain Category"]] + [valuechaincat['value_chain_category_name'] for valuechaincat in filters['Value Chain Category']],key="value_chain_cat_list2")
+    # with col5:
+    #     start_date=select_period(2)
+    #     start_date_utc = pd.Timestamp(start_date, tz='UTC')
+    #     st.write(start_date)
+
+    def filter_data_tab2(df, kebeles, da, practice, value_chain, value_chain_category, start_date):
+        if kebeles:
+            df = df[df['kebele_name'].isin(kebeles)]
+        if da and da != placeholders["DA"]:
+            df = df[df['da_name'] == da]
+        if practice and practice != placeholders["Practice"]:
+            df = df[df['practice_name'] == practice]
+        if value_chain and value_chain != placeholders["Value Chain"]:
+            df = df[df['value_chain_name'] == value_chain]
+        if value_chain_category and value_chain_category != placeholders["Value Chain Category"]:
+            df = df[df['value_chain_category_name'] == value_chain_category]
+        if start_date:
+            start_date_utc = pd.Timestamp(start_date, tz='UTC')
+            df = df[(df['created_at'] >= start_date_utc) & (df['created_at'] <= today_utc)]
+        return df
+    concatenated_output = filter_data_tab2(concatenated_output, selected_kebele, selected_da, selected_practice, selected_value_chain, selected_value_chain_category, start_date)
     def gender_counts(df):
         male_reach_count = df[df['gender'].str.lower() == 'male']['reach_id'].nunique()
         female_reach_count = df[df['gender'].str.lower() == 'female']['reach_id'].nunique()
@@ -473,133 +582,207 @@ with tab2:
             'access_count': access_count
         })
 
-    grouped_data = concatenated_output.groupby(['da_name', 'kebele_name']).apply(gender_counts).reset_index()
-
-    # Display the result
-    import streamlit as st
-    st.subheader("da performance")
-    print("grouped_data------>",grouped_data)
-    st.dataframe(grouped_data)
-
-    df_top5 = grouped_data.head(5)
-
-    # Create a stacked bar chart using Plotly
-
-    color_discrete_map = {
-        'male_reach_count': '#34AF16',
-        'female_reach_count': '#1F3BB3',
-        'male_adoption_count': '#80D7D9',
-        'female_adoption_count': '#A155B9',
-        'access_count':'#FF6BF9'
-    }
-    fig = px.bar(
-        df_top5,
-        x='kebele_name',
-        y=['male_reach_count', 'female_reach_count','male_adoption_count','female_adoption_count','access_count'],
-        title='Reach Counts by Kebele and Gender (Top 5)',
-        # labels={'value': 'Reach Count', 'variable': 'Gender'},
-        barmode='group',
-        color_discrete_map=color_discrete_map
-    )
+    grouped_data = concatenated_output.groupby(['da_name', 'kebele_name'], as_index=False ).apply(gender_counts).reset_index(drop=True)
+    tab21, tab22 = st.tabs(['List View','Graph View'])
+    with tab21:
+        if grouped_data.empty:
+            st.subheader("DA performance")
+            st.warning("No data available for the selected filters.")
+        else:
+            grouped_data = grouped_data.rename(columns=column_mapping)
+            st.subheader("DA performance")
+            st.dataframe(grouped_data,width=1000)
+            # fig = px.bar(grouped_data, x='kebele_name', y=['Male Farmers Reached', 'Female Farmers Reached', 'Male Farmers Adoption', 'Female Farmers Adoption', 'Access Count'],
+            #              barmode='group', title='DA Performance by Kebele')
+            # st.plotly_chart(fig)
 
 
-
-    # Customize the layout
-    fig.update_layout(
-        xaxis_title='Kebele Name',
-        yaxis_title='Reach Count',
-        legend_title='Gender',
-        legend=dict(
-            x=1.0,
-            y=1.0
-        )
-    )
-
-    # Display the chart in Streamlit
-    st.plotly_chart(fig)
+    # # Define the color map
+    with tab22:
+        color_discrete_map = {
+            'Male Farmers Reached': '#1F3BB3',
+            'Female Farmers Reached': '#80D7D9',
+            'Male Farmers Adoption': '#A155B9',
+            'Female Farmers Adoption': '#FF6BF9',
+            'Access Count': '#34AF16'
+        }
+        
+        if grouped_data.empty:
+            st.subheader("DA performance")
+            st.warning("No data available for the selected filters.")
+        else:
+            grouped_data = grouped_data.rename(columns=column_mapping)
+            st.subheader("DA performance")
+            # st.dataframe(grouped_data,width=1000)
+            fig = px.bar(grouped_data, x='Kebele', y=['Male Farmers Reached', 'Female Farmers Reached', 'Male Farmers Adoption', 'Female Farmers Adoption', 'Access Count'],
+                        barmode='group')
+            st.plotly_chart(fig,use_container_width=True)
 
 
 # tab 3
 with tab3:
+    
+    col1,col2,col3=st.columns(3)
 
-    value_chain_report_reach_data = concatenated_output.groupby(['kebele_name', 'region_name', 'zone_name', 'woreda_name', 'practice_name']).apply(
-        lambda x: pd.Series({
-            'male_reach_count': x[x['gender'].str.lower() == 'male']['reach_id'].nunique(),
-            'female_reach_count': x[x['gender'].str.lower() == 'female']['reach_id'].nunique()
-        })
-    ).reset_index()
-
-    # Display the grouped data (for verification)
-    st.subheader("Reach Count in Value Chain")
-    st.dataframe(value_chain_report_reach_data)
+    with col1:
+        selected_kebele = st.multiselect('Select a Kebele', [kebele['kebele_name'] for kebele in kebele_list if kebele['kebele_name'] != 'All'],key="tab3_multiselect",max_selections=5)
+    with col2:
+        selected_value_chain = st.selectbox("Select Value Chain", options=[placeholders["Value Chain"]] + [valuechain['value_chain_name'] for valuechain in filters['Value Chain']],key="value_chain_tab3")
+    with col3:
+        selected_value_chain_category = st.selectbox("Select Category", options=[placeholders["Value Chain Category"]] + [valuechaincat['value_chain_category_name'] for valuechaincat in filters['Value Chain Category']],key="value_chain_cat_list3")
 
 
-    value_chain_report_adoption_data = concatenated_output.groupby(['kebele_name', 'region_name', 'zone_name', 'woreda_name', 'practice_name']).apply(
-        lambda x: pd.Series({
-            'male_adoption_count': x[x['gender'].str.lower() == 'male']['adoption_id'].nunique(),
-            'female_adoption_count': x[x['gender'].str.lower() == 'female']['adoption_id'].nunique()
-        })
-    ).reset_index()
+    def filter_data_tab3(df, kebeles, da, practice, value_chain, value_chain_category, start_date):
+        if kebeles:
+            df = df[df['kebele_name'].isin(kebeles)]
+        if da and da != placeholders["DA"]:
+            df = df[df['da_name'] == da]
+        if practice and practice != placeholders["Practice"]:
+            df = df[df['practice_name'] == practice]
+        if value_chain and value_chain != placeholders["Value Chain"]:
+            df = df[df['value_chain_name'] == value_chain]
+        if value_chain_category and value_chain_category != placeholders["Value Chain Category"]:
+            df = df[df['value_chain_category_name'] == value_chain_category]
+        if start_date:
+            start_date_utc = pd.Timestamp(start_date, tz='UTC')
+            df = df[(df['created_at'] >= start_date_utc) & (df['created_at'] <= today_utc)]
+        return df
+    concatenated_output = filter_data_tab3(concatenated_output, selected_kebele, selected_da, selected_practice, selected_value_chain, selected_value_chain_category, start_date)
 
-    # Display the grouped data (for verification)
-    st.subheader("Adoption Count in Value Chain")
-    st.dataframe(value_chain_report_adoption_data)
+    print("concatenated_output=====",concatenated_output)
+
+    tab31,tab32=st.tabs(["List View","Graph View"])
+
+    with tab31:
+
+        if not concatenated_output.empty:
+            value_chain_report_reach_data = concatenated_output.groupby(['kebele_name',  'practice_name']).apply(
+                lambda x: pd.Series({
+                    'male_reach_count': x[x['gender'].str.lower() == 'male']['reach_id'].nunique(),
+                    'female_reach_count': x[x['gender'].str.lower() == 'female']['reach_id'].nunique()
+                })
+            ).reset_index()
+
+            # Displaying results
+            if not value_chain_report_reach_data.empty:
+                st.subheader("Reach")
+                value_chain_report_reach_data = value_chain_report_reach_data.rename(columns=column_mapping)
+                st.dataframe(value_chain_report_reach_data,width=1000)
+            else:
+                st.subheader("Reach")
+                st.warning("No data available for the selected filters.")
+        else:
+            st.subheader("Reach")
+            st.warning("No data available for the selected filters.")
+
+        if not concatenated_output.empty:
+            value_chain_report_adoption_data = concatenated_output.groupby(['kebele_name','practice_name']).apply(
+                lambda x: pd.Series({
+                    'male_adoption_count': x[x['gender'].str.lower() == 'male']['adoption_id'].nunique(),
+                    'female_adoption_count': x[x['gender'].str.lower() == 'female']['adoption_id'].nunique()
+                })
+            ).reset_index()
+
+            if value_chain_report_adoption_data.empty:
+                st.subheader("Adoption")
+                st.warning("No data available for the selected filters.")
+            else:
+                # Display the grouped data (for verification)
+                st.subheader("Adoption")
+                value_chain_report_adoption_data=value_chain_report_adoption_data.rename(columns=column_mapping)
+                st.dataframe(value_chain_report_adoption_data,width=1000)
+        else:
+            st.subheader("Adoption")
+            st.warning("No data available for the selected filters.")
 
 
-    st.subheader("chart for reach")
+##### from here graph ###
+
+    with tab32:
+
+        if not concatenated_output.empty:
+            value_chain_report_reach_data = concatenated_output.groupby(['kebele_name', 'region_name', 'zone_name', 'woreda_name', 'practice_name']).apply(
+                lambda x: pd.Series({
+                    'male_reach_count': x[x['gender'].str.lower() == 'male']['reach_id'].nunique(),
+                    'female_reach_count': x[x['gender'].str.lower() == 'female']['reach_id'].nunique()
+                })
+            ).reset_index()
+            if not value_chain_report_reach_data.empty:
+                value_chain_report_reach_data=value_chain_report_reach_data.rename(columns=column_mapping)
+                df_top5 = value_chain_report_reach_data
+                fig = px.bar(
+                    df_top5,
+                    x='Kebele',
+                    y=['Male Farmers Reached', 'Female Farmers Reached'],
+                    # title='Reach Counts by Kebele and Gender (Top 5)',
+                    # labels={'value': 'Reach Count', 'variable': 'Gender'},
+                    barmode='group',
+                    # color_discrete_map=color_discrete_map
+                )
+
+                # Customize the layout
+                fig.update_layout(
+                    xaxis_title='Kebele',
+                    yaxis_title='Reach Count',
+                    legend_title='Gender',
+                    legend=dict(
+                        x=1.0,
+                        y=1.0
+                    )
+                )
+
+                # Display the chart in Streamlit
+                st.subheader("Reach")
+                st.plotly_chart(fig,use_container_width=True)
+
+            else:
+                st.subheader("Reach")
+                st.warning("No data available for the selected filters.")
+
+        else:
+            st.subheader("Reach")
+            st.warning("No data available for the selected filters.")
 
 
-    df_top5 = value_chain_report_reach_data.head(8)
-    fig = px.bar(
-        df_top5,
-        x='kebele_name',
-        y=['male_reach_count', 'female_reach_count'],
-        title='Reach Counts by Kebele and Gender (Top 5)',
-        # labels={'value': 'Reach Count', 'variable': 'Gender'},
-        barmode='group',
-        color_discrete_map=color_discrete_map
-    )
+        ###################################################
+        if not concatenated_output.empty:
+            if not value_chain_report_adoption_data.empty:
+            #     value_chain_report_adoption_data = concatenated_output.groupby(['kebele_name', 'region_name', 'zone_name', 'woreda_name', 'practice_name']).apply(
+            #     lambda x: pd.Series({
+            #         'male_adoption_count': x[x['gender'].str.lower() == 'male']['adoption_id'].nunique(),
+            #         'female_adoption_count': x[x['gender'].str.lower() == 'female']['adoption_id'].nunique()
+            #     })
+            # ).reset_index()
+                df_top5 = value_chain_report_adoption_data
+                fig = px.bar(
+                    df_top5,
+                    x='Kebele',
+                    y=['Male Farmers Adoption', 'Female Farmers Adoption'],
+                    # title='Adoption Counts by Kebele and Gender (Top 5)',
+                    # labels={'value': 'Reach Count', 'variable': 'Gender'},
+                    barmode='group',
+                    # color_discrete_map=color_discrete_map
+                )
 
+                # Customize the layout
+                fig.update_layout(
+                    xaxis_title='Kebele',
+                    yaxis_title='Adoption Count',
+                    legend_title='Gender',
+                    legend=dict(
+                        x=1.0,
+                        y=1.0
+                    )
+                )
 
+                # Display the chart in Streamlit
+                st.subheader("Adoption")
+                st.plotly_chart(fig,use_container_width=True)
 
-    # Customize the layout
-    fig.update_layout(
-        xaxis_title='Kebele Name',
-        yaxis_title='Reach Count',
-        legend_title='Gender',
-        legend=dict(
-            x=1.0,
-            y=1.0
-        )
-    )
+            else:
+                st.subheader("Adoption")
+                st.warning("No data available for the selected filters.")
 
-    # Display the chart in Streamlit
-    st.plotly_chart(fig)
-
-    ###################################################
-    df_top5 = value_chain_report_adoption_data.head(8)
-    fig = px.bar(
-        df_top5,
-        x='kebele_name',
-        y=['male_adoption_count', 'female_adoption_count'],
-        title='Adoption Counts by Kebele and Gender (Top 5)',
-        # labels={'value': 'Reach Count', 'variable': 'Gender'},
-        barmode='group',
-        color_discrete_map=color_discrete_map
-    )
-
-
-
-    # Customize the layout
-    fig.update_layout(
-        xaxis_title='Kebele Name',
-        yaxis_title='Adoption Count',
-        legend_title='Gender',
-        legend=dict(
-            x=1.0,
-            y=1.0
-        )
-    )
-
-    # Display the chart in Streamlit
-    st.plotly_chart(fig)
+        else:
+            st.subheader("Adoption")
+            st.warning("No data available for the selected filters.")
