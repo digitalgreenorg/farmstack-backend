@@ -194,6 +194,8 @@ query_two_output = cached_data(queries["query_2"])
 concatenated_output = pd.concat([query_one_output, query_two_output], ignore_index=True)
 concatenated_output=concatenated_output.reset_index(drop=True)
 concatenated_output['created_at'] = pd.to_datetime(concatenated_output['created_at'])
+concatenated_output_for_tab3=concatenated_output.copy()
+concatenated_output_for_tab2=concatenated_output.copy()
 column_mapping = {
     'male_reach_count': 'Male Farmers Reached',
     'female_reach_count': 'Female Farmers Reached',
@@ -539,6 +541,7 @@ with tab1:
 
 # tab 2
 with tab2:
+    concatenated_output=concatenated_output_for_tab2
     today_utc = pd.Timestamp(datetime.date.today(), tz='UTC')
     # selected_kebele = st.multiselect('Select a Kebele', [kebele['kebele_name'] for kebele in kebele_list if kebele['kebele_name'] != 'All'],key="tab2_multiselect",max_selections=5)
     kebele_names = [kebele['kebele_name'] for kebele in kebele_list if kebele['kebele_name'] != 'All']
@@ -560,6 +563,7 @@ with tab2:
     #     st.write(start_date)
 
     def filter_data_tab2(df, kebeles, da, practice, value_chain, value_chain_category, start_date):
+        df=df.copy()
         if kebeles:
             df = df[df['kebele_name'].isin(kebeles)]
         if da and da != placeholders["DA"]:
@@ -628,6 +632,7 @@ with tab2:
 
 # tab 3
 with tab3:
+    concatenated_output=concatenated_output_for_tab3
     
     col1,col2,col3=st.columns(3)
 
@@ -643,6 +648,7 @@ with tab3:
 
 
     def filter_data_tab3(df, kebeles, da, practice, value_chain, value_chain_category, start_date):
+        df=df.copy()
         if kebeles:
             df = df[df['kebele_name'].isin(kebeles)]
         if da and da != placeholders["DA"]:
