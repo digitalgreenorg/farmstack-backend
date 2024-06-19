@@ -33,7 +33,6 @@ class LoadDocuments:
 
     def handle_docx_file(self, file_path):
         # Load the .docx file
-        import pdb; pdb.set_trace()
         doc = Document(file_path)
         # Extract text from each paragraph in the document
         text = '\n'.join(paragraph.text for paragraph in doc.paragraphs)
