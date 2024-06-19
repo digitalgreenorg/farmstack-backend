@@ -19,7 +19,7 @@ class EmbeddingsViewSet(ModelViewSet):
         }
 
         # Retrieve chunks based on the metadata
-        chunks = QuadrantRetrival().embeddings_and_chunks(collection_id)
+        chunks = QuadrantRetrival().embeddings_and_chunks([collection_id])
         return Response(chunks)
 
     
@@ -28,6 +28,7 @@ class EmbeddingsViewSet(ModelViewSet):
         embeddings = []
         email = request.data.get("email")
         query = request.data.get("query")
+        query = query.replace("\n", " ") if query else "" 
         country = request.data.get("country", "").lower()
         state = request.data.get("state", "").lower()
         category = request.data.get("category", "").lower()
@@ -94,6 +95,7 @@ class EmbeddingsViewSet(ModelViewSet):
         return list(category_dict.values())
     
     def get_state_crops(self, state):
+
         resource_sub_category_maps = ResourceSubCategoryMap.objects.filter(
             sub_category__name__icontains=state
         ).select_related('sub_category__category', 'resource')
@@ -130,3 +132,5 @@ class EmbeddingsViewSet(ModelViewSet):
 
         # Convert category_dict to a list
         return list(category_dict.values())
+
+    

@@ -138,6 +138,7 @@ from utils import custom_exceptions, file_operations, string_functions, validato
 from utils.authentication_services import authenticate_user
 from utils.embeddings_creation import VectorDBBuilder
 from ai.vector_db_builder.vector_build import create_vector_db
+from ai.open_ai_utils import qdrant_embeddings_delete_file_id
 from utils.file_operations import (
     check_file_name_length,
     filter_dataframe_for_dashboard_counties,
@@ -3206,6 +3207,8 @@ class ResourceManagementViewSet(GenericViewSet):
             return Response(str(e), status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     @transaction.atomic
+    @http_request_mutation
+    @authenticate_user(model=Resource)
     def update(self, request, *args, **kwargs):
         try:
             instance = self.get_object()
@@ -3247,9 +3250,14 @@ class ResourceManagementViewSet(GenericViewSet):
         except Exception as e:
             LOGGER.error(e)
             return Response(str(e), status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
+    
+    @http_request_mutation
+    @authenticate_user(model=Resource)
     def destroy(self, request, *args, **kwargs):
         resource = self.get_object()
+        file_ids = ResourceFile.objects.filter(resource_id=resource.id).values_list("id", flat=True)
+        import pdb; pdb.set_trace()
+        qdrant_embeddings_delete_file_id(file_ids)
         resource.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
     
@@ -3441,7 +3449,7 @@ class ResourceFileManagementViewSet(GenericViewSet):
                     serializer_data["sub_category"] = sub_category
                     serializer_data["country"] = country
                     serializer_data["district"] = district
-                    create_vector_db(serializer_data)
+                    create_vector_db.delay(serializer_data)
                 return Response(serializer.data, status=status.HTTP_201_CREATED)
             else:
                 serializer = self.get_serializer(data=request.data, partial=True)
@@ -3453,7 +3461,7 @@ class ResourceFileManagementViewSet(GenericViewSet):
                 serializer_data["sub_category"] = sub_category
                 serializer_data["country"] = country
                 serializer_data["district"] = district
-                create_vector_db(serializer_data)
+                create_vector_db.delay(serializer_data)
                 return Response(serializer.data, status=status.HTTP_201_CREATED)
         except ValidationError as e:
             return Response(e.detail, status=status.HTTP_400_BAD_REQUEST)
@@ -3462,12 +3470,17 @@ class ResourceFileManagementViewSet(GenericViewSet):
             return Response(str(e), status=status.HTTP_500_INTERNAL_SERVER_ERROR)
     
     @transaction.atomic
+    @http_request_mutation
+    @authenticate_user(model=ResourceFile)
     def destroy(self, request, *args, **kwargs):
-        instance = self.get_object()
-        resourcefile_id = instance.id
-        collections_to_delete = LangchainPgCollection.objects.filter(name=resourcefile_id)
-        collections_to_delete.delete()
-        instance.delete()
+        try:
+            instance = self.get_object()
+            resourcefile_id = instance.id
+            qdrant_embeddings_delete_file_id([resourcefile_id])
+            instance.delete()
+        except Exception as e:
+            LOGGER.error(e,exc_info=True)
+            return Response(str(e), status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
         return Response(status=status.HTTP_204_NO_CONTENT)
 
@@ -3519,7 +3532,7 @@ class ResourceFileManagementViewSet(GenericViewSet):
                         serializer = ResourceFileSerializer(data=serializer_data)
                         serializer.is_valid(raise_exception=True)
                         serializer.save()
-                        create_vector_db(serializer.data)
+                        create_vector_db.delay(serializer.data)
                         return JsonResponse(serializer.data, status=status.HTTP_200_OK)
                 return Response(file_path)
             LOGGER.error("Failed to fetch data from api")
@@ -3728,7 +3741,7 @@ class EmbeddingsViewSet(viewsets.ModelViewSet):
         count=0
         for row in data:
             count +=1
-            VectorDBBuilder.create_vector_db(row)
+            VectorDBBuilder.create_vector_db.delay(row)
             print(f"resource {row} is completed")
             print(f"{count} completed out of {total_files}")
         return Response("embeddings created for all the files")

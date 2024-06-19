@@ -3,6 +3,8 @@ from langchain.document_loaders import (
     CSVLoader,
     PyMuPDFLoader,
     UnstructuredHTMLLoader,
+    TextLoader,
+    UnstructuredWordDocumentLoader
 )
 from docx import Document
 
@@ -17,11 +19,11 @@ class LoadDocuments:
         elif file.endswith(".csv"):
             return CSVLoader(file_path=file.replace('http://localhost:8000/', ""), source_column="Title"), 'csv'
         elif file.endswith(".html"):
-            return self.handle_html_file(file.replace('http://localhost:8000/', ""), temp_pdf), 'pdf'
+            return UnstructuredHTMLLoader(file.replace('http://localhost:8000/', "")), 'html'
         elif file.endswith(".docx"):
-            return self.handle_docx_file(file), 'docx'
+            return UnstructuredWordDocumentLoader(file.replace('http://localhost:8000/', "")), 'docx'
         elif file.endswith(".txt"):
-            return self.handle_text_file(file), 'txt'
+            return TextLoader(file.replace('http://localhost:8000/', "")), 'txt'
 
  
     def handle_text_file(self, file_path):
