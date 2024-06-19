@@ -20,6 +20,7 @@ from core.constants import Constants
 from datahub.models import LangchainPgCollection, LangchainPgEmbedding, ResourceFile
 from utils.pgvector import PGVector
 from langchain.retrievers.merger_retriever import MergerRetriever
+from qdrant_client.http.models import PointsSelector
 
 LOGGING = logging.getLogger(__name__)
 load_dotenv()
@@ -271,10 +272,14 @@ def find_similar_chunks(input_embedding, resource_id,  top_n=5):
 def query_qdrant_collection(resource_file_ids, query, country, state, district, category, k=6, threshold=0.0):
     collection_name = qdrant_settings.get('COLLECTION_NAME')
     qdrant_client, points = create_qdrant_client(collection_name)
-    vector = openai_client.embeddings.create(
-        input=[query],
-        model=Constants.TEXT_EMBEDDING_3_SMALL,
-    ).data[0].embedding
+    if query:
+        vector = openai_client.embeddings.create(
+            input=[query],
+            model=Constants.TEXT_EMBEDDING_3_SMALL,
+        ).data[0].embedding
+    else:
+        vector = [0.0]*1536
+
     # sub_category = re.sub(r'[^a-zA-Z0-9_]', '-', sub_category)
     filter_conditions = []
     if resource_file_ids:
@@ -325,6 +330,7 @@ def query_qdrant_collection(resource_file_ids, query, country, state, district, 
 
 def extract_text_id_score(search_data):
     results, reference = [], []
+    
     for result in search_data:
         data = {}
         for item in result:
@@ -339,6 +345,60 @@ def extract_text_id_score(search_data):
         results.append(data)
 
     return {"chunks": results, "reference": set(reference)}
+
+def qdrant_collection_scroll(resource_file_id, country='', state='' , category='',limit=20):
+    collection_name = qdrant_settings.get('COLLECTION_NAME')
+    qdrant_client, points = create_qdrant_client(collection_name)
+    filter_conditions = []
+
+    try:
+        if resource_file_id:
+            file_ids = [str(row) for row in resource_file_id]
+            filter_conditions.append(FieldCondition(key="resource_file", match=MatchAny(any=file_ids)))
+        if category:
+            filter_conditions.append(FieldCondition(key="category", match=MatchValue(value=category)))
+        if state:
+            filter_conditions.append(FieldCondition(key="state", match=MatchValue(value=state)))
+        if country:
+            filter_conditions.append(FieldCondition(key="country", match=MatchValue(value=country)))
+
+        search_data = qdrant_client.scroll(
+                collection_name=collection_name,
+                scroll_filter=Filter(
+                    must=filter_conditions
+                ),
+                limit=limit,
+                with_payload=True,
+                # with_vectors=True,
+            )
+    except Exception as e:
+        LOGGING.error(f"Exception occured in qdrant db connection {str(e)}")
+        return []
+    if search_data:
+        return extract_text_id_score(search_data[0])
+    else:
+        return search_data
+
+def qdrant_embeddings_delete_file_id(resource_file_ids):
+    collection_name = qdrant_settings.get('COLLECTION_NAME')
+    client = QdrantClient(url=qdrant_settings.get('HOST'), port=qdrant_settings.get(
+        'QDRANT_PORT_HTTP'), grpc_port=qdrant_settings.get('PORT_GRPC'), prefer_grpc=qdrant_settings.get('GRPC_CONNECT'))
+    qdrant_client, points = create_qdrant_client(collection_name)
+    resource_file_ids = [str(row) for row in resource_file_ids]
+    filter_conditions = []
+    filter_conditions.append(FieldCondition(key="resource_file", match=MatchAny(any=resource_file_ids)))
+    
+    qdrant_filter = Filter(must=filter_conditions)
+    
+    # Construct the points_selector based on your requirements
+    points_selector = qdrant_filter  # This assumes Filter is used as points_selector
+    
+    response = qdrant_client.delete(
+        collection_name=collection_name,
+        points_selector=points_selector  # Pass points_selector here
+    )
+    return True
+
 def qdrant_collection_get_by_file_id(resource_file_id, page=1):
     collection_name = qdrant_settings.get('COLLECTION_NAME')
     qdrant_client, points = create_qdrant_client(collection_name)

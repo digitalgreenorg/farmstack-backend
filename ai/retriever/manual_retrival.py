@@ -1,6 +1,6 @@
 
 import logging
-from ai.open_ai_utils import find_similar_chunks, generate_response, genrate_embeddings_from_text, query_qdrant_collection,qdrant_collection_get_by_file_id
+from ai.open_ai_utils import find_similar_chunks, generate_response, genrate_embeddings_from_text, qdrant_collection_scroll, query_qdrant_collection,qdrant_collection_get_by_file_id
 import openai
 from ai.utils import chat_history_formated, condensed_question_prompt, format_prompt
 
@@ -52,9 +52,12 @@ class Retrival:
     
 class QuadrantRetrival:
     def retrieve_chunks(self, resource_file_ids, query, country, state,district, category):
-        query=query.replace("\n", " ") # type: ignore
         try:
-            chunks = query_qdrant_collection(resource_file_ids, query, country, state,district, category)
+            if query:
+                chunks = query_qdrant_collection(resource_file_ids, query, country, state,district, category)
+            else:
+                chunks = qdrant_collection_scroll(resource_file_ids, country, state, category, 4)
+
             return chunks
         except Exception as e:
             LOGGING.error(f"Error while generating response for query: {query}: Error {e}", exc_info=True)
