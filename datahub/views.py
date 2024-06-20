@@ -3449,7 +3449,8 @@ class ResourceFileManagementViewSet(GenericViewSet):
                     serializer_data["sub_category"] = sub_category
                     serializer_data["country"] = country
                     serializer_data["district"] = district
-                    create_vector_db.delay(serializer_data)
+                    # create_vector_db.delay(serializer_data)
+                    create_vector_db(serializer_data)
                 return Response(serializer.data, status=status.HTTP_201_CREATED)
             else:
                 serializer = self.get_serializer(data=request.data, partial=True)
@@ -3461,7 +3462,8 @@ class ResourceFileManagementViewSet(GenericViewSet):
                 serializer_data["sub_category"] = sub_category
                 serializer_data["country"] = country
                 serializer_data["district"] = district
-                create_vector_db.delay(serializer_data)
+                create_vector_db(serializer_data)
+                # create_vector_db.delay(serializer_data)
                 return Response(serializer.data, status=status.HTTP_201_CREATED)
         except ValidationError as e:
             return Response(e.detail, status=status.HTTP_400_BAD_REQUEST)
@@ -3532,7 +3534,8 @@ class ResourceFileManagementViewSet(GenericViewSet):
                         serializer = ResourceFileSerializer(data=serializer_data)
                         serializer.is_valid(raise_exception=True)
                         serializer.save()
-                        create_vector_db.delay(serializer.data)
+                        # create_vector_db.delay(serializer.data)
+                        create_vector_db(serializer.data)
                         return JsonResponse(serializer.data, status=status.HTTP_200_OK)
                 return Response(file_path)
             LOGGER.error("Failed to fetch data from api")
@@ -3741,7 +3744,7 @@ class EmbeddingsViewSet(viewsets.ModelViewSet):
         count=0
         for row in data:
             count +=1
-            VectorDBBuilder.create_vector_db.delay(row)
+            VectorDBBuilder.create_vector_db(row)
             print(f"resource {row} is completed")
             print(f"{count} completed out of {total_files}")
         return Response("embeddings created for all the files")
