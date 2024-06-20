@@ -88,6 +88,7 @@ def load_documents(url, file, doc_type, id, transcription=""):
                     loader = PyMuPDFLoader(temp_pdf_path)  # Assuming PyMuPDFLoader is defined elsewhere
                 elif doc_type == 'file':
                     file_path = resolve_file_path(file)
+                    print(file_path)
                     loader, format = LoadDocuments().load_by_file_extension(file_path, temp_pdf_path)
                 elif doc_type == "website":
                     doc_text = ""
