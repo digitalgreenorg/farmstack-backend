@@ -17,12 +17,20 @@ class LoadDocuments:
             LOGGING.info(f"pdf file loader started for file: {file}")
             return PyMuPDFLoader(file.replace('http://localhost:8000/', "")), 'pdf'
         elif file.endswith(".csv"):
+            LOGGING.info(f"CSV file loader started for file: {file}")
+
             return CSVLoader(file_path=file.replace('http://localhost:8000/', ""), source_column="Title"), 'csv'
         elif file.endswith(".html"):
+            LOGGING.info(f"html file loader started for file: {file}")
+
             return UnstructuredHTMLLoader(file.replace('http://localhost:8000/', "")), 'html'
         elif file.endswith(".docx"):
+            LOGGING.info(f"docx file loader started for file: {file}")
+
             return UnstructuredWordDocumentLoader(file.replace('http://localhost:8000/', "")), 'docx'
         elif file.endswith(".txt"):
+            LOGGING.info(f"httxtml file loader started for file: {file}")
+
             return TextLoader(file.replace('http://localhost:8000/', "")), 'txt'
 
  
