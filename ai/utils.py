@@ -79,7 +79,6 @@ def build_pdf( transcript, local_file_path):
     return None
 
 def resolve_file_path(file):
-    import pdb; pdb.set_trace()
     domain = os.environ.get(Constants.DATAHUB_SITE, Constants.DATAHUB_DOMAIN)
     return file.replace("http://127.0.0.1:8000", domain) if file.startswith(domain) or file.startswith("http://127.0.0.1:8000") else domain + file
 

@@ -19,7 +19,7 @@ class EmbeddingsViewSet(ModelViewSet):
         }
 
         # Retrieve chunks based on the metadata
-        chunks = QuadrantRetrival().embeddings_and_chunks([collection_id])
+        chunks = QuadrantRetrival().embeddings_and_chunks(collection_id)
         return Response(chunks)
 
     
