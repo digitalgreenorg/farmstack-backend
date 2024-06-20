@@ -26,7 +26,7 @@ from celery import shared_task
 LOGGING = logging.getLogger(__name__)
 
 
-# @shared_task
+@shared_task
 def create_vector_db(resource_file, chunk_size=1000, chunk_overlap=200):
     status = "failed"
     resource_id = resource_file.get('id')
@@ -34,7 +34,6 @@ def create_vector_db(resource_file, chunk_size=1000, chunk_overlap=200):
         documents, status = load_documents(
             resource_file.get("url"), resource_file.get("file"), resource_file.get("type"),
             resource_file.get("id"), resource_file.get("transcription"))
-        import pdb; pdb.set_trace()
         LOGGING.info(f"Documents loaded for Resource ID: {resource_id}")
         if status == "completed":
             texts = split_documents(documents, chunk_size, chunk_overlap)
