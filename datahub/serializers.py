@@ -1246,7 +1246,7 @@ class ResourceSerializer(serializers.ModelSerializer):
                         serializer_data["countries"] = countries
                         serializer_data["sub_categories"] = sub_categories
                         # create_vector_db.delay(serializer_data)
-                        create_vector_db(serializer_data)
+                        # create_vector_db(serializer_data)
 
                 elif resource_file.get("type") == "api":
                     with open(resource_file.get("file").replace("/media/", ''), "rb") as outfile:  # Open the file in binary read mode
@@ -1268,7 +1268,7 @@ class ResourceSerializer(serializers.ModelSerializer):
                         serializer_data["countries"] = countries
                         serializer_data["sub_categories"] = sub_categories
                         # create_vector_db.delay(serializer_data)
-                        create_vector_db(serializer_data)
+                        # create_vector_db(serializer_data)
                 else:
                     serializer = ResourceFileSerializer(data={"resource": resource.id, **resource_file}, partial=True)
                     serializer.is_valid(raise_exception=True)
@@ -1285,7 +1285,7 @@ class ResourceSerializer(serializers.ModelSerializer):
                     serializer_data["countries"] = countries
                     serializer_data["sub_categories"] = sub_categories
                     # create_vector_db.delay(serializer_data)
-                    create_vector_db(serializer_data)
+                    # create_vector_db(serializer_data)
             print(resource_files)
             for file in resource_files[0]:
                 print(file)
@@ -1302,7 +1302,7 @@ class ResourceSerializer(serializers.ModelSerializer):
                 serializer_data["countries"] = countries
                 serializer_data["sub_categories"] = sub_categories
                 # create_vector_db.delay(serializer_data)
-                create_vector_db(serializer_data)
+                # create_vector_db(serializer_data)
 
             return resource
         except Exception as e:
