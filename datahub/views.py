@@ -3256,7 +3256,6 @@ class ResourceManagementViewSet(GenericViewSet):
     def destroy(self, request, *args, **kwargs):
         resource = self.get_object()
         file_ids = ResourceFile.objects.filter(resource_id=resource.id).values_list("id", flat=True)
-        import pdb; pdb.set_trace()
         qdrant_embeddings_delete_file_id(file_ids)
         resource.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
