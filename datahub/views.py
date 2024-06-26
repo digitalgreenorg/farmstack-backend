@@ -3431,6 +3431,8 @@ class ResourceFileManagementViewSet(GenericViewSet):
             category=categories.get("category_id")
             country=categories.get("country")
             sub_category=categories.get("sub_category_id")
+            countries=categories.get("countries")
+
 
             if data.get("type") == "youtube":
                 youtube_urls_response = get_youtube_url(data.get("url"))
@@ -3449,6 +3451,7 @@ class ResourceFileManagementViewSet(GenericViewSet):
                     serializer_data["sub_category"] = sub_category
                     serializer_data["country"] = country
                     serializer_data["district"] = district
+                    serializer_data["countries"] = countries
                     # create_vector_db.delay(serializer_data)
                     create_vector_db(serializer_data)
                 return Response(serializer.data, status=status.HTTP_201_CREATED)
@@ -3462,6 +3465,8 @@ class ResourceFileManagementViewSet(GenericViewSet):
                 serializer_data["sub_category"] = sub_category
                 serializer_data["country"] = country
                 serializer_data["district"] = district
+                serializer_data["countries"] = countries
+
                 create_vector_db(serializer_data)
                 # create_vector_db.delay(serializer_data)
                 return Response(serializer.data, status=status.HTTP_201_CREATED)

@@ -1211,6 +1211,7 @@ class ResourceSerializer(serializers.ModelSerializer):
             category=validated_data.get("category").get("category_id")
             sub_category=validated_data.get("category").get("sub_category_id")
             country=validated_data.get("category").get("country")
+            countries = validated_data.get("category").get("countries")
 
             resource = Resource.objects.create(**validated_data)
             resource_files_data = json.loads(resource_files_data[0]) if resource_files_data else []
@@ -1241,6 +1242,8 @@ class ResourceSerializer(serializers.ModelSerializer):
                         serializer_data["sub_category"] = sub_category
                         serializer_data["country"] = country
                         serializer_data["district"] = district
+                        serializer_data["countries"] = countries
+
                         # create_vector_db.delay(serializer_data)
                         create_vector_db(serializer_data)
 
@@ -1261,6 +1264,8 @@ class ResourceSerializer(serializers.ModelSerializer):
                         serializer_data["sub_category"] = sub_category
                         serializer_data["country"] = country
                         serializer_data["district"] = district
+                        serializer_data["countries"] = countries
+
                         # create_vector_db.delay(serializer_data)
                         create_vector_db(serializer_data)
                 else:
@@ -1275,6 +1280,8 @@ class ResourceSerializer(serializers.ModelSerializer):
                     serializer_data["sub_category"] = sub_category
                     serializer_data["country"] = country
                     serializer_data["district"] = district
+                    serializer_data["countries"] = district
+                    serializer_data["countries"] = countries
                     # create_vector_db.delay(serializer_data)
                     create_vector_db(serializer_data)
             print(resource_files)
@@ -1290,6 +1297,7 @@ class ResourceSerializer(serializers.ModelSerializer):
                 serializer_data["sub_category"] = sub_category
                 serializer_data["country"] = country
                 serializer_data["district"] = district
+                serializer_data["countries"] = countries
                 # create_vector_db.delay(serializer_data)
                 create_vector_db(serializer_data)
 

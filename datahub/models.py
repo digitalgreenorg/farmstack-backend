@@ -17,6 +17,7 @@ from utils.validators import (
     validate_file_size,
     validate_image_type,
 )
+from django.contrib.postgres.fields import ArrayField
 
 
 def auto_str(cls):
@@ -313,12 +314,20 @@ class Resource(TimeStampMixin):
     Resource Module -- Any user can create resource.
     """
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    title = models.CharField(max_length=100)
-    description = models.TextField(max_length=250)
+    title = models.CharField(max_length=1000)
+    description = models.TextField(max_length=2500)
     country = models.TextField(max_length=250, null=True)
     user_map = models.ForeignKey(UserOrganizationMap, on_delete=models.CASCADE)
     category = models.JSONField(default=dict)
     accessibility = models.CharField(max_length=255, null=True, choices=USAGE_POLICY_APPROVAL_STATUS, default="public")
+    countries = ArrayField( models.CharField(max_length=100),  # base_field: CharField with max length
+        null=True,  # allow null values
+        default=list,  # default value as an empty list
+    )
+    sub_categories = ArrayField(  models.CharField(max_length=100),  # base_field: CharField with max length
+        null=True,  # allow null values
+        default=list,  # default value as an empty list
+    )
 
     def __str__(self) -> str:
         return self.title
@@ -333,7 +342,7 @@ class ResourceFile(TimeStampMixin):
     file = models.FileField(upload_to=settings.RESOURCES_URL, null=True, blank=True)
     file_size = models.PositiveIntegerField(null=True, blank=True)
     type = models.CharField(max_length=20, null=True, choices=RESOURCE_URL_TYPE, default="file")
-    url = models.CharField(max_length=200, null=True)
+    url = models.CharField(max_length=2000, null=True)
     transcription = models.CharField(max_length=20000,null=True, blank=True)
     embeddings_status = models.CharField(max_length=20, null=True, choices=EMBEDDINGS_STATUS, default="in-progress")
     embeddings_status_reason = models.CharField(max_length=1000, null=True)

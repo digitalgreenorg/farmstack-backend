@@ -72,6 +72,8 @@ def get_embeddings(docs, resource, file_id):
                 embedded_data[idx+start]["category"] = resource.get("category", '').lower().strip()
                 embedded_data[idx+start]["sub_category"] = resource.get("sub_category",'').lower().strip()
                 embedded_data[idx+start]["resource_file"] = file_id
+                embedded_data[idx+start]["countries"] = resource.get("countries",'')
+
             start += idx+1
     return embedded_data
 
@@ -117,6 +119,11 @@ def create_qdrant_client(collection_name: str):
             collection_name=collection_name,
             field_name="country",
             field_schema=PayloadSchemaType.KEYWORD,
+        )
+        client.create_payload_index(
+            collection_name=collection_name,
+            field_name="countries",
+            field_schema=PayloadSchemaType.VECTOR,
         )
     return client, points_count
 
