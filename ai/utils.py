@@ -28,7 +28,6 @@ def download_file(file_url, local_file_path):
                 match = re.search(pattern, file_url)
                 file_id = match.group(1) if match else None
                 file_url = f"{Constants.GOOGLE_DRIVE_DOWNLOAD_URL}={file_id}" if file_id else file_url
-        import pdb; pdb.set_trace()
         response = requests.get(file_url)
         if response and response.status_code == 200:
             with open(local_file_path, "wb") as local_file:
