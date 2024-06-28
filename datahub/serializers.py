@@ -1419,3 +1419,5 @@ class ResourceListSerializer(serializers.ModelSerializer):
         return ResourceFile.objects.filter(resource=resource.id).values('type').annotate(count=Count('type'))
 
    
+
+
