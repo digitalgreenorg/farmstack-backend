@@ -1212,6 +1212,7 @@ class ResourceSerializer(serializers.ModelSerializer):
             sub_category=validated_data.get("category").get("sub_category_id")
             country=validated_data.get("category").get("country")
             countries = validated_data.get("category").get("countries")
+            sub_categories = validated_data.get("category").get("sub_categories")
 
             resource = Resource.objects.create(**validated_data)
             resource_files_data = json.loads(resource_files_data[0]) if resource_files_data else []
@@ -1243,9 +1244,9 @@ class ResourceSerializer(serializers.ModelSerializer):
                         serializer_data["country"] = country
                         serializer_data["district"] = district
                         serializer_data["countries"] = countries
-
+                        serializer_data["sub_categories"] = sub_categories
                         # create_vector_db.delay(serializer_data)
-                        create_vector_db(serializer_data)
+                        # create_vector_db(serializer_data)
 
                 elif resource_file.get("type") == "api":
                     with open(resource_file.get("file").replace("/media/", ''), "rb") as outfile:  # Open the file in binary read mode
@@ -1265,9 +1266,9 @@ class ResourceSerializer(serializers.ModelSerializer):
                         serializer_data["country"] = country
                         serializer_data["district"] = district
                         serializer_data["countries"] = countries
-
+                        serializer_data["sub_categories"] = sub_categories
                         # create_vector_db.delay(serializer_data)
-                        create_vector_db(serializer_data)
+                        # create_vector_db(serializer_data)
                 else:
                     serializer = ResourceFileSerializer(data={"resource": resource.id, **resource_file}, partial=True)
                     serializer.is_valid(raise_exception=True)
@@ -1282,8 +1283,9 @@ class ResourceSerializer(serializers.ModelSerializer):
                     serializer_data["district"] = district
                     serializer_data["countries"] = district
                     serializer_data["countries"] = countries
+                    serializer_data["sub_categories"] = sub_categories
                     # create_vector_db.delay(serializer_data)
-                    create_vector_db(serializer_data)
+                    # create_vector_db(serializer_data)
             print(resource_files)
             for file in resource_files[0]:
                 print(file)
@@ -1298,8 +1300,9 @@ class ResourceSerializer(serializers.ModelSerializer):
                 serializer_data["country"] = country
                 serializer_data["district"] = district
                 serializer_data["countries"] = countries
+                serializer_data["sub_categories"] = sub_categories
                 # create_vector_db.delay(serializer_data)
-                create_vector_db(serializer_data)
+                # create_vector_db(serializer_data)
 
             return resource
         except Exception as e:
@@ -1416,3 +1419,5 @@ class ResourceListSerializer(serializers.ModelSerializer):
         return ResourceFile.objects.filter(resource=resource.id).values('type').annotate(count=Count('type'))
 
    
+
+

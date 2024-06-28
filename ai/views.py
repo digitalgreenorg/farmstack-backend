@@ -88,7 +88,9 @@ class EmbeddingsViewSet(ModelViewSet):
             if not any(sub['sub_category_id'] == sub_category.id for sub in category_dict[category.id]['sub_categories']):
                 category_dict[category.id]['sub_categories'].append({
                     'sub_category_name': sub_category.name,
-                    'sub_category_id': sub_category.id
+                    'sub_category_id': sub_category.id,
+                    'description': sub_category.description
+
                 })
 
         # Convert category_dict to a list
@@ -127,7 +129,9 @@ class EmbeddingsViewSet(ModelViewSet):
             if not any(sub['sub_category_id'] == sub_category.id for sub in category_dict[category.id]['sub_categories']):
                 category_dict[category.id]['sub_categories'].append({
                     'sub_category_name': sub_category.name,
-                    'sub_category_id': sub_category.id
+                    'sub_category_id': sub_category.id, 
+                    'description': sub_category.description
+
                 })
 
         # Convert category_dict to a list
