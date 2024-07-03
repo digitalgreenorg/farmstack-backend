@@ -77,6 +77,30 @@ def get_embeddings(docs, resource, file_id):
             start += idx+1
     return embedded_data
 
+def create_embedding(embedding_model: str, document_text_list: list, data_type = 'text') ->list:
+    openai_client = openai.Client(api_key=settings.OPENAI_API_KEY)
+    print(f"------len of texts is {len(document_text_list)} for {data_type}")
+    try:
+        result = []
+        if len(document_text_list) > 2000:
+            loop_number = len(document_text_list)//2000
+            start_point = 0
+            for num in range(loop_number+1):
+                response = openai_client.embeddings.create(
+                    input=document_text_list[start_point:(2000*(num+1))], model=embedding_model)
+                start_point = (2000*(num+1))
+                result.append(response)
+        else:
+            response = openai_client.embeddings.create(
+                input=document_text_list, model=embedding_model)
+            result.append(response)
+    except Exception as e:
+        result = None
+        LOGGING.error(f"Exception occurred in creating embedding {str(e)}")
+        return result
+
+
+
 def create_qdrant_client(collection_name: str):
     client = QdrantClient(url=qdrant_settings.get('HOST'), port=qdrant_settings.get(
         'QDRANT_PORT_HTTP'), grpc_port=qdrant_settings.get('PORT_GRPC'), prefer_grpc=qdrant_settings.get('GRPC_CONNECT'))
