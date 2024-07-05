@@ -482,3 +482,29 @@ from langchain_core.pydantic_v1 import BaseModel, Field
 class OutputParser(BaseModel):
     response: str = Field(description="AI Assistant Response")
     follw_up_questions: list = Field(description="Follow-up questions, give users examples of at least list of 3 questions which they can ask as a follow-up. Remember Build those questions from the provided context only other wise give empty")
+
+def load_category_and_sub_category():
+    import pandas as pd
+    df = pd.read_csv("Restructured_Agricultural_Data_with_Descriptions.csv")
+
+    # Iterate through each row in the DataFrame
+    for index, row in df.iterrows():
+        category_name = row['Category']
+        category_description = row['Category']+" Description"
+        subcategory_name = row['Subcategory']
+        subcategory_description = row['title']
+        
+        # Get or create the Category
+        category, created = Category.objects.get_or_create(
+            name=category_name,
+            defaults={'description': category_description}
+        )
+        
+        # Create the SubCategory
+        subcategory, created = SubCategory.objects.get_or_create(
+            name=subcategory_name,
+            defaults={'category': category, 'description': subcategory_description},
+        )
+        print(f"{index} completed out of 250")
+
+    print("Data has been successfully saved to the database.")

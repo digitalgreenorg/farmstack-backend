@@ -3432,7 +3432,8 @@ class ResourceFileManagementViewSet(GenericViewSet):
             country=categories.get("country")
             sub_category=categories.get("sub_category_id")
             countries=categories.get("countries")
-
+            states=categories.get("states")
+            districts=categories.get("districts")
 
             if data.get("type") == "youtube":
                 youtube_urls_response = get_youtube_url(data.get("url"))
@@ -3452,8 +3453,11 @@ class ResourceFileManagementViewSet(GenericViewSet):
                     serializer_data["country"] = country
                     serializer_data["district"] = district
                     serializer_data["countries"] = countries
+                    serializer_data["states"] = states
+                    serializer_data["districts"] = districts
+
                     # create_vector_db.delay(serializer_data)
-                    create_vector_db(serializer_data)
+                    create_vector_db.delay(serializer_data)
                 return Response(serializer.data, status=status.HTTP_201_CREATED)
             else:
                 serializer = self.get_serializer(data=request.data, partial=True)
@@ -3466,8 +3470,9 @@ class ResourceFileManagementViewSet(GenericViewSet):
                 serializer_data["country"] = country
                 serializer_data["district"] = district
                 serializer_data["countries"] = countries
-
-                create_vector_db(serializer_data)
+                serializer_data["states"] = states
+                serializer_data["districts"] = districts
+                create_vector_db.delay(serializer_data)
                 # create_vector_db.delay(serializer_data)
                 return Response(serializer.data, status=status.HTTP_201_CREATED)
         except ValidationError as e:
@@ -3599,6 +3604,7 @@ class CategoryViewSet(viewsets.ModelViewSet):
                 ).first()
                 if resource:
                     response_data['category_id'] = resource.category_id
+                    response_data['title'] = resource.description 
                     response_data['subcategory_id'] = resource.id  # Assuming both ids are the same
             except SubCategory.DoesNotExist:
                 return Response({"error": "Category or Subcategory not found"}, status=status.HTTP_404_NOT_FOUND)
