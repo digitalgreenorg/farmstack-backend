@@ -133,7 +133,7 @@ DATABASES = {
         "PORT_GRPC":os.environ.get("QDRANT_PORT_GRPC", "5439"),
         "PORT_HTTP":os.environ.get("QDRANT_PORT_HTTP", "5438"),
         "GRPC_CONNECT":os.environ.get("GRPC_CONNECT", True),
-        "COLLECTION_NAME":os.environ.get("VECTOR_DB_COLLECTION_NAME", "GLOBAL_ALL"),
+        "COLLECTION_NAME":os.environ.get("VECTOR_DB_COLLECTION_NAME", "NEW_GLOBAL_ALL"),
     }
 }
 
