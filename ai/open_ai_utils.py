@@ -17,7 +17,7 @@ from langchain.embeddings.openai import OpenAIEmbeddings
 from pgvector.django import CosineDistance
 from core import settings
 from core.constants import Constants
-from datahub.models import LangchainPgCollection, LangchainPgEmbedding, ResourceFile, SubCategory
+from datahub.models import LangchainPgCollection, LangchainPgEmbedding, ResourceFile
 from utils.pgvector import PGVector
 from langchain.retrievers.merger_retriever import MergerRetriever
 from qdrant_client.http.models import PointsSelector
@@ -425,35 +425,3 @@ def qdrant_collection_get_by_file_id(resource_file_id, page=1):
         LOGGING.error(f"Exception occured in qdrant db connection {str(e)}")
         return []
     return search_data
-
-
-
-# Function to generate description using OpenAI
-def generate_description(prompt):
-    openai.api_key = settings.OPENAI_API_KEY  # Replace with your OpenAI API key
-    response = openai.Completion.create(
-        engine="text-davinci-003",
-        prompt=prompt,
-        max_tokens=80,
-        n=1,
-        stop=None,
-        temperature=0.7
-    )
-    return response.choices[0].text.strip()
-
-# Function to update SubCategory instances with descriptions
-def update_subcategories_with_descriptions():
-    subcategories = SubCategory.objects.all()
-
-    for subcategory in subcategories:
-        if not subcategory.description:  # Ensure description is not already set
-            prompt = f"Generate a short description of 2 sentences for the '{subcategory.name}' subcategory in terms of indian agriculture."
-            description, token = generate_response(prompt)
-            print(description)
-            subcategory.description = description
-            subcategory.save()
-            print(f"Description generated and saved for '{subcategory.name}': {description}")
-
-
-
-# update_subcategories_with_descriptions()

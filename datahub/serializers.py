@@ -1419,5 +1419,7 @@ class ResourceListSerializer(serializers.ModelSerializer):
         return ResourceFile.objects.filter(resource=resource.id).values('type').annotate(count=Count('type'))
 
    
-
+class CategorySubcategoryInputSerializer(serializers.Serializer):
+    category_name = serializers.CharField(max_length=255)
+    subcategory_name = serializers.CharField(max_length=255)
 

@@ -1,5 +1,6 @@
  
 import logging
+import requests
 from googleapiclient.discovery import build
 from urllib.parse import parse_qs, unquote, urlparse
 
@@ -11,9 +12,14 @@ from core import settings
 youtube = build('youtube', 'v3', developerKey=settings.YOUTUBE_API_KEY)
 LOGGER = logging.getLogger(__name__)
 
+def expand_shortened_url(url):
+    response = requests.head(url, allow_redirects=True)
+    return response.url
 
 def get_youtube_url(url):
     # Parse the URL
+    if 'youtu.be' in url:
+        url = expand_shortened_url(url)
     parsed_url = urlparse(url)
     query_string = parse_qs(parsed_url.query)
     # Determine the type based on path and parameters

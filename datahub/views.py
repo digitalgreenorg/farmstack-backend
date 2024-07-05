@@ -165,6 +165,7 @@ from .models import (
 from .serializers import (
     APIBuilderSerializer,
     CategorySerializer,
+    CategorySubcategoryInputSerializer,
     LangChainEmbeddingsSerializer,
     MessagesChunksRetriveSerializer,
     MessagesRetriveSerializer,
@@ -3578,7 +3579,33 @@ class CategoryViewSet(viewsets.ModelViewSet):
             categories_with_subcategories[category.name] = subcategory_names
 
         return Response(categories_with_subcategories, 200)
-
+    
+    @action(detail=False, methods=["POST"])
+    def get_sub_category_id(self, request, *args, **kwargs):
+        serializer = CategorySubcategoryInputSerializer(data=request.data)
+        if serializer.is_valid():
+            category_name = serializer.validated_data['category_name']
+            subcategory_name = serializer.validated_data['subcategory_name']
+            response_data = {
+                'category_id': None,
+                'subcategory_id': None
+            }
+            
+            # Check if the category and subcategory exist
+            try:
+                resource = SubCategory.objects.filter(
+                    category__name__iexact=category_name.strip(),
+                    name__iexact=subcategory_name.strip()
+                ).first()
+                if resource:
+                    response_data['category_id'] = resource.category_id
+                    response_data['subcategory_id'] = resource.id  # Assuming both ids are the same
+            except SubCategory.DoesNotExist:
+                return Response({"error": "Category or Subcategory not found"}, status=status.HTTP_404_NOT_FOUND)
+            
+            return Response(response_data, status=status.HTTP_200_OK)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    
 class SubCategoryViewSet(viewsets.ModelViewSet):
     queryset = SubCategory.objects.all()
     serializer_class = SubCategorySerializer
