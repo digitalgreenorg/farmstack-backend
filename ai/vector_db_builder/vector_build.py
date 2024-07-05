@@ -10,6 +10,7 @@ from ai.vector_db_builder.load_website import WebsiteLoader
 from unstructured.partition.pdf import partition_pdf
 from unstructured.staging.base import elements_to_dicts
 from sklearn.metrics.pairwise import cosine_similarity
+from core.constants import Constants
 import numpy as np 
 from core import settings
 from datahub.models import ResourceFile
@@ -45,21 +46,19 @@ def create_vector_db(resource_file, chunk_size=1000, chunk_overlap=200):
             if semantic_chunking:
                 texts = document_extraction(documents, chunk_size, chunk_overlap)
                 embedded_chunk = get_embeddings(texts, resource_file, str(resource_id))
+                text_array = cleaned_text_without_reference(embedded_chunk)
+                table_array = group_table_by_parent_node(embedded_chunk)
+                if text_array != []:
+                    embedded_chunk_status = get_embeddings(text_array,resource_file, str(resource_id))
+                if table_array != []:
+                    resource_file["type"] = 'table'
+                    embedded_chunk_status = get_embeddings(text_array,resource_file, str(resource_id))
             else:
                 texts = split_documents(documents, chunk_size, chunk_overlap)
                 LOGGING.info(f"Documents split completed for Resource ID: {resource_id}")
-                embedded_chunk = get_embeddings(texts, resource_file, str(resource_id))
-            # One more step is added to parse insertation error
-            if embedded_chunk != {}:
-                LOGGING.info(f"Embeddings creation completed for Resource ID: {resource_id}")
-                # inserting embedding in vector db
-                chunk_insertation = insert_chunking_in_db(embedded_chunk)
-                if chunk_insertation:
-                    documents="Embeddings Created Sucessfully"
-                else:
-                    documents="Unable to update Embeddings"
-            else:
-                documents="Unable to create Embeddings"
+                embedded_chunk_status = get_embeddings(texts, resource_file, str(resource_id))
+        if not embedded_chunk_status:
+            status = "failed"
         data = ResourceFile.objects.filter(id=resource_id).update(
         embeddings_status=status,
         embeddings_status_reason=documents
@@ -178,10 +177,11 @@ def cleaned_text_without_reference(original_json_array: list) -> list:
             cleaned_elemnts.append({"element_id":element['element_id'],"page_number":element["metadata"].get('page_number'),
                                     "filename":element["metadata"].get('filename'),"text":element["text"],"type":element["type"]
                                     })
-    return semantic_grouping(cleaned_elemnts, 90)
+    return semantic_grouping(cleaned_elemnts)
 
 def combine_sentences(sentences, buffer_size=1):
     # Go through each sentence dict
+    # buffer size is the sliding window length
     for i in range(len(sentences)):
 
         # Create a string that will hold the sentences which are joined
@@ -210,29 +210,29 @@ def combine_sentences(sentences, buffer_size=1):
 
     return sentences
 
-def semantic_grouping(text_elements: list, breakpoint_percentile_threshold:int) -> list:
+def semantic_grouping(text_elements: list) -> list:
+    # It creates the semanticaly grouped chunks 
     if text_elements == []:
         return []
-    output_text = ''
-    for element in text_elements:
-        output_text += element.get('text','')
+    # need to join the unstructured text elements
+    output_text = ' '.join(element.get('text','') for element in text_elements)
     # Splitting the text document on '.', '?', and '!'
     single_sentences_list = re.split(r'(?<=[.?!])\s+', output_text)
     sentences = [{'sentence': x, 'index' : i} for i, x in enumerate(single_sentences_list)]
     sentences = combine_sentences(sentences)
-    embeddings = create_embedding(embedding_model="text-embedding-ada-002", document_text_list=[x['combined_sentence'] for x in sentences])
+    embeddings = create_embedding(embedding_model=Constants.TEXT_EMBEDDING_ADA_002, document_text_list=[x['combined_sentence'] for x in sentences])
+    if len(embeddings) == 0:
+        return []
     i =0
     for embeddes in embeddings:
         for embedded_data in embeddes.data:
             sentences[i]['combined_sentence_embedding'] = embedded_data.embedding
             i +=1
     distances, sentences = calculate_cosine_distances(sentences)
-    # print(f"---------------{distances}")
-    # create_json_file(sentences, './sentences')
-    # breakpoint_distance_threshold = np.percentile(distances, breakpoint_percentile_threshold) # If you want more chunks, lower the percentile cutoff
-    # indices_above_thresh = [i for i, x in enumerate(distances) if x > breakpoint_distance_threshold] # The indices of those breakpoints on your list
+    # Getting max length sentence
     word_length = [len(x.get('sentence')) for x in sentences]
-    indices_above_thresh = chunking_dp(distances, word_length, max(2000, max(word_length)))
+    # grouping the sentences based on the distance value and word length
+    indices_above_thresh = chunking_dp(distances, word_length, max(4000, max(word_length)))
     indices_above_thresh.pop(0)
     indices_above_thresh.pop(-1)
     # Initialize the start index
@@ -254,9 +254,6 @@ def semantic_grouping(text_elements: list, breakpoint_percentile_threshold:int) 
     if start_index < len(sentences):
         combined_text = ' '.join([d['sentence'] for d in sentences[start_index:]])
         chunks.append({"text":combined_text})
-    # To get topic for each chunk
-    # for chunk in chunks:
-    #     chunk["topic"] = get_topic(chunk["text"])
     return chunks
 
 def extract_cols_and_rows(tables) -> tuple[list, list]:
@@ -373,7 +370,6 @@ def group_table_by_parent_node(crop_data: list) -> list:
                     new_table_element["table"] += crop_data[j]["metadata"].get('text_as_html')
                 j+=1
         if new_table_element and new_table_element !={}:
-            # print(new_table_element["element_id"])
             if not new_table_element["element_id"]:
                 new_table_element["element_id"] = crop_data[i]["element_id"]
             cleaned_table_elements.append(new_table_element)
@@ -390,13 +386,6 @@ def group_table_by_parent_node(crop_data: list) -> list:
         soup = BeautifulSoup(tables.get("table"), "lxml")
         header, row = extract_cols_and_rows(soup)
         table_list.extend(concatenate_tables(header[0], row))
-        # if tables["text"] == "":
-        #     element_to_remove.append(tables)
-        # else:
-        #     tables["topic"] = get_topic(tables["text"])
-    
-    # for table in element_to_remove:
-    #     cleaned_table_elements.remove(table)
     return table_list
 
 def concatenate_tables(headers, rows):

@@ -36,25 +36,24 @@ def get_embeddings(docs, resource, file_id):
     embedded_data = {}
     document_text_list = [document.page_content for document in docs]
     openai_client = openai.Client(api_key=settings.OPENAI_API_KEY)
-    embedding_model = Constants.TEXT_EMBEDDING_3_SMALL
+    embedding_model = Constants.TEXT_EMBEDDING_ADA_002
     try:
         result = []
-        if len(document_text_list) > 2000:
-            loop_number = len(document_text_list)//2000
+        if len(document_text_list) > 100:
+            loop_number = len(document_text_list)//100
             start_point = 0
             for num in range(loop_number+1):
                 response = openai_client.embeddings.create(
-                    input=document_text_list[start_point:(2000*(num+1))], model=embedding_model)
-                start_point = (2000*(num+1))
+                    input=document_text_list[start_point:(100*(num+1))], model=embedding_model)
+                start_point = (100*(num+1))
                 result.append(response)
         else:
             response = openai_client.embeddings.create(
                 input=document_text_list, model=embedding_model)
             result.append(response)
     except Exception as e:
-        result = None
         LOGGING.error(f"Exception occurred in creating embedding {str(e)}")
-        return embedded_data
+        return False
     if result != []:
         LOGGING.info(
             f"Creating the embedding dictonary, length is  {len(result)}")
@@ -65,7 +64,6 @@ def get_embeddings(docs, resource, file_id):
                 embedded_data[idx+start]['text'] = text
                 embedded_data[idx+start]['vector'] = data.embedding
                 embedded_data[idx+start]["url"] =  resource.get("url") if resource.get("url") else resource.get("file")
-                embedded_data[idx+start]["context-type"] = "video/pdf" if resource.get("type") =="youtube" else "text/pdf"
                 embedded_data[idx+start]["country"] = resource.get("country",'').lower().strip()
                 embedded_data[idx+start]["state"] = resource.get("state", '').lower().strip()
                 embedded_data[idx+start]["distict"] = resource.get("district", '').lower().strip()
@@ -73,31 +71,44 @@ def get_embeddings(docs, resource, file_id):
                 embedded_data[idx+start]["sub_category"] = resource.get("sub_category",'').lower().strip()
                 embedded_data[idx+start]["resource_file"] = file_id
                 embedded_data[idx+start]["countries"] = resource.get("countries",'')
-
+                if resource.get("type") =="youtube":
+                    embedded_data[idx+start]["context-type"] = "video/pdf"
+                elif resource.get("type") =="table":
+                    embedded_data[idx+start]["context-type"] = "table/pdf"
+                else:
+                    embedded_data[idx+start]["context-type"] = "text/pdf"
             start += idx+1
-    return embedded_data
+    # One more step is added to parse insertation error
+    if embedded_data != {}:
+        LOGGING.info(f"Embeddings creation completed for Resource ID: {file_id}")
+        # inserting embedding in vector db
+        chunk_insertation = insert_chunking_in_db(embedded_data)
+        if chunk_insertation:
+            return True
+        else:
+            return False
+    else:
+        return False
 
 def create_embedding(embedding_model: str, document_text_list: list, data_type = 'text') ->list:
     openai_client = openai.Client(api_key=settings.OPENAI_API_KEY)
-    print(f"------len of texts is {len(document_text_list)} for {data_type}")
     try:
         result = []
-        if len(document_text_list) > 2000:
-            loop_number = len(document_text_list)//2000
+        if len(document_text_list) > 100:
+            loop_number = len(document_text_list)//100
             start_point = 0
             for num in range(loop_number+1):
                 response = openai_client.embeddings.create(
-                    input=document_text_list[start_point:(2000*(num+1))], model=embedding_model)
-                start_point = (2000*(num+1))
+                    input=document_text_list[start_point:(100*(num+1))], model=embedding_model)
+                start_point = (100*(num+1))
                 result.append(response)
         else:
             response = openai_client.embeddings.create(
                 input=document_text_list, model=embedding_model)
             result.append(response)
     except Exception as e:
-        result = None
         LOGGING.error(f"Exception occurred in creating embedding {str(e)}")
-        return result
+        return []
 
 
 
@@ -106,9 +117,7 @@ def create_qdrant_client(collection_name: str):
         'QDRANT_PORT_HTTP'), grpc_port=qdrant_settings.get('PORT_GRPC'), prefer_grpc=qdrant_settings.get('GRPC_CONNECT'))
     try:
         client.get_collection(collection_name=collection_name)
-        points_count = client.count(collection_name=collection_name).count + 1
     except:
-        points_count = 1
         client.create_collection(
             collection_name,
             vectors_config=VectorParams(
@@ -149,31 +158,13 @@ def create_qdrant_client(collection_name: str):
             field_name="countries",
             field_schema=PayloadSchemaType.VECTOR,
         )
-    return client, points_count
+    return client
 
 
 def insert_chunking_in_db(documents: dict):
     collection_name = qdrant_settings.get('COLLECTION_NAME')
-    qdrant_client, points = create_qdrant_client(collection_name)
+    qdrant_client = create_qdrant_client(collection_name)
     try:
-        # points = [
-        #     PointStruct(
-        #         id=idx + points,
-        #         vector=data['vector'],
-        #         payload={"text": data['text'], 
-        #                 "category": data.get('category', ''), 
-        #                 "sub_category": data.get('sub_category'), 
-        #                 "state": data.get('state', ''),
-        #                 "resource_file":data.get('resource_file',''),
-        #                 "district":data.get('district',''),
-        #                 "country":data.get('country',''),
-        #                 "resource_file":data.get('resource_file',''),
-        #                 "context-type": data.get('context-type',''),
-        #                 "source": data.get('url','')
-        #                 },
-        #     )
-        #     for idx, data in enumerate(documents.values())
-        # ]
         points_list = []
         for idx, data in enumerate(documents.values()):
             points_list.append(PointStruct(
