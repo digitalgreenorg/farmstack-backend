@@ -73,6 +73,8 @@ def get_embeddings(docs, resource, file_id):
                 embedded_data[idx+start]["sub_category"] = resource.get("sub_category",'').lower().strip()
                 embedded_data[idx+start]["resource_file"] = file_id
                 embedded_data[idx+start]["countries"] = resource.get("countries",'')
+                embedded_data[idx+start]["states"] = resource.get("states",'')
+                embedded_data[idx+start]["districts"] = resource.get("districts",'')
 
             start += idx+1
     return embedded_data
@@ -125,6 +127,16 @@ def create_qdrant_client(collection_name: str):
             field_name="countries",
             field_schema=PayloadSchemaType.VECTOR,
         )
+        client.create_payload_index(
+            collection_name=collection_name,
+            field_name="districts",
+            field_schema=PayloadSchemaType.VECTOR,
+        )
+        client.create_payload_index(
+            collection_name=collection_name,
+            field_name="states",
+            field_schema=PayloadSchemaType.VECTOR,
+        )
     return client, points_count
 
 
@@ -165,6 +177,8 @@ def insert_chunking_in_db(documents: dict):
                         "resource_file":data.get('resource_file',''),
                         "context-type": data.get('context-type',''),
                         "source": data.get('url','')
+                        "states": data.get('states','')
+                        "districts": data.get('districts','')
                         },
             ))
         qdrant_client.upsert(collection_name, points_list)
