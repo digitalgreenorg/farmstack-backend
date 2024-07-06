@@ -73,6 +73,9 @@ def get_embeddings(docs, resource, file_id):
                 embedded_data[idx+start]["sub_category"] = resource.get("sub_category",'').lower().strip()
                 embedded_data[idx+start]["resource_file"] = file_id
                 embedded_data[idx+start]["countries"] = resource.get("countries",'')
+                embedded_data[idx+start]["states"] = resource.get("states",'')
+                embedded_data[idx+start]["districts"] = resource.get("districts",'')
+                embedded_data[idx+start]["sub_categories"] = resource.get("sub_categories",'')
 
             start += idx+1
     return embedded_data
@@ -125,6 +128,21 @@ def create_qdrant_client(collection_name: str):
             field_name="countries",
             field_schema=PayloadSchemaType.VECTOR,
         )
+        client.create_payload_index(
+            collection_name=collection_name,
+            field_name="districts",
+            field_schema=PayloadSchemaType.VECTOR,
+        )
+        client.create_payload_index(
+            collection_name=collection_name,
+            field_name="states",
+            field_schema=PayloadSchemaType.VECTOR,
+        )
+        client.create_payload_index(
+            collection_name=collection_name,
+            field_name="sub_categories",
+            field_schema=PayloadSchemaType.VECTOR,
+        )
     return client, points_count
 
 
@@ -164,7 +182,11 @@ def insert_chunking_in_db(documents: dict):
                         "country":data.get('country',''),
                         "resource_file":data.get('resource_file',''),
                         "context-type": data.get('context-type',''),
-                        "source": data.get('url','')
+                        "source": data.get('url',''),
+                        "states": data.get('states',''),
+                        "districts": data.get('districts',''),
+                        "countries": data.get('countries',''),
+                        "sub_categories": data.get('sub_categories','')
                         },
             ))
         qdrant_client.upsert(collection_name, points_list)

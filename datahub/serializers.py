@@ -1212,7 +1212,9 @@ class ResourceSerializer(serializers.ModelSerializer):
             sub_category=validated_data.get("category").get("sub_category_id")
             country=validated_data.get("category").get("country")
             countries = validated_data.get("category").get("countries")
-            sub_categories = validated_data.get("category").get("sub_categories")
+            sub_categories = validated_data.get("category").get("sub_categories",[])
+            districts = validated_data.get("category").get("districts", [])
+            states = validated_data.get("category").get("states", [])
 
             resource = Resource.objects.create(**validated_data)
             resource_files_data = json.loads(resource_files_data[0]) if resource_files_data else []
@@ -1244,8 +1246,11 @@ class ResourceSerializer(serializers.ModelSerializer):
                         serializer_data["country"] = country
                         serializer_data["district"] = district
                         serializer_data["countries"] = countries
+                        serializer_data["states"] = states
+                        serializer_data["districts"] = districts
+
                         serializer_data["sub_categories"] = sub_categories
-                        # create_vector_db.delay(serializer_data)
+                        create_vector_db.delay(serializer_data)
                         # create_vector_db(serializer_data)
 
                 elif resource_file.get("type") == "api":
@@ -1266,8 +1271,10 @@ class ResourceSerializer(serializers.ModelSerializer):
                         serializer_data["country"] = country
                         serializer_data["district"] = district
                         serializer_data["countries"] = countries
+                        serializer_data["states"] = states
+                        serializer_data["districts"] = districts
                         serializer_data["sub_categories"] = sub_categories
-                        # create_vector_db.delay(serializer_data)
+                        create_vector_db.delay(serializer_data)
                         # create_vector_db(serializer_data)
                 else:
                     serializer = ResourceFileSerializer(data={"resource": resource.id, **resource_file}, partial=True)
@@ -1283,12 +1290,12 @@ class ResourceSerializer(serializers.ModelSerializer):
                     serializer_data["district"] = district
                     serializer_data["countries"] = district
                     serializer_data["countries"] = countries
+                    serializer_data["states"] = states
+                    serializer_data["districts"] = districts
                     serializer_data["sub_categories"] = sub_categories
-                    # create_vector_db.delay(serializer_data)
+                    create_vector_db.delay(serializer_data)
                     # create_vector_db(serializer_data)
-            print(resource_files)
             for file in resource_files[0]:
-                print(file)
                 data = {"resource":resource.id, "file":file, "type": "file"}
                 serializer = ResourceFileSerializer(data = data)
                 serializer.is_valid(raise_exception=True)
@@ -1300,8 +1307,10 @@ class ResourceSerializer(serializers.ModelSerializer):
                 serializer_data["country"] = country
                 serializer_data["district"] = district
                 serializer_data["countries"] = countries
+                serializer_data["states"] = states
+                serializer_data["districts"] = districts
                 serializer_data["sub_categories"] = sub_categories
-                # create_vector_db.delay(serializer_data)
+                create_vector_db.delay(serializer_data)
                 # create_vector_db(serializer_data)
 
             return resource
@@ -1419,5 +1428,7 @@ class ResourceListSerializer(serializers.ModelSerializer):
         return ResourceFile.objects.filter(resource=resource.id).values('type').annotate(count=Count('type'))
 
    
-
+class CategorySubcategoryInputSerializer(serializers.Serializer):
+    category_name = serializers.CharField(max_length=255)
+    subcategory_name = serializers.CharField(max_length=255)
 
