@@ -18,6 +18,7 @@ from utils.validators import (
     validate_image_type,
 )
 from django.contrib.postgres.fields import ArrayField
+from django.utils.text import Truncator
 
 
 def auto_str(cls):
@@ -362,7 +363,6 @@ class SubCategory(TimeStampMixin):
     name = models.CharField(max_length=100)
     category = models.ForeignKey(Category, on_delete=models.CASCADE, related_name="subcategory_category")
     description = models.CharField(max_length=200, null=True)  # Adjust max_length as needed
-    from django.utils.text import Truncator
 
     def save(self, *args, **kwargs):
         if not self.description:
