@@ -1226,12 +1226,12 @@ class ResourceSerializer(serializers.ModelSerializer):
             ResourceSubCategoryMap.objects.bulk_create(resource_sub_cat_instances)
             for resource_file in resource_files_data:
                 if resource_file.get("type") == "youtube":
-                    youtube_urls_response = get_youtube_url(resource_file.get("url"))
-                    if youtube_urls_response.status_code == 400:
-                        return youtube_urls_response
-                    youtube_urls = [resource_file.get("url")]
-                    playlist_urls = [{"resource": resource.id, "type":"youtube", **row} for row in youtube_urls]
-                    # playlist_urls=[{"resource": resource.id, **resource_file}]
+                    # youtube_urls_response = get_youtube_url(resource_file.get("url"))
+                    # if youtube_urls_response.status_code == 400:
+                    #     return youtube_urls_response
+                    # youtube_urls = [resource_file.get("url")]
+                    # playlist_urls = [{"resource": resource.id, "type":"youtube", **row} for row in youtube_urls]
+                    playlist_urls=[{"resource": resource.id, **resource_file}]
                     for row in playlist_urls:
                         serializer = ResourceFileSerializer(data=row, partial=True)
                         serializer.is_valid(raise_exception=True)
