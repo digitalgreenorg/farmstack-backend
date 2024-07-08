@@ -3261,6 +3261,21 @@ class ResourceManagementViewSet(GenericViewSet):
         resource.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
     
+    @transaction.atomic
+    @http_request_mutation
+    @action(detail=False, methods=["delete"])
+    def delete_with_user_map(self, request, *args, **kwargs):
+        try:
+            user_map = request.META.get("map_id")
+            file_ids = ResourceFile.objects.filter(resource__user_map_id=user_map).values_list("id", flat=True)
+            qdrant_embeddings_delete_file_id(file_ids)
+            Resource.objects.filter(user_map_id=user_map).delete()
+            return Response(status=status.HTTP_204_NO_CONTENT)
+        except Exception as e:
+            LOGGER.error(e,exc_info=True)
+            return Response(str(e), status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
     @http_request_mutation
     def retrieve(self, request, *args, **kwargs):
         user_map = request.META.get("map_id")
@@ -3495,7 +3510,7 @@ class ResourceFileManagementViewSet(GenericViewSet):
             return Response(str(e), status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
         return Response(status=status.HTTP_204_NO_CONTENT)
-
+    
     @action(detail=False, methods=["post"])
     def resource_live_api_export(self, request):
         """This is an API to fetch the data from an External API with an auth token
