@@ -19,7 +19,8 @@ from utils.validators import (
 )
 from django.contrib.postgres.fields import ArrayField
 from django.utils.text import Truncator
-
+from django.db.models.signals import post_delete
+from django.dispatch import receiver
 
 def auto_str(cls):
     def __str__(self):
@@ -350,6 +351,16 @@ class ResourceFile(TimeStampMixin):
     def __str__(self) -> str:
         return self.file.name
     
+    def delete(self, *args, **kwargs):
+        self.file.delete(save=False)  # Delete the file from the file system
+        super().delete(*args, **kwargs)  # Call the superclass delete method
+
+# Signal to ensure file deletion
+@receiver(post_delete, sender=ResourceFile)
+def delete_file_on_resourcefile_delete(sender, instance, **kwargs):
+    if instance.file:
+        instance.file.delete(save=False)
+        
 class DatasetV2FileReload(TimeStampMixin):
     dataset_file = models.ForeignKey(DatasetV2File, on_delete=models.CASCADE, related_name="dataset_file")
 
