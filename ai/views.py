@@ -40,7 +40,7 @@ class EmbeddingsViewSet(ModelViewSet):
                             resource__resource_cat_map__sub_category_id=sub_category
                             ).values_list('id', flat=True).distinct().all())
             
-        chunks = QuadrantRetrival().retrieve_chunks(file_ids, query, country, state,district, category, sub_category)
+        chunks = QuadrantRetrival().retrieve_chunks(file_ids, query, country, state,district, category)
         return Response(chunks)
     
     @action(detail=False, methods=["GET"])
