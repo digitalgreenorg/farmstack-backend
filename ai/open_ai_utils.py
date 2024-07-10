@@ -298,7 +298,7 @@ def find_similar_chunks(input_embedding, resource_id,  top_n=5):
         ).order_by("similarity").filter(similarity__lt=0.17).defer('cmetadata').all()[:top_n]
         return similar_chunks
 
-def query_qdrant_collection(resource_file_ids, query, country, state, district, category, k=6, threshold=0.0):
+def query_qdrant_collection(resource_file_ids, query, country, state, district, category,sub_category, k=6, threshold=0.0):
     collection_name = qdrant_settings.get('COLLECTION_NAME')
     qdrant_client, points = create_qdrant_client(collection_name)
     if query:
@@ -316,6 +316,8 @@ def query_qdrant_collection(resource_file_ids, query, country, state, district, 
         filter_conditions.append(FieldCondition(key="resource_file", match=MatchAny(any=file_ids)))
     if category:
         filter_conditions.append(FieldCondition(key="category", match=MatchValue(value=category)))
+    # if sub_category:
+    #     filter_conditions.append(FieldCondition(key="sub_category", match=MatchValue(value=sub_category)))
     if state:
         filter_conditions.append(FieldCondition(key="state", match=MatchValue(value=state)))
     if district:
@@ -325,7 +327,7 @@ def query_qdrant_collection(resource_file_ids, query, country, state, district, 
     if country:
         filter_conditions.append(FieldCondition(key="country", match=MatchValue(value=country)))
 
-    qdrant_filter = Filter(must=filter_conditions)
+    qdrant_filter = Filter(should=filter_conditions)
 
     youtube_filter_conditions = filter_conditions.copy()
     youtube_filter_conditions.append(FieldCondition(key="context-type", match=MatchValue(value="video/pdf")))
@@ -348,6 +350,8 @@ def query_qdrant_collection(resource_file_ids, query, country, state, district, 
             score_threshold=threshold,
             limit=2
         )
+        # import pdb; pdb.set_trace()
+
         yotube_url=[item[1]["source"] for result in search_youtube_data for item in result if item[0] == "payload"]
     except Exception as e:
         LOGGING.error(f"Exception occured in qdrant db connection {str(e)}")
