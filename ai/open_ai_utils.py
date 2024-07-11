@@ -1,9 +1,5 @@
 # from langchain.document_loaders import PdfLoader
-import json
 import logging
-import os
-import re
-from concurrent.futures import ThreadPoolExecutor, as_completed
 from urllib.parse import quote_plus
 import uuid
 import openai
@@ -11,7 +7,7 @@ from django.db import models
 from django.db.models import Subquery
 from django.db.models.functions import Cast
 from qdrant_client import QdrantClient
-from qdrant_client.http.models import Distance, VectorParams, Batch, PointStruct, OptimizersConfigDiff, HnswConfigDiff, PayloadSchemaType, SearchParams, Filter, FieldCondition, MatchValue, MatchAny
+from qdrant_client.http.models import Distance, VectorParams, PointStruct, HnswConfigDiff, PayloadSchemaType, Filter, FieldCondition, MatchValue, MatchAny
 from dotenv import load_dotenv
 from langchain.embeddings.openai import OpenAIEmbeddings
 from pgvector.django import CosineDistance
@@ -19,8 +15,6 @@ from core import settings
 from core.constants import Constants
 from datahub.models import LangchainPgCollection, LangchainPgEmbedding, ResourceFile, SubCategory
 from utils.pgvector import PGVector
-from langchain.retrievers.merger_retriever import MergerRetriever
-from qdrant_client.http.models import PointsSelector
 
 LOGGING = logging.getLogger(__name__)
 load_dotenv()
@@ -32,9 +26,12 @@ encoded_password = quote_plus(db_settings[Constants.PASSWORD])
 
 openai_client = openai.Client(api_key=settings.OPENAI_API_KEY)
 
-def get_embeddings(docs, resource, file_id):
+def get_embeddings(docs, resource, file_id, chunking_strategy=None):
     embedded_data = {}
-    document_text_list = [document.page_content for document in docs]
+    if chunking_strategy:
+        document_text_list = [document.get('text') for document in docs]
+    else:
+        document_text_list = [document.page_content for document in docs]
     openai_client = openai.Client(api_key=settings.OPENAI_API_KEY)
     embedding_model = Constants.TEXT_EMBEDDING_ADA_002
     try:
@@ -59,9 +56,9 @@ def get_embeddings(docs, resource, file_id):
             f"Creating the embedding dictonary, length is  {len(result)}")
         start = 0
         for embedd_data in result:
-            for idx, (data, text) in enumerate(zip(embedd_data.data, document_text_list)):
+            for idx, data in enumerate(embedd_data.data):
                 embedded_data[idx+start] = {}
-                embedded_data[idx+start]['text'] = text
+                embedded_data[idx+start]['text'] = document_text_list[idx+start]
                 embedded_data[idx+start]['vector'] = data.embedding
                 embedded_data[idx+start]["url"] =  resource.get("url") if resource.get("url") else resource.get("file")
                 embedded_data[idx+start]["country"] = resource.get("country",'').lower().strip()
@@ -77,6 +74,7 @@ def get_embeddings(docs, resource, file_id):
                     embedded_data[idx+start]["context-type"] = "table/pdf"
                 else:
                     embedded_data[idx+start]["context-type"] = "text/pdf"
+                    embedded_data[idx+start]["topic"] = docs[idx+start].get('topic')
             start += idx+1
     # One more step is added to parse insertation error
     if embedded_data != {}:
@@ -94,6 +92,7 @@ def create_embedding(embedding_model: str, document_text_list: list, data_type =
     openai_client = openai.Client(api_key=settings.OPENAI_API_KEY)
     try:
         result = []
+        LOGGING.info(f"document_text_list for open ai is : {len(document_text_list)}")
         if len(document_text_list) > 100:
             loop_number = len(document_text_list)//100
             start_point = 0
@@ -106,6 +105,7 @@ def create_embedding(embedding_model: str, document_text_list: list, data_type =
             response = openai_client.embeddings.create(
                 input=document_text_list, model=embedding_model)
             result.append(response)
+        return result
     except Exception as e:
         LOGGING.error(f"Exception occurred in creating embedding {str(e)}")
         return []
@@ -117,6 +117,7 @@ def create_qdrant_client(collection_name: str):
         'QDRANT_PORT_HTTP'), grpc_port=qdrant_settings.get('PORT_GRPC'), prefer_grpc=qdrant_settings.get('GRPC_CONNECT'))
     try:
         client.get_collection(collection_name=collection_name)
+        LOGGING.info(f"Qdrant client get successfully: {collection_name}")
     except:
         client.create_collection(
             collection_name,
@@ -160,6 +161,26 @@ def create_qdrant_client(collection_name: str):
         )
     return client
 
+def get_topic(chunk):
+    prompts = '''Create a topic from the paragraph content 
+                        ####  user input
+                        {input}
+                        '''
+    prompt_message = prompts.format(input=chunk)
+    openai_client = openai.Client(api_key=settings.OPENAI_API_KEY)
+    response = openai_client.chat.completions.create(
+                    model="gpt-4-0125-preview",
+                    messages=[{"role": "user", "content": prompt_message}],
+                    temperature=0,
+                )
+    topic = response.choices[0].message.content
+    try:
+        new_topic = topic.split("Topic: ")[-1]
+    except:
+        new_topic = topic
+        pass
+    return new_topic
+
 
 def insert_chunking_in_db(documents: dict):
     collection_name = qdrant_settings.get('COLLECTION_NAME')
@@ -179,7 +200,8 @@ def insert_chunking_in_db(documents: dict):
                         "country":data.get('country',''),
                         "resource_file":data.get('resource_file',''),
                         "context-type": data.get('context-type',''),
-                        "source": data.get('url','')
+                        "source": data.get('url',''),
+                        "topic":data.get('topic','')
                         },
             ))
         qdrant_client.upsert(collection_name, points_list)
@@ -231,33 +253,36 @@ def load_vector_db(resource_id):
     print(LangchainPgEmbedding.objects.filter(collection_id='e7d810ae-3fee-4412-b9a8-04f0935e7acf').values('document'))
     retriever = vector_db.as_retriever(search_type="similarity", search_kwargs={"k": 5, "score_threshold":0.5})
     return retriever
-    def setup_retriever(collection_id):
-        vector_db = PGVector(
-            collection_name=str(collection_id),
-            connection_string=connectionString,
-            embedding_function=embeddings,
-        )
-        retriever = vector_db.as_retriever(search_type="similarity_score_threshold", search_kwargs={"score_threshold": 0.5, "k": 5})
-        return retriever
 
-    # Use ThreadPoolExecutor to run setup_retriever concurrently
-    with ThreadPoolExecutor(max_workers=10) as executor:
-        # Create a future for each setup_retriever call
-        future_to_collection_id = {executor.submit(setup_retriever, collection_id): collection_id for collection_id in collection_ids}
 
-        for future in as_completed(future_to_collection_id):
-            collection_id = future_to_collection_id[future]
-            try:
-                retriever = future.result()  # Retrieve the result from the future
-                retrievals.append(retriever)  # Add the successfully created retriever to the list
-            except Exception as exc:
-                print(f'{collection_id} generated an exception: {exc}')
-    # import pdb; pdb.set_trace()
-    # lotr = MergerRetriever(retrievers=retrievals)
-    # lotr = CustomRetriever(retrievals)
-    custom_retriever = MergerRetriever(retrievers = retrievals)
 
-    return retrievals
+# def setup_retriever(collection_id):
+#     vector_db = PGVector(
+#         collection_name=str(collection_id),
+#         connection_string=connectionString,
+#         embedding_function=embeddings,
+#     )
+#     retriever = vector_db.as_retriever(search_type="similarity_score_threshold", search_kwargs={"score_threshold": 0.5, "k": 5})
+#     return retriever
+
+# # Use ThreadPoolExecutor to run setup_retriever concurrently
+# with ThreadPoolExecutor(max_workers=10) as executor:
+#     # Create a future for each setup_retriever call
+#     future_to_collection_id = {executor.submit(setup_retriever, collection_id): collection_id for collection_id in collection_ids}
+
+#     for future in as_completed(future_to_collection_id):
+#         collection_id = future_to_collection_id[future]
+#         try:
+#             retriever = future.result()  # Retrieve the result from the future
+#             retrievals.append(retriever)  # Add the successfully created retriever to the list
+#         except Exception as exc:
+#             print(f'{collection_id} generated an exception: {exc}')
+# # import pdb; pdb.set_trace()
+# # lotr = MergerRetriever(retrievers=retrievals)
+# # lotr = CustomRetriever(retrievals)
+# custom_retriever = MergerRetriever(retrievers = retrievals)
+
+# return retrievals
 
 # Older OpenAI version
 def genrate_embeddings_from_text(text):
@@ -293,11 +318,11 @@ def find_similar_chunks(input_embedding, resource_id,  top_n=5):
 
 def query_qdrant_collection(resource_file_ids, query, country, state, district, category, k=6, threshold=0.0):
     collection_name = qdrant_settings.get('COLLECTION_NAME')
-    qdrant_client, points = create_qdrant_client(collection_name)
+    qdrant_client = create_qdrant_client(collection_name)
     if query:
         vector = openai_client.embeddings.create(
             input=[query],
-            model=Constants.TEXT_EMBEDDING_3_SMALL,
+            model=Constants.TEXT_EMBEDDING_ADA_002,
         ).data[0].embedding
     else:
         vector = [0.0]*1536
@@ -318,13 +343,12 @@ def query_qdrant_collection(resource_file_ids, query, country, state, district, 
     if country:
         filter_conditions.append(FieldCondition(key="country", match=MatchValue(value=country)))
 
-    qdrant_filter = Filter(must=filter_conditions)
-
+    qdrant_filter = Filter(should=filter_conditions)
     youtube_filter_conditions = filter_conditions.copy()
     youtube_filter_conditions.append(FieldCondition(key="context-type", match=MatchValue(value="video/pdf")))
     youtube_filter = Filter(must=youtube_filter_conditions)
 
-    LOGGING.info(f"Collection and filter details: state={state}, resource_file={resource_file_ids}, k={k}, threshold={threshold}")
+    LOGGING.info(f"Collection and filter details: state={state}, k={k}, threshold={threshold}")
 
     try:
         search_data = qdrant_client.search(
@@ -345,6 +369,7 @@ def query_qdrant_collection(resource_file_ids, query, country, state, district, 
     except Exception as e:
         LOGGING.error(f"Exception occured in qdrant db connection {str(e)}")
         return []
+    print(f"-------------------{len(search_data)}")
     results = extract_text_id_score(search_data)
     results["yotube_url"]=yotube_url
     return results

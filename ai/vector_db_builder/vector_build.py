@@ -2,7 +2,7 @@ import tempfile
 import logging
 import re
 from bs4 import BeautifulSoup
-from ai.open_ai_utils import get_embeddings, insert_chunking_in_db, create_embedding
+from ai.open_ai_utils import get_embeddings, create_embedding, get_topic
 from ai.vector_db_builder.load_audio_and_video import LoadAudioAndVideo
 from ai.utils import build_pdf, download_file, resolve_file_path
 from ai.vector_db_builder.load_documents import LoadDocuments
@@ -44,15 +44,16 @@ def create_vector_db(resource_file, chunk_size=1000, chunk_overlap=200):
         LOGGING.info(f"Documents loaded for Resource ID: {resource_id}")
         if status == "completed":
             if semantic_chunking:
-                texts = document_extraction(documents, chunk_size, chunk_overlap)
-                embedded_chunk = get_embeddings(texts, resource_file, str(resource_id))
+                embedded_chunk = document_extraction(resource_file.get("file"), False, './media/users/resources/')
                 text_array = cleaned_text_without_reference(embedded_chunk)
                 table_array = group_table_by_parent_node(embedded_chunk)
                 if text_array != []:
-                    embedded_chunk_status = get_embeddings(text_array,resource_file, str(resource_id))
+                    embedded_chunk_status = get_embeddings(text_array,resource_file, str(resource_id), True)
+                    LOGGING.info(f"Text array status is {embedded_chunk_status}")
                 if table_array != []:
                     resource_file["type"] = 'table'
-                    embedded_chunk_status = get_embeddings(text_array,resource_file, str(resource_id))
+                    embedded_chunk_status = get_embeddings(table_array,resource_file, str(resource_id), True)
+                    LOGGING.info(f"Table array status is {embedded_chunk_status}")
             else:
                 texts = split_documents(documents, chunk_size, chunk_overlap)
                 LOGGING.info(f"Documents split completed for Resource ID: {resource_id}")
@@ -61,17 +62,17 @@ def create_vector_db(resource_file, chunk_size=1000, chunk_overlap=200):
             status = "failed"
         data = ResourceFile.objects.filter(id=resource_id).update(
         embeddings_status=status,
-        embeddings_status_reason=documents
+        embeddings_status_reason=''
         )
-        LOGGING.info(f"Resource file ID: {resource_id} and updated with: {documents}")
+        LOGGING.info(f"Resource file ID: {resource_id}")
     except Exception as e:
-        LOGGING.error(f"Faild lo create embeddings for Resource ID: {resource_id} and ERROR: {str(e)}")
+        LOGGING.error(f"Failed lo create embeddings for Resource ID: {resource_id} and ERROR: {str(e)}")
         documents = str(e)
         data = ResourceFile.objects.filter(id=resource_id).update(
             embeddings_status=status,
             embeddings_status_reason=documents
         )
-        LOGGING.info(f"Resource file ID: {resource_id} and updated with: {documents}")
+        LOGGING.info(f"Resource file ID: {resource_id}")
     return data
 
 def load_documents(url, file, doc_type, id, transcription=""):
@@ -149,12 +150,13 @@ def calculate_cosine_distances(sentences):
 
     return distances, sentences
 
+
 def document_extraction(pdf_path : str, extract_image : bool, extract_image_folder : str):
     # Extracts the elements from the PDF
-    LOGGING.info(f"Extracting pdf with unstructured....: {pdf_path}")
+    LOGGING.info(f"Extracting pdf with unstructured....: {pdf_path.replace('http://localhost:8000/', '')}")
     try:
         elements = partition_pdf(
-            filename=pdf_path,
+            filename=pdf_path.replace('http://localhost:8000/', ""),
             # Using pdf format to find embedded image blocks
             extract_images_in_pdf=extract_image,
             # Unstructured Helpers
@@ -167,7 +169,7 @@ def document_extraction(pdf_path : str, extract_image : bool, extract_image_fold
         element_json = elements_to_dicts(elements=elements)
         return element_json
     except Exception as e:
-        LOGGING.error(f"Faild lo extract the documents: {str(e)}")
+        LOGGING.error(f"Failed lo extract the documents: {str(e)}")
         return None
 
 def cleaned_text_without_reference(original_json_array: list) -> list:
@@ -232,7 +234,7 @@ def semantic_grouping(text_elements: list) -> list:
     # Getting max length sentence
     word_length = [len(x.get('sentence')) for x in sentences]
     # grouping the sentences based on the distance value and word length
-    indices_above_thresh = chunking_dp(distances, word_length, max(4000, max(word_length)))
+    indices_above_thresh = chunking_dp(distances, word_length, max(2000, max(word_length)))
     indices_above_thresh.pop(0)
     indices_above_thresh.pop(-1)
     # Initialize the start index
@@ -254,6 +256,10 @@ def semantic_grouping(text_elements: list) -> list:
     if start_index < len(sentences):
         combined_text = ' '.join([d['sentence'] for d in sentences[start_index:]])
         chunks.append({"text":combined_text})
+
+    for chunk in chunks:
+        chunk["topic"] = get_topic(chunk["text"])
+
     return chunks
 
 def extract_cols_and_rows(tables) -> tuple[list, list]:
