@@ -206,7 +206,7 @@ def insert_chunking_in_db(documents: dict):
                         "resource_file":data.get('resource_file',''),
                         "context-type": data.get('context-type',''),
                         "source": data.get('url',''),
-                        "topic":data.get('topic','')
+                        "topic":data.get('topic',''),
                         "states": data.get('states',''),
                         "districts": data.get('districts',''),
                         "countries": data.get('countries',''),
