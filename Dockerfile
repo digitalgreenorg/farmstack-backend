@@ -1,4 +1,4 @@
-FROM python:3.8-slim
+FROM python:3.11-slim
 
 # Install dependencies
 RUN apt-get update && apt-get install -y libsasl2-dev curl gcc libldap2-dev \
