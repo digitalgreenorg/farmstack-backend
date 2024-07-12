@@ -325,7 +325,7 @@ def find_similar_chunks(input_embedding, resource_id,  top_n=5):
         ).order_by("similarity").filter(similarity__lt=0.17).defer('cmetadata').all()[:top_n]
         return similar_chunks
 
-def query_qdrant_collection(resource_file_ids, query, country, state, district, category,sub_category, k=6, threshold=0.0):
+def query_qdrant_collection(resource_file_ids, query, country, state, district, category, sub_category, source_type, k, threshold):
     collection_name = qdrant_settings.get('COLLECTION_NAME')
     qdrant_client = create_qdrant_client(collection_name)
     if query:
@@ -338,6 +338,8 @@ def query_qdrant_collection(resource_file_ids, query, country, state, district, 
 
     # sub_category = re.sub(r'[^a-zA-Z0-9_]', '-', sub_category)
     filter_conditions = []
+    limit_k = 10
+    default_threshold = 0.0
     if resource_file_ids:
         file_ids = [str(row) for row in resource_file_ids]
         filter_conditions.append(FieldCondition(key="resource_file", match=MatchAny(any=file_ids)))
@@ -353,28 +355,37 @@ def query_qdrant_collection(resource_file_ids, query, country, state, district, 
     #     filter_conditions.append(FieldCondition(key="context-type", match=MatchValue(value=context_type)))
     if country:
         filter_conditions.append(FieldCondition(key="country", match=MatchValue(value=country)))
+    
+    if source_type == 'table':
+        default_threshold = 0.4
+        filter_conditions.append(FieldCondition(key="context-type", match=MatchValue(value='table/pdf')))
 
-    qdrant_filter = Filter(should=filter_conditions)
+    qdrant_filter = Filter(must=filter_conditions)
 
     youtube_filter_conditions = filter_conditions.copy()
     youtube_filter_conditions.append(FieldCondition(key="context-type", match=MatchValue(value="video/pdf")))
     youtube_filter = Filter(must=youtube_filter_conditions)
+    if k !=0:
+        try:
+            limit_k = int(k)
+        except:
+            pass
 
-    LOGGING.info(f"Collection and filter details: state={state}, k={k}, threshold={threshold}")
+    LOGGING.info(f"Collection and filter details: state={state}, k={limit_k}, threshold={default_threshold}")
 
     try:
         search_data = qdrant_client.search(
             collection_name=collection_name,
             query_vector=vector,
             query_filter=qdrant_filter,
-            score_threshold=threshold,
-            limit=k
+            score_threshold=default_threshold,
+            limit=limit_k
         )
         search_youtube_data = qdrant_client.search(
             collection_name=collection_name,
             query_vector=vector,
             query_filter=youtube_filter,
-            score_threshold=threshold,
+            score_threshold=default_threshold,
             limit=2
         )
         # import pdb; pdb.set_trace()
