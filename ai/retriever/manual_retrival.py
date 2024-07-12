@@ -51,10 +51,11 @@ class Retrival:
         pass
     
 class QuadrantRetrival:
-    def retrieve_chunks(self, resource_file_ids, query, country, state,district, category):
+
+    def retrieve_chunks(self, resource_file_ids, query, country, state,district, category, sub_category, source_type, k, thresold):
         try:
             if query:
-                chunks = query_qdrant_collection(resource_file_ids, query, country, state,district, category)
+                chunks = query_qdrant_collection(resource_file_ids, query, country, state,district, category, sub_category, source_type, k, thresold)
             else:
                 chunks = qdrant_collection_scroll(resource_file_ids, country, state, category, 4)
 

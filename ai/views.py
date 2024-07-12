@@ -34,13 +34,15 @@ class EmbeddingsViewSet(ModelViewSet):
         category = request.data.get("category", "").lower()
         sub_category = request.data.get("sub_category", "")
         district = request.data.get("district", "").lower()
+        k = request.data.get("k", 0)
+        threshold = request.data.get("threshold", 0)
+        source_type = request.data.get("source_type", None)
         file_ids=[]
         if sub_category:
             file_ids = list(ResourceFile.objects.filter(
                             resource__resource_cat_map__sub_category_id=sub_category
                             ).values_list('id', flat=True).distinct().all())
-            
-        chunks = QuadrantRetrival().retrieve_chunks(file_ids, query, country, state,district, category)
+        chunks = QuadrantRetrival().retrieve_chunks(file_ids, query, country, state,district, category, sub_category, source_type, k, threshold)
         return Response(chunks)
     
     @action(detail=False, methods=["GET"])
