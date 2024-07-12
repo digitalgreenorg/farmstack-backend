@@ -165,6 +165,7 @@ from .models import (
 from .serializers import (
     APIBuilderSerializer,
     CategorySerializer,
+    CategorySubcategoryInputSerializer,
     LangChainEmbeddingsSerializer,
     MessagesChunksRetriveSerializer,
     MessagesRetriveSerializer,
@@ -3260,6 +3261,21 @@ class ResourceManagementViewSet(GenericViewSet):
         resource.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
     
+    @transaction.atomic
+    @http_request_mutation
+    @action(detail=False, methods=["delete"])
+    def delete_with_user_map(self, request, *args, **kwargs):
+        try:
+            user_map = request.META.get("map_id")
+            file_ids = ResourceFile.objects.filter(resource__user_map_id=user_map).values_list("id", flat=True)
+            qdrant_embeddings_delete_file_id(file_ids)
+            Resource.objects.filter(user_map_id=user_map).delete()
+            return Response(status=status.HTTP_204_NO_CONTENT)
+        except Exception as e:
+            LOGGER.error(e,exc_info=True)
+            return Response(str(e), status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
     @http_request_mutation
     def retrieve(self, request, *args, **kwargs):
         user_map = request.META.get("map_id")
@@ -3431,7 +3447,8 @@ class ResourceFileManagementViewSet(GenericViewSet):
             country=categories.get("country")
             sub_category=categories.get("sub_category_id")
             countries=categories.get("countries")
-
+            states=categories.get("states")
+            districts=categories.get("districts")
 
             if data.get("type") == "youtube":
                 youtube_urls_response = get_youtube_url(data.get("url"))
@@ -3451,8 +3468,11 @@ class ResourceFileManagementViewSet(GenericViewSet):
                     serializer_data["country"] = country
                     serializer_data["district"] = district
                     serializer_data["countries"] = countries
+                    serializer_data["states"] = states
+                    serializer_data["districts"] = districts
+
                     # create_vector_db.delay(serializer_data)
-                    create_vector_db(serializer_data)
+                    create_vector_db.delay(serializer_data)
                 return Response(serializer.data, status=status.HTTP_201_CREATED)
             else:
                 serializer = self.get_serializer(data=request.data, partial=True)
@@ -3465,8 +3485,9 @@ class ResourceFileManagementViewSet(GenericViewSet):
                 serializer_data["country"] = country
                 serializer_data["district"] = district
                 serializer_data["countries"] = countries
-
-                create_vector_db(serializer_data)
+                serializer_data["states"] = states
+                serializer_data["districts"] = districts
+                create_vector_db.delay(serializer_data)
                 # create_vector_db.delay(serializer_data)
                 return Response(serializer.data, status=status.HTTP_201_CREATED)
         except ValidationError as e:
@@ -3489,7 +3510,7 @@ class ResourceFileManagementViewSet(GenericViewSet):
             return Response(str(e), status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
         return Response(status=status.HTTP_204_NO_CONTENT)
-
+    
     @action(detail=False, methods=["post"])
     def resource_live_api_export(self, request):
         """This is an API to fetch the data from an External API with an auth token
@@ -3578,7 +3599,34 @@ class CategoryViewSet(viewsets.ModelViewSet):
             categories_with_subcategories[category.name] = subcategory_names
 
         return Response(categories_with_subcategories, 200)
-
+    
+    @action(detail=False, methods=["POST"])
+    def get_sub_category_id(self, request, *args, **kwargs):
+        serializer = CategorySubcategoryInputSerializer(data=request.data)
+        if serializer.is_valid():
+            category_name = serializer.validated_data['category_name']
+            subcategory_name = serializer.validated_data['subcategory_name']
+            response_data = {
+                'category_id': None,
+                'subcategory_id': None
+            }
+            
+            # Check if the category and subcategory exist
+            try:
+                resource = SubCategory.objects.filter(
+                    category__name__iexact=category_name.strip(),
+                    name__iexact=subcategory_name.strip()
+                ).first()
+                if resource:
+                    response_data['category_id'] = resource.category_id
+                    response_data['title'] = resource.description 
+                    response_data['subcategory_id'] = resource.id  # Assuming both ids are the same
+            except SubCategory.DoesNotExist:
+                return Response({"error": "Category or Subcategory not found"}, status=status.HTTP_404_NOT_FOUND)
+            
+            return Response(response_data, status=status.HTTP_200_OK)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    
 class SubCategoryViewSet(viewsets.ModelViewSet):
     queryset = SubCategory.objects.all()
     serializer_class = SubCategorySerializer

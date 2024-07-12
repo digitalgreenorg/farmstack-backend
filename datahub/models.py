@@ -18,7 +18,9 @@ from utils.validators import (
     validate_image_type,
 )
 from django.contrib.postgres.fields import ArrayField
-
+from django.utils.text import Truncator
+from django.db.models.signals import post_delete
+from django.dispatch import receiver
 
 def auto_str(cls):
     def __str__(self):
@@ -349,6 +351,16 @@ class ResourceFile(TimeStampMixin):
     def __str__(self) -> str:
         return self.file.name
     
+    def delete(self, *args, **kwargs):
+        self.file.delete(save=False)  # Delete the file from the file system
+        super().delete(*args, **kwargs)  # Call the superclass delete method
+
+# Signal to ensure file deletion
+@receiver(post_delete, sender=ResourceFile)
+def delete_file_on_resourcefile_delete(sender, instance, **kwargs):
+    if instance.file:
+        instance.file.delete(save=False)
+        
 class DatasetV2FileReload(TimeStampMixin):
     dataset_file = models.ForeignKey(DatasetV2File, on_delete=models.CASCADE, related_name="dataset_file")
 
@@ -362,7 +374,6 @@ class SubCategory(TimeStampMixin):
     name = models.CharField(max_length=100)
     category = models.ForeignKey(Category, on_delete=models.CASCADE, related_name="subcategory_category")
     description = models.CharField(max_length=200, null=True)  # Adjust max_length as needed
-    from django.utils.text import Truncator
 
     def save(self, *args, **kwargs):
         if not self.description:
@@ -482,3 +493,29 @@ from langchain_core.pydantic_v1 import BaseModel, Field
 class OutputParser(BaseModel):
     response: str = Field(description="AI Assistant Response")
     follw_up_questions: list = Field(description="Follow-up questions, give users examples of at least list of 3 questions which they can ask as a follow-up. Remember Build those questions from the provided context only other wise give empty")
+
+def load_category_and_sub_category():
+    import pandas as pd
+    df = pd.read_csv("Restructured_Agricultural_Data_with_Descriptions.csv")
+
+    # Iterate through each row in the DataFrame
+    for index, row in df.iterrows():
+        category_name = row['Category']
+        category_description = row['Category']+" Description"
+        subcategory_name = row['Subcategory']
+        subcategory_description = row['title']
+        
+        # Get or create the Category
+        category, created = Category.objects.get_or_create(
+            name=category_name,
+            defaults={'description': category_description}
+        )
+        
+        # Create the SubCategory
+        subcategory, created = SubCategory.objects.get_or_create(
+            name=subcategory_name,
+            defaults={'category': category, 'description': subcategory_description},
+        )
+        print(f"{index} completed out of 250")
+
+    print("Data has been successfully saved to the database.")

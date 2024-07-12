@@ -75,6 +75,10 @@ def get_embeddings(docs, resource, file_id, chunking_strategy=None):
                 else:
                     embedded_data[idx+start]["context-type"] = "text/pdf"
                     embedded_data[idx+start]["topic"] = docs[idx+start].get('topic')
+                embedded_data[idx+start]["states"] = resource.get("states",'')
+                embedded_data[idx+start]["districts"] = resource.get("districts",'')
+                embedded_data[idx+start]["sub_categories"] = resource.get("sub_categories",'')
+
             start += idx+1
     # One more step is added to parse insertation error
     if embedded_data != {}:
@@ -182,6 +186,7 @@ def get_topic(chunk):
     return new_topic
 
 
+
 def insert_chunking_in_db(documents: dict):
     collection_name = qdrant_settings.get('COLLECTION_NAME')
     qdrant_client = create_qdrant_client(collection_name)
@@ -202,6 +207,10 @@ def insert_chunking_in_db(documents: dict):
                         "context-type": data.get('context-type',''),
                         "source": data.get('url',''),
                         "topic":data.get('topic','')
+                        "states": data.get('states',''),
+                        "districts": data.get('districts',''),
+                        "countries": data.get('countries',''),
+                        "sub_categories": data.get('sub_categories','')
                         },
             ))
         qdrant_client.upsert(collection_name, points_list)
@@ -316,7 +325,7 @@ def find_similar_chunks(input_embedding, resource_id,  top_n=5):
         ).order_by("similarity").filter(similarity__lt=0.17).defer('cmetadata').all()[:top_n]
         return similar_chunks
 
-def query_qdrant_collection(resource_file_ids, query, country, state, district, category, k=6, threshold=0.0):
+def query_qdrant_collection(resource_file_ids, query, country, state, district, category,sub_category, k=6, threshold=0.0):
     collection_name = qdrant_settings.get('COLLECTION_NAME')
     qdrant_client = create_qdrant_client(collection_name)
     if query:
@@ -334,6 +343,8 @@ def query_qdrant_collection(resource_file_ids, query, country, state, district, 
         filter_conditions.append(FieldCondition(key="resource_file", match=MatchAny(any=file_ids)))
     if category:
         filter_conditions.append(FieldCondition(key="category", match=MatchValue(value=category)))
+    # if sub_category:
+    #     filter_conditions.append(FieldCondition(key="sub_category", match=MatchValue(value=sub_category)))
     if state:
         filter_conditions.append(FieldCondition(key="state", match=MatchValue(value=state)))
     if district:
@@ -344,6 +355,7 @@ def query_qdrant_collection(resource_file_ids, query, country, state, district, 
         filter_conditions.append(FieldCondition(key="country", match=MatchValue(value=country)))
 
     qdrant_filter = Filter(should=filter_conditions)
+
     youtube_filter_conditions = filter_conditions.copy()
     youtube_filter_conditions.append(FieldCondition(key="context-type", match=MatchValue(value="video/pdf")))
     youtube_filter = Filter(must=youtube_filter_conditions)
@@ -365,6 +377,8 @@ def query_qdrant_collection(resource_file_ids, query, country, state, district, 
             score_threshold=threshold,
             limit=2
         )
+        # import pdb; pdb.set_trace()
+
         yotube_url=[item[1]["source"] for result in search_youtube_data for item in result if item[0] == "payload"]
     except Exception as e:
         LOGGING.error(f"Exception occured in qdrant db connection {str(e)}")
