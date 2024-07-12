@@ -51,6 +51,7 @@ class Retrival:
         pass
     
 class QuadrantRetrival:
+
     def retrieve_chunks(self, resource_file_ids, query, country, state,district, category, sub_category, source_type, k, thresold):
         try:
             if query:

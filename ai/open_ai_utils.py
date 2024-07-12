@@ -325,6 +325,7 @@ def find_similar_chunks(input_embedding, resource_id,  top_n=5):
         ).order_by("similarity").filter(similarity__lt=0.17).defer('cmetadata').all()[:top_n]
         return similar_chunks
 
+
 def query_qdrant_collection(resource_file_ids, query, country, state, district, category, sub_category, source_type, k, threshold):
     collection_name = qdrant_settings.get('COLLECTION_NAME')
     qdrant_client = create_qdrant_client(collection_name)
@@ -345,8 +346,6 @@ def query_qdrant_collection(resource_file_ids, query, country, state, district, 
         filter_conditions.append(FieldCondition(key="resource_file", match=MatchAny(any=file_ids)))
     if category:
         filter_conditions.append(FieldCondition(key="category", match=MatchValue(value=category)))
-    # if sub_category:
-    #     filter_conditions.append(FieldCondition(key="sub_category", match=MatchValue(value=sub_category)))
     if state:
         filter_conditions.append(FieldCondition(key="state", match=MatchValue(value=state)))
     if district:
@@ -388,8 +387,6 @@ def query_qdrant_collection(resource_file_ids, query, country, state, district, 
             score_threshold=default_threshold,
             limit=2
         )
-        # import pdb; pdb.set_trace()
-
         yotube_url=[item[1]["source"] for result in search_youtube_data for item in result if item[0] == "payload"]
     except Exception as e:
         LOGGING.error(f"Exception occured in qdrant db connection {str(e)}")

@@ -42,7 +42,6 @@ class EmbeddingsViewSet(ModelViewSet):
             file_ids = list(ResourceFile.objects.filter(
                             resource__resource_cat_map__sub_category_id=sub_category
                             ).values_list('id', flat=True).distinct().all())
-            
         chunks = QuadrantRetrival().retrieve_chunks(file_ids, query, country, state,district, category, sub_category, source_type, k, threshold)
         return Response(chunks)
     
