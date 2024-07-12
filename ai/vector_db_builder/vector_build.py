@@ -69,7 +69,7 @@ def create_vector_db(resource_file, chunk_size=1000, chunk_overlap=200):
         LOGGING.error(f"Failed lo create embeddings for Resource ID: {resource_id} and ERROR: {str(e)}")
         documents = str(e)
         data = ResourceFile.objects.filter(id=resource_id).update(
-            embeddings_status=status,
+            embeddings_status="failed",
             embeddings_status_reason=documents
         )
         LOGGING.info(f"Resource file ID: {resource_id}")
@@ -153,10 +153,11 @@ def calculate_cosine_distances(sentences):
 
 def document_extraction(pdf_path : str, extract_image : bool, extract_image_folder : str):
     # Extracts the elements from the PDF
-    LOGGING.info(f"Extracting pdf with unstructured....: {pdf_path.replace('http://localhost:8000/', '')}")
+    file_path = pdf_path.split('http://localhost:8000/')[-1]
+    LOGGING.info(f"Extracting pdf with unstructured....: {'.'+file_path}")
     try:
         elements = partition_pdf(
-            filename=pdf_path.replace('http://localhost:8000/', ""),
+            filename='.'+file_path,
             # Using pdf format to find embedded image blocks
             extract_images_in_pdf=extract_image,
             # Unstructured Helpers
