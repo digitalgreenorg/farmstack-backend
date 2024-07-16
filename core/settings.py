@@ -172,8 +172,25 @@ USE_TZ = True
 STATIC_ROOT = os.path.join(BASE_DIR, "static")
 STATIC_URL = "static/"
 
-MEDIA_ROOT = os.path.join(BASE_DIR, "media")
-MEDIA_URL = "media/"
+AWS_ACCESS_KEY_ID = os.environ.get("AWS_ACCESS_KEY_ID",'')
+AWS_SECRET_ACCESS_KEY = os.environ.get("AWS_SECRET_ACCESS_KEY",'')
+AWS_STORAGE_BUCKET_NAME = os.environ.get("AWS_STORAGE_BUCKET_NAME",'')
+AWS_S3_REGION_NAME = os.environ.get("AWS_S3_REGION_NAME",'')  # e.g., 'us-east-1'
+AWS_S3_SIGNATURE_VERSION = 's3v4'
+
+# Django Storages settings
+DEFAULT_FILE_STORAGE = 'storages.backends.s3boto3.S3Boto3Storage'
+
+AWS_S3_FILE_OVERWRITE = False
+AWS_DEFAULT_ACL = None
+AWS_QUERYSTRING_AUTH = False
+# URL of your S3 bucket
+AWS_S3_CUSTOM_DOMAIN = f'{AWS_STORAGE_BUCKET_NAME}.s3.amazonaws.com'
+MEDIA_URL = f'https://{AWS_S3_CUSTOM_DOMAIN}/'
+MEDIA_ROOT = MEDIA_URL
+
+# MEDIA_ROOT = os.path.join(BASE_DIR, "media")
+# MEDIA_URL = "media/"
 
 PROTECTED_MEDIA_ROOT = os.path.join(BASE_DIR, 'protected')
 PROTECTED_MEDIA_URL = "protected/"
@@ -416,5 +433,3 @@ YOUTUBE_API_KEY = os.environ.get("YOUTUBE_API_KEY",'')
 CELERY_BROKER_URL = os.environ.get("CELERY_BROKER_URL",'')
 FILE_UPLOAD_MAX_MEMORY_SIZE = 25 * 1024 * 1024 # 25 Mb limit
 CELERY_BROKER_URL = f'redis://{os.environ.get("REDIS_SERVICE", "loaclhost")}:6379/0'
-
-# CELERY_BROKER_URL = 'redis://localhost:6379/0'

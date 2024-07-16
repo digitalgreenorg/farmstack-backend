@@ -341,7 +341,7 @@ class ResourceFile(TimeStampMixin):
     """
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     resource = models.ForeignKey(Resource, on_delete=models.CASCADE, related_name="resources")
-    file = models.FileField(upload_to=settings.RESOURCES_URL, null=True, blank=True)
+    file = models.FileField(upload_to=settings.RESOURCES_URL, null=True, blank=True, max_length=2000)
     file_size = models.PositiveIntegerField(null=True, blank=True)
     type = models.CharField(max_length=20, null=True, choices=RESOURCE_URL_TYPE, default="file")
     url = models.CharField(max_length=2000, null=True)
@@ -360,7 +360,7 @@ class ResourceFile(TimeStampMixin):
 def delete_file_on_resourcefile_delete(sender, instance, **kwargs):
     if instance.file:
         instance.file.delete(save=False)
-        
+
 class DatasetV2FileReload(TimeStampMixin):
     dataset_file = models.ForeignKey(DatasetV2File, on_delete=models.CASCADE, related_name="dataset_file")
 
