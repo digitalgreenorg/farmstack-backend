@@ -24,7 +24,7 @@ def get_database_connection():
         database=os.getenv("DA_DB_NAME")
     )
 
-@st.cache_data
+# @st.cache_data
 def fetch_data(query, params=None):
     connection = get_database_connection()
     cursor = connection.cursor()
