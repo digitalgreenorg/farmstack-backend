@@ -63,18 +63,18 @@ SELECT
     fr.priority_crop_2,
     fr.priority_crop_3,
     r.id as region_id,
-    r.region_name,
+    r.name as region_name,
     z.id as zone_id,
-    z.zone_name,
+    z.name as zone_name,
     w.id as woreda_id,
-    w.woreda_name,
+    w.name as woreda_name,
     k.id as kebele_id,
-    k.kebele_name,
+    k.name as kebele_name,
     dg.id as devgroup_id,
     dg.group_name AS development_group_name,
-    dg.group_type AS development_group_type,
-    fl.farming_type,
-    fl.land_ownership,
+    dgt.group_type AS development_group_type,
+    fr.farming_type,
+    fr.land_ownership,
     fl.gps_coordinates,
     fl.location_of_plot,
     fl.latitude,
@@ -92,7 +92,7 @@ SELECT
     lb.id as breed_id,
     fcv.production_type AS crop_production_type
 FROM 
-    registry_farmerregistry AS fr
+    farmer_registry_farmerregistry AS fr
 LEFT JOIN 
     registry_kebele AS k ON fr.kebele_id = k.id
 LEFT JOIN 
@@ -102,21 +102,23 @@ LEFT JOIN
 LEFT JOIN 
     registry_region AS r ON z.region_id = r.id
 LEFT JOIN 
-    registry_farmland AS fl ON fr.id = fl.farmer_id
+    farmer_registry_farmland AS fl ON fr.id = fl.farmer_id
 LEFT JOIN 
-    registry_developmentgroup AS dg ON k.id = dg.kebele_id
+    farmer_registry_developmentgroup AS dg ON k.id = dg.kebele_id
 LEFT JOIN 
-    registry_farmerdevelopmentgroupmap AS fdm ON fr.id = fdm.farmer_id
+    farmer_registry_developmentgrouptypes AS dgt ON dg.group_type_id = dgt.id
 LEFT JOIN 
-    registry_farmerlivestockbreedmap AS flm ON fl.id = flm.farmland_id
+    farmer_registry_farmerdevelopmentgroupmap AS fdm ON fr.id = fdm.farmer_id
 LEFT JOIN 
-    registry_livestockbreed AS lb ON flm.breed_id_id = lb.id
+    farmer_registry_farmerlivestockbreedmap AS flm ON fl.id = flm.farmland_id
 LEFT JOIN 
-    registry_livestock AS l ON lb.livestock_id = l.id
+    farmer_registry_livestockbreed AS lb ON flm.breed_id_id = lb.id
 LEFT JOIN 
-    registry_farmercropvarietymap AS fcv ON fl.id = fcv.farmland_id
+    farmer_registry_livestock AS l ON lb.livestock_id = l.id
 LEFT JOIN 
-    registry_crop AS c ON fcv.crop_id = c.id;
+    farmer_registry_farmercropvarietymap AS fcv ON fl.id = fcv.farmland_id
+LEFT JOIN 
+    farmer_registry_crop AS c ON fcv.crop_id = c.id;
 
 """
 
