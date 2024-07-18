@@ -143,7 +143,7 @@ SELECT DISTINCT
     """
 }
 
-@st.cache_data(ttl=int(streamlit_cache_ttl))
+# @st.cache_data(ttl=int(streamlit_cache_ttl))
 def cached_data(query):
     return fetch_data(query)
 
