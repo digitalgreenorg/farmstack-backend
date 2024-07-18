@@ -184,7 +184,7 @@ queries={
 """
 }
 
-@st.cache_data(ttl=int(streamlit_cache_ttl))
+# @st.cache_data(ttl=int(streamlit_cache_ttl))
 def cached_data(query):
     return fetch_data(query)
 query_one_output = cached_data(queries["query_1"])
@@ -329,6 +329,11 @@ with tab1:
             df = df[df['value_chain_category_name'] == value_chain_category]
         if start_date:
             start_date_utc = pd.Timestamp(start_date, tz='UTC')
+             # Check if datetime is timezone aware
+            if df['created_at'].dt.tz is None:
+                df['created_at'] = df['created_at'].dt.tz_localize('UTC')
+            else:
+                df['created_at'] = df['created_at'].dt.tz_convert('UTC')
             df = df[(df['created_at'] >= start_date_utc) & (df['created_at'] <= today_utc)]
         return df
   
@@ -576,6 +581,11 @@ with tab2:
             df = df[df['value_chain_category_name'] == value_chain_category]
         if start_date:
             start_date_utc = pd.Timestamp(start_date, tz='UTC')
+                         # Check if datetime is timezone aware
+            if df['created_at'].dt.tz is None:
+                df['created_at'] = df['created_at'].dt.tz_localize('UTC')
+            else:
+                df['created_at'] = df['created_at'].dt.tz_convert('UTC')
             df = df[(df['created_at'] >= start_date_utc) & (df['created_at'] <= today_utc)]
         return df
     concatenated_output = filter_data_tab2(concatenated_output, selected_kebele, selected_da, selected_practice, selected_value_chain, selected_value_chain_category, start_date)
@@ -661,6 +671,11 @@ with tab3:
             df = df[df['value_chain_category_name'] == value_chain_category]
         if start_date:
             start_date_utc = pd.Timestamp(start_date, tz='UTC')
+                         # Check if datetime is timezone aware
+            if df['created_at'].dt.tz is None:
+                df['created_at'] = df['created_at'].dt.tz_localize('UTC')
+            else:
+                df['created_at'] = df['created_at'].dt.tz_convert('UTC')
             df = df[(df['created_at'] >= start_date_utc) & (df['created_at'] <= today_utc)]
         return df
     concatenated_output = filter_data_tab3(concatenated_output, selected_kebele, selected_da, selected_practice, selected_value_chain, selected_value_chain_category, start_date)

@@ -115,7 +115,7 @@ LEFT JOIN
     telegram_data tg ON tg.value_chain_id::uuid = vc.id AND tg.sub_practice_id::uuid = s.id
 """
 
-@st.cache_data(ttl=int(streamlit_cache_ttl))
+# @st.cache_data(ttl=int(streamlit_cache_ttl))
 def cached_data(query):
     return fetch_data(query)
 
@@ -171,100 +171,101 @@ with tab1:
     n_top = int(counts.split()[1]) 
     start_date_utc = pd.Timestamp(start_date, tz='UTC')
     filtered_df = df.copy() 
-    filtered_df = filtered_df[(filtered_df['created_at'] >= start_date_utc) & (filtered_df['created_at'] <= today_utc)]
+    if 'created_at' in df.columns and not df.empty and pd.api.types.is_datetime64_any_dtype(df['created_at']):
+        filtered_df = df[(df['created_at'] >= start_date_utc) & (df['created_at'] <= today_utc)]
+    if not filtered_df.empty:
+        st.subheader('Best Performing DAs - Farmer Reach')
+        da_reach_count = filtered_df.groupby(['DA Full Name', 'woreda_name']).agg(
+        male_reach_count=pd.NamedAgg(column='reach_id', aggfunc=lambda x: x[filtered_df.loc[x.index, 'gender'].str.lower() == 'male'].nunique()),
+        female_reach_count=pd.NamedAgg(column='reach_id', aggfunc=lambda x: x[filtered_df.loc[x.index, 'gender'].str.lower() == 'female'].nunique())).reset_index()
 
-    st.subheader('Best Performing DAs - Farmer Reach')
-    da_reach_count = filtered_df.groupby(['DA Full Name', 'woreda_name']).agg(
-    male_reach_count=pd.NamedAgg(column='reach_id', aggfunc=lambda x: x[filtered_df.loc[x.index, 'gender'].str.lower() == 'male'].nunique()),
-    female_reach_count=pd.NamedAgg(column='reach_id', aggfunc=lambda x: x[filtered_df.loc[x.index, 'gender'].str.lower() == 'female'].nunique())).reset_index()
+        da_reach_count['total_reach_count'] = da_reach_count['male_reach_count'] + da_reach_count['female_reach_count']
 
-    da_reach_count['total_reach_count'] = da_reach_count['male_reach_count'] + da_reach_count['female_reach_count']
+        top_das = da_reach_count.sort_values(by='total_reach_count', ascending=False).head(n_top)
+        top_das = top_das.rename(columns=column_mapping)
 
-    top_das = da_reach_count.sort_values(by='total_reach_count', ascending=False).head(n_top)
-    top_das = top_das.rename(columns=column_mapping)
+        top_das = top_das.reset_index(drop=True)
+        top_das.index = range(1, len(top_das) + 1)
 
-    top_das = top_das.reset_index(drop=True)
-    top_das.index = range(1, len(top_das) + 1)
-
-    with st.expander('**DAs with the highest number of farmer reach**', expanded=True):
-        st.dataframe(top_das, width=1000)
-
-
-    female_das = filtered_df[filtered_df['da_gender'].str.lower() == 'female']
-    female_da_reach_count = female_das.groupby(['DA Full Name', 'woreda_name']).apply(lambda x: pd.Series({
-        'male_reach_count': x[x['gender'].str.lower() == 'male']['reach_id'].nunique(),
-        'female_reach_count': x[x['gender'].str.lower() == 'female']['reach_id'].nunique()
-    })).reset_index()
-
-    female_da_reach_count['total_reach_count'] = female_da_reach_count['male_reach_count'] + female_da_reach_count['female_reach_count']
-    top_3_female_das = female_da_reach_count.sort_values(by='total_reach_count', ascending=False).head(n_top)
-    top_3_female_das = top_3_female_das.rename(columns=column_mapping)
+        with st.expander('**DAs with the highest number of farmer reach**', expanded=True):
+            st.dataframe(top_das, width=1000)
 
 
-    top_3_female_das=top_3_female_das.reset_index(drop=True)
-    top_3_female_das.index = range(1, len(top_3_female_das) + 1)
-    with st.expander('**Female Champion DA (Female DAs with the highest number of farmer reach)**', expanded=True):
-        st.dataframe(top_3_female_das,width=1000)
+        female_das = filtered_df[filtered_df['da_gender'].str.lower() == 'female']
+        female_da_reach_count = female_das.groupby(['DA Full Name', 'woreda_name']).apply(lambda x: pd.Series({
+            'male_reach_count': x[x['gender'].str.lower() == 'male']['reach_id'].nunique(),
+            'female_reach_count': x[x['gender'].str.lower() == 'female']['reach_id'].nunique()
+        })).reset_index()
+
+        female_da_reach_count['total_reach_count'] = female_da_reach_count['male_reach_count'] + female_da_reach_count['female_reach_count']
+        top_3_female_das = female_da_reach_count.sort_values(by='total_reach_count', ascending=False).head(n_top)
+        top_3_female_das = top_3_female_das.rename(columns=column_mapping)
 
 
-    # FEMALE FARMER ADVOCATES
-    female_farmer_reach = filtered_df[filtered_df['gender'].str.lower() == 'female']
-    female_farmer_reach_count = female_farmer_reach.groupby([ 'DA Full Name', 'woreda_name']).apply(lambda x: pd.Series({
-        'female_reach_count': x[x['gender'].str.lower() == 'female']['reach_id'].nunique()
-    })).reset_index()
+        top_3_female_das=top_3_female_das.reset_index(drop=True)
+        top_3_female_das.index = range(1, len(top_3_female_das) + 1)
+        with st.expander('**Female Champion DA (Female DAs with the highest number of farmer reach)**', expanded=True):
+            st.dataframe(top_3_female_das,width=1000)
 
-    top_3_female_advocates = female_farmer_reach_count.sort_values(by='female_reach_count', ascending=False).head(n_top)
-    top_3_female_advocates = top_3_female_advocates.rename(columns=column_mapping)
-    # st.write("**Female Farmer Advocates(DAs with the highest number of female reach)**")
-    top_3_female_advocates=top_3_female_advocates.reset_index(drop=True)
-    top_3_female_advocates.index = range(1, len(top_3_female_advocates) + 1)
-    with st.expander("**Female Farmer Advocates(DAs with the highest number of female reach)**",expanded=True):
-        st.dataframe(top_3_female_advocates,width=1000)
-    ######################################################
-    st.subheader("Best Performing DAs - Farmer Adoption")
 
-    da_adoption_count = filtered_df.groupby(['DA Full Name', 'woreda_name']).apply(lambda x: pd.Series({
-        'male_adoption_count': x[x['gender'].str.lower() == 'male']['adoption_id'].nunique(),
-        'female_adoption_count': x[x['gender'].str.lower() == 'female']['adoption_id'].nunique()
-    })).reset_index()
+        # FEMALE FARMER ADVOCATES
+        female_farmer_reach = filtered_df[filtered_df['gender'].str.lower() == 'female']
+        female_farmer_reach_count = female_farmer_reach.groupby([ 'DA Full Name', 'woreda_name']).apply(lambda x: pd.Series({
+            'female_reach_count': x[x['gender'].str.lower() == 'female']['reach_id'].nunique()
+        })).reset_index()
 
-    da_adoption_count['total_adoption_count'] = da_adoption_count['male_adoption_count'] + da_adoption_count['female_adoption_count']
+        top_3_female_advocates = female_farmer_reach_count.sort_values(by='female_reach_count', ascending=False).head(n_top)
+        top_3_female_advocates = top_3_female_advocates.rename(columns=column_mapping)
+        # st.write("**Female Farmer Advocates(DAs with the highest number of female reach)**")
+        top_3_female_advocates=top_3_female_advocates.reset_index(drop=True)
+        top_3_female_advocates.index = range(1, len(top_3_female_advocates) + 1)
+        with st.expander("**Female Farmer Advocates(DAs with the highest number of female reach)**",expanded=True):
+            st.dataframe(top_3_female_advocates,width=1000)
+        ######################################################
+        st.subheader("Best Performing DAs - Farmer Adoption")
 
-    top_adoption_das = da_adoption_count.sort_values(by='total_adoption_count', ascending=False).head(n_top)
-    top_adoption_das = top_adoption_das.rename(columns=column_mapping)
+        da_adoption_count = filtered_df.groupby(['DA Full Name', 'woreda_name']).apply(lambda x: pd.Series({
+            'male_adoption_count': x[x['gender'].str.lower() == 'male']['adoption_id'].nunique(),
+            'female_adoption_count': x[x['gender'].str.lower() == 'female']['adoption_id'].nunique()
+        })).reset_index()
 
-    top_adoption_das = top_adoption_das.reset_index(drop=True)
-    top_adoption_das.index = range(1, len(top_adoption_das) + 1)
+        da_adoption_count['total_adoption_count'] = da_adoption_count['male_adoption_count'] + da_adoption_count['female_adoption_count']
 
-    with st.expander("**DAs with the highest number of farmer adoption**", expanded=True):
-        st.dataframe(top_adoption_das, width=1000)
+        top_adoption_das = da_adoption_count.sort_values(by='total_adoption_count', ascending=False).head(n_top)
+        top_adoption_das = top_adoption_das.rename(columns=column_mapping)
 
-    female_das = filtered_df[filtered_df['da_gender'].str.lower() == 'female']
-    female_da_adoption_count = female_das.groupby([ 'DA Full Name', 'woreda_name']).apply(lambda x: pd.Series({
-        'male_adoption_count': x[x['gender'].str.lower() == 'male']['adoption_id'].nunique(),
-        'female_adoption_count': x[x['gender'].str.lower() == 'female']['adoption_id'].nunique()
-    })).reset_index()
+        top_adoption_das = top_adoption_das.reset_index(drop=True)
+        top_adoption_das.index = range(1, len(top_adoption_das) + 1)
 
-    female_da_adoption_count['total_adoption_count'] = female_da_adoption_count['male_adoption_count'] + female_da_adoption_count['female_adoption_count']
-    top_3_adoption_female_das = female_da_adoption_count.sort_values(by='total_adoption_count', ascending=False).head(n_top)
-    top_3_adoption_female_das=top_3_adoption_female_das.rename(columns=column_mapping)
-    # st.write("**FEMALE CHAMPION DA(Female DAs with the highest number of farmer adoption)**")
-    top_3_adoption_female_das=top_3_adoption_female_das.reset_index(drop=True)
-    top_3_adoption_female_das.index = range(1, len(top_3_adoption_female_das) + 1)
-    with st.expander("**Female Champion DA (Female DAs with the highest number of farmer adoption)**",expanded=True):
-        st.dataframe(top_3_adoption_female_das,width=1000)
-    ######################################################
+        with st.expander("**DAs with the highest number of farmer adoption**", expanded=True):
+            st.dataframe(top_adoption_das, width=1000)
 
-    female_da_female_adoption_count = female_das.groupby([ 'DA Full Name', 'woreda_name']).apply(lambda x: pd.Series({
-        'female_adoption_count': x[x['gender'].str.lower() == 'female']['adoption_id'].nunique()
-    })).reset_index()
+        female_das = filtered_df[filtered_df['da_gender'].str.lower() == 'female']
+        female_da_adoption_count = female_das.groupby([ 'DA Full Name', 'woreda_name']).apply(lambda x: pd.Series({
+            'male_adoption_count': x[x['gender'].str.lower() == 'male']['adoption_id'].nunique(),
+            'female_adoption_count': x[x['gender'].str.lower() == 'female']['adoption_id'].nunique()
+        })).reset_index()
 
-    top_3_advocates = female_da_female_adoption_count.sort_values(by='female_adoption_count', ascending=False).head(n_top)
-    top_3_advocates=top_3_advocates.rename(columns=column_mapping)
-    top_3_advocates=top_3_advocates.reset_index(drop=True)
-    top_3_advocates.index = range(1, len(top_3_advocates) + 1)
-    with st.expander('**Female Farmer Advocates (Female DAs with the highest number of farmer adoption)**',expanded=True):
-        st.dataframe(top_3_advocates,width=1000)
+        female_da_adoption_count['total_adoption_count'] = female_da_adoption_count['male_adoption_count'] + female_da_adoption_count['female_adoption_count']
+        top_3_adoption_female_das = female_da_adoption_count.sort_values(by='total_adoption_count', ascending=False).head(n_top)
+        top_3_adoption_female_das=top_3_adoption_female_das.rename(columns=column_mapping)
+        # st.write("**FEMALE CHAMPION DA(Female DAs with the highest number of farmer adoption)**")
+        top_3_adoption_female_das=top_3_adoption_female_das.reset_index(drop=True)
+        top_3_adoption_female_das.index = range(1, len(top_3_adoption_female_das) + 1)
+        with st.expander("**Female Champion DA (Female DAs with the highest number of farmer adoption)**",expanded=True):
+            st.dataframe(top_3_adoption_female_das,width=1000)
+        ######################################################
+
+        female_da_female_adoption_count = female_das.groupby([ 'DA Full Name', 'woreda_name']).apply(lambda x: pd.Series({
+            'female_adoption_count': x[x['gender'].str.lower() == 'female']['adoption_id'].nunique()
+        })).reset_index()
+
+        top_3_advocates = female_da_female_adoption_count.sort_values(by='female_adoption_count', ascending=False).head(n_top)
+        top_3_advocates=top_3_advocates.rename(columns=column_mapping)
+        top_3_advocates=top_3_advocates.reset_index(drop=True)
+        top_3_advocates.index = range(1, len(top_3_advocates) + 1)
+        with st.expander('**Female Farmer Advocates (Female DAs with the highest number of farmer adoption)**',expanded=True):
+            st.dataframe(top_3_advocates,width=1000)
 
 
 with tab2:
@@ -277,58 +278,60 @@ with tab2:
     start_date_utc = pd.Timestamp(start_date, tz='UTC')
     start_date_utc = pd.Timestamp(start_date, tz='UTC')
     filtered_df = df.copy() 
-    filtered_df = filtered_df[(filtered_df['created_at'] >= start_date_utc) & (filtered_df['created_at'] <= today_utc)]
-    st.subheader("Best Performing Administative units - Farmer Reach")
-    reach_count_sau = filtered_df.groupby(['kebele_id', 'kebele_name']).apply(lambda x: pd.Series({
-        'male_reach_count': x[x['gender'].str.lower() == 'male']['reach_id'].nunique(),
-        'female_reach_count': x[x['gender'].str.lower() == 'female']['reach_id'].nunique()
-    })).reset_index()
-    reach_count_sau['total_reach_count'] = reach_count_sau['male_reach_count'] + reach_count_sau['female_reach_count']
-    top_3_sau = reach_count_sau.sort_values(by='total_reach_count', ascending=False).head(n_top)
-    top_3_sau = top_3_sau.iloc[:, 1:]
-    top_3_sau=top_3_sau.rename(columns=column_mapping)
-    top_3_sau=top_3_sau.reset_index(drop=True)
-    top_3_sau.index = range(1, len(top_3_sau) + 1)
-    with st.expander("**Kebele With Highest Farmer Reach**",expanded=True):
-        st.dataframe(top_3_sau,width=1000)
+    if 'created_at' in df.columns and not df.empty and pd.api.types.is_datetime64_any_dtype(df['created_at']):
+        filtered_df = filtered_df[(filtered_df['created_at'] >= start_date_utc) & (filtered_df['created_at'] <= today_utc)]
+    if not filtered_df.empty:
+        st.subheader("Best Performing Administative units - Farmer Reach")
+        reach_count_sau = filtered_df.groupby(['kebele_id', 'kebele_name']).apply(lambda x: pd.Series({
+            'male_reach_count': x[x['gender'].str.lower() == 'male']['reach_id'].nunique(),
+            'female_reach_count': x[x['gender'].str.lower() == 'female']['reach_id'].nunique()
+        })).reset_index()
+        reach_count_sau['total_reach_count'] = reach_count_sau['male_reach_count'] + reach_count_sau['female_reach_count']
+        top_3_sau = reach_count_sau.sort_values(by='total_reach_count', ascending=False).head(n_top)
+        top_3_sau = top_3_sau.iloc[:, 1:]
+        top_3_sau=top_3_sau.rename(columns=column_mapping)
+        top_3_sau=top_3_sau.reset_index(drop=True)
+        top_3_sau.index = range(1, len(top_3_sau) + 1)
+        with st.expander("**Kebele With Highest Farmer Reach**",expanded=True):
+            st.dataframe(top_3_sau,width=1000)
 
-    reach_count_sau_female_only = filtered_df.groupby(['kebele_id', 'kebele_name']).apply(lambda x: pd.Series({
-        'female_reach_count': x[x['gender'].str.lower() == 'female']['reach_id'].nunique()
-    })).reset_index()
-    reach_count_sau_female_only['female_reach_count'] = reach_count_sau_female_only['female_reach_count'] 
-    top_3_sau_advocates= reach_count_sau_female_only.sort_values(by='female_reach_count', ascending=False).head(n_top)
-    top_3_sau_advocates=top_3_sau_advocates.iloc[:, 1:]
-    top_3_sau_advocates=top_3_sau_advocates.rename(columns=column_mapping)
-    top_3_sau_advocates=top_3_sau_advocates.reset_index(drop=True)
-    top_3_sau_advocates.index = range(1, len(top_3_sau_advocates) + 1)
-    with st.expander("**Female Farmer Advocates Kebele**",expanded=True):
-        st.dataframe(top_3_sau_advocates,width=1000)
+        reach_count_sau_female_only = filtered_df.groupby(['kebele_id', 'kebele_name']).apply(lambda x: pd.Series({
+            'female_reach_count': x[x['gender'].str.lower() == 'female']['reach_id'].nunique()
+        })).reset_index()
+        reach_count_sau_female_only['female_reach_count'] = reach_count_sau_female_only['female_reach_count'] 
+        top_3_sau_advocates= reach_count_sau_female_only.sort_values(by='female_reach_count', ascending=False).head(n_top)
+        top_3_sau_advocates=top_3_sau_advocates.iloc[:, 1:]
+        top_3_sau_advocates=top_3_sau_advocates.rename(columns=column_mapping)
+        top_3_sau_advocates=top_3_sau_advocates.reset_index(drop=True)
+        top_3_sau_advocates.index = range(1, len(top_3_sau_advocates) + 1)
+        with st.expander("**Female Farmer Advocates Kebele**",expanded=True):
+            st.dataframe(top_3_sau_advocates,width=1000)
 
-    st.subheader("Best Performing Administrative Unit- Farmer Adoption")
-    adoption_count_sau = filtered_df.groupby(['kebele_id', 'kebele_name']).apply(lambda x: pd.Series({
-        'male_adoption_count': x[x['gender'].str.lower() == 'male']['adoption_id'].nunique(),
-        'female_adoption_count': x[x['gender'].str.lower() == 'female']['adoption_id'].nunique()
-    })).reset_index()
-    adoption_count_sau['total_adoption_count'] = adoption_count_sau['male_adoption_count'] + adoption_count_sau['female_adoption_count']
-    top_3_sau_adoption = adoption_count_sau.sort_values(by='total_adoption_count', ascending=False).head(n_top)
-    top_3_sau_adoption=top_3_sau_adoption.iloc[:, 1:]
-    top_3_sau_adoption=top_3_sau_adoption.rename(columns=column_mapping)
-    top_3_sau_adoption=top_3_sau_adoption.reset_index(drop=True)
-    top_3_sau_adoption.index = range(1, len(top_3_sau_adoption) + 1)
-    with st.expander("**Kebele With Highest Farmer Adoption**",expanded=True):
-        st.dataframe(top_3_sau_adoption,width=1000)
+        st.subheader("Best Performing Administrative Unit- Farmer Adoption")
+        adoption_count_sau = filtered_df.groupby(['kebele_id', 'kebele_name']).apply(lambda x: pd.Series({
+            'male_adoption_count': x[x['gender'].str.lower() == 'male']['adoption_id'].nunique(),
+            'female_adoption_count': x[x['gender'].str.lower() == 'female']['adoption_id'].nunique()
+        })).reset_index()
+        adoption_count_sau['total_adoption_count'] = adoption_count_sau['male_adoption_count'] + adoption_count_sau['female_adoption_count']
+        top_3_sau_adoption = adoption_count_sau.sort_values(by='total_adoption_count', ascending=False).head(n_top)
+        top_3_sau_adoption=top_3_sau_adoption.iloc[:, 1:]
+        top_3_sau_adoption=top_3_sau_adoption.rename(columns=column_mapping)
+        top_3_sau_adoption=top_3_sau_adoption.reset_index(drop=True)
+        top_3_sau_adoption.index = range(1, len(top_3_sau_adoption) + 1)
+        with st.expander("**Kebele With Highest Farmer Adoption**",expanded=True):
+            st.dataframe(top_3_sau_adoption,width=1000)
 
-    adoption_count_sau_female_only = filtered_df.groupby(['kebele_id', 'kebele_name']).apply(lambda x: pd.Series({
-        'female_adoption_count': x[x['gender'].str.lower() == 'female']['reach_id'].nunique()
-    })).reset_index()
-    adoption_count_sau_female_only['female_adoption_count'] = adoption_count_sau_female_only['female_adoption_count'] 
-    top_3_sau_advocates_adoption= adoption_count_sau_female_only.sort_values(by='female_adoption_count', ascending=False).head(n_top)
-    top_3_sau_advocates_adoption=top_3_sau_advocates_adoption.rename(columns=column_mapping)
-    top_3_sau_advocates_adoption=top_3_sau_advocates_adoption.iloc[:, 1:]
-    top_3_sau_advocates_adoption=top_3_sau_advocates_adoption.reset_index(drop=True)
-    top_3_sau_advocates_adoption.index = range(1, len(top_3_sau_advocates_adoption) + 1)
-    with st.expander("**Female Farmer Advocates Kebele**",expanded=True):
-        st.dataframe(top_3_sau_advocates_adoption,width=1000)
+        adoption_count_sau_female_only = filtered_df.groupby(['kebele_id', 'kebele_name']).apply(lambda x: pd.Series({
+            'female_adoption_count': x[x['gender'].str.lower() == 'female']['reach_id'].nunique()
+        })).reset_index()
+        adoption_count_sau_female_only['female_adoption_count'] = adoption_count_sau_female_only['female_adoption_count'] 
+        top_3_sau_advocates_adoption= adoption_count_sau_female_only.sort_values(by='female_adoption_count', ascending=False).head(n_top)
+        top_3_sau_advocates_adoption=top_3_sau_advocates_adoption.rename(columns=column_mapping)
+        top_3_sau_advocates_adoption=top_3_sau_advocates_adoption.iloc[:, 1:]
+        top_3_sau_advocates_adoption=top_3_sau_advocates_adoption.reset_index(drop=True)
+        top_3_sau_advocates_adoption.index = range(1, len(top_3_sau_advocates_adoption) + 1)
+        with st.expander("**Female Farmer Advocates Kebele**",expanded=True):
+            st.dataframe(top_3_sau_advocates_adoption,width=1000)
    
 
 with tab3:
@@ -340,54 +343,57 @@ with tab3:
     start_date_utc = pd.Timestamp(start_date, tz='UTC')
     n_top = int(counts.split()[1])
     filtered_df = df.copy() 
-    filtered_df = filtered_df[(filtered_df['created_at'] >= start_date_utc) & (filtered_df['created_at'] <= today_utc)]
-    sorted_df = filtered_df.sort_values(by='access_count', ascending=False)
+    if 'created_at' in df.columns and not df.empty and pd.api.types.is_datetime64_any_dtype(df['created_at']):
+        filtered_df = filtered_df[(filtered_df['created_at'] >= start_date_utc) & (filtered_df['created_at'] <= today_utc)]
+    if not filtered_df.empty:    
+        sorted_df = filtered_df.sort_values(by='access_count', ascending=False)
 
-    top_10_access_counts = sorted_df[['value_chain_name', 'practice_name', 'access_count']]
-    top_10_unique_access_counts = top_10_access_counts.drop_duplicates(subset=['value_chain_name', 'practice_name']).head(n_top)
-    top_10_unique_access_counts=top_10_unique_access_counts.rename(columns=column_mapping)
+        top_10_access_counts = sorted_df[['value_chain_name', 'practice_name', 'access_count']]
+        top_10_unique_access_counts = top_10_access_counts.drop_duplicates(subset=['value_chain_name', 'practice_name']).head(n_top)
+        top_10_unique_access_counts=top_10_unique_access_counts.rename(columns=column_mapping)
 
-    top_10_unique_access_counts=top_10_unique_access_counts.reset_index(drop=True)
-    top_10_unique_access_counts.index = range(1, len(top_10_unique_access_counts) + 1)
-    st.subheader("**Popular Advisory Content**")
-    with st.expander("**Frequently accessed advisories**",expanded=True):
-        st.dataframe(top_10_unique_access_counts,width=1000)
-    
-    # filtered_df = df.copy() 
-    filtered_df = filtered_df[(filtered_df['created_at'] >= start_date_utc) & (filtered_df['created_at'] <= today_utc)]
+        top_10_unique_access_counts=top_10_unique_access_counts.reset_index(drop=True)
+        top_10_unique_access_counts.index = range(1, len(top_10_unique_access_counts) + 1)
+        st.subheader("**Popular Advisory Content**")
+        with st.expander("**Frequently accessed advisories**",expanded=True):
+            st.dataframe(top_10_unique_access_counts,width=1000)
+        
+        # filtered_df = df.copy() 
+        if 'created_at' in df.columns and not df.empty and pd.api.types.is_datetime64_any_dtype(df['created_at']):
+            filtered_df = filtered_df[(filtered_df['created_at'] >= start_date_utc) & (filtered_df['created_at'] <= today_utc)]
 
-    # Calculate reach count for practices
-    practice_reach_count = filtered_df.groupby(['value_chain_name', 'practice_name']).apply(lambda x: pd.Series({
-        'male_reach_count': x[x['gender'].str.lower() == 'male']['reach_id'].nunique(),
-        'female_reach_count': x[x['gender'].str.lower() == 'female']['reach_id'].nunique()
-    })).reset_index()
+        # Calculate reach count for practices
+        practice_reach_count = filtered_df.groupby(['value_chain_name', 'practice_name']).apply(lambda x: pd.Series({
+            'male_reach_count': x[x['gender'].str.lower() == 'male']['reach_id'].nunique(),
+            'female_reach_count': x[x['gender'].str.lower() == 'female']['reach_id'].nunique()
+        })).reset_index()
 
-    practice_reach_count['total_reach_count'] = practice_reach_count['male_reach_count'] + practice_reach_count['female_reach_count']
+        practice_reach_count['total_reach_count'] = practice_reach_count['male_reach_count'] + practice_reach_count['female_reach_count']
 
-    # Top 3 practices with the highest total reach count
-    top_3_practices_reach = practice_reach_count.sort_values(by='total_reach_count', ascending=False).head(n_top)
-    top_3_practices_reach = top_3_practices_reach.rename(columns=column_mapping)
-    top_3_practices_reach = top_3_practices_reach.reset_index(drop=True)
-    top_3_practices_reach.index = range(1, len(top_3_practices_reach) + 1)
+        # Top 3 practices with the highest total reach count
+        top_3_practices_reach = practice_reach_count.sort_values(by='total_reach_count', ascending=False).head(n_top)
+        top_3_practices_reach = top_3_practices_reach.rename(columns=column_mapping)
+        top_3_practices_reach = top_3_practices_reach.reset_index(drop=True)
+        top_3_practices_reach.index = range(1, len(top_3_practices_reach) + 1)
 
-    # Display the result
-    with st.expander("**High Farmer Reach Practices: (Practices with the highest reach count)**", expanded=True):
-        st.dataframe(top_3_practices_reach, width=1000)
+        # Display the result
+        with st.expander("**High Farmer Reach Practices: (Practices with the highest reach count)**", expanded=True):
+            st.dataframe(top_3_practices_reach, width=1000)
 
-    # Calculate adoption count for practices
-    practice_adoption_count = filtered_df.groupby(['value_chain_name', 'practice_name']).apply(lambda x: pd.Series({
-        'male_adoption_count': x[x['gender'].str.lower() == 'male']['adoption_id'].nunique(),
-        'female_adoption_count': x[x['gender'].str.lower() == 'female']['adoption_id'].nunique()
-    })).reset_index()
+        # Calculate adoption count for practices
+        practice_adoption_count = filtered_df.groupby(['value_chain_name', 'practice_name']).apply(lambda x: pd.Series({
+            'male_adoption_count': x[x['gender'].str.lower() == 'male']['adoption_id'].nunique(),
+            'female_adoption_count': x[x['gender'].str.lower() == 'female']['adoption_id'].nunique()
+        })).reset_index()
 
-    practice_adoption_count['total_adoption_count'] = practice_adoption_count['male_adoption_count'] + practice_adoption_count['female_adoption_count']
+        practice_adoption_count['total_adoption_count'] = practice_adoption_count['male_adoption_count'] + practice_adoption_count['female_adoption_count']
 
-    # Top 3 practices with the highest total adoption count
-    top_3_practices_adoption = practice_adoption_count.sort_values(by='total_adoption_count', ascending=False).head(n_top)
-    top_3_practices_adoption = top_3_practices_adoption.rename(columns=column_mapping)
-    top_3_practices_adoption = top_3_practices_adoption.reset_index(drop=True)
-    top_3_practices_adoption.index = range(1, len(top_3_practices_adoption) + 1)
+        # Top 3 practices with the highest total adoption count
+        top_3_practices_adoption = practice_adoption_count.sort_values(by='total_adoption_count', ascending=False).head(n_top)
+        top_3_practices_adoption = top_3_practices_adoption.rename(columns=column_mapping)
+        top_3_practices_adoption = top_3_practices_adoption.reset_index(drop=True)
+        top_3_practices_adoption.index = range(1, len(top_3_practices_adoption) + 1)
 
-    # Display the result
-    with st.expander("**High Farmer Adoption Practices**", expanded=True):
-        st.dataframe(top_3_practices_adoption, width=1000)
+        # Display the result
+        with st.expander("**High Farmer Adoption Practices**", expanded=True):
+            st.dataframe(top_3_practices_adoption, width=1000)
