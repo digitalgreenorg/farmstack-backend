@@ -84,10 +84,25 @@ def cached_data(query):
 
 
 df = cached_data(query)
-df['created_at'] = pd.to_datetime(df['created_at'])
+# df['created_at'] = pd.to_datetime(df['created_at'])
 
-min_created_at = df['created_at'].min()
-max_created_at = df['created_at'].max()
+# min_created_at = df['created_at'].min()
+# max_created_at = df['created_at'].max()
+# Convert 'created_at' to datetime and handle errors
+
+df['created_at'] = pd.to_datetime(df['created_at'], errors='coerce')
+
+# Define default dates in case of error
+default_min_date = datetime.datetime(2020, 1, 1)
+default_max_date = datetime.datetime.now()
+
+# Handle possible NaT values
+min_created_at = df['created_at'].min() if not df['created_at'].isna().all() else default_min_date
+max_created_at = df['created_at'].max() if not df['created_at'].isna().all() else default_max_date
+
+# Ensure min_created_at and max_created_at are valid
+min_created_at = min_created_at if pd.notna(min_created_at) else default_min_date
+max_created_at = max_created_at if pd.notna(max_created_at) else default_max_date
 
 col1, col2 = st.columns(2)
 
