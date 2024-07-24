@@ -276,3 +276,5 @@ xmltodict==0.13.0
 yarl==1.9.3
 zipp==3.11.0
 qdrant-client==1.9.1
+boto3
+django-storages

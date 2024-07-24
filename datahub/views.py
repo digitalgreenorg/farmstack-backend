@@ -3867,3 +3867,18 @@ class MessagesCreateViewSet(generics.ListCreateAPIView):
         page = self.paginate_queryset(queryset)
         serializer = MessagesChunksRetriveSerializer(page, many=True)
         return self.get_paginated_response(serializer.data)
+
+
+
+# old_base_url = 'users/resources/'
+# new_base_url = f'https://{settings.AWS_S3_CUSTOM_DOMAIN}/users/resources/'
+
+# resources = ResourceFile.objects.all()
+# total = len(resources)
+# for index, resource in enumerate(resources):
+#     print(f"{index} completed out of {total}")
+#     if resource.file.name.startswith('users/resources/'):
+#         old_path = resource.file.name
+#         new_path = old_path.replace(old_base_url, new_base_url)
+#         resource.file.name = new_path
+#         resource.save()
