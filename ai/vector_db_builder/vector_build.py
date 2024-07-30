@@ -31,7 +31,7 @@ from contextlib import contextmanager
 from celery import shared_task
 
 LOGGING = logging.getLogger(__name__)
-semantic_chunking = True
+semantic_chunking = False
 
 @shared_task
 def create_vector_db(resource_file, chunk_size=1000, chunk_overlap=200):
