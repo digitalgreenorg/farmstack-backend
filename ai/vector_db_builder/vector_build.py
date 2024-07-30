@@ -57,7 +57,7 @@ def create_vector_db(resource_file, chunk_size=1000, chunk_overlap=200):
             else:
                 texts = split_documents(documents, chunk_size, chunk_overlap)
                 LOGGING.info(f"Documents split completed for Resource ID: {resource_id}")
-                embedded_chunk_status = get_embeddings(texts, resource_file, str(resource_id))
+                embedded_chunk_status = get_embeddings(texts, resource_file, str(resource_id), False)
         if not embedded_chunk_status:
             status = "failed"
         data = ResourceFile.objects.filter(id=resource_id).update(
