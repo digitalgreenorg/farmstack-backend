@@ -78,9 +78,10 @@ def build_pdf( transcript, local_file_path):
     return None
 
 def resolve_file_path(file):
-    domain = os.environ.get(Constants.DATAHUB_SITE, Constants.DATAHUB_DOMAIN)
-    return file.replace("http://127.0.0.1:8000", domain) if file.startswith(domain) or file.startswith("http://127.0.0.1:8000") else domain + file
-
+    # domain = os.environ.get(Constants.DATAHUB_SITE, Constants.DATAHUB_DOMAIN)
+    # return file.replace("http://127.0.0.1:8000", domain) if file.startswith(domain) or file.startswith("http://127.0.0.1:8000") else domain + file
+    return file
+    
 def chat_history_formated(chat_history):
     complete_chat_history =(f""" 
     Human: {chat_history.query or ''} 
