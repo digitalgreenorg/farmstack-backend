@@ -417,7 +417,7 @@ def extract_text_id_score(search_data):
 
 def qdrant_collection_scroll(resource_file_id, country='', state='' , category='',limit=20):
     collection_name = qdrant_settings.get('COLLECTION_NAME')
-    qdrant_client, points = create_qdrant_client(collection_name)
+    qdrant_client = create_qdrant_client(collection_name)
     filter_conditions = []
 
     try:
@@ -452,7 +452,7 @@ def qdrant_embeddings_delete_file_id(resource_file_ids):
     collection_name = qdrant_settings.get('COLLECTION_NAME')
     client = QdrantClient(url=qdrant_settings.get('HOST'), port=qdrant_settings.get(
         'QDRANT_PORT_HTTP'), grpc_port=qdrant_settings.get('PORT_GRPC'), prefer_grpc=qdrant_settings.get('GRPC_CONNECT'))
-    qdrant_client, points = create_qdrant_client(collection_name)
+    qdrant_client = create_qdrant_client(collection_name)
     resource_file_ids = [str(row) for row in resource_file_ids]
     filter_conditions = []
     filter_conditions.append(FieldCondition(key="resource_file", match=MatchAny(any=resource_file_ids)))
@@ -470,7 +470,7 @@ def qdrant_embeddings_delete_file_id(resource_file_ids):
 
 def qdrant_collection_get_by_file_id(resource_file_id, page=1):
     collection_name = qdrant_settings.get('COLLECTION_NAME')
-    qdrant_client, points = create_qdrant_client(collection_name)
+    qdrant_client = create_qdrant_client(collection_name)
     try:
         search_data = qdrant_client.scroll(
                 collection_name=collection_name,
