@@ -74,6 +74,7 @@ def get_embeddings(docs, resource, file_id, chunking_strategy=None):
                     embedded_data[idx+start]["context-type"] = "table/pdf"
                 else:
                     embedded_data[idx+start]["context-type"] = "text/pdf"
+                if chunking_strategy:
                     embedded_data[idx+start]["topic"] = docs[idx+start].get('topic')
                 embedded_data[idx+start]["states"] = resource.get("states",'')
                 embedded_data[idx+start]["districts"] = resource.get("districts",'')
