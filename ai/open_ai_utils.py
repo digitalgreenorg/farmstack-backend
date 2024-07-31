@@ -1,19 +1,36 @@
 # from langchain.document_loaders import PdfLoader
 import logging
-from urllib.parse import quote_plus
 import uuid
+from urllib.parse import quote_plus
+
 import openai
 from django.db import models
 from django.db.models import Subquery
 from django.db.models.functions import Cast
-from qdrant_client import QdrantClient
-from qdrant_client.http.models import Distance, VectorParams, PointStruct, HnswConfigDiff, PayloadSchemaType, Filter, FieldCondition, MatchValue, MatchAny
 from dotenv import load_dotenv
 from langchain.embeddings.openai import OpenAIEmbeddings
 from pgvector.django import CosineDistance
+from qdrant_client import QdrantClient
+from qdrant_client.http.models import (
+    Distance,
+    FieldCondition,
+    Filter,
+    HnswConfigDiff,
+    MatchAny,
+    MatchValue,
+    PayloadSchemaType,
+    PointStruct,
+    VectorParams,
+)
+
 from core import settings
 from core.constants import Constants
-from datahub.models import LangchainPgCollection, LangchainPgEmbedding, ResourceFile, SubCategory
+from datahub.models import (
+    LangchainPgCollection,
+    LangchainPgEmbedding,
+    ResourceFile,
+    SubCategory,
+)
 from utils.pgvector import PGVector
 
 LOGGING = logging.getLogger(__name__)
@@ -385,7 +402,7 @@ def query_qdrant_collection(resource_file_ids, query, country, state, district, 
             collection_name=collection_name,
             query_vector=vector,
             query_filter=youtube_filter,
-            score_threshold=default_threshold,
+            score_threshold=0.8,
             limit=2
         )
         yotube_url=[item[1]["source"] for result in search_youtube_data for item in result if item[0] == "payload"]
