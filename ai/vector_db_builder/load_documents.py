@@ -28,7 +28,7 @@ class LoadDocuments:
             return UnstructuredHTMLLoader(file.replace('http://localhost:8000/', "")), 'html'
         elif file.endswith(".docx"):
             LOGGING.info(f"docx file loader started for file: {file}")
-            return UnstructuredWordDocumentLoader("media"+file.replace('http://localhost:8000/', "").split("media")[1]), 'docx'
+            return UnstructuredWordDocumentLoader(file.replace('http://localhost:8000/', "")), 'pdf'
         elif file.endswith(".txt"):
             LOGGING.info(f"httxtml file loader started for file: {file}")
 
