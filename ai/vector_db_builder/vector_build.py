@@ -1,21 +1,11 @@
-import tempfile
-import logging
-import re
-from bs4 import BeautifulSoup
-from ai.open_ai_utils import get_embeddings, create_embedding, get_topic
-from ai.vector_db_builder.load_audio_and_video import LoadAudioAndVideo
-from ai.utils import build_pdf, download_file, resolve_file_path
-from ai.vector_db_builder.load_documents import LoadDocuments
-from ai.vector_db_builder.load_website import WebsiteLoader
-from unstructured.partition.pdf import partition_pdf
-from unstructured.staging.base import elements_to_dicts
-from sklearn.metrics.pairwise import cosine_similarity
-from core.constants import Constants
-import numpy as np 
-from core import settings
-from datahub.models import ResourceFile
 import logging
 import os
+import re
+import tempfile
+from contextlib import contextmanager
+
+import numpy as np
+from bs4 import BeautifulSoup
 from langchain.document_loaders import (
     BSHTMLLoader,
     CSVLoader,
@@ -23,12 +13,20 @@ from langchain.document_loaders import (
     PyMuPDFLoader,
     UnstructuredHTMLLoader,
 )
+from langchain.text_splitter import RecursiveCharacterTextSplitter
+from sklearn.metrics.pairwise import cosine_similarity
+from unstructured.partition.pdf import partition_pdf
+from unstructured.staging.base import elements_to_dicts
 
-from langchain.text_splitter import (
-    RecursiveCharacterTextSplitter,
-)
-from contextlib import contextmanager
+from ai.open_ai_utils import create_embedding, get_embeddings, get_topic
+from ai.utils import build_pdf, download_file, resolve_file_path
+from ai.vector_db_builder.load_audio_and_video import LoadAudioAndVideo
+from ai.vector_db_builder.load_documents import LoadDocuments
+from ai.vector_db_builder.load_website import WebsiteLoader
 from celery import shared_task
+from core import settings
+from core.constants import Constants
+from datahub.models import ResourceFile
 
 LOGGING = logging.getLogger(__name__)
 semantic_chunking = False
@@ -82,7 +80,7 @@ def load_documents(url, file, doc_type, id, transcription=""):
             absolute_path = os.path.join(settings.MEDIA_ROOT, file.replace("/media/", ''))
             loader = JSONLoader(file_path=absolute_path,  jq_schema='.', text_content=False)
             return loader.load(), "completed"
-        elif doc_type in ['youtube', 'pdf', 'website', "file"]:
+        elif doc_type in ['youtube', 'pdf', 'website']:
             with temporary_file(suffix=".pdf") as temp_pdf_path:
                 if doc_type == 'youtube':
                     if not transcription:
@@ -96,10 +94,7 @@ def load_documents(url, file, doc_type, id, transcription=""):
                 elif doc_type == 'pdf':
                     download_file(url, temp_pdf_path)
                     loader = PyMuPDFLoader(temp_pdf_path)  # Assuming PyMuPDFLoader is defined elsewhere
-                elif doc_type == 'file':
-                    file_path = resolve_file_path(file)
-                    print(file_path)
-                    loader, format = LoadDocuments().load_by_file_extension(file_path, temp_pdf_path)
+                
                 elif doc_type == "website":
                     doc_text = ""
                     web_site_loader = WebsiteLoader()
@@ -109,6 +104,11 @@ def load_documents(url, file, doc_type, id, transcription=""):
                     build_pdf(all_content.replace("\n", " "), temp_pdf_path)
                     loader = PyMuPDFLoader(temp_pdf_path)  # Assuming PyMuPDFLoader is defined elsewhere
                 return loader.load(), "completed"
+        elif doc_type == 'file':
+            file_path = resolve_file_path(file)
+            print(file_path)
+            loader, format = LoadDocuments().load_by_file_extension(file_path)
+            return loader,  "completed"
         else:
             LOGGING.error(f"Unsupported input type: {doc_type}")
             return f"Unsupported input type: {doc_type}", "failed"
