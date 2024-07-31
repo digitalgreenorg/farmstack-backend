@@ -1,38 +1,82 @@
 import logging
 import os
-from core.constants import Constants
+import tempfile
+
+import requests
+from docx import Document
 from langchain.document_loaders import (
     CSVLoader,
     PyMuPDFLoader,
-    UnstructuredHTMLLoader,
     TextLoader,
-    UnstructuredWordDocumentLoader
+    UnstructuredHTMLLoader,
+    UnstructuredWordDocumentLoader,
 )
-from docx import Document
+
+from core.constants import Constants
 
 LOGGING = logging.getLogger(__name__)
+from contextlib import contextmanager
+
+
+@contextmanager
+def temporary_file(suffix=""):
+    """Context manager for creating and automatically deleting a temporary file."""
+    """Context manager for creating and automatically deleting a temporary file."""
+    fd, path = tempfile.mkstemp(suffix=suffix)
+    try:
+        os.close(fd)  # Close file descriptor
+        LOGGING.info(f"Temporary file created at {path}")
+        yield path
+    finally:
+        # Check if the file still exists before attempting to delete
+        if os.path.exists(path):
+            os.remove(path)
+            LOGGING.info(f"Temporary file {path} deleted.")
+
 
 class LoadDocuments:
 
-    def load_by_file_extension(self, file, temp_pdf):
+    def load_by_file_extension(self, file):
         if file.endswith(".pdf"):
             LOGGING.info(f"pdf file loader started for file: {file}")
-            return PyMuPDFLoader(file.replace('http://localhost:8000/', "")), 'pdf'
+            return PyMuPDFLoader(file.replace('http://localhost:8000/', "")).load(), 'pdf'
         elif file.endswith(".csv"):
-            LOGGING.info(f"CSV file loader started for file: {file}")
-
-            return CSVLoader(file_path=file.replace('http://localhost:8000/', ""), source_column="Title"), 'csv'
+            with temporary_file(suffix=".csv") as temp_pdf_path:
+                response = requests.get(file)
+                if response.status_code == 200:
+                    with open(temp_pdf_path, 'wb') as f:
+                        f.write(response.content)
+                    local_file = temp_pdf_path
+                LOGGING.info(f"CSV file loader started for file: {file}")
+                return CSVLoader(file_path=local_file, source_column="Title").load(), 'csv'
         elif file.endswith(".html"):
-            LOGGING.info(f"html file loader started for file: {file}")
+             with temporary_file(suffix=".html") as temp_pdf_path:
+                response = requests.get(file)
+                if response.status_code == 200:
+                    with open(temp_pdf_path, 'wb') as f:
+                        f.write(response.content)
+                    local_file = temp_pdf_path
+                LOGGING.info(f"html file loader started for file: {file}")
 
-            return UnstructuredHTMLLoader(file.replace('http://localhost:8000/', "")), 'html'
+                return UnstructuredHTMLLoader(local_file).load(), 'html'
         elif file.endswith(".docx"):
-            LOGGING.info(f"docx file loader started for file: {file}")
-            return UnstructuredWordDocumentLoader("media"+file.replace('http://localhost:8000/', "").split("media")[1]), 'docx'
+            with temporary_file(suffix=".docx") as temp_pdf_path:
+                response = requests.get(file)
+                if response.status_code == 200:
+                    with open(temp_pdf_path, 'wb') as f:
+                        f.write(response.content)
+                    local_file = temp_pdf_path
+                LOGGING.info(f"docx file loader started for file: {file}")
+                return UnstructuredWordDocumentLoader(local_file).load(), 'pdf'
         elif file.endswith(".txt"):
-            LOGGING.info(f"httxtml file loader started for file: {file}")
-
-            return TextLoader(file.replace('http://localhost:8000/', "")), 'txt'
+            with temporary_file(suffix=".txt") as temp_pdf_path:
+                response = requests.get(file)
+                if response.status_code == 200:
+                    with open(temp_pdf_path, 'wb') as f:
+                        f.write(response.content)
+                    local_file = temp_pdf_path
+                LOGGING.info(f"txt file loader started for file: {file}")
+                return TextLoader(local_file).load(), 'txt'
 
  
     def handle_text_file(self, file_path):
