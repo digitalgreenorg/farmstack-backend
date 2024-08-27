@@ -186,7 +186,12 @@ AWS_DEFAULT_ACL = None
 AWS_QUERYSTRING_AUTH = False
 # URL of your S3 bucket
 AWS_S3_CUSTOM_DOMAIN = f'{AWS_STORAGE_BUCKET_NAME}.s3.amazonaws.com'
-MEDIA_URL = f'https://{AWS_S3_CUSTOM_DOMAIN}/'
+if os.environ.get("STORAGE", "s3") == "s3":
+    MEDIA_URL = f'https://{AWS_S3_CUSTOM_DOMAIN}/'
+else:
+    MEDIA_ROOT = os.path.join(BASE_DIR, "media")
+    MEDIA_URL = "media/"
+
 MEDIA_ROOT = MEDIA_URL
 
 # MEDIA_ROOT = os.path.join(BASE_DIR, "media")
