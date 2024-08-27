@@ -127,7 +127,7 @@ The instructions to set up a FarmStack “Development instance” are given here
 
 ## Production Deployment plan
 The document explains the ‘Installation of FarmStack’ instance and setting up of steward and onboarding participants.
-- [FS Deployment plan](docs/deployment_plan.md)
+- [FS Deployment plan](docs/prod_deployment.md)
 
 # Maintenance and Support
 
