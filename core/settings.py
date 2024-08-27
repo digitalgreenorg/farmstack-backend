@@ -68,7 +68,7 @@ INSTALLED_APPS = [
     "participant",
     "microsite",
     "connectors",
-    "django_apscheduler"
+    # "django_apscheduler"
 ]
 # Use nose to run all tests
 TEST_RUNNER = "django_nose.NoseTestSuiteRunner"
