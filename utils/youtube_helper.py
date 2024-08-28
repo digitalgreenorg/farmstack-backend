@@ -51,9 +51,9 @@ def get_youtube_url(url):
         LOGGER.info(f"This is a YouTube playlist URL: {url}")
         return fetch_playlist_videos(query_string['list'][0])
     elif parsed_url.path == '/watch' and 'v' in query_string:
-        yt = YouTube(url)
+        video_id = query_string['v'][0]
         LOGGER.info(f"This is a YouTube video URL: {url}")
-        return Response([{"url": url, "title": yt.title}], safe=False)
+        return fetch_video_details(video_id)
     elif '/channel/' in parsed_url.path or '/user/' in parsed_url.path or '/c/' in parsed_url.path or '@' in parsed_url.path:
         channel_id = extract_channel_id(parsed_url)
         if channel_id:
@@ -97,6 +97,23 @@ def fetch_channel_id_by_handle(handle):
         LOGGER.error(f"Error fetching channel ID by handle: {e}")
         return None
 
+def fetch_video_details(video_id):
+    try:
+        video_response = youtube.videos().list(
+            part='snippet',
+            id=video_id
+        ).execute()
+
+        if not video_response['items']:
+            return Response(f"No video found for ID {video_id}", status=404, safe=False)
+
+        video_title = video_response['items'][0]['snippet']['title']
+        video_url = f"https://www.youtube.com/watch?v={video_id}"
+
+        return Response([{"url": video_url, "title": video_title}], safe=False)
+    except Exception as e:
+        LOGGER.error(f"Error fetching video details: {e}")
+        return Response(f"Error fetching video details: {str(e)}", status=500, safe=False)
 
 def fetch_channel_id_by_username(username):
     try:
