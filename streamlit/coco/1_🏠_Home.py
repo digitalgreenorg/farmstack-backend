@@ -32,7 +32,7 @@ from utils.common_utils import populate_dropdown
 
 # Set up Streamlit page configuration
 st.set_page_config(
-    layout="wide",
+    layout="wide",  
     initial_sidebar_state="auto",
     page_title="COCO Dashboard",
     page_icon=None
@@ -243,11 +243,11 @@ def main():
 
         
     with col10:
-        st.write("% of farmers attending video screening, by gender")
+        st.write("% of Farmers Attending Video Screenings, by Gender")
         st.dataframe(sorted_df_1, hide_index=True, use_container_width=True)
 
     with col11:
-        st.write("Adoption rate by gender")
+        st.write("Adoption Rate by Gender")
         st.dataframe(sorted_df_2, hide_index=True, use_container_width=True)
 
 
@@ -260,15 +260,16 @@ def main():
         videos_produced_query_number = videos_produced_query[0][0]
     if farmer_group_reached_query and len(farmer_group_reached_query) > 0 and len(farmer_group_reached_query[0]) > 0:
         farmer_group_reached_query_number = farmer_group_reached_query[0][0]
+
     card_data = [
-        ("Unique number of farmers who attended screenings", unique_farmers_attended_screenings_query),
-        ("Count total of all screening farmers", total_screening_farmers_query),
-        ("Number of Unique farmers adopting at least one practice", unique_farmers_adopting_practice_query),
-        ("Number of adoption by farmers", adoption_by_farmers_query),
-        ("Number of unique screenings", unique_screenings_query_number),
-        ("Number of videos shown in screenings", videos_shown_in_screenings_query_number),
-        ("Number of videos produced in selected period and location", videos_produced_query_number),
-        ("Farmers group reached", farmer_group_reached_query_number)
+        ("Unique Farmers Who Attended Video Screenings", unique_farmers_attended_screenings_query),
+        ("Total Number of Farmers Who Attended Video Screenings", total_screening_farmers_query),
+        ("Unique Farmers Adopting At Least One Practice", unique_farmers_adopting_practice_query),
+        ("Total Number of Adoptions by Farmers", adoption_by_farmers_query),
+        ("Total Number of Unique Screenings", unique_screenings_query_number),
+        ("Total Number of Videos Shown in Screenings", videos_shown_in_screenings_query_number),
+        ("Total Number of Videos Produced in Selected Period and Location", videos_produced_query_number),
+        ("Total Number of Farmers Groups Reached", farmer_group_reached_query_number)
     ]
 
     # Display cards in card_columns

@@ -119,7 +119,7 @@ def farmers_list():
         with unique_number_of_farmers_col:
             st.markdown(
                 f'<div class="card">'
-                f'<div class="title">Number of unique farmers participated</div>'
+                f'<div class="title">Number Of Unique Farmers Participated</div>'
                 f'<div class="sub-title"><span class="bullet_green">&#8226;</span> {total_unique_farmers:,}</div>'
                 f'</div>',
                 unsafe_allow_html=True
@@ -139,7 +139,7 @@ def farmers_list():
         with total_number_of_farmers_participation_col:
             st.markdown(
                 f'<div class="card">'
-                f'<div class="title">Total number of farmers participation</div>'
+                f'<div class="title">Total Number of Farmers Participations</div>'
                 f'<div class="sub-title"><span class="bullet_green">&#8226;</span> {total_farmers_participations:,}</div>'
                 f'</div>',
                 unsafe_allow_html=True
