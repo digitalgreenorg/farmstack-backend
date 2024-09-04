@@ -85,10 +85,10 @@ def videos_list():
         total_languages_count = 0
 
     with number_of_videos_col:
-        st.markdown(f'<div class="card"><div class="title">Total videos produced</div><div class="sub-title"><span class="bullet_green">&#8226;</span> {total_videos_count:,}</div></div>', unsafe_allow_html=True)
+        st.markdown(f'<div class="card"><div class="title">Total Videos Produced</div><div class="sub-title"><span class="bullet_green">&#8226;</span> {total_videos_count:,}</div></div>', unsafe_allow_html=True)
 
     with number_of_languages_col:
-        st.markdown(f'<div class="card"><div class="title">Total languages used in video production</div><div class="sub-title"><span class="bullet_green">&#8226;</span> {total_languages_count:,}</div></div>', unsafe_allow_html=True)
+        st.markdown(f'<div class="card"><div class="title">Total Languages Used In Video Production</div><div class="sub-title"><span class="bullet_green">&#8226;</span> {total_languages_count:,}</div></div>', unsafe_allow_html=True)
 
     # Fetch video data
     query = getVideosList(start_date, end_date, selected_state, selected_district, selected_block, selected_village, page=st.session_state.page, items_per_page=items_per_page)
