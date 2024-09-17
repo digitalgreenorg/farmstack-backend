@@ -122,14 +122,14 @@ DATABASES = {
         "USER": os.environ.get("POSTGRES_USER", "postgres"),
         "PASSWORD": os.environ.get("POSTGRES_PASSWORD", "test"),
         "HOST": os.environ.get("POSTGRES_HOST", "db"),
-        "PORT": os.environ.get("POSTGRES_PORT", "5432"),
+        "PORT": os.environ.get("POSTGRES_PORT", "7000"),
         "OPTIONS": {
             "client_encoding": "UTF8",
         },
     },
     "vector_db":{
         "NAME":"QDRANT",
-        "HOST":os.environ.get("QDRANT_HOST", "localhost"),
+        "HOST":os.environ.get("QDRANT_HOST", "test"),
         "PORT_GRPC":os.environ.get("QDRANT_PORT_GRPC", "5439"),
         "PORT_HTTP":os.environ.get("QDRANT_PORT_HTTP", "5438"),
         "GRPC_CONNECT":os.environ.get("GRPC_CONNECT", True),
@@ -438,3 +438,12 @@ YOUTUBE_API_KEY = os.environ.get("YOUTUBE_API_KEY",'')
 CELERY_BROKER_URL = os.environ.get("CELERY_BROKER_URL",'')
 FILE_UPLOAD_MAX_MEMORY_SIZE = 25 * 1024 * 1024 # 25 Mb limit
 CELERY_BROKER_URL = f'redis://{os.environ.get("REDIS_SERVICE", "loaclhost")}:6379/0'
+# SMTP server configuration
+
+
+SMTP_SERVER = os.environ.get("SMTP_SERVER",'')  # e.g., 'smtp.gmail.com' for Gmail
+SMTP_PORT = 587  # or 465 for SSL
+SMTP_USER = os.environ.get("SMTP_USER",'')
+SMTP_PASSWORD = os.environ.get("SMTP_PASSWORD",'')
+
+
