@@ -128,3 +128,10 @@ class LoginSerializer(serializers.Serializer):
 class OtpSerializer(serializers.Serializer):
     email = serializers.EmailField()
     otp = serializers.IntegerField()
+
+
+
+class ResetPasswordSerializer(serializers.Serializer):
+    email = serializers.EmailField()
+    old_password = serializers.CharField(write_only=True)
+    new_password = serializers.CharField(write_only=True)
