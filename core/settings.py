@@ -114,6 +114,9 @@ WSGI_APPLICATION = "core.wsgi.application"
 
 # Database
 # https://docs.djangoproject.com/en/4.0/ref/settings/#databases
+# Password validation
+# https://docs.djangoproject.com/en/4.0/ref/settings/#auth-password-validators
+
 
 DATABASES = {
     "default": {
@@ -121,15 +124,15 @@ DATABASES = {
         "NAME": "postgres",
         "USER": os.environ.get("POSTGRES_USER", "postgres"),
         "PASSWORD": os.environ.get("POSTGRES_PASSWORD", "test"),
-        "HOST": os.environ.get("POSTGRES_HOST", "postgres"),
-        "PORT": os.environ.get("POSTGRES_PORT", "7000"),
+        "HOST": os.environ.get("POSTGRES_HOST", "db"),
+        "PORT": os.environ.get("POSTGRES_PORT", "5432"),
         "OPTIONS": {
             "client_encoding": "UTF8",
         },
     },
     "vector_db":{
         "NAME":"QDRANT",
-        "HOST":os.environ.get("QDRANT_HOST", "test"),
+        "HOST":os.environ.get("QDRANT_HOST", "localhost"),
         "PORT_GRPC":os.environ.get("QDRANT_PORT_GRPC", "5439"),
         "PORT_HTTP":os.environ.get("QDRANT_PORT_HTTP", "5438"),
         "GRPC_CONNECT":os.environ.get("GRPC_CONNECT", True),
@@ -137,8 +140,6 @@ DATABASES = {
     }
 }
 
-# Password validation
-# https://docs.djangoproject.com/en/4.0/ref/settings/#auth-password-validators
 
 AUTH_PASSWORD_VALIDATORS = [
     {
@@ -445,5 +446,3 @@ SMTP_SERVER = os.environ.get("SMTP_SERVER",'')  # e.g., 'smtp.gmail.com' for Gma
 SMTP_PORT = 587  # or 465 for SSL
 SMTP_USER = os.environ.get("SMTP_USER",'')
 SMTP_PASSWORD = os.environ.get("SMTP_PASSWORD",'')
-
-
