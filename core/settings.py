@@ -121,7 +121,7 @@ DATABASES = {
         "NAME": "postgres",
         "USER": os.environ.get("POSTGRES_USER", "postgres"),
         "PASSWORD": os.environ.get("POSTGRES_PASSWORD", "test"),
-        "HOST": os.environ.get("POSTGRES_HOST", "db"),
+        "HOST": os.environ.get("POSTGRES_HOST", "postgres"),
         "PORT": os.environ.get("POSTGRES_PORT", "7000"),
         "OPTIONS": {
             "client_encoding": "UTF8",
