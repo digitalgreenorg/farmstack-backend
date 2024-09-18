@@ -71,7 +71,10 @@ from datahub.serializers import (
 )
 from utils import login_helper, string_functions
 from utils.jwt_services import http_request_mutation
-
+from rest_framework import serializers, status
+from rest_framework.response import Response
+from rest_framework.views import APIView
+from django.contrib.auth.hashers import check_password
 LOGGER = logging.getLogger(__name__)
 
 @permission_classes([])
@@ -597,3 +600,51 @@ class SelfRegisterParticipantViewSet(GenericViewSet):
 
         return Response(user_org_serializer.data, status=status.HTTP_201_CREATED)
 
+
+class ResetPasswordSerializer(serializers.Serializer):
+    email = serializers.EmailField()
+    old_password = serializers.CharField(write_only=True)
+    new_password = serializers.CharField(write_only=True)
+
+class ResetPasswordView(APIView):
+    """API to reset the password after confirming the old password."""
+
+    def post(self, request, *args, **kwargs):
+        serializer = ResetPasswordSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        email = serializer.validated_data['email']
+        old_password = serializer.validated_data['old_password']
+        new_password = serializer.validated_data['new_password']
+
+        try:
+            user = User.objects.get(email=email)
+
+            # Check if the old password is correct
+            if not user.check_password(old_password):
+                return Response(
+                    {"message": "Old password is incorrect"},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+            # Set the new password and save the user
+            user.set_password(new_password)
+            user.save()
+
+            return Response(
+                {"message": "Password updated successfully"},
+                status=status.HTTP_200_OK,
+            )
+
+        except User.DoesNotExist:
+            return Response(
+                {"message": "User not found"},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+        except Exception as e:
+            # Log the exception
+            LOGGER.error(f"Error resetting password: {e}")
+            return Response(
+                {"message": "An error occurred"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
