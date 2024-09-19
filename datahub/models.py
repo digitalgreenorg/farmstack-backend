@@ -4,9 +4,13 @@ from datetime import timedelta
 from email.mime import application
 
 from django.conf import settings
+from django.contrib.postgres.fields import ArrayField
 from django.core.files.storage import Storage
 from django.db import models
+from django.db.models.signals import post_delete
+from django.dispatch import receiver
 from django.utils import timezone
+from django.utils.text import Truncator
 from pgvector.django import VectorField
 
 from accounts.models import User
@@ -17,10 +21,7 @@ from utils.validators import (
     validate_file_size,
     validate_image_type,
 )
-from django.contrib.postgres.fields import ArrayField
-from django.utils.text import Truncator
-from django.db.models.signals import post_delete
-from django.dispatch import receiver
+
 
 def auto_str(cls):
     def __str__(self):
@@ -319,6 +320,9 @@ class Resource(TimeStampMixin):
     title = models.CharField(max_length=1000)
     description = models.TextField(max_length=2500)
     country = models.TextField(max_length=250, null=True)
+    state = models.TextField(max_length=250, null=True)
+    district = models.TextField(max_length=250, null=True)
+    village = models.TextField(max_length=250, null=True)
     user_map = models.ForeignKey(UserOrganizationMap, on_delete=models.CASCADE)
     category = models.JSONField(default=dict)
     accessibility = models.CharField(max_length=255, null=True, choices=USAGE_POLICY_APPROVAL_STATUS, default="public")
@@ -330,7 +334,6 @@ class Resource(TimeStampMixin):
         null=True,  # allow null values
         default=list,  # default value as an empty list
     )
-
     def __str__(self) -> str:
         return self.title
 
@@ -489,6 +492,7 @@ class Messages(TimeStampMixin):
 #         db_table = 'datahub_messages_retrieved_chunks'
 
 from langchain_core.pydantic_v1 import BaseModel, Field
+
 
 class OutputParser(BaseModel):
     response: str = Field(description="AI Assistant Response")
