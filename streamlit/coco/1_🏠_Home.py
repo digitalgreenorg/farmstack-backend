@@ -2,8 +2,9 @@ from concurrent.futures import ThreadPoolExecutor
 import json
 import streamlit as st
 import pandas as pd
-
+import base64
 # Import queries
+from utils.db_utils import fetch_data
 from queries.data import default_start_date, default_end_date, daas_woreda_ids
 from queries.home_queries import (
     get_unique_farmers_attended_screenings_query,
@@ -27,7 +28,6 @@ from queries.location_queries import (
     getVillages,
     getKebeles
 )
-from utils.db_utils import fetch_data
 from utils.common_utils import populate_dropdown
 
 # Set up Streamlit page configuration
@@ -186,9 +186,21 @@ def main():
         ) = [future.result() for future in futures]
 
     # Unpack specific data from fetched results
-    unique_farmers_attended_screenings_query, total_screening_farmers_query = farmer_screening_data[0]
-    unique_farmers_adopting_practice_query, adoption_by_farmers_query = adoption_by_farmers_data[0]
-
+    # unique_farmers_attended_screenings_query, total_screening_farmers_query = farmer_screening_data[0]
+    if farmer_screening_data and len(farmer_screening_data) > 0 and len(farmer_screening_data[0]) == 2:
+        unique_farmers_attended_screenings_query, total_screening_farmers_query = farmer_screening_data[0]
+    else:
+        unique_farmers_attended_screenings_query = 0
+        total_screening_farmers_query = 0
+        
+    # unique_farmers_adopting_practice_query, adoption_by_farmers_query = adoption_by_farmers_data[0]
+    if adoption_by_farmers_data and len(adoption_by_farmers_data) > 0 and len(adoption_by_farmers_data[0]) == 2:
+        unique_farmers_adopting_practice_query, adoption_by_farmers_query = adoption_by_farmers_data[0]
+    else:
+        print("Error: adoption_by_farmers_data does not have the expected structure")
+        unique_farmers_adopting_practice_query = 0
+        adoption_by_farmers_query = 0
+        
     # Table 1
     df_table_1 = pd.DataFrame(table_data_1, columns=['gender', 'attendance_count'])
     male_percentage_rounded, female_percentage_rounded = calculate_gender_percentage(df_table_1)
@@ -250,7 +262,11 @@ def main():
         st.write("Adoption Rate by Gender")
         st.dataframe(sorted_df_2, hide_index=True, use_container_width=True)
 
-
+    unique_screenings_query_number = 0
+    videos_shown_in_screenings_query_number = 0
+    videos_produced_query_number = 0
+    farmer_group_reached_query_number = 0
+    
     # Data to display in the cards
     if unique_screenings_query and len(unique_screenings_query) > 0 and len(unique_screenings_query[0]) > 0:
         unique_screenings_query_number = unique_screenings_query[0][0]
@@ -300,7 +316,7 @@ def main():
 
     # Convert processed data to JSON
     data_by_year_and_month_json = json.dumps(data_by_year_and_month)
-
+    data_json_base64 = base64.b64encode(json.dumps(data_by_year_and_month).encode('utf-8')).decode('utf-8')
     # HTML and JavaScript for monthly data chart
     with col21:
         html_content = f"""
@@ -319,9 +335,12 @@ def main():
         <div id="main" style="width: 100%; height: 300px; background-color: #f0f0f0;"></div>
         <script src="https://cdn.jsdelivr.net/npm/echarts@5.1.2/dist/echarts.min.js"></script>
         <script>
+            var data_json = atob('{data_json_base64}');
+            var data = JSON.parse(data_json);
+
+            // Rest of your JavaScript code remains the same
             var chartDom = document.getElementById('main');
             var myChart = echarts.init(chartDom);
-            var data = {data_by_year_and_month_json};
             var monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
             function updateChart(year) {{
@@ -352,11 +371,20 @@ def main():
                 yearSelect.appendChild(option);
             }});
 
+            // Set the initial value to the first year in the data
+            if (Object.keys(data).length > 0) {{
+                yearSelect.value = Object.keys(data)[0];
+            }}
+
             yearSelect.addEventListener('change', function() {{ updateChart(this.value); }});
+
+            // Initial chart update
             updateChart(yearSelect.value);
+
             window.addEventListener('resize', function() {{ myChart.resize(); }});
         </script>
         """
+
         st.components.v1.html(html_content, height=400)
 
     # HTML and JavaScript for yearly data chart
