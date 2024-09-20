@@ -24,12 +24,12 @@ def getVideosList(start_date, end_date, state, district, block, village, page=1,
             JOIN digitalgreen.geographies_state gs ON gs.id = gd.state_id
             JOIN digitalgreen.geographies_country gc ON gc.id = gs.country_id
         WHERE
-            vv.time_created BETWEEN '{start_date}' AND '{end_date}'
-            AND gc.id = 2
-  
+            gc.id = 2
+            AND vv.youtubeid IS NOT NULL
+            AND vv.youtubeid <> ''
+            AND CHAR_LENGTH(vv.youtubeid) = 11
     """
     
-    query += f" AND gd.id IN ({daas_woreda_ids_str})"
     
     if state != 'none':
         query += f" AND gs.state_name = '{state}'"
@@ -66,12 +66,12 @@ def getVideosListForExport(start_date, end_date, state, district, block, village
             JOIN digitalgreen.geographies_state gs ON gs.id = gd.state_id
             JOIN digitalgreen.geographies_country gc ON gc.id = gs.country_id
         WHERE
-            vv.time_created BETWEEN '{start_date}' AND '{end_date}'
-            AND gc.id = 2
-  
+            gc.id = 2
+            AND vv.youtubeid IS NOT NULL
+            AND vv.youtubeid <> ''
+            AND CHAR_LENGTH(vv.youtubeid) = 11
     """
     
-    query += f" AND gd.id IN ({daas_woreda_ids_str})"
     
     if state != 'none':
         query += f" AND gs.state_name = '{state}'"
@@ -183,11 +183,12 @@ def getNumberOfTotalVideosProducedQuery(start_date, end_date, state, district, b
         JOIN digitalgreen.geographies_country gc ON
             gc.id = gs.country_id
         WHERE
-            vv.time_created BETWEEN '{start_date}' AND '{end_date}'
-  
+            gc.id = 2
+            AND vv.youtubeid IS NOT NULL
+            AND vv.youtubeid <> ''
+            AND CHAR_LENGTH(vv.youtubeid) = 11
         """
         
-    query += f" AND gd.id IN ({daas_woreda_ids_str})"
     
     if state != 'none':
         query += f" AND gs.state_name = '{state}'"
@@ -217,11 +218,12 @@ def getNumberOfLanguagesUsedInVideoProductionQuery(start_date, end_date, state, 
         JOIN digitalgreen.geographies_country gc ON
             gc.id = gs.country_id
         WHERE
-            vv.time_created BETWEEN '{start_date}' AND '{end_date}'
-  
+            gc.id = 2
+            AND vv.youtubeid IS NOT NULL
+            AND vv.youtubeid <> ''
+            AND CHAR_LENGTH(vv.youtubeid) = 11
     """
     
-    query += f" AND gd.id IN ({daas_woreda_ids_str})"
     if state != 'none':
         query += f" AND gs.state_name = '{state}'"
     if district != 'none':
