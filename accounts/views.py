@@ -159,7 +159,6 @@ class LoginViewset(GenericViewSet):
         # user_role_obj = UserRole.objects.filter(role_name=request.data.get("role"))
         # user_role_obj = UserRole.objects.filter(id=user.role_id)
         # user_role = user_role_obj.first().id if user_role_obj else None
-
         try:
             if not user:
                 return Response(
@@ -202,17 +201,16 @@ class LoginViewset(GenericViewSet):
             email_render = render(request, "otp.html", data)
             mail_body = email_render.content.decode("utf-8")
 
-            Utils().send_email(
-                to_email=email,
-                # content=f"Your OTP is {otp}",
-                content=mail_body,
-                subject=f"Your account verification OTP",
-            )
+            # Utils().send_email(
+            #     to_email=email,
+            #     # content=f"Your OTP is {otp}",
+            #     content=mail_body,
+            #     subject=f"Your account verification OTP",
+            # )
 
             # assign OTP to the user using cache
             login_helper.set_user_otp(email, otp, settings.OTP_DURATION)
             print(cache.get(email))
-
             return Response(
                 {
                     "id": user.id,

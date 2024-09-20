@@ -121,7 +121,7 @@ class UserUpdateSerializer(serializers.ModelSerializer):
 class LoginSerializer(serializers.Serializer):
     email = serializers.EmailField()
     role = serializers.CharField()
-    password = serializers.CharField()
+    password = serializers.CharField(required=False, allow_blank=True)
 
 
 
