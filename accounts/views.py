@@ -461,16 +461,16 @@ class SelfRegisterParticipantViewSet(GenericViewSet):
     @transaction.atomic
     def create(self, request, *args, **kwargs):
         """POST method: create action to save an object by sending a POST request"""
-        OrganizationSerializerValidator.validate_website(request.data)
-        org_serializer = OrganizationSerializer(data=request.data)
+        data = request.data.copy()  # Make a mutable copy
+        OrganizationSerializerValidator.validate_website(data)
+        org_serializer = OrganizationSerializer(data=data)
         org_serializer.is_valid(raise_exception=True)
         org_queryset = self.perform_create(org_serializer)
         org_id = org_queryset.id
-        request.data._mutable=True
-        request.data.update({'role':3})
-        request.data.update({'approval_status':False})
-        UserCreateSerializerValidator.validate_phone_number_format(request.data)
-        user_serializer = UserCreateSerializer(data=request.data)
+        data.update({'role':3})
+        data.update({'approval_status':False})
+        UserCreateSerializerValidator.validate_phone_number_format(data)
+        user_serializer = UserCreateSerializer(data=data)
         user_serializer.is_valid(raise_exception=True)
         user_saved = self.perform_create(user_serializer)
 
