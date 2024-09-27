@@ -60,7 +60,11 @@ class Organization(TimeStampMixin):
     org_description = models.TextField(max_length=512, null=True, blank=True)
     website = models.CharField(max_length=255, null=True, blank=True)
     status = models.BooleanField(default=True)
-
+    country = models.JSONField(default=dict)
+    state = models.JSONField(default=dict)
+    district = models.JSONField(default=dict)
+    village = models.JSONField(default=dict)
+    
     def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
 
@@ -319,10 +323,10 @@ class Resource(TimeStampMixin):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     title = models.CharField(max_length=1000)
     description = models.TextField(max_length=2500)
-    country = models.TextField(max_length=250, null=True)
-    state = models.TextField(max_length=250, null=True)
-    district = models.TextField(max_length=250, null=True)
-    village = models.TextField(max_length=250, null=True)
+    country = models.JSONField(default=dict)
+    state = models.JSONField(default=dict)
+    district = models.JSONField(default=dict)
+    village = models.JSONField(default=dict)
     user_map = models.ForeignKey(UserOrganizationMap, on_delete=models.CASCADE)
     category = models.JSONField(default=dict)
     accessibility = models.CharField(max_length=255, null=True, choices=USAGE_POLICY_APPROVAL_STATUS, default="public")
