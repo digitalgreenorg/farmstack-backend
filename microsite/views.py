@@ -16,6 +16,7 @@ from django.conf import settings
 from django.core.cache import cache
 from django.core.paginator import Paginator
 from django.db.models import Count, Q
+from django.db.models.functions import Lower
 from django.http import FileResponse, HttpResponse, HttpResponseNotFound, JsonResponse
 from django.shortcuts import get_object_or_404, render
 from python_http_client import exceptions
@@ -1224,19 +1225,7 @@ class ResourceMicrositeViewSet(GenericViewSet):
         except Exception as e:
             LOGGER.error(f"Error occured in ResourceMicrositeViewSet resources_filter ERROR: {e}", exc_info=True)
             return Response(str(e), status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-    
-    @action(detail=False, methods=["get"])
-    def get_organizations(self, request):
-        # Get all unique organizations that are linked through the user_map in the Resource model
-        organizations = Organization.objects.filter(
-            id__in=Resource.objects.values_list('user_map__organization', flat=True).distinct()
-        )
-
-        # Serialize the list of organizations
-        serializer = OrganizationSerializer(organizations, many=True)
-        return Response(serializer.data, status=status.HTTP_200_OK)
-
-    @action(detail=False, methods=["get"])
+     
     def get_categories_by_org(self, request):
         """
         API to return a list of categories and subcategories based on organization_id or email,

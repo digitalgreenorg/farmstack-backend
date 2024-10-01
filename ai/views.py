@@ -7,11 +7,13 @@ from accounts.models import User
 from ai.retriever.manual_retrival import QuadrantRetrival
 from datahub.models import (
     Category,
+    Organization,
     Resource,
     ResourceFile,
     ResourceSubCategoryMap,
     SubCategory,
 )
+from datahub.serializers import OrganizationSerializer
 
 
 class EmbeddingsViewSet(ModelViewSet):
@@ -48,6 +50,7 @@ class EmbeddingsViewSet(ModelViewSet):
         threshold = request.data.get("threshold", 0)
         source_type = request.data.get("source_type", None)
         file_ids=[]
+        
         if sub_category:
             filter = {"resource__resource_cat_map__sub_category_id":sub_category,
                       "resource__user_map__organization_id": organization_id} if organization_id else {"resource__resource_cat_map__sub_category_id":sub_category}
@@ -152,4 +155,28 @@ class EmbeddingsViewSet(ModelViewSet):
         # Convert category_dict to a list
         return list(category_dict.values())
 
+    @action(detail=False, methods=["get"])
+    def get_organizations(self, request):
+        # Define a map of possible filterable fields in Resource model
+        filterable_fields = ["country", "state", "district", "village"]
+
+        # Build a dynamic query filter based on the query parameters
+        filters = {}
+        for field in filterable_fields:
+            if field in request.query_params:
+                # Compare query params in lowercase with the JSONField values in the database
+                filters[f"{field}__icontains"] = request.query_params[field].lower()
+
+        # Apply the filters dynamically to the Resource model (without LOWER() for JSONField)
+        resources = Resource.objects.filter(**filters)
+
+        # Extract all unique organizations linked through the user_map field in Resource
+        organizations = Organization.objects.filter(
+            id__in=resources.values_list("user_map__organization", flat=True).distinct()
+        )
+
+        # Serialize the list of organizations
+        serializer = OrganizationSerializer(organizations, many=True)
+        return Response(serializer.data, status=200)
+   
     
