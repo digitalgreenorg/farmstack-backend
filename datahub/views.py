@@ -6,22 +6,26 @@ import logging
 import operator
 import os
 import pickle
+import random
 import re
 import shutil
+import string
 import sys
 import threading
+import uuid
 from calendar import c
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from functools import reduce
 from pickle import TRUE
 from urllib.parse import parse_qs, unquote, urlparse
-import uuid
 
 import django
 import numpy as np
 import pandas as pd
+import requests
 from django.conf import settings
 from django.contrib.admin.utils import get_model_from_relation
+from django.contrib.auth.hashers import check_password, make_password
 from django.core.cache import cache
 from django.core.files.base import ContentFile
 from django.db import transaction
@@ -44,9 +48,6 @@ from django.db.models.functions import Concat
 # from django.db.models.functions import Index, Substr
 from django.http import JsonResponse
 from django.shortcuts import render
-import requests
-from ai.retriever.conversation_retrival import ConversationRetrival
-from ai.retriever.manual_retrival import Retrival
 from drf_braces.mixins import MultipleSerializersViewMixin
 from jsonschema import ValidationError
 from psycopg2 import connect
@@ -68,6 +69,10 @@ from accounts.serializers import (
     UserSerializer,
     UserUpdateSerializer,
 )
+from ai.open_ai_utils import qdrant_embeddings_delete_file_id
+from ai.retriever.conversation_retrival import ConversationRetrival
+from ai.retriever.manual_retrival import Retrival
+from ai.vector_db_builder.vector_build import create_vector_db
 from connectors.models import Connectors
 from connectors.serializers import ConnectorsListSerializer
 from core.constants import Constants, NumericalConstants
@@ -137,8 +142,6 @@ from participant.serializers import (
 from utils import custom_exceptions, file_operations, string_functions, validators
 from utils.authentication_services import authenticate_user
 from utils.embeddings_creation import VectorDBBuilder
-from ai.vector_db_builder.vector_build import create_vector_db
-from ai.open_ai_utils import qdrant_embeddings_delete_file_id
 from utils.file_operations import (
     check_file_name_length,
     filter_dataframe_for_dashboard_counties,
@@ -423,7 +426,11 @@ class ParticipantViewSet(GenericViewSet):
             _type_: Returns the saved details.
         """
         return serializer.save()
-
+    def generate_random_password(self, length=12):
+        """Generates a random password with the given length."""
+        characters = string.ascii_letters + string.digits + string.punctuation
+        return ''.join(random.choice(characters) for _ in range(length))
+    
     @authenticate_user(model=Organization)
     @transaction.atomic
     def create(self, request, *args, **kwargs):
@@ -433,7 +440,14 @@ class ParticipantViewSet(GenericViewSet):
         org_serializer.is_valid(raise_exception=True)
         org_queryset = self.perform_create(org_serializer)
         org_id = org_queryset.id
+
         UserCreateSerializerValidator.validate_phone_number_format(request.data)
+        generated_password = self.generate_random_password()
+        hashed_password = make_password(generated_password)
+
+        # Add the hashed password to the request data
+        request.data.update({'password': hashed_password})
+
         user_serializer = UserCreateSerializer(data=request.data)
         user_serializer.is_valid(raise_exception=True)
         user_saved = self.perform_create(user_serializer)
@@ -464,6 +478,7 @@ class ParticipantViewSet(GenericViewSet):
                 "participant_admin_name": participant_full_name,
                 "participant_organization_name": request.data.get("name"),
                 "datahub_admin": admin_full_name,
+                "password": generated_password,
                 Constants.datahub_site: os.environ.get(Constants.DATAHUB_SITE, Constants.datahub_site),
             }
 

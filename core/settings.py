@@ -114,6 +114,9 @@ WSGI_APPLICATION = "core.wsgi.application"
 
 # Database
 # https://docs.djangoproject.com/en/4.0/ref/settings/#databases
+# Password validation
+# https://docs.djangoproject.com/en/4.0/ref/settings/#auth-password-validators
+
 
 DATABASES = {
     "default": {
@@ -137,8 +140,6 @@ DATABASES = {
     }
 }
 
-# Password validation
-# https://docs.djangoproject.com/en/4.0/ref/settings/#auth-password-validators
 
 AUTH_PASSWORD_VALIDATORS = [
     {
@@ -438,3 +439,10 @@ YOUTUBE_API_KEY = os.environ.get("YOUTUBE_API_KEY",'')
 CELERY_BROKER_URL = os.environ.get("CELERY_BROKER_URL",'')
 FILE_UPLOAD_MAX_MEMORY_SIZE = 25 * 1024 * 1024 # 25 Mb limit
 CELERY_BROKER_URL = f'redis://{os.environ.get("REDIS_SERVICE", "loaclhost")}:6379/0'
+# SMTP server configuration
+
+
+SMTP_SERVER = os.environ.get("SMTP_SERVER",'')  # e.g., 'smtp.gmail.com' for Gmail
+SMTP_PORT = 587  # or 465 for SSL
+SMTP_USER = os.environ.get("SMTP_USER",'')
+SMTP_PASSWORD = os.environ.get("SMTP_PASSWORD",'')

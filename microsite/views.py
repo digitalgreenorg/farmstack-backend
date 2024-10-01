@@ -16,6 +16,7 @@ from django.conf import settings
 from django.core.cache import cache
 from django.core.paginator import Paginator
 from django.db.models import Count, Q
+from django.db.models.functions import Lower
 from django.http import FileResponse, HttpResponse, HttpResponseNotFound, JsonResponse
 from django.shortcuts import get_object_or_404, render
 from python_http_client import exceptions
@@ -49,7 +50,9 @@ from datahub.models import (
     Policy,
     Resource,
     ResourceFile,
+    ResourceSubCategoryMap,
     ResourceUsagePolicy,
+    SubCategory,
     UsagePolicy,
     UserOrganizationMap,
 )
@@ -1222,9 +1225,38 @@ class ResourceMicrositeViewSet(GenericViewSet):
         except Exception as e:
             LOGGER.error(f"Error occured in ResourceMicrositeViewSet resources_filter ERROR: {e}", exc_info=True)
             return Response(str(e), status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+     
+    def get_categories_by_org(self, request):
+        """
+        API to return a list of categories and subcategories based on organization_id or email,
+        excluding resources where category is 'states'.
+        """
+        organization_id = request.query_params.get('id', None)
+        email = request.query_params.get('email', None)
+# Step 1: Filter resources based on organization or user email
+        if organization_id:
+            resources = Resource.objects.filter(user_map__organization_id=organization_id)
+        elif email:
+            resources = Resource.objects.filter(user_map__user__email=email)
+        else:
+            return Response(
+                {"error": "Please provide either organization_id or email"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        resource_sub_cat_map_id = ResourceSubCategoryMap.objects.filter(resource__in=resources).values_list('sub_category_id', flat=True)
+        # Step 2: Get all subcategories linked to the filtered resources via ResourceSubCategoryMap
+        subcategories = SubCategory.objects.filter(
+            id__in=resource_sub_cat_map_id
+        )
+        # Step 3: Get the categories linked to these subcategories, excluding where category is 'states'
+        categories = Category.objects.filter(
+            id__in=subcategories.values_list('category_id', flat=True)
+        ).prefetch_related('subcategory_category')
 
-
-
+        # Step 4: Serialize the categories
+        serializer = CategorySerializer(categories, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+    
 # Created a new class to return data from kde, agnext and krishitantra data stored in json format in utils folder
 class AdexAPIDatasetViewSet(GenericViewSet):
 
