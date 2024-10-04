@@ -110,6 +110,48 @@ def get_embeddings(docs, resource, file_id, chunking_strategy=None):
     else:
         return False
 
+def get_embedding_auto_cat(docs):
+    embedded_data = {}
+    document_text_list = [document.get('text') for document in docs]
+    openai_client = openai.Client(api_key=settings.OPENAI_API_KEY)
+    embedding_model = Constants.TEXT_EMBEDDING_ADA_002
+    try:
+        result = []
+        if len(document_text_list) > 100:
+            loop_number = len(document_text_list)//100
+            start_point = 0
+            for num in range(loop_number+1):
+                response = openai_client.embeddings.create(
+                    input=document_text_list[start_point:(100*(num+1))], model=embedding_model)
+                start_point = (100*(num+1))
+                result.append(response)
+        else:
+            response = openai_client.embeddings.create(
+                input=document_text_list, model=embedding_model)
+            result.append(response)
+    except Exception as e:
+        LOGGING.error(f"Exception occurred in creating embedding {str(e)}")
+        return False
+    if result != []:
+        LOGGING.info(
+            f"Creating the embedding dictonary, length is  {len(result)}")
+        start = 0
+        for embedd_data in result:
+            for idx, data in enumerate(embedd_data.data):
+                embedded_data[idx+start] = {}
+                embedded_data[idx+start]['text'] = document_text_list[idx+start]
+                embedded_data[idx+start]['vector'] = data.embedding
+                embedded_data[idx+start]["country"] = docs[idx+start].get("region",'').lower().strip()
+                embedded_data[idx+start]["state"] = docs[idx+start].get("state", '').lower().strip()
+                embedded_data[idx+start]["distict"] = docs[idx+start].get("district", '').lower().strip()
+                embedded_data[idx+start]["category"] = docs[idx+start].get("category", '')
+                embedded_data[idx+start]["sub_category"] = docs[idx+start].get("sub_category",'')
+                embedded_data[idx+start]["resource_file"] = docs[idx+start].get("resource_file",'')
+                embedded_data[idx+start]["topic"] = docs[idx+start].get("topic",'').lower().strip()
+                embedded_data[idx+start]["context-type"] = docs[idx+start].get("content-type",'').lower().strip()
+            start += idx+1
+    return embedded_data
+
 def create_embedding(embedding_model: str, document_text_list: list, data_type = 'text') ->list:
     openai_client = openai.Client(api_key=settings.OPENAI_API_KEY)
     try:
@@ -176,11 +218,6 @@ def create_qdrant_client(collection_name: str):
             field_name="country",
             field_schema=PayloadSchemaType.KEYWORD,
         )
-        client.create_payload_index(
-            collection_name=collection_name,
-            field_name="countries",
-            field_schema=PayloadSchemaType.VECTOR,
-        )
     return client
 
 def get_topic(chunk):
@@ -205,8 +242,9 @@ def get_topic(chunk):
 
 
 
-def insert_chunking_in_db(documents: dict):
-    collection_name = qdrant_settings.get('COLLECTION_NAME')
+def insert_chunking_in_db(documents: dict, collection_name:str = None):
+    if not collection_name:
+        collection_name = qdrant_settings.get('COLLECTION_NAME')
     qdrant_client = create_qdrant_client(collection_name)
     try:
         points_list = []
