@@ -447,13 +447,78 @@ def query_qdrant_collection(resource_file_ids, query, country, state, district, 
     except Exception as e:
         LOGGING.error(f"Exception occured in qdrant db connection {str(e)}")
         return []
-    print(f"-------------------{len(search_data)}")
     results = extract_text_id_score(search_data)
     results["yotube_url"]=yotube_url
     return results
 
 
-def extract_text_id_score(search_data):
+
+def query_qdrant_collection_v2(org_name, query, country, state, district, category, sub_category, source_type, k, threshold):
+    qdrant_client = create_qdrant_client(org_name)
+    if query:
+        vector = openai_client.embeddings.create(
+            input=[query],
+            model=Constants.TEXT_EMBEDDING_ADA_002,
+        ).data[0].embedding
+    else:
+        vector = [0.0]*1536
+
+    # sub_category = re.sub(r'[^a-zA-Z0-9_]', '-', sub_category)
+    filter_conditions = []
+    limit_k = 10
+    default_threshold = 0.0
+    if category:
+        filter_conditions.append(FieldCondition(key="category", match=MatchValue(value=category)))
+    if state:
+        filter_conditions.append(FieldCondition(key="state", match=MatchValue(value=state)))
+    if district:
+        filter_conditions.append(FieldCondition(key="district", match=MatchValue(value=district)))
+    # if context_type:
+    #     filter_conditions.append(FieldCondition(key="context-type", match=MatchValue(value=context_type)))
+    if country:
+        filter_conditions.append(FieldCondition(key="country", match=MatchValue(value=country)))
+    
+    if source_type == 'table':
+        default_threshold = 0.4
+        filter_conditions.append(FieldCondition(key="context-type", match=MatchValue(value='table/pdf')))
+
+    qdrant_filter = Filter(must=filter_conditions)
+
+    youtube_filter_conditions = filter_conditions.copy()
+    youtube_filter_conditions.append(FieldCondition(key="context-type", match=MatchValue(value="video/pdf")))
+    youtube_filter = Filter(must=youtube_filter_conditions)
+    if k !=0:
+        try:
+            limit_k = int(k)
+        except:
+            pass
+
+    LOGGING.info(f"Collection and filter details: state={state}, k={limit_k}, threshold={default_threshold}")
+
+    try:
+        search_data = qdrant_client.search(
+            collection_name=org_name,
+            query_vector=vector,
+            query_filter=qdrant_filter,
+            score_threshold=default_threshold,
+            limit=limit_k
+        )
+        search_youtube_data = qdrant_client.search(
+            collection_name=org_name,
+            query_vector=vector,
+            query_filter=youtube_filter,
+            score_threshold=0.8,
+            limit=2
+        )
+        yotube_url=[item[1]["source"] for result in search_youtube_data for item in result if item[0] == "payload"]
+    except Exception as e:
+        LOGGING.error(f"Exception occured in qdrant db connection {str(e)}")
+        return []
+    results = extract_text_id_score(search_data, org_name)
+    results["yotube_url"]=yotube_url
+    return results
+
+def extract_text_id_score(search_data, org_name):
     results, reference = [], []
     
     for result in search_data:
@@ -469,7 +534,7 @@ def extract_text_id_score(search_data):
 
         results.append(data)
 
-    return {"chunks": results, "reference": set(reference)}
+    return {org_name: results, "reference": set(reference)}
 
 def qdrant_collection_scroll(resource_file_id, country='', state='' , category='',limit=20):
     collection_name = qdrant_settings.get('COLLECTION_NAME')

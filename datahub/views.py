@@ -3462,6 +3462,8 @@ class ResourceManagementAutoCategorizationViewSet(GenericViewSet):
             files = request.FILES.getlist('files')  # 'files' is the key used in FormData
             json_files = request.FILES.get('json_files')
             json_content = json.loads(json_files.read())
+            if not type(json_content) is list:
+                json_content = [json_content]
             categorization_list = [(data.get("value_chain"), data.get('crop_category')) for data in json_content]
             category_id_map = {}
             sub_category_id_map = {}
@@ -3491,7 +3493,7 @@ class ResourceManagementAutoCategorizationViewSet(GenericViewSet):
             serializer = self.get_serializer(data=data)
             serializer.is_valid(raise_exception=True)
             serializer.save()
-            insert_auto_cat_data(serializer.data, json_content)
+            insert_auto_cat_data(serializer.data, json_content, category_id_map, sub_category_id_map)
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         except ValidationError as e:
             LOGGER.error(e, exc_info=True)

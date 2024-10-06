@@ -11,6 +11,7 @@ from datahub.models import (
     ResourceFile,
     ResourceSubCategoryMap,
     SubCategory,
+    Organization,
 )
 
 
@@ -56,6 +57,31 @@ class EmbeddingsViewSet(ModelViewSet):
                             ).values_list('id', flat=True).distinct().all())
             print(len(file_ids))
         chunks = QuadrantRetrival().retrieve_chunks(file_ids, query, country, state,district, category, sub_category, source_type, k, threshold)
+        return Response(chunks)
+    
+
+    @action(detail=False, methods=["post"])
+    def get_content_v2(self, request):
+
+        organization_ids = request.data.get("organization_id")
+        query = request.data.get("query")
+        query = query.replace("\n", " ") if query else "" 
+        country = request.data.get("country", "").lower()
+        state = request.data.get("state", "").lower()
+        category = request.data.get("category", "").lower()
+        sub_category = request.data.get("sub_category", "")
+        district = request.data.get("district", "").lower()
+        k = request.data.get("k", 0)
+        threshold = request.data.get("threshold", 0)
+        source_type = request.data.get("source_type", None)
+        file_ids=[]
+        if sub_category:
+            # filter = {"resource__resource_cat_map__sub_category_id":sub_category,
+            #           "resource__user_map__organization_id": organization_id[0]} if organization_id else {"resource__resource_cat_map__sub_category_id":sub_category}
+            filter = {"pk__in":organization_ids}
+            org_names = list(Organization.objects.filter(**filter
+                            ).values_list('name', flat=True).distinct().all())
+        chunks = QuadrantRetrival().retrieve_chunks_v2(org_names, query, country, state, district, category, sub_category, source_type, k, threshold)
         return Response(chunks)
     
     @action(detail=False, methods=["GET"])
