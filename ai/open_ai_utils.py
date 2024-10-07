@@ -453,7 +453,7 @@ def query_qdrant_collection(resource_file_ids, query, country, state, district, 
 
 
 
-def query_qdrant_collection_v2(org_name, query, country, state, district, category, sub_category, source_type, k, threshold):
+def query_qdrant_collection_v2(org_name, org_id, query, country, state, district, category, sub_category, source_type, k, threshold):
     qdrant_client = create_qdrant_client(org_name)
     if query:
         vector = openai_client.embeddings.create(
@@ -514,11 +514,11 @@ def query_qdrant_collection_v2(org_name, query, country, state, district, catego
     except Exception as e:
         LOGGING.error(f"Exception occured in qdrant db connection {str(e)}")
         return []
-    results = extract_text_id_score(search_data, org_name)
+    results = extract_text_id_score(search_data, org_id)
     results["yotube_url"]=yotube_url
     return results
 
-def extract_text_id_score(search_data, org_name):
+def extract_text_id_score(search_data, org_id):
     results, reference = [], []
     
     for result in search_data:
@@ -534,7 +534,7 @@ def extract_text_id_score(search_data, org_name):
 
         results.append(data)
 
-    return {org_name: results, "reference": set(reference)}
+    return {org_id: results, "reference": set(reference)}
 
 def qdrant_collection_scroll(resource_file_id, country='', state='' , category='',limit=20):
     collection_name = qdrant_settings.get('COLLECTION_NAME')
