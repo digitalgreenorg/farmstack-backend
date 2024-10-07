@@ -110,6 +110,48 @@ def get_embeddings(docs, resource, file_id, chunking_strategy=None):
     else:
         return False
 
+def get_embedding_auto_cat(docs):
+    embedded_data = {}
+    document_text_list = [document.get('text') for document in docs]
+    openai_client = openai.Client(api_key=settings.OPENAI_API_KEY)
+    embedding_model = Constants.TEXT_EMBEDDING_ADA_002
+    try:
+        result = []
+        if len(document_text_list) > 100:
+            loop_number = len(document_text_list)//100
+            start_point = 0
+            for num in range(loop_number+1):
+                response = openai_client.embeddings.create(
+                    input=document_text_list[start_point:(100*(num+1))], model=embedding_model)
+                start_point = (100*(num+1))
+                result.append(response)
+        else:
+            response = openai_client.embeddings.create(
+                input=document_text_list, model=embedding_model)
+            result.append(response)
+    except Exception as e:
+        LOGGING.error(f"Exception occurred in creating embedding {str(e)}")
+        return False
+    if result != []:
+        LOGGING.info(
+            f"Creating the embedding dictonary, length is  {len(result)}")
+        start = 0
+        for embedd_data in result:
+            for idx, data in enumerate(embedd_data.data):
+                embedded_data[idx+start] = {}
+                embedded_data[idx+start]['text'] = document_text_list[idx+start]
+                embedded_data[idx+start]['vector'] = data.embedding
+                embedded_data[idx+start]["country"] = docs[idx+start].get("region",'').lower().strip()
+                embedded_data[idx+start]["state"] = docs[idx+start].get("state", '').lower().strip()
+                embedded_data[idx+start]["distict"] = docs[idx+start].get("district", '').lower().strip()
+                embedded_data[idx+start]["category"] = docs[idx+start].get("category", '')
+                embedded_data[idx+start]["sub_category"] = docs[idx+start].get("sub_category",'')
+                embedded_data[idx+start]["resource_file"] = docs[idx+start].get("resource_file",'')
+                embedded_data[idx+start]["topic"] = docs[idx+start].get("topic",'').lower().strip()
+                embedded_data[idx+start]["context-type"] = docs[idx+start].get("content-type",'').lower().strip()
+            start += idx+1
+    return embedded_data
+
 def create_embedding(embedding_model: str, document_text_list: list, data_type = 'text') ->list:
     openai_client = openai.Client(api_key=settings.OPENAI_API_KEY)
     try:
@@ -176,11 +218,6 @@ def create_qdrant_client(collection_name: str):
             field_name="country",
             field_schema=PayloadSchemaType.KEYWORD,
         )
-        client.create_payload_index(
-            collection_name=collection_name,
-            field_name="countries",
-            field_schema=PayloadSchemaType.VECTOR,
-        )
     return client
 
 def get_topic(chunk):
@@ -205,8 +242,9 @@ def get_topic(chunk):
 
 
 
-def insert_chunking_in_db(documents: dict):
-    collection_name = qdrant_settings.get('COLLECTION_NAME')
+def insert_chunking_in_db(documents: dict, collection_name:str = None):
+    if not collection_name:
+        collection_name = qdrant_settings.get('COLLECTION_NAME')
     qdrant_client = create_qdrant_client(collection_name)
     try:
         points_list = []
@@ -409,13 +447,78 @@ def query_qdrant_collection(resource_file_ids, query, country, state, district, 
     except Exception as e:
         LOGGING.error(f"Exception occured in qdrant db connection {str(e)}")
         return []
-    print(f"-------------------{len(search_data)}")
     results = extract_text_id_score(search_data)
     results["yotube_url"]=yotube_url
     return results
 
 
-def extract_text_id_score(search_data):
+
+def query_qdrant_collection_v2(org_name, query, country, state, district, category, sub_category, source_type, k, threshold):
+    qdrant_client = create_qdrant_client(org_name)
+    if query:
+        vector = openai_client.embeddings.create(
+            input=[query],
+            model=Constants.TEXT_EMBEDDING_ADA_002,
+        ).data[0].embedding
+    else:
+        vector = [0.0]*1536
+
+    # sub_category = re.sub(r'[^a-zA-Z0-9_]', '-', sub_category)
+    filter_conditions = []
+    limit_k = 10
+    default_threshold = 0.0
+    if category:
+        filter_conditions.append(FieldCondition(key="category", match=MatchValue(value=category)))
+    if state:
+        filter_conditions.append(FieldCondition(key="state", match=MatchValue(value=state)))
+    if district:
+        filter_conditions.append(FieldCondition(key="district", match=MatchValue(value=district)))
+    # if context_type:
+    #     filter_conditions.append(FieldCondition(key="context-type", match=MatchValue(value=context_type)))
+    if country:
+        filter_conditions.append(FieldCondition(key="country", match=MatchValue(value=country)))
+    
+    if source_type == 'table':
+        default_threshold = 0.4
+        filter_conditions.append(FieldCondition(key="context-type", match=MatchValue(value='table/pdf')))
+
+    qdrant_filter = Filter(must=filter_conditions)
+
+    youtube_filter_conditions = filter_conditions.copy()
+    youtube_filter_conditions.append(FieldCondition(key="context-type", match=MatchValue(value="video/pdf")))
+    youtube_filter = Filter(must=youtube_filter_conditions)
+    if k !=0:
+        try:
+            limit_k = int(k)
+        except:
+            pass
+
+    LOGGING.info(f"Collection and filter details: state={state}, k={limit_k}, threshold={default_threshold}")
+
+    try:
+        search_data = qdrant_client.search(
+            collection_name=org_name,
+            query_vector=vector,
+            query_filter=qdrant_filter,
+            score_threshold=default_threshold,
+            limit=limit_k
+        )
+        search_youtube_data = qdrant_client.search(
+            collection_name=org_name,
+            query_vector=vector,
+            query_filter=youtube_filter,
+            score_threshold=0.8,
+            limit=2
+        )
+        yotube_url=[item[1]["source"] for result in search_youtube_data for item in result if item[0] == "payload"]
+    except Exception as e:
+        LOGGING.error(f"Exception occured in qdrant db connection {str(e)}")
+        return []
+    results = extract_text_id_score(search_data, org_name)
+    results["yotube_url"]=yotube_url
+    return results
+
+def extract_text_id_score(search_data, org_name):
     results, reference = [], []
     
     for result in search_data:
@@ -431,7 +534,7 @@ def extract_text_id_score(search_data):
 
         results.append(data)
 
-    return {"chunks": results, "reference": set(reference)}
+    return {org_name: results, "reference": set(reference)}
 
 def qdrant_collection_scroll(resource_file_id, country='', state='' , category='',limit=20):
     collection_name = qdrant_settings.get('COLLECTION_NAME')
