@@ -81,7 +81,7 @@ class EmbeddingsViewSet(ModelViewSet):
             filter = {"pk__in":organization_ids}
             org_names = list(Organization.objects.filter(**filter
                             ).values_list('name', flat=True).distinct().all())
-        chunks = QuadrantRetrival().retrieve_chunks_v2(org_names, query, country, state, district, category, sub_category, source_type, k, threshold)
+        chunks = QuadrantRetrival().retrieve_chunks_v2(org_names, organization_ids, query, country, state, district, category, sub_category, source_type, k, threshold)
         return Response(chunks)
     
     @action(detail=False, methods=["GET"])
