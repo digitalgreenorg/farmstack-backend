@@ -445,11 +445,10 @@ class ParticipantViewSet(GenericViewSet):
         UserCreateSerializerValidator.validate_phone_number_format(request.data)
         generated_password = self.generate_random_password()
         hashed_password = make_password(generated_password)
-
+        request_data = request.data.copy()
         # Add the hashed password to the request data
-        request.data.update({'password': hashed_password})
-
-        user_serializer = UserCreateSerializer(data=request.data)
+        request_data.update({'password': hashed_password})
+        user_serializer = UserCreateSerializer(data=request_data)
         user_serializer.is_valid(raise_exception=True)
         user_saved = self.perform_create(user_serializer)
         user_org_serializer = UserOrganizationMapSerializer(
