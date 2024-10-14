@@ -1401,10 +1401,11 @@ class ResourceAutoCatSerializer(serializers.ModelSerializer):
                                        ) for sub_cat in sub_categories_map[0].values()]
 
             ResourceSubCategoryMap.objects.bulk_create(resource_sub_cat_instances)
-            data = {"resource":resource.id, "file":None, "type": "file"}
-            serializer = ResourceFileSerializer(data = data)
-            serializer.is_valid(raise_exception=True)
-            serializer.save()
+            for files in resource_files[0]:
+                data = {"resource":resource.id, "file": files, "type": "file"}
+                serializer = ResourceFileSerializer(data = data)
+                serializer.is_valid(raise_exception=True)
+                serializer.save()
             return resource
         except Exception as e:
             LOGGER.error(e,exc_info=True)

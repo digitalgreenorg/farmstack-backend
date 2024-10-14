@@ -3462,7 +3462,7 @@ class ResourceManagementAutoCategorizationViewSet(GenericViewSet):
             files = request.FILES.getlist('files')  # 'files' is the key used in FormData
             json_files = request.FILES.get('json_files')
             json_content = json.loads(json_files.read())
-            categorization_list = [(data.get("value_chain"), data.get('crop_category')) for data in json_content]
+            categorization_list = [(data.get("value_chain"), self.process_sub_category(data.get("value_chain"), data.get('crop_category'))) for data in json_content]
             category_id_map = {}
             sub_category_id_map = {}
             for category, sub_category in categorization_list:
@@ -3499,6 +3499,16 @@ class ResourceManagementAutoCategorizationViewSet(GenericViewSet):
         except Exception as e:
             LOGGER.error(e, exc_info=True)
             return Response(str(e), status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        
+    def process_sub_category(self, category, sub_category):
+        try:
+            cleaned_text = re.sub(r'\b(n\/a|na)\b', '', sub_category, flags=re.IGNORECASE)
+        except:
+            cleaned_text = ""
+        if not cleaned_text or  cleaned_text == "":
+            return category
+        else:
+            return sub_category
 
 
 class ResourceFileManagementViewSet(GenericViewSet):
