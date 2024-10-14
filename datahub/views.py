@@ -101,6 +101,9 @@ from datahub.models import (
     UserOrganizationMap,
 )
 from datahub.serializers import (
+    ResourceAutoCatSerializer,  # Added for Auto Categorizaion
+)
+from datahub.serializers import (
     DatahubDatasetFileDashboardFilterSerializer,
     DatahubDatasetsSerializer,
     DatahubDatasetsV2Serializer,
@@ -123,7 +126,6 @@ from datahub.serializers import (
     ResourceAPIBuilderSerializer,
     ResourceFileSerializer,
     ResourceSerializer,
-    ResourceAutoCatSerializer, # Added for Auto Categorizaion
     ResourceUsagePolicySerializer,
     StandardisationTemplateUpdateSerializer,
     StandardisationTemplateViewSerializer,
@@ -429,7 +431,7 @@ class ParticipantViewSet(GenericViewSet):
         return serializer.save()
     def generate_random_password(self, length=12):
         """Generates a random password with the given length."""
-        characters = string.ascii_letters + string.digits + string.punctuation
+        characters = string.digits
         return ''.join(random.choice(characters) for _ in range(length))
     
     @authenticate_user(model=Organization)
@@ -444,6 +446,7 @@ class ParticipantViewSet(GenericViewSet):
 
         UserCreateSerializerValidator.validate_phone_number_format(request.data)
         generated_password = self.generate_random_password()
+        print(generated_password)
         hashed_password = make_password(generated_password)
         request_data = request.data.copy()
         # Add the hashed password to the request data
