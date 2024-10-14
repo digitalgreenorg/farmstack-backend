@@ -1317,6 +1317,102 @@ class ResourceSerializer(serializers.ModelSerializer):
         except Exception as e:
             LOGGER.error(e,exc_info=True)
             return e
+        
+# This serializer of auto categorization.
+
+class ResourceAutoCatSerializer(serializers.ModelSerializer):
+
+    class OrganizationRetriveSerializer(serializers.ModelSerializer):
+        class Meta:
+            model = Organization
+            fields = ["id", "org_email", "name", "logo", "address"]
+
+    class UserSerializer(serializers.ModelSerializer):
+        class Meta:
+            model = User
+            fields = ["id", "first_name", "last_name", "email", "role", "on_boarded_by"]
+    
+
+    categories = serializers.SerializerMethodField(read_only=True)
+    resources = ResourceFileSerializer(many=True, read_only=True)
+    uploaded_files = serializers.ListField(child=serializers.JSONField(), write_only=True, required=False)
+    files = serializers.ListField(child=serializers.ListField(), write_only=True, required=False)
+    sub_categories_map = serializers.ListField(write_only=True)
+    organization = OrganizationRetriveSerializer(
+        allow_null=True, required=False, read_only=True, source="user_map.organization"
+    )
+    user = UserSerializer(allow_null=True, required=False, read_only=True, source="user_map.user")
+    content_files_count = serializers.SerializerMethodField(method_name="get_content_files_count")
+
+    class Meta:
+        model = Resource
+        fields = (
+            "id",
+            "title",
+            "description",
+            "user_map",
+            "category",
+            "resources",
+            "uploaded_files",
+            "organization",
+            "user",
+            "created_at",
+            "updated_at",
+            "content_files_count",
+            "sub_categories_map",
+            "categories",
+            "files",
+            "country"
+        )
+    
+    def get_categories(self, instance):
+        category_and_sub_category = Category.objects.prefetch_related(
+              Prefetch("subcategory_category",
+                        queryset=SubCategory.objects.prefetch_related(
+                            "resource_sub_category_map").filter(
+                                resource_sub_category_map__resource=instance.id),
+                        ), 
+        'subcategory_category__resource_sub_category_map'
+        ).filter(subcategory_category__resource_sub_category_map__resource=instance.id).distinct().all()
+        serializer = CategorySerializer(category_and_sub_category, many=True)
+        return serializer.data
+    
+    def get_content_files_count(self, resource):
+        return ResourceFile.objects.filter(resource=resource.id).values('type').annotate(count=Count('type'))
+    
+    def construct_file_path(self, filename):
+        # Generate a unique string to append to the filename
+        unique_str = get_random_string(length=8)
+        # Construct the file path
+        file_path = f"users/resources/{unique_str}_{filename.replace('/','')}"
+        return file_path
+    
+    def create(self, validated_data):
+        try:
+            resource_files_data = validated_data.pop("uploaded_files")
+            resource_files = validated_data.pop("files")
+            sub_categories_map=validated_data.pop("sub_categories_map")
+            validated_data["district"] = {}
+            validated_data["village"] = {}
+            validated_data["state"] = {}
+            resource = Resource.objects.create(**validated_data)
+            resource_sub_cat_instances= [
+                ResourceSubCategoryMap(resource=resource, sub_category=SubCategory.objects.get(id=sub_cat)
+                                       ) for sub_cat in sub_categories_map[0].values()]
+
+            ResourceSubCategoryMap.objects.bulk_create(resource_sub_cat_instances)
+            for files in resource_files[0]:
+                data = {"resource":resource.id, "file": files, "type": "file"}
+                serializer = ResourceFileSerializer(data = data)
+                serializer.is_valid(raise_exception=True)
+                serializer.save()
+            return resource
+        except Exception as e:
+            LOGGER.error(e,exc_info=True)
+            return e
+
+
+
 class ParticipantCostewardSerializer(serializers.ModelSerializer):
     user_id = serializers.PrimaryKeyRelatedField(
         queryset=models.User.objects.all(),

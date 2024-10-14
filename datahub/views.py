@@ -72,7 +72,7 @@ from accounts.serializers import (
 from ai.open_ai_utils import qdrant_embeddings_delete_file_id
 from ai.retriever.conversation_retrival import ConversationRetrival
 from ai.retriever.manual_retrival import Retrival
-from ai.vector_db_builder.vector_build import create_vector_db
+from ai.vector_db_builder.vector_build import create_vector_db, insert_auto_cat_data
 from connectors.models import Connectors
 from connectors.serializers import ConnectorsListSerializer
 from core.constants import Constants, NumericalConstants
@@ -99,6 +99,9 @@ from datahub.models import (
     Resource,
     StandardisationTemplate,
     UserOrganizationMap,
+)
+from datahub.serializers import (
+    ResourceAutoCatSerializer,  # Added for Auto Categorizaion
 )
 from datahub.serializers import (
     DatahubDatasetFileDashboardFilterSerializer,
@@ -428,7 +431,7 @@ class ParticipantViewSet(GenericViewSet):
         return serializer.save()
     def generate_random_password(self, length=12):
         """Generates a random password with the given length."""
-        characters = string.ascii_letters + string.digits + string.punctuation
+        characters = string.digits
         return ''.join(random.choice(characters) for _ in range(length))
     
     @authenticate_user(model=Organization)
@@ -443,12 +446,12 @@ class ParticipantViewSet(GenericViewSet):
 
         UserCreateSerializerValidator.validate_phone_number_format(request.data)
         generated_password = self.generate_random_password()
+        print(generated_password)
         hashed_password = make_password(generated_password)
-
+        request_data = request.data.copy()
         # Add the hashed password to the request data
-        request.data.update({'password': hashed_password})
-
-        user_serializer = UserCreateSerializer(data=request.data)
+        request_data.update({'password': hashed_password})
+        user_serializer = UserCreateSerializer(data=request_data)
         user_serializer.is_valid(raise_exception=True)
         user_saved = self.perform_create(user_serializer)
         user_org_serializer = UserOrganizationMapSerializer(
@@ -3439,6 +3442,76 @@ class ResourceManagementViewSet(GenericViewSet):
                 f"Issue while Retrive Resource requeted data {error}",
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
+
+
+# New view set for Auto-categarization of the content
+class ResourceManagementAutoCategorizationViewSet(GenericViewSet):
+    '''
+    This View set is the updated verion of ResourceManagementViewSet, the input format is changed and the
+    data have json as well a pdf file for consumption.
+    '''
+    category_queryset = Category.objects.prefetch_related().all()
+    sub_category_queryset = SubCategory.objects.prefetch_related().all()
+    serializer_class = ResourceAutoCatSerializer
+   
+    @http_request_mutation
+    @transaction.atomic
+    def create(self, request, *args, **kwargs):
+        try:
+            user_map = request.META.get("map_id")
+            # request.data._mutable = True
+            data = request.data.copy()
+            files = request.FILES.getlist('files')  # 'files' is the key used in FormData
+            json_files = request.FILES.get('json_files')
+            json_content = json.loads(json_files.read())
+            categorization_list = [(data.get("value_chain"), self.process_sub_category(data.get("value_chain"), data.get('crop_category'))) for data in json_content]
+            category_id_map = {}
+            sub_category_id_map = {}
+            for category, sub_category in categorization_list:
+                if category and validators.format_category_name(category) not in category_id_map.keys():
+                    category_query = self.category_queryset.filter(name=validators.format_category_name(category))
+                    if category_query.exists():
+                        category_id_map[validators.format_category_name(category)] = category_query[0].id
+                    else:
+                        create_new_category = Category.objects.create(name=validators.format_category_name(category), description="")
+                        create_new_category.save()
+                        category_id_map[validators.format_category_name(category)] = create_new_category.id
+                    if sub_category and validators.format_category_name(sub_category) not in sub_category_id_map.keys():
+                        sub_category_query = self.sub_category_queryset.filter(name=validators.format_category_name(sub_category), 
+                                                                               category=category_id_map.get(validators.format_category_name(category)))
+                        if sub_category_query.exists():
+                            sub_category_id_map[validators.format_category_name(sub_category)] = sub_category_query[0].id
+                        else:
+                            create_new_sub_category = SubCategory.objects.create(name=validators.format_category_name(sub_category), 
+                                                                                 category=Category.objects.get(id=category_id_map.get(validators.format_category_name(category))), description="")
+                            create_new_sub_category.save()
+                            sub_category_id_map[validators.format_category_name(sub_category)] = create_new_sub_category.id
+            data["files"] = files
+            data["user_map"] = user_map
+            data["sub_categories_map"] = sub_category_id_map
+            data["uploaded_files"] = []
+            serializer = self.get_serializer(data=data)
+            serializer.is_valid(raise_exception=True)
+            serializer.save()
+            insert_auto_cat_data(serializer.data, json_content, category_id_map, sub_category_id_map)
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        except ValidationError as e:
+            LOGGER.error(e, exc_info=True)
+            return Response(e, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            LOGGER.error(e, exc_info=True)
+            return Response(str(e), status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        
+    def process_sub_category(self, category, sub_category):
+        try:
+            cleaned_text = re.sub(r'\b(n\/a|na)\b', '', sub_category, flags=re.IGNORECASE)
+        except:
+            cleaned_text = ""
+        if not cleaned_text or  cleaned_text == "":
+            return category
+        else:
+            return sub_category
+
 
 class ResourceFileManagementViewSet(GenericViewSet):
     """

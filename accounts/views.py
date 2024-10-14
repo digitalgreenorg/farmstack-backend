@@ -561,7 +561,7 @@ class SelfRegisterParticipantViewSet(GenericViewSet):
 
     def generate_random_password(self, length=12):
         """Generates a random password with the given length."""
-        characters = string.ascii_letters + string.digits + string.punctuation
+        characters = string.digits
         return ''.join(random.choice(characters) for _ in range(length))
     
     def perform_create(self, serializer):
