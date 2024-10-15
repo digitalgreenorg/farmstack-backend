@@ -402,7 +402,7 @@ def query_qdrant_collection(resource_file_ids, query, country, state, district, 
             collection_name=collection_name,
             query_vector=vector,
             query_filter=youtube_filter,
-            score_threshold=0.8,
+            score_threshold=0.07,
             limit=2
         )
         yotube_url=[item[1]["source"] for result in search_youtube_data for item in result if item[0] == "payload"]
