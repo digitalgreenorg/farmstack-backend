@@ -12,7 +12,6 @@ from datahub.models import (
     ResourceFile,
     ResourceSubCategoryMap,
     SubCategory,
-    Organization,
     UserOrganizationMap,
 )
 from datahub.serializers import OrganizationSerializer
@@ -103,6 +102,7 @@ class EmbeddingsViewSet(ModelViewSet):
     
     @action(detail=False, methods=["GET"])
     def get_categories(self, request):
+        
         org_id=request.GET.get("org_id")
         result=[]
         if org_id:
@@ -111,6 +111,7 @@ class EmbeddingsViewSet(ModelViewSet):
         return Response(result)
     
     def get_crop_by_org_id(self, org_id):
+
         user_map_id = list(UserOrganizationMap.objects.filter(organization_id=org_id).values_list('id', flat=True).distinct().all())
         filter = {"user_map_id__in": user_map_id}
         resource_ids = list(Resource.objects.filter(**filter
@@ -121,7 +122,6 @@ class EmbeddingsViewSet(ModelViewSet):
         
         # Prepare a dictionary to collect categories and their subcategories
         category_dict = {}
-
         for resource_map in related_sub_category_maps:
             category = resource_map.sub_category.category
             sub_category = resource_map.sub_category
@@ -242,8 +242,7 @@ class EmbeddingsViewSet(ModelViewSet):
 
         # Extract all unique organizations linked through the user_map field in Resource
         organizations = Organization.objects.filter(
-            id__in=resources.values_list("user_map__organization", flat=True).distinct()
-        )
+            id__in=resources.values_list("user_map__organization", flat=True).distinct())
 
         # Serialize the list of organizations
         serializer = OrganizationSerializer(organizations, many=True)
