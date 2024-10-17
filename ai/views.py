@@ -12,6 +12,8 @@ from datahub.models import (
     ResourceFile,
     ResourceSubCategoryMap,
     SubCategory,
+    UserOrganizationMap,
+
 )
 from datahub.serializers import OrganizationSerializer
 
@@ -61,6 +63,31 @@ class EmbeddingsViewSet(ModelViewSet):
         chunks = QuadrantRetrival().retrieve_chunks(file_ids, query, country, state,district, category, sub_category, source_type, k, threshold)
         return Response(chunks)
     
+
+    @action(detail=False, methods=["post"])
+    def get_content_v2(self, request):
+        organization_ids = request.data.get("organization_id")
+        query = request.data.get("query")
+        query = query.replace("\n", " ") if query else "" 
+        country = request.data.get("country", "").lower()
+        state = request.data.get("state", "").lower()
+        category = request.data.get("category", "").lower()
+        sub_category = request.data.get("sub_category", "")
+        district = request.data.get("district", "").lower()
+        k = request.data.get("k", 0)
+        threshold = request.data.get("threshold", 0)
+        source_type = request.data.get("source_type", None)
+        # if sub_category:
+            # filter = {"resource__resource_cat_map__sub_category_id":sub_category,
+            #           "resource__user_map__organization_id": organization_id[0]} if organization_id else {"resource__resource_cat_map__sub_category_id":sub_category}
+        filter = {"pk__in":organization_ids}
+        org_names = list(Organization.objects.filter(**filter
+                        ).values_list('name', flat=True).distinct().all())
+        chunks = QuadrantRetrival().retrieve_chunks_v2(org_names, organization_ids, query, country, state, district, category, sub_category, source_type, k, threshold)
+        return Response(chunks)
+
+    
+
     @action(detail=False, methods=["GET"])
     def get_crops(self, request):
         state=request.GET.get("state")
@@ -74,6 +101,51 @@ class EmbeddingsViewSet(ModelViewSet):
 
         return Response(result)
     
+    @action(detail=False, methods=["GET"])
+    def get_categories(self, request):
+
+        org_id=request.GET.get("org_id")
+        result=[]
+        if org_id:
+            result = self.get_crop_by_org_id(org_id)
+
+        return Response(result)
+    
+    def get_crop_by_org_id(self, org_id):
+
+        user_map_id = list(UserOrganizationMap.objects.filter(organization_id=org_id).values_list('id', flat=True).distinct().all())
+        filter = {"user_map_id__in": user_map_id}
+        resource_ids = list(Resource.objects.filter(**filter
+                        ).values_list('id', flat=True).distinct().all())
+        related_sub_category_maps = ResourceSubCategoryMap.objects.filter(
+            resource_id__in=resource_ids
+        ).select_related('sub_category__category')
+        
+        # Prepare a dictionary to collect categories and their subcategories
+        category_dict = {}
+        for resource_map in related_sub_category_maps:
+            category = resource_map.sub_category.category
+            sub_category = resource_map.sub_category
+
+            # Initialize category entry if not exists
+            if category.id not in category_dict:
+                category_dict[category.id] = {
+                    'category_name': category.name,
+                    'category_id': category.id,
+                    'sub_categories': []
+                }
+
+            # Add subcategory to the category's sub_categories list
+            if not any(sub['sub_category_id'] == sub_category.id for sub in category_dict[category.id]['sub_categories']):
+                category_dict[category.id]['sub_categories'].append({
+                    'sub_category_name': sub_category.name,
+                    'sub_category_id': sub_category.id,
+                    'description': sub_category.description
+
+                })
+        return list(category_dict.values())
+    
+
     def get_country_crops(self, country):
         # resource_sub_category_maps = ResourceSubCategoryMap.objects.filter(
         #     sub_category__name__icontains=country
@@ -172,8 +244,7 @@ class EmbeddingsViewSet(ModelViewSet):
 
         # Extract all unique organizations linked through the user_map field in Resource
         organizations = Organization.objects.filter(
-            id__in=resources.values_list("user_map__organization", flat=True).distinct()
-        )
+            id__in=resources.values_list("user_map__organization", flat=True).distinct())
 
         # Serialize the list of organizations
         serializer = OrganizationSerializer(organizations, many=True)
