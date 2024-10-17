@@ -265,7 +265,7 @@ def insert_chunking_in_db(documents: dict, collection_name:str = None):
                         "topic":data.get('topic',''),
                         "states": data.get('states',''),
                         "districts": data.get('districts',''),
-                        "countries": data.get('countries',''),
+                        "countries": [x.strip() for x in data.get('country','').split(',')],
                         "sub_categories": data.get('sub_categories','')
                         },
             ))
