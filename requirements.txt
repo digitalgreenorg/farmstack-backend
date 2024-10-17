@@ -172,9 +172,9 @@ proglog==0.1.10
 prometheus_client==0.20.0
 prompt-toolkit==3.0.43
 protobuf==4.25.3
+psycopg==3.1.14
 psutil==6.0.0
-psycopg
-psycopg-binary
+psycopg-binary==3.1.18
 psycopg2-binary
 ptyprocess==0.7.0
 py==1.11.0
