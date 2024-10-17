@@ -13,6 +13,7 @@ from datahub.models import (
     ResourceSubCategoryMap,
     SubCategory,
     UserOrganizationMap,
+
 )
 from datahub.serializers import OrganizationSerializer
 
@@ -86,6 +87,7 @@ class EmbeddingsViewSet(ModelViewSet):
         return Response(chunks)
 
     
+
     @action(detail=False, methods=["GET"])
     def get_crops(self, request):
         state=request.GET.get("state")
@@ -143,6 +145,7 @@ class EmbeddingsViewSet(ModelViewSet):
                 })
         return list(category_dict.values())
     
+
     def get_country_crops(self, country):
         # resource_sub_category_maps = ResourceSubCategoryMap.objects.filter(
         #     sub_category__name__icontains=country

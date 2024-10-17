@@ -1,9 +1,8 @@
 
 import logging
-from ai.open_ai_utils import find_similar_chunks, generate_response, genrate_embeddings_from_text, qdrant_collection_scroll, query_qdrant_collection,qdrant_collection_get_by_file_id,query_qdrant_collection_v2
+from ai.open_ai_utils import find_similar_chunks, generate_response, genrate_embeddings_from_text, qdrant_collection_scroll, query_qdrant_collection,qdrant_collection_get_by_file_id
 import openai
 from ai.utils import chat_history_formated, condensed_question_prompt, format_prompt
-from utils import validators
 
 LOGGING = logging.getLogger(__name__)
 
@@ -61,21 +60,6 @@ class QuadrantRetrival:
                 chunks = qdrant_collection_scroll(resource_file_ids, country, state, category, 4)
 
             return chunks
-        except Exception as e:
-            LOGGING.error(f"Error while generating response for query: {query}: Error {e}", exc_info=True)
-            return str(e)
-        
-    def retrieve_chunks_v2(self, org_names, organization_ids, query, country, state,district, category, sub_category, source_type, k, thresold):
-        try:
-            output = []
-            if query:
-                for orgs, org_id in zip(org_names, organization_ids):
-                    chunks = query_qdrant_collection_v2(validators.format_category_name(orgs),org_id, query, country, state,district, category, sub_category, source_type, k, thresold)
-                    output.append(chunks)
-            else:
-                chunks = qdrant_collection_scroll(org_names, country, state, category, 4)
-                output.append(chunks)
-            return output
         except Exception as e:
             LOGGING.error(f"Error while generating response for query: {query}: Error {e}", exc_info=True)
             return str(e)

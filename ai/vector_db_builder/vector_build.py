@@ -14,8 +14,8 @@ from langchain.text_splitter import RecursiveCharacterTextSplitter
 from sklearn.metrics.pairwise import cosine_similarity
 from unstructured.partition.pdf import partition_pdf
 from unstructured.staging.base import elements_to_dicts
-from utils import  validators
-from ai.open_ai_utils import create_embedding, get_embeddings, get_topic, get_embedding_auto_cat, insert_chunking_in_db
+
+from ai.open_ai_utils import create_embedding, get_embeddings, get_topic
 from ai.utils import build_pdf, download_file, resolve_file_path
 from ai.vector_db_builder.load_audio_and_video import LoadAudioAndVideo
 from ai.vector_db_builder.load_documents import LoadDocuments
@@ -69,32 +69,6 @@ def create_vector_db(resource_file, chunk_size=1000, chunk_overlap=200):
         )
         LOGGING.info(f"Resource file ID: {resource_id}")
     return data
-
-
-def insert_auto_cat_data(resource_data, json_data, category_id_map, sub_category_id_map):
-    resource_id = resource_data.get("resources")[0].get("id")
-    orgnisation_name = validators.format_category_name(resource_data.get("organization").get("name", ""))
-    LOGGING.info(f"updating json data with metdata information, collection name {orgnisation_name}")
-    for data in json_data:
-        data["category"] = str(category_id_map.get(validators.format_category_name(data.get("value_chain")), ""))
-        data["sub_category"] = str(sub_category_id_map.get(validators.format_category_name(data.get('crop_category')), ""))
-        data["resource_file"] = resource_id
-    embedded_data = get_embedding_auto_cat(json_data)
-    if embedded_data != {}:
-        LOGGING.info(f"Embeddings creation completed for Resource ID: {resource_id}")
-        # inserting embedding in vector db
-        chunk_insertation = insert_chunking_in_db(embedded_data, orgnisation_name.lower())
-        if chunk_insertation:
-            data = ResourceFile.objects.filter(id=resource_id).update(
-            embeddings_status="success", embeddings_status_reason='')
-        else:
-            data = ResourceFile.objects.filter(id=resource_id).update(
-            embeddings_status="failed", embeddings_status_reason='')
-    else:
-        data = ResourceFile.objects.filter(id=resource_id).update(
-            embeddings_status="failed", embeddings_status_reason='')
-    return data
-
 
 def load_documents(url, file, doc_type, id, transcription=""):
     try:
