@@ -65,7 +65,6 @@ class EmbeddingsViewSet(ModelViewSet):
 
     @action(detail=False, methods=["post"])
     def get_content_v2(self, request):
-
         organization_ids = request.data.get("organization_id")
         query = request.data.get("query")
         query = query.replace("\n", " ") if query else "" 
@@ -102,7 +101,7 @@ class EmbeddingsViewSet(ModelViewSet):
     
     @action(detail=False, methods=["GET"])
     def get_categories(self, request):
-        
+
         org_id=request.GET.get("org_id")
         result=[]
         if org_id:
