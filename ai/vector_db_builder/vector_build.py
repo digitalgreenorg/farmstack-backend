@@ -7,11 +7,8 @@ from contextlib import contextmanager
 import numpy as np
 from bs4 import BeautifulSoup
 from langchain.document_loaders import (
-    BSHTMLLoader,
-    CSVLoader,
     JSONLoader,
     PyMuPDFLoader,
-    UnstructuredHTMLLoader,
 )
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from sklearn.metrics.pairwise import cosine_similarity
