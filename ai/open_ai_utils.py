@@ -440,14 +440,14 @@ def query_qdrant_collection(resource_file_ids, query, country, state, district, 
             collection_name=collection_name,
             query_vector=vector,
             query_filter=youtube_filter,
-            score_threshold=0.8,
+            score_threshold=0.08,
             limit=2
         )
         yotube_url=[item[1]["source"] for result in search_youtube_data for item in result if item[0] == "payload"]
     except Exception as e:
         LOGGING.error(f"Exception occured in qdrant db connection {str(e)}")
         return []
-    results = extract_text_id_score(search_data)
+    results = extract_text_id_score_without_org_id(search_data)
     results["yotube_url"]=yotube_url
     return results
 
@@ -531,10 +531,25 @@ def extract_text_id_score(search_data, org_id):
             elif item[0] == "payload" and "text" in item[1]:
                 data["text"] = item[1]["text"]
                 reference.append(item[1]["source"])
-
         results.append(data)
-
     return {org_id: results, "reference": set(reference)}
+
+
+def extract_text_id_score_without_org_id(search_data):
+    results, reference = [], []
+    import pdb; pdb.set_trace()
+    for result in search_data:
+        data = {}
+        for item in result:
+            if item[0] == "id":
+                data["id"] = item[1]
+            elif item[0] == "score":
+                data["score"] = item[1]
+            elif item[0] == "payload" and "text" in item[1]:
+                data["text"] = item[1]["text"]
+                reference.append(item[1]["source"])
+        results.append(data)
+    return {"chunks": results, "reference": set(reference)}
 
 def qdrant_collection_scroll(resource_file_id, country='', state='' , category='',limit=20):
     collection_name = qdrant_settings.get('COLLECTION_NAME')
