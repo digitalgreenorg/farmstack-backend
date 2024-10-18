@@ -537,7 +537,6 @@ def extract_text_id_score(search_data, org_id):
 
 def extract_text_id_score_without_org_id(search_data):
     results, reference = [], []
-    import pdb; pdb.set_trace()
     for result in search_data:
         data = {}
         for item in result:
