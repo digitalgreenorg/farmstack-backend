@@ -101,6 +101,9 @@ from datahub.models import (
     UserOrganizationMap,
 )
 from datahub.serializers import (
+    ResourceAutoCatSerializer,  # Added for Auto Categorizaion
+)
+from datahub.serializers import (
     DatahubDatasetFileDashboardFilterSerializer,
     DatahubDatasetsSerializer,
     DatahubDatasetsV2Serializer,
@@ -123,7 +126,6 @@ from datahub.serializers import (
     ResourceAPIBuilderSerializer,
     ResourceFileSerializer,
     ResourceSerializer,
-    ResourceAutoCatSerializer, # Added for Auto Categorizaion
     ResourceUsagePolicySerializer,
     StandardisationTemplateUpdateSerializer,
     StandardisationTemplateViewSerializer,
@@ -441,15 +443,15 @@ class ParticipantViewSet(GenericViewSet):
         org_serializer.is_valid(raise_exception=True)
         org_queryset = self.perform_create(org_serializer)
         org_id = org_queryset.id
-
+        data=request.data.copy()
         UserCreateSerializerValidator.validate_phone_number_format(request.data)
         generated_password = self.generate_random_password()
         hashed_password = make_password(generated_password)
 
         # Add the hashed password to the request data
-        request.data.update({'password': hashed_password})
+        data.update({'password': hashed_password})
 
-        user_serializer = UserCreateSerializer(data=request.data)
+        user_serializer = UserCreateSerializer(data=data)
         user_serializer.is_valid(raise_exception=True)
         user_saved = self.perform_create(user_serializer)
         user_org_serializer = UserOrganizationMapSerializer(

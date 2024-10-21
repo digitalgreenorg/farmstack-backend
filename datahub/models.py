@@ -60,6 +60,10 @@ class Organization(TimeStampMixin):
     org_description = models.TextField(max_length=512, null=True, blank=True)
     website = models.CharField(max_length=255, null=True, blank=True)
     status = models.BooleanField(default=True)
+    country = models.JSONField(default=dict)
+    state = models.JSONField(default=dict)
+    district = models.JSONField(default=dict)
+    village = models.JSONField(default=dict)
 
     def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
