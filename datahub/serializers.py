@@ -7,11 +7,11 @@ import shutil
 import string
 import uuid
 from urllib.parse import quote
-from django.core.files.base import ContentFile
 
 import plazy
 from django.conf import settings
 from django.core.exceptions import ObjectDoesNotExist, ValidationError
+from django.core.files.base import ContentFile
 from django.core.validators import URLValidator
 from django.db.models import Count, Prefetch, Q
 from django.utils.translation import gettext as _
@@ -1206,7 +1206,6 @@ class ResourceSerializer(serializers.ModelSerializer):
             resource = Resource.objects.create(**validated_data)
             resource_files_data = json.loads(resource_files_data[0]) if resource_files_data else []
             sub_categories_map = json.loads(sub_categories_map[0]) if sub_categories_map else []
-            import pdb; pdb.set_trace()
             resource_sub_cat_instances= [
                 ResourceSubCategoryMap(resource=resource, sub_category=SubCategory.objects.get(id=sub_cat)
                                        ) for sub_cat in sub_categories_map]
@@ -1215,11 +1214,11 @@ class ResourceSerializer(serializers.ModelSerializer):
 
             for resource_file in resource_files_data:
                 if resource_file.get("type") == "youtube":
-                    youtube_urls_response = get_youtube_url(resource_file.get("url"))
-                    if youtube_urls_response.status_code == 400:
-                        return youtube_urls_response
-                    youtube_urls = youtube_urls_response.data
-                    playlist_urls = [{"resource": resource.id, "type":"youtube", **row} for row in youtube_urls]
+                    # youtube_urls_response = get_youtube_url(resource_file.get("url"))
+                    # if youtube_urls_response.status_code == 400:
+                    #     return youtube_urls_response
+                    # youtube_urls = youtube_urls_response.data
+                    playlist_urls=[{"resource": resource.id, **resource_file}]
                     for row in playlist_urls:
                         serializer = ResourceFileSerializer(data=row, partial=True)
                         serializer.is_valid(raise_exception=True)

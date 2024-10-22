@@ -10,16 +10,17 @@ import re
 import shutil
 import sys
 import threading
+import uuid
 from calendar import c
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from functools import reduce
 from pickle import TRUE
 from urllib.parse import parse_qs, unquote, urlparse
-import uuid
 
 import django
 import numpy as np
 import pandas as pd
+import requests
 from django.conf import settings
 from django.contrib.admin.utils import get_model_from_relation
 from django.core.cache import cache
@@ -44,7 +45,6 @@ from django.db.models.functions import Concat
 # from django.db.models.functions import Index, Substr
 from django.http import JsonResponse
 from django.shortcuts import render
-import requests
 from drf_braces.mixins import MultipleSerializersViewMixin
 from jsonschema import ValidationError
 from psycopg2 import connect
@@ -3418,7 +3418,7 @@ class ResourceFileManagementViewSet(GenericViewSet):
                 youtube_urls_response = get_youtube_url(data.get("url"))
                 if youtube_urls_response.status_code == 400:
                     return youtube_urls_response
-                youtube_urls = youtube_urls_response.data
+                youtube_urls = json.loads(youtube_urls_response.content)
                 playlist_urls = [{"resource": resource, "type":"youtube", **row} for row in youtube_urls]
                 for row in playlist_urls:
                     serializer = self.get_serializer(data=row)
