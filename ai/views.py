@@ -7,13 +7,14 @@ from accounts.models import User
 from ai.retriever.manual_retrival import QuadrantRetrival
 from datahub.models import (
     Category,
+    Organization,
     Resource,
     ResourceFile,
     ResourceSubCategoryMap,
     SubCategory,
-    Organization,
     UserOrganizationMap,
 )
+from datahub.serializers import OrganizationSerializer
 
 
 class EmbeddingsViewSet(ModelViewSet):
@@ -32,7 +33,6 @@ class EmbeddingsViewSet(ModelViewSet):
         chunks = QuadrantRetrival().embeddings_and_chunks(collection_id)
         return Response(chunks)
 
-    
     @action(detail=False, methods=["post"])
     def get_content(self, request):
         embeddings = []
@@ -60,7 +60,6 @@ class EmbeddingsViewSet(ModelViewSet):
         chunks = QuadrantRetrival().retrieve_chunks(file_ids, query, country, state,district, category, sub_category, source_type, k, threshold)
         return Response(chunks)
     
-
     @action(detail=False, methods=["post"])
     def get_content_v2(self, request):
 
@@ -84,7 +83,6 @@ class EmbeddingsViewSet(ModelViewSet):
         chunks = QuadrantRetrival().retrieve_chunks_v2(org_names, organization_ids, query, country, state, district, category, sub_category, source_type, k, threshold)
         return Response(chunks)
 
-    
     @action(detail=False, methods=["GET"])
     def get_crops(self, request):
         state=request.GET.get("state")
@@ -222,4 +220,26 @@ class EmbeddingsViewSet(ModelViewSet):
         # Convert category_dict to a list
         return list(category_dict.values())
 
-    
+    @action(detail=False, methods=["get"])
+    def get_organizations(self, request):
+        # Define a map of possible filterable fields in Resource model
+        filterable_fields = ["country", "state", "district", "village"]
+
+        # Build a dynamic query filter based on the query parameters
+        filters = {}
+        for field in filterable_fields:
+            if field in request.query_params:
+                # Compare query params in lowercase with the JSONField values in the database
+                filters[f"{field}__icontains"] = request.query_params[field].lower()
+
+        # Apply the filters dynamically to the Resource model (without LOWER() for JSONField)
+        resources = Resource.objects.filter(user_map__user__role_id=3, user_map__user__on_boarded_by=None,**filters)
+
+        # Extract all unique organizations linked through the user_map field in Resource
+        organizations = Organization.objects.filter(
+            id__in=resources.values_list("user_map__organization", flat=True).distinct())
+
+        # Serialize the list of organizations
+        serializer = OrganizationSerializer(organizations, many=True)
+        return Response(serializer.data, status=200)
+   
