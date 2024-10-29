@@ -65,15 +65,15 @@ class QuadrantRetrival:
             LOGGING.error(f"Error while generating response for query: {query}: Error {e}", exc_info=True)
             return str(e)
         
-    def retrieve_chunks_v2(self, org_names, organization_ids, query, country, state,district, category, sub_category, source_type, k, thresold):
+    def retrieve_chunks_v2(self, org_names, organization_ids, query, countries, state,district, category, sub_category, source_type, k, thresold):
         try:
             output = []
             if query:
                 for orgs, org_id in zip(org_names, organization_ids):
-                    chunks = query_qdrant_collection_v2(validators.format_category_name(orgs),org_id, query, country, state,district, category, sub_category, source_type, k, thresold)
+                    chunks = query_qdrant_collection_v2(validators.format_category_name(orgs),org_id, query, countries, state,district, category, sub_category, source_type, k, thresold)
                     output.append(chunks)
             else:
-                chunks = qdrant_collection_scroll(org_names, country, state, category, 4)
+                chunks = qdrant_collection_scroll(org_names, countries, state, category, 4)
                 output.append(chunks)
             return output
         except Exception as e:

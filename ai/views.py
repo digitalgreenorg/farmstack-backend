@@ -66,7 +66,7 @@ class EmbeddingsViewSet(ModelViewSet):
         organization_ids = request.data.get("organization_id")
         query = request.data.get("query")
         query = query.replace("\n", " ") if query else "" 
-        country = request.data.get("country", "").lower()
+        countries = request.data.get("countries", [])
         state = request.data.get("state", "").lower()
         category = request.data.get("category", "").lower()
         sub_category = request.data.get("sub_category", "")
@@ -80,7 +80,7 @@ class EmbeddingsViewSet(ModelViewSet):
         filter = {"pk__in":organization_ids}
         org_names = list(Organization.objects.filter(**filter
                         ).values_list('name', flat=True).distinct().all())
-        chunks = QuadrantRetrival().retrieve_chunks_v2(org_names, organization_ids, query, country, state, district, category, sub_category, source_type, k, threshold)
+        chunks = QuadrantRetrival().retrieve_chunks_v2(org_names, organization_ids, query, countries, state, district, category, sub_category, source_type, k, threshold)
         return Response(chunks)
 
     @action(detail=False, methods=["GET"])

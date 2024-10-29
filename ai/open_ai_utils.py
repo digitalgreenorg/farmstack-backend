@@ -453,7 +453,7 @@ def query_qdrant_collection(resource_file_ids, query, country, state, district, 
 
 
 
-def query_qdrant_collection_v2(org_name, org_id, query, country, state, district, category, sub_category, source_type, k, threshold):
+def query_qdrant_collection_v2(org_name, org_id, query, countries, state, district, category, sub_category, source_type, k, threshold):
     qdrant_client = create_qdrant_client(org_name)
     if query:
         vector = openai_client.embeddings.create(
@@ -475,8 +475,8 @@ def query_qdrant_collection_v2(org_name, org_id, query, country, state, district
         filter_conditions.append(FieldCondition(key="district", match=MatchValue(value=district)))
     # if context_type:
     #     filter_conditions.append(FieldCondition(key="context-type", match=MatchValue(value=context_type)))
-    if country:
-        filter_conditions.append(FieldCondition(key="country", match=MatchValue(value=country)))
+    if countries !=[]:
+        filter_conditions.append(FieldCondition(key="countries", match=MatchAny(any=countries)))
     
     if source_type == 'table':
         default_threshold = 0.4
@@ -531,6 +531,14 @@ def extract_text_id_score(search_data, org_id):
             elif item[0] == "payload" and "text" in item[1]:
                 data["text"] = item[1]["text"]
                 reference.append(item[1]["source"])
+            if item[0] == "payload" and "countries" in item[1]:
+                data["countries"] = item[1]["countries"]
+            if item[0] == "payload" and "resource_file" in item[1]:
+                data["resource_file"] = item[1]["resource_file"]
+            if item[0] == "payload" and "sub_category" in item[1]:
+                data["sub_category"] = item[1]["sub_category"]
+            if item[0] == "payload" and "category" in item[1]:
+                data["category"] = item[1]["category"]
         results.append(data)
     return {org_id: results, "reference": set(reference)}
 
