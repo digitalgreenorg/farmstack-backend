@@ -145,7 +145,7 @@ class EmbeddingsViewSet(ModelViewSet):
         # ).select_related('sub_category__category', 'resource')
 
         # Get the list of resource IDs associated with the state
-        resource_ids = Resource.objects.filter(country=country).values_list('id', flat=True).distinct()
+        resource_ids = Resource.objects.filter(country__countryName=country).values_list('id', flat=True).distinct()
 
         # Fetch all subcategories related to these resources, excluding categories named "States"
         related_sub_category_maps = ResourceSubCategoryMap.objects.filter(
@@ -181,12 +181,13 @@ class EmbeddingsViewSet(ModelViewSet):
     
     def get_state_crops(self, state):
 
-        resource_sub_category_maps = ResourceSubCategoryMap.objects.filter(
-            sub_category__name__icontains=state
-        ).select_related('sub_category__category', 'resource')
+        # resource_sub_category_maps = ResourceSubCategoryMap.objects.filter(
+        #     sub_category__name__icontains=state
+        # ).select_related('sub_category__category', 'resource')
 
         # Get the list of resource IDs associated with the state
-        resource_ids = resource_sub_category_maps.values_list('resource_id', flat=True).distinct()
+        # resource_ids = resource_sub_category_maps.values_list('resource_id', flat=True).distinct()
+        resource_ids = Resource.objects.filter(state__name=state).values_list('id', flat=True).distinct()
 
         # Fetch all subcategories related to these resources, excluding categories named "States"
         related_sub_category_maps = ResourceSubCategoryMap.objects.filter(
