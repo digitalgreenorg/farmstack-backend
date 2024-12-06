@@ -278,3 +278,4 @@ zipp==3.11.0
 qdrant-client==1.9.1
 boto3
 django-storages
+yt-dlp
