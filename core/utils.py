@@ -1,10 +1,17 @@
 import datetime
+import hashlib
+import json
 import logging
 import os
+import secrets
+import smtplib
 import time
 import urllib
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
 from inspect import formatannotationrelativeto
 from urllib import parse
+
 import pandas as pd
 import requests
 import sendgrid
@@ -17,13 +24,6 @@ from rest_framework.response import Response
 from sendgrid.helpers.mail import Content, Email, Mail
 
 from core.constants import Constants
-import secrets
-import hashlib
-import json
-
-import smtplib
-from email.mime.multipart import MIMEMultipart
-from email.mime.text import MIMEText
 
 LOGGER = logging.getLogger(__name__)
 
@@ -76,7 +76,7 @@ class Utils:
         msg = MIMEMultipart()
         msg['From'] = settings.SMTP_USER
         msg['To'] = to_email
-        msg['Subject'] = content
+        msg['Subject'] = subject
 
         # Attach the email content to the MIME object
         msg.attach(MIMEText(content, 'html'))
