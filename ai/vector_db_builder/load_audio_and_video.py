@@ -2,17 +2,47 @@
 import logging
 import os
 import re
-from ai.open_ai_utils import generate_response, transcribe_audio
-from core.constants import Constants
+
+import boto3
 import pytube
+import requests
+import yt_dlp
+from yt_dlp import YoutubeDL
 
+from ai.open_ai_utils import generate_response, transcribe_audio
 from core import settings
+from core.constants import Constants
 
+s3_client = boto3.client('s3')
+# Set custom headers
+headers = {
+    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+    'Accept-Language': 'en-US,en;q=0.9',
+    'Accept-Encoding': 'gzip, deflate, br',
+    'Connection': 'keep-alive',
+    'Upgrade-Insecure-Requests': '1'
+}
+
+# Create custom session
+session = requests.Session()
+session.headers.update(headers)
+
+# Override pytube's default request session
+pytube.request.Request.session = session
 LOGGING = logging.getLogger(__name__)
 
 class LoadAudioAndVideo:
 
-   def generate_transcriptions_summary(self, url):
+    def upload_to_s3(self, local_file_path, s3_bucket, s3_key):
+        try:
+            s3_client.upload_file(local_file_path, s3_bucket, s3_key)
+            LOGGING.info(f"File uploaded to S3: s3://{s3_bucket}/{s3_key}")
+            return f"https://{s3_bucket}.s3.amazonaws.com/{s3_key}"
+        except Exception as e:
+            LOGGING.error(f"Failed to upload to S3: {e}")
+            raise
+
+    def generate_transcriptions_summary(self, url):
         regex_patterns = [
         r"(?<=v=)[^&#]+",      # Pattern for "watch" URLs
         r"(?<=be/)[^&#]+",     # Pattern for "youtu.be" short URLs
@@ -23,27 +53,48 @@ class LoadAudioAndVideo:
             match = re.search(pattern, url)
             if match:
                 file_id =  match.group(0)
-        output_audio_file_mp3 = f"{settings.RESOURCES_AUDIOS}{file_id}.mp3"
+        local_temp_path = f"/tmp/{file_id}.mp3"  # Temporary local path
+        s3_key = f"users/resources/audios/{file_id}.mp3"  # S3 key
+        s3_bucket = settings.AWS_STORAGE_BUCKET_NAME  # Replace with your S3 bucket name
+        s3_url= f"https://{s3_bucket}.s3.amazonaws.com/{s3_key}"
+        LOGGING.info(f"Audio file not available locally for URL: {url}")
+        
+        # Configure yt-dlp options
+        ydl_opts = {
+        'format': 'bestaudio/best',
+        'outtmpl': local_temp_path,
+        'quiet': False,
+        'headers': {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+        },
+        'cookiefile': "../youtube_cookies.txt",  # Path to your exported cookies
+    }
 
-        if not os.path.exists(output_audio_file_mp3):
-            LOGGING.info(f"Audio file not available for url: {url}")
-            video = pytube.YouTube(url)
-            video_stream = video.streams.filter(only_audio=True).first()
+        try:
+            # Download the audio
+            with YoutubeDL(ydl_opts) as ydl:
+                ydl.download([url])
+                LOGGING.info("Download completed.")
+        except Exception as e:
+            LOGGING.error(f"An error occurred while downloading: {e}")
+            return
 
-            video_stream.download(filename=output_audio_file_mp3)
-            LOGGING.info(f"Audio file downloaded for url: {url}")
-        audio_file = open(output_audio_file_mp3, "rb")
-        LOGGING.info(f"Audio tranceiption started for url: {url}")
+       
+        LOGGING.info(f"Audio file uploaded to S3: {s3_url}")
 
-        transcription = transcribe_audio(audio_file)
-        words = transcription.text.split()
-        chunks = [words[i:i + 1500] for i in range(0, len(words), 1500)]
-        summary = ''
-        LOGGING.info(f"youtube Video url:{url} transcriptions splited into: {len(chunks)}")
-        for chunk in chunks:
-            text_chunks = ' '.join(chunk)
-            summary_chunk, tokens_uasage = generate_response(Constants.TRANSCTION_PROMPT.format(transcription=text_chunks, youtube_url=url))
-            summary=summary+" "+summary_chunk
-        return summary
-   
-  
+        # Use the S3 URL for further processing
+        LOGGING.info(f"Audio transcription started for S3 URL: {s3_url}")
+        transcription = transcribe_audio(open(local_temp_path, "rb"))
+         # Upload to S3
+        if os.path.exists(local_temp_path):
+            s3_url =self.upload_to_s3(local_temp_path, s3_bucket, s3_key)
+            
+            # Optionally, remove the local file after upload
+            os.remove(local_temp_path)
+            LOGGING.info("Local file deleted after upload.")
+
+        LOGGING.info("Transcription completed.")
+        return transcription.text
+
+    
+    

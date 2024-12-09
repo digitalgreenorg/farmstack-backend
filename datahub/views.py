@@ -3539,28 +3539,28 @@ class ResourceFileManagementViewSet(GenericViewSet):
             districts=categories.get("districts")
 
             if data.get("type") == "youtube":
-                youtube_urls_response = get_youtube_url(data.get("url"))
-                if youtube_urls_response.status_code == 400:
-                    return youtube_urls_response
-                youtube_urls = youtube_urls_response.data
-                playlist_urls = [{"resource": resource, "type":"youtube", "transcription": data.get("transcription"), **row} for row in youtube_urls]
-                for row in playlist_urls:
-                    serializer = self.get_serializer(data=row)
-                    serializer.is_valid(raise_exception=True)
-                    serializer.save()
-                    LOGGER.info(f"Embeding creation started for youtube url: {row.get('url')}")
-                    serializer_data = serializer.data
-                    serializer_data["state"] = state
-                    serializer_data["category"] = category
-                    serializer_data["sub_category"] = sub_category
-                    serializer_data["country"] = country
-                    serializer_data["district"] = district
-                    serializer_data["countries"] = countries
-                    serializer_data["states"] = states
-                    serializer_data["districts"] = districts
+                # youtube_urls_response = get_youtube_url(data.get("url"))
+                # if youtube_urls_response.status_code == 400:
+                #     return youtube_urls_response
+                # youtube_urls = youtube_urls_response.data
+                row = {"resource": resource, "type":"youtube", "transcription": data.get("transcription"), "url": data.get("url")}
+                # for row in playlist_urls:
+                serializer = self.get_serializer(data=row)
+                serializer.is_valid(raise_exception=True)
+                serializer.save()
+                LOGGER.info(f"Embeding creation started for youtube url: {row.get('url')}")
+                serializer_data = serializer.data
+                serializer_data["state"] = state
+                serializer_data["category"] = category
+                serializer_data["sub_category"] = sub_category
+                serializer_data["country"] = country
+                serializer_data["district"] = district
+                serializer_data["countries"] = countries
+                serializer_data["states"] = states
+                serializer_data["districts"] = districts
 
-                    # create_vector_db.delay(serializer_data)
-                    create_vector_db.delay(serializer_data)
+                # create_vector_db.delay(serializer_data)
+                create_vector_db.delay(serializer_data)
                 return Response(serializer.data, status=status.HTTP_201_CREATED)
             else:
                 serializer = self.get_serializer(data=request.data, partial=True)

@@ -259,23 +259,15 @@ For example:
                         Title: title should be name for the context,
                         Youtube url: {youtube_url}
                         Description: Description should be a very much detailed explanation of the context with good formatiing of text,
-                        Keywords: Keywords are important terms in the context,
-                        Tags : Tags should be important nouns associated in the transcript,
                         """
     SUMMARY_PROMPT= """
-            Certainly! Here is the rephrased prompt for model `"gpt-3.5-turbo-instruct"`:
-
-                ---
-
-                Given the following context: "{transcription}", generate a detailed summary in the specified format:
-
+                Given the following context: "{transcription}".
+                 
+                generate a detailed summary in the specified format:
+                
                 #### Format
-
-                - **Title:** A concise title for the context.
-                - **Youtube url:** {youtube_url}
                 - **Description:** A detailed explanation of the context with well-formatted text.
-                - **Keywords:** Important terms from the context.
-                - **Tags:** Relevant tags for the context.
+
                     """
 
     SYSTEM_MESSAGE_CHAIN = """

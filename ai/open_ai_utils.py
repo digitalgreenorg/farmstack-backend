@@ -42,6 +42,7 @@ encoded_user = quote_plus(db_settings[Constants.USER.upper()])
 encoded_password = quote_plus(db_settings[Constants.PASSWORD])
 
 openai_client = openai.Client(api_key=settings.OPENAI_API_KEY)
+openai.api_key=settings.OPENAI_API_KEY
 
 def get_embeddings(docs, resource, file_id, chunking_strategy=None):
     embedded_data = {}
@@ -278,9 +279,10 @@ def insert_chunking_in_db(documents: dict, collection_name:str = None):
 
 def transcribe_audio(audio_bytes, language="en-US"):
     try:
-        transcription = openai_client.audio.transcriptions.create(
+        transcription = openai_client.audio.translations.create(
                          model=Constants.WISHPER_1, file=audio_bytes)
         return transcription
+        
     except Exception as e:
         print("Transcription error:", str(e))
         return str(e)
