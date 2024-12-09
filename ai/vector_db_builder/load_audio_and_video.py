@@ -45,7 +45,6 @@ class LoadAudioAndVideo:
                 file_id =  match.group(0)
         output_audio_file_mp3 = f"{settings.RESOURCES_AUDIOS}{file_id}.mp3"
         # output_audio_file_mp3 = f"{file_id}.mp3"
-
         if not os.path.exists(output_audio_file_mp3):
             LOGGING.info(f"Audio file not available for url: {url}")
             # video = pytube.YouTube(url)
@@ -54,7 +53,8 @@ class LoadAudioAndVideo:
             ydl_opts = {
                 'format': 'bestaudio/best',  # Best audio format
                 'outtmpl': output_audio_file_mp3,  # Output path
-                'quiet': False,  # Show output
+                'quiet': False,  # Show output,
+                'cookies': '../youtube_cookies.txt'
             }
             try:
                 with yt_dlp.YoutubeDL(ydl_opts) as ydl:
