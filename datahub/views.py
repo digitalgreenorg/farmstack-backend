@@ -736,6 +736,7 @@ class MailInvitationViewSet(GenericViewSet):
                         subject=os.environ.get("DATAHUB_NAME", "datahub_name")
                                 + Constants.PARTICIPANT_INVITATION_SUBJECT,
                     )
+                    emails_found.append(email)
                 except Exception as e:
                     emails_not_found.append()
             failed = f"No able to send emails to this emails: {emails_not_found}"
@@ -3560,7 +3561,7 @@ class ResourceFileManagementViewSet(GenericViewSet):
                 serializer_data["districts"] = districts
 
                 # create_vector_db.delay(serializer_data)
-                create_vector_db.delay(serializer_data)
+                create_vector_db(serializer_data)
                 return Response(serializer.data, status=status.HTTP_201_CREATED)
             else:
                 serializer = self.get_serializer(data=request.data, partial=True)
