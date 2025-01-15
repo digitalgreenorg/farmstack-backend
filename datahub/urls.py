@@ -20,6 +20,7 @@ from datahub.views import (
     DocumentSaveView,
     DropDocumentView,
     EmbeddingsViewSet,
+    FetchFiles,
     MailInvitationViewSet,
     MessagesCreateViewSet,
     MessagesViewSet,
@@ -64,6 +65,7 @@ router.register(r"resource_file", ResourceFileManagementViewSet, basename=Consta
 router.register(r'categories', CategoryViewSet, basename=Constants.CATEGORY)
 router.register(r'subcategories', SubCategoryViewSet, basename=Constants.SUBCATEGORY)
 router.register(r'embeddings', EmbeddingsViewSet, basename='embeddings')
+router.register(r'files', FetchFiles, basename='embeddings')
 
 urlpatterns = [
     path("", include(router.urls)),

@@ -7,11 +7,11 @@ import shutil
 import string
 import uuid
 from urllib.parse import quote
-from django.core.files.base import ContentFile
 
 import plazy
 from django.conf import settings
 from django.core.exceptions import ObjectDoesNotExist, ValidationError
+from django.core.files.base import ContentFile
 from django.core.validators import URLValidator
 from django.db.models import Count, Prefetch, Q
 from django.utils.translation import gettext as _
@@ -67,6 +67,7 @@ from .models import (  # Conversation,
 LOGGER = logging.getLogger(__name__)
 
 from ai.vector_db_builder.vector_build import create_vector_db
+
 
 class OrganizationRetriveSerializer(serializers.ModelSerializer):
     """_summary_
@@ -1528,3 +1529,14 @@ class CategorySubcategoryInputSerializer(serializers.Serializer):
     category_name = serializers.CharField(max_length=255)
     subcategory_name = serializers.CharField(max_length=255)
 
+
+class SourceDetailsSerializer(serializers.Serializer):
+    source_type = serializers.CharField(max_length=50)
+    details = serializers.DictField()
+
+class FileItemSerializer(serializers.Serializer):
+    file_name = serializers.CharField(max_length=255)
+    file_url = serializers.CharField(max_length=255)
+
+class FileResponseSerializer(serializers.Serializer):
+    files = FileItemSerializer(many=True)

@@ -279,3 +279,6 @@ qdrant-client==1.9.1
 boto3
 django-storages
 yt-dlp
+azure-storage-blob
+azure-core
+dropbox
