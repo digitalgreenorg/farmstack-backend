@@ -126,7 +126,13 @@ RESOURCE_URL_TYPE = (
     ("pdf", "pdf"),
     ("file", "file"),
     ("website", "website"),
-    ("api", "api")
+    ("api", "api"),
+    ("s3", "s3"),
+    ("google_drive", "google_drive"),
+    ("dropbox", "dropbox"),
+    ("azure_blob", "azure_blob")
+
+
 )
 
 USAGE_POLICY_APPROVAL_STATUS = (

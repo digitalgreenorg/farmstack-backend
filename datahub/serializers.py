@@ -1282,7 +1282,6 @@ class ResourceSerializer(serializers.ModelSerializer):
                     serializer.is_valid(raise_exception=True)
                     serializer.save()
                     serializer_data = serializer.data
-
                     LOGGER.info(f"Embeding creation started for url: {resource_file.get('url')} or file: {resource_file.get('url')}")
                     serializer_data["state"] = state
                     serializer_data["category"] =category
