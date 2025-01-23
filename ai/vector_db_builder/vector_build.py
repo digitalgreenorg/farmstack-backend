@@ -476,7 +476,7 @@ def temporary_file(suffix=""):
 # @shared_task
 def load_categories(resource_file, resource_file_object):
     # Define the URL of the API
-    url = 'http://127.0.0.1:29292/categorize_file'
+    url = 'https://dev.platform.farmer.chat/auto_categarization/categorize_file'
     categories=[]
     # Specify the file path
     # Open the file in binary mode and send it to the API
@@ -504,11 +504,15 @@ def load_categories(resource_file, resource_file_object):
                         name=subcategory_name,
                         category=category
                     )
-                    # Create the mapping of Resource and SubCategory
-                    sub_category_instances.append(ResourceSubCategoryMap(
+                    if not ResourceSubCategoryMap.objects.filter(
                         resource_id=resource_file_object.get("resource"),
                         sub_category=sub_category
-                    ))
+                    ).exists():
+                        # Create the mapping of Resource and SubCategory
+                        sub_category_instances.append(ResourceSubCategoryMap(
+                            resource_id=resource_file_object.get("resource"),
+                            sub_category=sub_category
+                        ))
                 # Bulk create the subcategory mappings
                 ResourceSubCategoryMap.objects.bulk_create(sub_category_instances)
     except Exception as e:
