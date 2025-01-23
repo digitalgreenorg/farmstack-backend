@@ -3658,7 +3658,7 @@ class ResourceFileManagementViewSet(GenericViewSet):
                         serializer.is_valid(raise_exception=True)
                         serializer.save()
                         # create_vector_db.delay(serializer.data)
-                        create_vector_db(serializer.data)
+                        create_vector_db.delay(serializer.data)
                         return JsonResponse(serializer.data, status=status.HTTP_200_OK)
                 return Response(file_path)
             LOGGER.error("Failed to fetch data from api")
