@@ -42,6 +42,15 @@ class LoadAudioAndVideo:
             LOGGING.error(f"Failed to upload to S3: {e}")
             raise
 
+    def check_s3_file_exists(self, s3_bucket, s3_key):
+        """Check if the file exists in the S3 bucket."""
+        s3_client = boto3.client('s3')
+        try:
+            s3_client.head_object(Bucket=s3_bucket, Key=s3_key)
+            return True  # File exists
+        except Exception as e:
+            return False  # Propagate other errors
+
     def generate_transcriptions_summary(self, url):
         regex_patterns = [
         r"(?<=v=)[^&#]+",      # Pattern for "watch" URLs
@@ -58,43 +67,52 @@ class LoadAudioAndVideo:
         s3_bucket = settings.AWS_STORAGE_BUCKET_NAME  # Replace with your S3 bucket name
         s3_url= f"https://{s3_bucket}.s3.amazonaws.com/{s3_key}"
         LOGGING.info(f"Audio file not available locally for URL: {url}")
-        
         # Configure yt-dlp options
-        ydl_opts = {
-        'format': 'bestaudio/best',
-        'outtmpl': local_temp_path,
-        'quiet': False,
-        'headers': {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
-        },
-        'cookiefile': "../youtube_cookies.txt",  # Path to your exported cookies
-    }
 
-        try:
-            # Download the audio
-            with YoutubeDL(ydl_opts) as ydl:
-                ydl.download([url])
-                LOGGING.info("Download completed.")
-        except Exception as e:
-            LOGGING.error(f"An error occurred while downloading: {e}")
-            return
+        # Check if file already exists in S3
+        if self.check_s3_file_exists(s3_bucket, s3_key):
+            LOGGING.info(f"File already exists in S3: {s3_url}")
+            LOGGING.info(f"Audio transcription started for S3 URL: {s3_url}")
+            s3_client.download_file(s3_bucket, s3_key, local_temp_path)
+            # Use the S3 URL for further processing
+            LOGGING.info(f"Audio transcription started for S3 URL: {s3_url}")
+            transcription = transcribe_audio(open(local_temp_path, "rb"))
+        else:
+            ydl_opts = {
+            'format': 'bestaudio/best',
+            'outtmpl': local_temp_path,
+            'quiet': False,
+            'headers': {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+            },
+            'cookiefile': "../youtube_cookies.txt",  # Path to your exported cookies
+        }
 
-       
-        LOGGING.info(f"Audio file uploaded to S3: {s3_url}")
+            try:
+                # Download the audio
+                with YoutubeDL(ydl_opts) as ydl:
+                    ydl.download([url])
+                    LOGGING.info("Download completed.")
+            except Exception as e:
+                LOGGING.error(f"An error occurred while downloading: {e}")
+                return
 
-        # Use the S3 URL for further processing
-        LOGGING.info(f"Audio transcription started for S3 URL: {s3_url}")
-        transcription = transcribe_audio(open(local_temp_path, "rb"))
-         # Upload to S3
-        if os.path.exists(local_temp_path):
-            s3_url =self.upload_to_s3(local_temp_path, s3_bucket, s3_key)
-            
-            # Optionally, remove the local file after upload
-            os.remove(local_temp_path)
-            LOGGING.info("Local file deleted after upload.")
+        
+            LOGGING.info(f"Audio file uploaded to S3: {s3_url}")
 
-        LOGGING.info("Transcription completed.")
+            # Use the S3 URL for further processing
+            LOGGING.info(f"Audio transcription started for S3 URL: {s3_url}")
+            transcription = transcribe_audio(open(local_temp_path, "rb"))
+            # Upload to S3
+            if os.path.exists(local_temp_path):
+                s3_url =self.upload_to_s3(local_temp_path, s3_bucket, s3_key)
+                
+                # Optionally, remove the local file after upload
+                os.remove(local_temp_path)
+                LOGGING.info("Local file deleted after upload.")
+
+            LOGGING.info("Transcription completed.")
         return transcription.text
 
-    
-    
+
+

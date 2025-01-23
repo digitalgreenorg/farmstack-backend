@@ -5,17 +5,22 @@ import tempfile
 from contextlib import contextmanager
 
 import numpy as np
+import requests
 from bs4 import BeautifulSoup
-from langchain.document_loaders import (
-    JSONLoader,
-    PyMuPDFLoader,
-)
+from django.db import transaction
+from langchain.document_loaders import JSONLoader, PyMuPDFLoader
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from sklearn.metrics.pairwise import cosine_similarity
 from unstructured.partition.pdf import partition_pdf
 from unstructured.staging.base import elements_to_dicts
-from utils import  validators
-from ai.open_ai_utils import create_embedding, get_embeddings, get_topic, get_embedding_auto_cat, insert_chunking_in_db
+
+from ai.open_ai_utils import (
+    create_embedding,
+    get_embedding_auto_cat,
+    get_embeddings,
+    get_topic,
+    insert_chunking_in_db,
+)
 from ai.utils import build_pdf, download_file, resolve_file_path
 from ai.vector_db_builder.load_audio_and_video import LoadAudioAndVideo
 from ai.vector_db_builder.load_documents import LoadDocuments
@@ -23,7 +28,14 @@ from ai.vector_db_builder.load_website import WebsiteLoader
 from celery import shared_task
 from core import settings
 from core.constants import Constants
-from datahub.models import ResourceFile
+from datahub.models import (
+    Category,
+    Resource,
+    ResourceFile,
+    ResourceSubCategoryMap,
+    SubCategory,
+)
+from utils import validators
 
 LOGGING = logging.getLogger(__name__)
 semantic_chunking = False
@@ -35,7 +47,7 @@ def create_vector_db(resource_file, chunk_size=1000, chunk_overlap=200):
     try:
         documents, status = load_documents(
             resource_file.get("url"), resource_file.get("file"), resource_file.get("type"),
-            resource_file.get("id"), resource_file.get("transcription"))
+            resource_file, resource_file.get("transcription"))
         LOGGING.info(f"Documents loaded for Resource ID: {resource_id}")
         if status == "completed":
             if semantic_chunking:
@@ -70,7 +82,6 @@ def create_vector_db(resource_file, chunk_size=1000, chunk_overlap=200):
         LOGGING.info(f"Resource file ID: {resource_id}")
     return data
 
-
 def insert_auto_cat_data(resource_data, json_data, category_id_map, sub_category_id_map):
     resource_id = resource_data.get("resources")[0].get("id")
     orgnisation_name = validators.format_category_name(resource_data.get("organization").get("name", ""))
@@ -95,29 +106,33 @@ def insert_auto_cat_data(resource_data, json_data, category_id_map, sub_category
             embeddings_status="failed", embeddings_status_reason='')
     return data
 
-
-def load_documents(url, file, doc_type, id, transcription=""):
+def load_documents(url, file, doc_type, resource_file, transcription=""):
     try:
         
         if doc_type == 'api':
             absolute_path = os.path.join(settings.MEDIA_ROOT, file.replace("/media/", ''))
             loader = JSONLoader(file_path=absolute_path,  jq_schema='.', text_content=False)
             return loader.load(), "completed"
-        elif doc_type in ['youtube', 'pdf', 'website']:
+        elif doc_type in ['youtube', 'pdf', 'website', 'file']:
             with temporary_file(suffix=".pdf") as temp_pdf_path:
                 if doc_type == 'youtube':
                     if not transcription:
                         summary = LoadAudioAndVideo().generate_transcriptions_summary(url)
+                        # import pdb; pdb.set_trace()
                         build_pdf(summary, temp_pdf_path)
-                        ResourceFile.objects.filter(id=id).update(transcription=summary)
+                        load_categories(temp_pdf_path, resource_file)
+                        ResourceFile.objects.filter(id=resource_file.get("id")).update(transcription=summary)
                         loader = PyMuPDFLoader(temp_pdf_path)  # Assuming PyMuPDFLoader is defined elsewhere
                     else:
                         build_pdf(transcription, temp_pdf_path)
                         loader = PyMuPDFLoader(temp_pdf_path)  # Assuming PyMuPDFLoader is defined elsewhere
+                        load_categories(temp_pdf_path, resource_file)
+
                 elif doc_type == 'pdf':
                     download_file(url, temp_pdf_path)
                     loader = PyMuPDFLoader(temp_pdf_path)  # Assuming PyMuPDFLoader is defined elsewhere
-                
+                    load_categories(temp_pdf_path, resource_file)
+
                 elif doc_type == "website":
                     doc_text = ""
                     web_site_loader = WebsiteLoader()
@@ -126,12 +141,16 @@ def load_documents(url, file, doc_type, id, transcription=""):
                     all_content = main_content + "\n" + doc_text
                     build_pdf(all_content.replace("\n", " "), temp_pdf_path)
                     loader = PyMuPDFLoader(temp_pdf_path)  # Assuming PyMuPDFLoader is defined elsewhere
+                    load_categories(temp_pdf_path, resource_file)
+
+                elif doc_type == 'file':
+                    file_path = resolve_file_path(file)
+                    download_file(file_path, temp_pdf_path)
+                    print(file_path)
+                    loader, format = LoadDocuments().load_by_file_extension(file_path)
+                    load_categories(temp_pdf_path, resource_file)
+                    return loader,  "completed"
                 return loader.load(), "completed"
-        elif doc_type == 'file':
-            file_path = resolve_file_path(file)
-            print(file_path)
-            loader, format = LoadDocuments().load_by_file_extension(file_path)
-            return loader,  "completed"
         else:
             LOGGING.error(f"Unsupported input type: {doc_type}")
             return f"Unsupported input type: {doc_type}", "failed"
@@ -147,8 +166,6 @@ def split_documents(documents, chunk_size, chunk_overlap):
         separators="\n",
     )
     return text_splitter.split_documents(documents)
-
-
 
 def calculate_cosine_distances(sentences):
     distances = []
@@ -172,7 +189,6 @@ def calculate_cosine_distances(sentences):
     # sentences[-1]['distance_to_next'] = None  # or a default value
 
     return distances, sentences
-
 
 def document_extraction(pdf_path : str, extract_image : bool, extract_image_folder : str):
     # Extracts the elements from the PDF
@@ -456,3 +472,45 @@ def temporary_file(suffix=""):
         if os.path.exists(path):
             os.remove(path)
             LOGGING.info(f"Temporary file {path} deleted.")
+
+# @shared_task
+def load_categories(resource_file, resource_file_object):
+    # Define the URL of the API
+    url = 'http://127.0.0.1:29292/categorize_file'
+    categories=[]
+    # Specify the file path
+    # Open the file in binary mode and send it to the API
+    with open(resource_file, 'rb') as file:
+        files = {'file': (file.name, file, 'application/pdf')}  # Adjust MIME type as necessary
+        response = requests.post(url, files=files)
+        if response.status_code == 200:
+            categories = response.json()
+    # response = requests.post(url, files=files)
+    
+    categories = [categories] if isinstance(categories, dict) else categories
+    logging.info(f"Categories fetched for resource file Id: {resource_file_object.get('id')} and categories:{categories}")
+    try:
+        with transaction.atomic():
+        # Iterate over the categories in the API response
+            for category_data in categories:
+                # Get or create the category
+                category, created = Category.objects.get_or_create(name=category_data['category'])
+                
+                # Iterate over the subcategories in the category
+                sub_category_instances = []
+                for subcategory_name in category_data['subcategories']:
+                    # Get or create the subcategory under the category
+                    sub_category, created = SubCategory.objects.get_or_create(
+                        name=subcategory_name,
+                        category=category
+                    )
+                    # Create the mapping of Resource and SubCategory
+                    sub_category_instances.append(ResourceSubCategoryMap(
+                        resource_id=resource_file_object.get("resource"),
+                        sub_category=sub_category
+                    ))
+                # Bulk create the subcategory mappings
+                ResourceSubCategoryMap.objects.bulk_create(sub_category_instances)
+    except Exception as e:
+        logging.error(f"Failed to load the categories {e}")
+        return categories
