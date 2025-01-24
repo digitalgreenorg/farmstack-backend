@@ -3247,13 +3247,13 @@ class ResourceManagementViewSet(GenericViewSet):
             serializer.is_valid(raise_exception=True)
             serializer.save()
             resource_id=serializer.data.get("id")
-            ResourceSubCategoryMap.objects.filter(resource=instance).delete()
+            # ResourceSubCategoryMap.objects.filter(resource=instance).delete()
             
-            sub_categories_map = json.loads(sub_categories_map[0]) if sub_categories_map else []
-            resource_sub_cat_instances= [
-                ResourceSubCategoryMap(resource=instance, sub_category=SubCategory.objects.get(id=sub_cat)
-                                       ) for sub_cat in sub_categories_map]
-            ResourceSubCategoryMap.objects.bulk_create(resource_sub_cat_instances)
+            # sub_categories_map = json.loads(sub_categories_map[0]) if sub_categories_map else []
+            # resource_sub_cat_instances= [
+            #     ResourceSubCategoryMap(resource=instance, sub_category=SubCategory.objects.get(id=sub_cat)
+            #                            ) for sub_cat in sub_categories_map]
+            # ResourceSubCategoryMap.objects.bulk_create(resource_sub_cat_instances)
 
             return Response(serializer.data, status=status.HTTP_200_OK)
         except ValidationError as e:
@@ -3569,7 +3569,7 @@ class ResourceFileManagementViewSet(GenericViewSet):
                 serializer_data["states"] = states
                 serializer_data["districts"] = districts
 
-                create_vector_db.delay(serializer_data)
+                create_vector_db(serializer_data)
                 # create_vector_db(serializer_data)
                 return Response(serializer.data, status=status.HTTP_201_CREATED)
             else:
