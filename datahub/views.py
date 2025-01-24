@@ -3242,7 +3242,7 @@ class ResourceManagementViewSet(GenericViewSet):
         try:
             instance = self.get_object()
             data = request.data.copy()
-            sub_categories_map = data.pop("sub_categories_map")
+            sub_categories_map = data.pop("sub_categories_map", [])
             serializer = self.get_serializer(instance, data=data, partial=True)
             serializer.is_valid(raise_exception=True)
             serializer.save()
