@@ -19,10 +19,13 @@ from functools import reduce
 from pickle import TRUE
 from urllib.parse import parse_qs, unquote, urlparse
 
+import boto3
 import django
+import dropbox
 import numpy as np
 import pandas as pd
 import requests
+from azure.storage.blob import BlobServiceClient
 from django.conf import settings
 from django.contrib.admin.utils import get_model_from_relation
 from django.contrib.auth.hashers import check_password, make_password
@@ -49,13 +52,16 @@ from django.db.models.functions import Concat
 from django.http import JsonResponse
 from django.shortcuts import render
 from drf_braces.mixins import MultipleSerializersViewMixin
+from google.oauth2.credentials import Credentials
+from google.oauth2.service_account import Credentials as ServiceAccountCredentials
+from googleapiclient.discovery import build
 from jsonschema import ValidationError
 from psycopg2 import connect
 from psycopg2.extensions import ISOLATION_LEVEL_AUTOCOMMIT
 from python_http_client import exceptions
 from pytube import Channel, Playlist, YouTube
 from rest_framework import generics, pagination, status, viewsets
-from rest_framework.decorators import action
+from rest_framework.decorators import action, api_view
 from rest_framework.exceptions import ValidationError
 from rest_framework.parsers import JSONParser, MultiPartParser
 from rest_framework.permissions import AllowAny, IsAuthenticated
@@ -172,6 +178,8 @@ from .serializers import (
     APIBuilderSerializer,
     CategorySerializer,
     CategorySubcategoryInputSerializer,
+    FileItemSerializer,
+    FileResponseSerializer,
     LangChainEmbeddingsSerializer,
     MessagesChunksRetriveSerializer,
     MessagesRetriveSerializer,
@@ -181,6 +189,7 @@ from .serializers import (
     ResourceFileSerializer,
     ResourceListSerializer,
     ResourceUsagePolicyDetailSerializer,
+    SourceDetailsSerializer,
     SubCategorySerializer,
     UsagePolicyDetailSerializer,
     UsagePolicySerializer,
@@ -736,6 +745,7 @@ class MailInvitationViewSet(GenericViewSet):
                         subject=os.environ.get("DATAHUB_NAME", "datahub_name")
                                 + Constants.PARTICIPANT_INVITATION_SUBJECT,
                     )
+                    emails_found.append(email)
                 except Exception as e:
                     emails_not_found.append()
             failed = f"No able to send emails to this emails: {emails_not_found}"
@@ -3232,18 +3242,18 @@ class ResourceManagementViewSet(GenericViewSet):
         try:
             instance = self.get_object()
             data = request.data.copy()
-            sub_categories_map = data.pop("sub_categories_map")
+            sub_categories_map = data.pop("sub_categories_map", [])
             serializer = self.get_serializer(instance, data=data, partial=True)
             serializer.is_valid(raise_exception=True)
             serializer.save()
             resource_id=serializer.data.get("id")
-            ResourceSubCategoryMap.objects.filter(resource=instance).delete()
+            # ResourceSubCategoryMap.objects.filter(resource=instance).delete()
             
-            sub_categories_map = json.loads(sub_categories_map[0]) if sub_categories_map else []
-            resource_sub_cat_instances= [
-                ResourceSubCategoryMap(resource=instance, sub_category=SubCategory.objects.get(id=sub_cat)
-                                       ) for sub_cat in sub_categories_map]
-            ResourceSubCategoryMap.objects.bulk_create(resource_sub_cat_instances)
+            # sub_categories_map = json.loads(sub_categories_map[0]) if sub_categories_map else []
+            # resource_sub_cat_instances= [
+            #     ResourceSubCategoryMap(resource=instance, sub_category=SubCategory.objects.get(id=sub_cat)
+            #                            ) for sub_cat in sub_categories_map]
+            # ResourceSubCategoryMap.objects.bulk_create(resource_sub_cat_instances)
 
             return Response(serializer.data, status=status.HTTP_200_OK)
         except ValidationError as e:
@@ -3559,8 +3569,8 @@ class ResourceFileManagementViewSet(GenericViewSet):
                 serializer_data["states"] = states
                 serializer_data["districts"] = districts
 
-                # create_vector_db.delay(serializer_data)
-                create_vector_db.delay(serializer_data)
+                create_vector_db(serializer_data)
+                # create_vector_db(serializer_data)
                 return Response(serializer.data, status=status.HTTP_201_CREATED)
             else:
                 serializer = self.get_serializer(data=request.data, partial=True)
@@ -3648,7 +3658,7 @@ class ResourceFileManagementViewSet(GenericViewSet):
                         serializer.is_valid(raise_exception=True)
                         serializer.save()
                         # create_vector_db.delay(serializer.data)
-                        create_vector_db(serializer.data)
+                        create_vector_db.delay(serializer.data)
                         return JsonResponse(serializer.data, status=status.HTTP_200_OK)
                 return Response(file_path)
             LOGGER.error("Failed to fetch data from api")
@@ -3957,6 +3967,129 @@ class MessagesCreateViewSet(generics.ListCreateAPIView):
         return self.get_paginated_response(serializer.data)
 
 
+class FetchFiles(viewsets.ModelViewSet):
+    serializer = SourceDetailsSerializer
+    permission_classes = []
+    
+    @action(detail=False, methods=['post'])
+    def fetch_files(self, request):
+        serializer = self.serializer(data=request.data)
+        if serializer.is_valid(raise_exception=True):
+            source_type = serializer.validated_data['source_type']
+            details = serializer.validated_data['details']
+            try:
+                # Handle different source types
+                if source_type == 's3':
+                    files = self.fetch_files_from_s3(details)
+                elif source_type == 'google_drive':
+                    files = self.fetch_files_from_google_drive(details)
+                elif source_type == 'dropbox':
+                    files = self.fetch_files_from_dropbox(details)
+                elif source_type == 'azure_blob':
+                    files = self.fetch_files_from_azure_blob(details)
+                else:
+                    return Response({"detail": "Unsupported source type"}, status=status.HTTP_400_BAD_REQUEST)
+            except Exception as e:
+                LOGGER.error(f"Failed to pull the recourds from {source_type} ERROR: {e}")
+                return Response(str(e), 500)
+            
+            if not files:
+                return Response({"detail": "No files found"}, status=status.HTTP_404_NOT_FOUND)
+
+            # Serialize the file response
+            file_response_serializer = FileResponseSerializer(data={'files': files})
+            if file_response_serializer.is_valid():
+                return Response(file_response_serializer.data, status=status.HTTP_200_OK)
+
+            return Response(file_response_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        else:
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+    def fetch_files_from_s3(self, details):
+        s3_client = boto3.client(
+            's3',
+            aws_access_key_id=details['aws_access_key_id'],
+            aws_secret_access_key=details['aws_secret_access_key'],
+            region_name=details['region']
+        )
+        bucket_name = details['bucket_name']
+        files = s3_client.list_objects_v2(Bucket=bucket_name)
+
+        if 'Contents' not in files:
+            return []
+
+        # Allowed file extensions
+        allowed_extensions = ('.pdf', '.json', '.doc', '.docx')
+
+        # Filter files by extension
+        file_list = []
+        for item in files['Contents']:
+            file_name = item['Key']
+            if file_name.lower().endswith(allowed_extensions):
+                https_url = f"https://{bucket_name}.s3.{details['region']}.amazonaws.com/{file_name}"
+                file_list.append({'file_name': str(item['Key']).split("/")[-1], 'file_url': https_url})
+        
+        return file_list
+    
+    # Fetch files from Google Drive
+    def fetch_files_from_google_drive(self, details):
+        creds = ServiceAccountCredentials.from_service_account_file("creds.json")
+        drive_service = build('drive', 'v3', credentials=creds)
+
+        # Define the query to filter files within the specified folder
+        folder_url = details.get('folder_url', '')
+        folder_id_match = re.search(r"folders/([a-zA-Z0-9-_]+)", folder_url)
+        if not folder_id_match:
+            raise ValueError("Invalid folder URL provided.")
+        folder_id = folder_id_match.group(1)
+        # Recursive function to fetch files
+        def fetch_files_in_folder(folder_id):
+            query = f"'{folder_id}' in parents and trashed=false"
+            results = drive_service.files().list(q=query, fields="files(id, name, mimeType)").execute()
+            items = results.get('files', [])
+            
+            pdf_files = []
+            for item in items:
+                # Check if it's a folder or a file
+                if item['mimeType'] == 'application/vnd.google-apps.folder':
+                    # Recursive call for subfolder
+                    pdf_files.extend(fetch_files_in_folder(item['id']))
+                elif item['mimeType'] == 'application/pdf':
+                    # Collect PDF file details
+                    pdf_files.append({
+                        'file_name': item['name'],
+                        'file_url': f"https://drive.google.com/file/d/{item['id']}"
+                    })
+            return pdf_files
+
+        # Fetch files from the root folder provided in details
+        if not folder_id:
+            return []
+
+        return fetch_files_in_folder(folder_id)
+
+    # Fetch files from Dropbox
+    def fetch_files_from_dropbox(self, details):
+        dbx = dropbox.Dropbox(details['access_token'])
+        result = dbx.files_list_folder('')
+        files = result.entries
+
+        if not files:
+            return []
+
+        return [{'file_name': file.name, 'file_url': f"https://www.dropbox.com/home/{file.path_display}"} for file in files]
+
+    # Fetch files from Azure Blob Storage
+    def fetch_files_from_azure_blob(self, details):
+        blob_service_client = BlobServiceClient(account_url=details['account_url'], credential=details['account_key'])
+        container_client = blob_service_client.get_container_client(details['container_name'])
+        blob_list = container_client.list_blobs()
+
+        if not blob_list:
+            return []
+
+        return [{'file_name': blob.name, 'file_url': f"{details['account_url']}/{details['container_name']}/{blob.name}"} for blob in blob_list]
 
 # old_base_url = 'users/resources/'
 # new_base_url = f'https://{settings.AWS_S3_CUSTOM_DOMAIN}/users/resources/'

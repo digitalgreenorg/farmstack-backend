@@ -75,7 +75,7 @@ class Utils:
         # Create a MIME object
         msg = MIMEMultipart()
         msg['From'] = settings.SMTP_USER
-        msg['To'] = to_email
+        msg['To'] = ", ".join(to_email) if isinstance(to_email, list) else to_email
         msg['Subject'] = subject
 
         # Attach the email content to the MIME object
