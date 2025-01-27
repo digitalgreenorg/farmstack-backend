@@ -3569,7 +3569,7 @@ class ResourceFileManagementViewSet(GenericViewSet):
                 serializer_data["states"] = states
                 serializer_data["districts"] = districts
 
-                create_vector_db(serializer_data)
+                create_vector_db.delay(serializer_data)
                 # create_vector_db(serializer_data)
                 return Response(serializer.data, status=status.HTTP_201_CREATED)
             else:
