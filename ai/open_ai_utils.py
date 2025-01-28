@@ -428,7 +428,7 @@ def query_qdrant_collection(resource_file_ids, query, country, state, district, 
         except:
             pass
 
-    LOGGING.info(f"Collection and filter details: state={state}, k={limit_k}, threshold={default_threshold}")
+    LOGGING.info(f"Collection and filter details: state={state}, k={limit_k}, threshold={default_threshold}, condition {filter_conditions}")
 
     try:
         search_data = qdrant_client.search(
@@ -471,6 +471,8 @@ def query_qdrant_collection_v2(org_name, org_id, query, countries, state, distri
     default_threshold = 0.0
     if category:
         filter_conditions.append(FieldCondition(key="category", match=MatchValue(value=category)))
+    if sub_category:
+        filter_conditions.append(FieldCondition(key="sub_category", match=MatchValue(value=sub_category)))
     if state:
         filter_conditions.append(FieldCondition(key="state", match=MatchValue(value=state)))
     if district:
@@ -495,7 +497,7 @@ def query_qdrant_collection_v2(org_name, org_id, query, countries, state, distri
         except:
             pass
 
-    LOGGING.info(f"Collection and filter details: state={state}, k={limit_k}, threshold={default_threshold}")
+    LOGGING.info(f"Collection and filter details: state={state}, k={limit_k}, threshold={default_threshold}, condition {filter_conditions}")
 
     try:
         search_data = qdrant_client.search(
