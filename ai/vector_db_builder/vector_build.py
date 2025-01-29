@@ -113,7 +113,7 @@ def load_documents(url, file, doc_type, resource_file, transcription=""):
             absolute_path = os.path.join(settings.MEDIA_ROOT, file.replace("/media/", ''))
             loader = JSONLoader(file_path=absolute_path,  jq_schema='.', text_content=False)
             return loader.load(), "completed"
-        elif doc_type in ['youtube', 'pdf', 'website', 'file']:
+        elif doc_type in ['youtube', 'pdf', 'website', 'file', 'dropbox', 's3', 'google_drive', 'dropbox']:
             with temporary_file(suffix=".pdf") as temp_pdf_path:
                 if doc_type == 'youtube':
                     if not transcription:
@@ -127,12 +127,6 @@ def load_documents(url, file, doc_type, resource_file, transcription=""):
                         build_pdf(transcription, temp_pdf_path)
                         loader = PyMuPDFLoader(temp_pdf_path)  # Assuming PyMuPDFLoader is defined elsewhere
                         load_categories(temp_pdf_path, resource_file)
-
-                elif doc_type == 'pdf':
-                    download_file(url, temp_pdf_path)
-                    loader = PyMuPDFLoader(temp_pdf_path)  # Assuming PyMuPDFLoader is defined elsewhere
-                    load_categories(temp_pdf_path, resource_file)
-
                 elif doc_type == "website":
                     doc_text = ""
                     web_site_loader = WebsiteLoader()
@@ -142,14 +136,16 @@ def load_documents(url, file, doc_type, resource_file, transcription=""):
                     build_pdf(all_content.replace("\n", " "), temp_pdf_path)
                     loader = PyMuPDFLoader(temp_pdf_path)  # Assuming PyMuPDFLoader is defined elsewhere
                     load_categories(temp_pdf_path, resource_file)
-
                 elif doc_type == 'file':
                     file_path = resolve_file_path(file)
                     download_file(file_path, temp_pdf_path)
-                    print(file_path)
                     loader, format = LoadDocuments().load_by_file_extension(file_path)
                     load_categories(temp_pdf_path, resource_file)
                     return loader,  "completed"
+                else:
+                    download_file(url, temp_pdf_path)
+                    loader = PyMuPDFLoader(temp_pdf_path)  # Assuming PyMuPDFLoader is defined elsewhere
+                    load_categories(temp_pdf_path, resource_file)
                 return loader.load(), "completed"
         else:
             LOGGING.error(f"Unsupported input type: {doc_type}")
