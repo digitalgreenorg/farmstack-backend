@@ -6,5 +6,19 @@ services:
     ports:
       - 5438:6333
       - 5439:6334
+      - "8000:8000"
+    depends_on:
+      - db
+    environment:
+      POSTGRES_DB: postgres
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_HOST_AUTH_METHOD: trust
+      SENDGRID_API_KEY: {your sendgrid key}
+      EMAIL_HOST_USER: {your sendgrid registered email}
+    links:
+      - db:db
+    networks:
+      - postgresql-network
     volumes:
       - ./qdrant_data:/qdrant_data

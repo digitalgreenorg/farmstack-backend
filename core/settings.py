@@ -70,6 +70,7 @@ INSTALLED_APPS = [
     "connectors",
     "django_apscheduler",
     "ai"
+
 ]
 # Use nose to run all tests
 TEST_RUNNER = "django_nose.NoseTestSuiteRunner"

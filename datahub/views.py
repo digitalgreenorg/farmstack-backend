@@ -4103,3 +4103,14 @@ class FetchFiles(viewsets.ModelViewSet):
 #         new_path = old_path.replace(old_base_url, new_base_url)
 #         resource.file.name = new_path
 #         resource.save()
+def telegram_dashboard(request):
+    return render(request, 'streamlit.html', {'url': os.getenv("TELEGRAM_URL")})
+
+def coco_dashboard(request):
+    return render(request, 'streamlit.html', {'url':os.getenv("COCO_URL")})
+
+def farmer_registry_dashboard(request):
+    return render(request, 'streamlit.html', {'url': os.getenv("FARMER_REGISTRY_URL")})
+
+def da_registry_dashboard(request):
+    return render(request, 'streamlit.html', {'url': os.getenv("DA_REGISTRY_URL")})
