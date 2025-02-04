@@ -20,6 +20,7 @@ from datahub.views import (
     DocumentSaveView,
     DropDocumentView,
     EmbeddingsViewSet,
+    FetchFiles,
     MailInvitationViewSet,
     MessagesCreateViewSet,
     MessagesViewSet,
@@ -29,6 +30,7 @@ from datahub.views import (
     PolicyListAPIView,
     ResourceFileManagementViewSet,
     ResourceManagementViewSet,
+    ResourceManagementAutoCategorizationViewSet, # Added for Auto categorization
     ResourceUsagePolicyListCreateView,
     ResourceUsagePolicyRetrieveUpdateDestroyView,
     StandardisationTemplateView,
@@ -61,10 +63,13 @@ router.register(r"dataset_ops", DatasetV2ViewSetOps, basename="")
 router.register(r"standardise", StandardisationTemplateView, basename=Constants.STANDARDISE)
 router.register(r"newdashboard", DatahubNewDashboard, basename=Constants.NEW_DASHBOARD)
 router.register(r"resource_management", ResourceManagementViewSet, basename=Constants.RESOURCE_MANAGEMENT)
+# New updated V2 route for Auto Categorization
+router.register(r"v2/resource_management", ResourceManagementAutoCategorizationViewSet, basename=Constants.RESOURCE_MANAGEMENT_V2)
 router.register(r"resource_file", ResourceFileManagementViewSet, basename=Constants.RESOURCE_FILE_MANAGEMENT)
 router.register(r'categories', CategoryViewSet, basename=Constants.CATEGORY)
 router.register(r'subcategories', SubCategoryViewSet, basename=Constants.SUBCATEGORY)
 router.register(r'embeddings', EmbeddingsViewSet, basename='embeddings')
+router.register(r'files', FetchFiles, basename='embeddings')
 
 urlpatterns = [
     path("", include(router.urls)),
