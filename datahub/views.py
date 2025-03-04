@@ -2469,18 +2469,18 @@ class DatasetV2View(GenericViewSet):
         try:
             instance = self.get_object()
             data = request.data.copy()
-            sub_categories_map = data.pop("sub_categories_map")
+            # sub_categories_map = data.pop("sub_categories_map")
             data["is_temp"] = False
             serializer = self.get_serializer(instance, data=data, partial=True)
             serializer.is_valid(raise_exception=True)
-            DatasetSubCategoryMap.objects.filter(dataset_id=instance).delete()
+            # DatasetSubCategoryMap.objects.filter(dataset_id=instance).delete()
             serializer.save()
             # sub_categories_map = json.loads(sub_categories_map[0]) if c else []
-            dataset_sub_cat_instances= [
-                DatasetSubCategoryMap(dataset=instance, sub_category=SubCategory.objects.get(id=sub_cat)
-                                       ) for sub_cat in sub_categories_map]
+            # dataset_sub_cat_instances= [
+            #     DatasetSubCategoryMap(dataset=instance, sub_category=SubCategory.objects.get(id=sub_cat)
+            #                            ) for sub_cat in sub_categories_map]
 
-            DatasetSubCategoryMap.objects.bulk_create(dataset_sub_cat_instances)
+            # DatasetSubCategoryMap.objects.bulk_create(dataset_sub_cat_instances)
 
             return Response(serializer.data, status=status.HTTP_200_OK)
         except ValidationError as e:
