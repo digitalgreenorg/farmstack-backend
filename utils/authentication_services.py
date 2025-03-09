@@ -42,10 +42,9 @@ def authenticate_user(model):
             elif model == UsagePolicy:
                 query_id = kwargs.get("pk")
                 
-               dsv = UsagePolicy.objects.filter(
-                        Q(id=query_id) &
-                        (Q(dataset_file__dataset__user_map_id=payload.get("map_id")) | Q(user_organization_map=payload.get("map_id")))
-                    )
+                dsv = UsagePolicy.objects.filter(Q(id=query_id) & (
+                    Q(dataset_file__dataset__user_map_id=payload.get("map_id")
+                    ) | Q(user_organization_map=payload.get("map_id"))))
                 if not dsv:
                     LOGGER.info(f"user_map: {payload.get('map_id')} not have access")
                     return Response(
