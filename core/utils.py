@@ -296,6 +296,7 @@ def fetch_data_for_all_datasets():
             # Get the frequency (weekly/monthly) from the connection details
             frequency = dataset_file.connection_details.get('frequency', None)  # Default to 'weekly' if not set
             last_pull = dataset_file.connection_details.get('last_pull', None)
+            LOGGER.info(f"Data fetch checkking for {dataset_file.id}")
             if frequency:
                 # If last_pull is None, consider it as never pulled
                 if not last_pull:
@@ -309,12 +310,14 @@ def fetch_data_for_all_datasets():
 
                 # Determine if data should be pulled based on frequency and last pull date
                 if frequency == 'weekly' and (current_time - last_pull >= timedelta(weeks=1)):
+                    LOGGER.info(f"Data fetching started for {dataset_file.id}")
                     if fetch_data_from_api(dataset_file):
                         connection_details = dataset_file.connection_details
                         connection_details["last_pull"] = current_time_str
                         dataset_file.connection_details = connection_details
                         dataset_file.save()
                 elif frequency == 'monthly' and (current_time - last_pull >= timedelta(weeks=4)):
+                    LOGGER.info(f"Data fetching started for {dataset_file.id}")
                     if fetch_data_from_api(dataset_file):
                         connection_details = dataset_file.connection_details
                         connection_details["last_pull"] = current_time_str
@@ -371,6 +374,8 @@ def fetch_data_from_api(dataset_file):
                         os.path.join(settings.DATASET_FILES_URL, dataset_file.dataset.name, dataset_file.source, file_name)),
                     standardised_file=os.path.join(
                         dataset_file.dataset.name, dataset_file.source, file_name),
+                    standardised_configuration=dataset_file.standardised_configuration,
+                    accessibility=dataset_file.accessibility,
                     connection_details={}
                 )
                 LOGGER.info(f"""Data fetched from the api and saved in file: {file_name} for 
