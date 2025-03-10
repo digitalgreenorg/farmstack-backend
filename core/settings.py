@@ -460,7 +460,7 @@ CELERY_TIMEZONE = 'UTC'
 CELERY_BEAT_SCHEDULE = {
     'fetch_dataset_for_all_files': {
         'task': 'core.utils.fetch_data_for_all_datasets',
-        # 'schedule': crontab(minute=0, hour=0),  # Daily at midnight
-         'schedule': crontab(minute='*/1')
+        'schedule': crontab(minute=0, hour=0),  # Daily at midnight
+        #  'schedule': crontab(minute='*/1')
     },
 }
