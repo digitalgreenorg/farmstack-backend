@@ -2015,7 +2015,7 @@ class DataBaseViewSet(GenericViewSet):
             auth_type = request.data.get("auth_type")
             dataset_name = request.data.get("dataset_name")
             source = request.data.get("source")
-            file_name = request.data.get("file_name")
+            c = request.data.get("file_name")
 
             if auth_type == 'NO_AUTH':
                 response = requests.get(url)
@@ -2053,6 +2053,10 @@ class DataBaseViewSet(GenericViewSet):
                         os.path.join(settings.DATASET_FILES_URL, dataset_name, source, file_name + ".json")),
                     standardised_file=os.path.join(
                         dataset_name, source, file_name + ".json"),
+                    connection_details={"auth_type": auth_type, "url": url, "headers": headers,
+                                        "frequency": request.data.get("frequency", ""), 
+                                        "file_replace": request.data.get("file_replace", False),
+                                        "file_name": file_name }
                 )
                 serializer = DatasetFileV2NewSerializer(instance)
                 return JsonResponse(serializer.data, status=status.HTTP_200_OK)

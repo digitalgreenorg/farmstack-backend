@@ -284,3 +284,4 @@ yt-dlp
 azure-storage-blob
 azure-core
 dropbox
+django_celery_beat

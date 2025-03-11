@@ -11,6 +11,7 @@ from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from inspect import formatannotationrelativeto
 from urllib import parse
+from utils import file_operations as file_ops
 
 import pandas as pd
 import requests
@@ -24,6 +25,13 @@ from rest_framework.response import Response
 from sendgrid.helpers.mail import Content, Email, Mail
 
 from core.constants import Constants
+
+import json
+import requests
+from celery import shared_task
+from datahub.models import DatasetV2File, DatasetV2
+from datetime import datetime, timedelta
+from django.core.files.base import ContentFile
 
 LOGGER = logging.getLogger(__name__)
 
@@ -277,4 +285,113 @@ def generate_hash_key_for_dashboard(pk, data, role_id=3, logged=False):
     hash_key = hash(data_string)
     print(hash_key)
     return hash_key
+
+@shared_task
+def fetch_data_for_all_datasets():
+    # Get all DatasetV2File records that need to be updated
+    try:
+        dataset_files = DatasetV2File.objects.filter(source="live_api").all()
+        # Iterate through each dataset file and check the frequency and last pull date
+        for dataset_file in dataset_files:
+            # Get the frequency (weekly/monthly) from the connection details
+            frequency = dataset_file.connection_details.get('frequency', None)  # Default to 'weekly' if not set
+            last_pull = dataset_file.connection_details.get('last_pull', None)
+            LOGGER.info(f"Data fetch checkking for {dataset_file.id}")
+            if frequency:
+                # If last_pull is None, consider it as never pulled
+                if not last_pull:
+                    last_pull = datetime(1970, 1, 1)  # Default to an old date, so it will always fetch the first time
+                else:
+                    last_pull = datetime.strptime(last_pull, '%Y-%m-%d %H:%M:%S')
+
+                # Get the current time
+                current_time = datetime.now()
+                current_time_str = current_time.strftime('%Y-%m-%d %H:%M:%S')
+
+                # Determine if data should be pulled based on frequency and last pull date
+                if frequency == 'weekly' and (current_time - last_pull >= timedelta(weeks=1)):
+                    LOGGER.info(f"Data fetching started for {dataset_file.id}")
+                    if fetch_data_from_api(dataset_file):
+                        connection_details = dataset_file.connection_details
+                        connection_details["last_pull"] = current_time_str
+                        dataset_file.connection_details = connection_details
+                        dataset_file.save()
+                elif frequency == 'monthly' and (current_time - last_pull >= timedelta(weeks=4)):
+                    LOGGER.info(f"Data fetching started for {dataset_file.id}")
+                    if fetch_data_from_api(dataset_file):
+                        connection_details = dataset_file.connection_details
+                        connection_details["last_pull"] = current_time_str
+                        dataset_file.connection_details = connection_details
+                        dataset_file.save()
+    except Exception as e:
+        LOGGER.error(
+            f"Failed to fetch data from api ERROR: {e} and input fields: {e}")
+
+def fetch_data_from_api(dataset_file):
+    # Get the API details from the connection_details field
+    try:
+        api_url = dataset_file.connection_details.get('url')
+        headers = dataset_file.connection_details.get('headers')
+        auth_type = dataset_file.connection_details.get('auth_type')
+        file_name = dataset_file.connection_details.get('file_name', "default")
+        # Prepare the request headers
+        request_headers = {
+            "Authorization": headers.get("Authorization")
+        }
+
+        # Fetch the data from the API
+        response = requests.get(api_url, headers=request_headers)
+        if response.status_code in [200, 201]:
+            try:
+                data = response.json()
+            except ValueError:
+                data = response.text
+
+            if dataset_file.connection_details.get("file_replase", False):
+                file_path = file_ops.create_directory(
+                settings.DATASET_FILES_URL, [dataset_file.dataset.name, dataset_file.source])
+                file_name = file_name + ".json"
+
+            else:
+                file_path = file_ops.create_directory(
+                settings.DATASET_FILES_URL, [dataset_file.dataset.name, dataset_file.source])
+                today_date = datetime.today().strftime(' %Y-%m-%d %H:%M:%S')
+                file_name = file_name + today_date+ ".json"
+
+            with open(file_path + "/" + file_name, "w") as outfile:
+                if type(data) == list:
+                    json.dump(data, outfile)
+                else:
+                    outfile.write(json.dumps(data))
+
+            if not dataset_file.connection_details.get("file_replace", False):
+                instance = DatasetV2File.objects.create(
+                    dataset=dataset_file.dataset,
+                    source=dataset_file.source,
+                    file=os.path.join(dataset_file.dataset.name, dataset_file.source,
+                                        file_name),
+                    file_size=os.path.getsize(
+                        os.path.join(settings.DATASET_FILES_URL, dataset_file.dataset.name, dataset_file.source, file_name)),
+                    standardised_file=os.path.join(
+                        dataset_file.dataset.name, dataset_file.source, file_name),
+                    standardised_configuration=dataset_file.standardised_configuration,
+                    accessibility=dataset_file.accessibility,
+                    connection_details={}
+                )
+                LOGGER.info(f"""Data fetched from the api and saved in file: {file_name} for 
+                            the dataset: {dataset_file.dataset.name},
+                             dataset_file_id {dataset_file.id}""")
+                return True
+            else:
+                dataset_file.file=os.path.join(dataset_file.dataset.name, dataset_file.source,
+                                        file_name)
+                dataset_file.save()
+                return True
+        LOGGER.error(f"Failed to fetch data from api with status {response.status_code}")
+        return False
+    except Exception as e:
+        LOGGER.error(
+            f"Failed to fetch data from api ERROR: {e} and input fields: {dataset_file}")
+        LOGGER.error("Failed to fetch data from api")
+        return False
 
