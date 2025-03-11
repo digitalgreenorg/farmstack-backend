@@ -2556,6 +2556,7 @@ class DatasetV2View(GenericViewSet):
                 )
                 .filter(user_organization_map=user_map_id, type="dataset_file")
                 .values(
+                    "id",
                     "approval_status",
                     "updated_at",
                     "accessibility_time",
