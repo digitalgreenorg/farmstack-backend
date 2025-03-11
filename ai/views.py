@@ -38,7 +38,6 @@ class EmbeddingsViewSet(ModelViewSet):
         embeddings = []
         email = request.data.get("email")
         organization_id = request.data.get("organization_id")
-
         query = request.data.get("query")
         query = query.replace("\n", " ") if query else "" 
         country = request.data.get("country", "").lower()

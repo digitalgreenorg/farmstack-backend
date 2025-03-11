@@ -3,6 +3,7 @@ import uuid
 from django.db import models
 
 from core.base_models import TimeStampMixin
+
 # Create your models here.
 
 class FeedBack(TimeStampMixin):

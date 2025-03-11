@@ -176,6 +176,8 @@ psycopg==3.1.14
 psutil==6.0.0
 psycopg-binary==3.1.18
 psycopg2-binary
+protobuf==3.20.1
+# psycopg
 ptyprocess==0.7.0
 py==1.11.0
 pyaml==21.10.1

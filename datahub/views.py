@@ -4177,3 +4177,15 @@ def pull_data_for_user(user_id):
         # Update the last pull time
         config.last_pull = current_time
         config.save()
+        
+def telegram_dashboard(request):
+    return render(request, 'streamlit.html', {'url': os.getenv("TELEGRAM_URL")})
+
+def coco_dashboard(request):
+    return render(request, 'streamlit.html', {'url':os.getenv("COCO_URL")})
+
+def farmer_registry_dashboard(request):
+    return render(request, 'streamlit.html', {'url': os.getenv("FARMER_REGISTRY_URL")})
+
+def da_registry_dashboard(request):
+    return render(request, 'streamlit.html', {'url': os.getenv("DA_REGISTRY_URL")})
