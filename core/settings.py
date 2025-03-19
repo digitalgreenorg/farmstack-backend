@@ -18,6 +18,7 @@ from pathlib import Path
 
 collections.Callable = collections.abc.Callable
 from corsheaders.defaults import default_headers
+from celery.schedules import crontab
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -452,7 +453,6 @@ SMTP_USER = os.environ.get("SMTP_USER",'')
 SMTP_PASSWORD = os.environ.get("SMTP_PASSWORD",'')
 
 
-from celery.schedules import crontab
 
 CELERY_ACCEPT_CONTENT = ['json']
 CELERY_TASK_SERIALIZER = 'json'
@@ -461,7 +461,7 @@ CELERY_TIMEZONE = 'UTC'
 CELERY_BEAT_SCHEDULE = {
     'fetch_dataset_for_all_files': {
         'task': 'core.utils.fetch_data_for_all_datasets',
-        'schedule': crontab(minute=0, hour=0),  # Daily at midnight
+        'schedule': crontab(minute=0, hour='*/1'),  # Daily at midnight minite=0 hour=0
         #  'schedule': crontab(minute='*/1')
     },
 }
