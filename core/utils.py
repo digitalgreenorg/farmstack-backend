@@ -7,6 +7,7 @@ import secrets
 import smtplib
 import time
 import urllib
+import csv
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from inspect import formatannotationrelativeto
@@ -32,7 +33,7 @@ from celery import shared_task
 from datahub.models import DatasetV2File, DatasetV2
 from datetime import datetime, timedelta
 from django.core.files.base import ContentFile
-
+from urllib.parse import urlencode, urlparse, parse_qs, urlunparse
 LOGGER = logging.getLogger(__name__)
 
 # SG = sendgrid.SendGridAPIClient(settings.SENDGRID_API_KEY)
@@ -311,14 +312,14 @@ def fetch_data_for_all_datasets():
                 # Determine if data should be pulled based on frequency and last pull date
                 if frequency == 'weekly' and (current_time - last_pull >= timedelta(weeks=1)):
                     LOGGER.info(f"Data fetching started for {dataset_file.id}")
-                    if fetch_data_from_api(dataset_file):
+                    if fetch_data_from_api(dataset_file, last_pull):
                         connection_details = dataset_file.connection_details
                         connection_details["last_pull"] = current_time_str
                         dataset_file.connection_details = connection_details
                         dataset_file.save()
                 elif frequency == 'monthly' and (current_time - last_pull >= timedelta(weeks=4)):
                     LOGGER.info(f"Data fetching started for {dataset_file.id}")
-                    if fetch_data_from_api(dataset_file):
+                    if fetch_data_from_api(dataset_file, last_pull):
                         connection_details = dataset_file.connection_details
                         connection_details["last_pull"] = current_time_str
                         dataset_file.connection_details = connection_details
@@ -327,7 +328,7 @@ def fetch_data_for_all_datasets():
         LOGGER.error(
             f"Failed to fetch data from api ERROR: {e} and input fields: {e}")
 
-def fetch_data_from_api(dataset_file):
+def fetch_data_from_api(dataset_file, last_pull):
     # Get the API details from the connection_details field
     try:
         api_url = dataset_file.connection_details.get('url')
@@ -338,57 +339,75 @@ def fetch_data_from_api(dataset_file):
         request_headers = {
             "Authorization": headers.get("Authorization")
         }
+        parsed_url = urlparse(api_url)
+        query_params = parse_qs(parsed_url.query)
+
+        # If 'created_at' is not in the query parameters, add it with today's date
+        if 'created_at' in query_params:
+            query_params['created_at'] = last_pull
+
+        # Rebuild the URL with the new query parameters
+        new_query = urlencode(query_params, doseq=True)
+        updated_api_url = parsed_url._replace(query=new_query).geturl()
+        LOGGER.info(f"Updated api url {updated_api_url}")
 
         # Fetch the data from the API
-        response = requests.get(api_url, headers=request_headers)
+        response = requests.get(updated_api_url, headers=headers)
         if response.status_code in [200, 201]:
             try:
                 data = response.json()
             except ValueError:
                 data = response.text
 
-            if dataset_file.connection_details.get("file_replase", False):
+            if dataset_file.connection_details.get("file_replace", False):
                 file_path = file_ops.create_directory(
-                settings.DATASET_FILES_URL, [dataset_file.dataset.name, dataset_file.source])
-                file_name = file_name + ".json"
-
+                    settings.DATASET_FILES_URL, [dataset_file.dataset.name, dataset_file.source])
+                # Set the file name based on whether data is a list or not
+                if isinstance(data, list):
+                    file_name = file_name + ".csv"
+                else:
+                    file_name = file_name + ".json"
             else:
                 file_path = file_ops.create_directory(
-                settings.DATASET_FILES_URL, [dataset_file.dataset.name, dataset_file.source])
+                    settings.DATASET_FILES_URL, [dataset_file.dataset.name, dataset_file.source])
                 today_date = datetime.today().strftime(' %Y-%m-%d %H:%M:%S')
-                file_name = file_name + today_date+ ".json"
-
-            with open(file_path + "/" + file_name, "w") as outfile:
-                if type(data) == list:
-                    json.dump(data, outfile)
+                # Set the file name based on whether data is a list or not
+                if isinstance(data, list):
+                    file_name = file_name + today_date + ".csv"
                 else:
-                    outfile.write(json.dumps(data))
+                    file_name = file_name + today_date + ".json"
+
+            # Write data to CSV or JSON based on its type
+            if isinstance(data, list):
+                # If data is a list, write to CSV
+                with open(file_path + "/" + file_name, "w", newline='', encoding='utf-8') as outfile:
+                    writer = csv.DictWriter(outfile, fieldnames=data[0].keys())
+                    writer.writeheader()
+                    writer.writerows(data)
+            else:
+                # If data is not a list, write to JSON
+                with open(file_path + "/" + file_name, "w", encoding='utf-8') as outfile:
+                    json.dump(data, outfile)
 
             if not dataset_file.connection_details.get("file_replace", False):
                 instance = DatasetV2File.objects.create(
                     dataset=dataset_file.dataset,
                     source=dataset_file.source,
-                    file=os.path.join(dataset_file.dataset.name, dataset_file.source,
-                                        file_name),
+                    file=os.path.join(dataset_file.dataset.name, dataset_file.source, file_name),
                     file_size=os.path.getsize(
                         os.path.join(settings.DATASET_FILES_URL, dataset_file.dataset.name, dataset_file.source, file_name)),
-                    standardised_file=os.path.join(
-                        dataset_file.dataset.name, dataset_file.source, file_name),
+                    standardised_file=os.path.join(dataset_file.dataset.name, dataset_file.source, file_name),
                     standardised_configuration=dataset_file.standardised_configuration,
                     accessibility=dataset_file.accessibility,
                     connection_details={}
                 )
                 LOGGER.info(f"""Data fetched from the api and saved in file: {file_name} for 
-                            the dataset: {dataset_file.dataset.name},
-                             dataset_file_id {dataset_file.id}""")
+                                the dataset: {dataset_file.dataset.name},
+                                dataset_file_id {dataset_file.id}""")
                 return True
-            else:
-                dataset_file.file=os.path.join(dataset_file.dataset.name, dataset_file.source,
-                                        file_name)
-                dataset_file.save()
-                return True
-        LOGGER.error(f"Failed to fetch data from api with status {response.status_code}")
-        return False
+        else:
+            LOGGER.error(f"Failed to fetch data from api with status {response.status_code}")
+            return False
     except Exception as e:
         LOGGER.error(
             f"Failed to fetch data from api ERROR: {e} and input fields: {dataset_file}")
