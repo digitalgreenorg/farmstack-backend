@@ -350,6 +350,7 @@ def fetch_data_from_api(dataset_file, last_pull):
         new_query = urlencode(query_params, doseq=True)
         updated_api_url = parsed_url._replace(query=new_query).geturl()
         LOGGER.info(f"Updated api url {updated_api_url}")
+        today_date = datetime.today().strftime(' %Y-%m-%d %H:%M:%S')
 
         # Fetch the data from the API
         response = requests.get(updated_api_url, headers=headers)
@@ -359,32 +360,20 @@ def fetch_data_from_api(dataset_file, last_pull):
             except ValueError:
                 data = response.text
 
-            if dataset_file.connection_details.get("file_replace", False):
-                file_path = file_ops.create_directory(
-                    settings.DATASET_FILES_URL, [dataset_file.dataset.name, dataset_file.source])
-                # Set the file name based on whether data is a list or not
-                if isinstance(data, list):
-                    file_name = file_name + ".csv"
-                else:
-                    file_name = file_name + ".json"
-            else:
-                file_path = file_ops.create_directory(
-                    settings.DATASET_FILES_URL, [dataset_file.dataset.name, dataset_file.source])
-                today_date = datetime.today().strftime(' %Y-%m-%d %H:%M:%S')
-                # Set the file name based on whether data is a list or not
-                if isinstance(data, list):
-                    file_name = file_name + today_date + ".csv"
-                else:
-                    file_name = file_name + today_date + ".json"
+            file_path = file_ops.create_directory(
+                settings.DATASET_FILES_URL, [dataset_file.dataset.name, dataset_file.source])  
 
             # Write data to CSV or JSON based on its type
             if isinstance(data, list):
                 # If data is a list, write to CSV
+                file_name = file_name + ".csv" if dataset_file.connection_details.get("file_replace", False) else file_name + today_date + ".csv" 
+
                 with open(file_path + "/" + file_name, "w", newline='', encoding='utf-8') as outfile:
                     writer = csv.DictWriter(outfile, fieldnames=data[0].keys())
                     writer.writeheader()
                     writer.writerows(data)
             else:
+                file_name = file_name + ".json" if dataset_file.connection_details.get("file_replace", False) else file_name + today_date + ".json" 
                 # If data is not a list, write to JSON
                 with open(file_path + "/" + file_name, "w", encoding='utf-8') as outfile:
                     json.dump(data, outfile)
