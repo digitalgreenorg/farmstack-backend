@@ -2062,7 +2062,7 @@ class DataBaseViewSet(GenericViewSet):
                         json.dump(data, outfile)
 
                 # Create DatasetV2File instance
-                current_time = datetime.now()
+                current_time = datetime.datetime.utcnow()
                 current_time_str = current_time.strftime('%Y-%m-%d %H:%M:%S')
                 instance = DatasetV2File.objects.create(
                     dataset=dataset,
