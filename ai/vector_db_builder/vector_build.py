@@ -111,6 +111,7 @@ def load_documents(url, file, doc_type, resource_file, transcription=""):
         
         if doc_type == 'api':
             absolute_path = os.path.join(settings.MEDIA_ROOT, file.replace("/media/", ''))
+            LOGGING.info("absolute_path of the api file {absolute_path}")
             loader = JSONLoader(file_path=absolute_path,  jq_schema='.', text_content=False)
             return loader.load(), "completed"
         elif doc_type in ['youtube', 'pdf', 'website', 'file', 'dropbox', 's3', 'google_drive', 'dropbox']:

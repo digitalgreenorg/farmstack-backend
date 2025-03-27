@@ -2017,7 +2017,7 @@ class DataBaseViewSet(GenericViewSet):
             dataset_name = request.data.get("dataset_name")
             source = request.data.get("source")
             file_name = request.data.get("file_name")
-
+            headers = {}
             if auth_type == 'NO_AUTH':
                 response = requests.get(url)
             elif auth_type == 'API_KEY':
