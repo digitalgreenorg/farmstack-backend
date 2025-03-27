@@ -4072,16 +4072,45 @@ class FetchFiles(viewsets.ModelViewSet):
 
     # Fetch files from Dropbox
     def fetch_files_from_dropbox(self, details):
+        # dbx = dropbox.Dropbox(details['access_token'])
+        # result = dbx.files_list_folder('')
+        # files = result.entries
+
+        # if not files:
+        #     return []
+
+        # return [{'file_name': file.name, 'file_url': f"https://www.dropbox.com/home/{file.path_display}"} for file in files]
+        # Initialize Dropbox client
         dbx = dropbox.Dropbox(details['access_token'])
+        
+        # List files in the root folder
         result = dbx.files_list_folder('')
         files = result.entries
 
+        # If no files are found, return an empty list
         if not files:
             return []
 
-        return [{'file_name': file.name, 'file_url': f"https://www.dropbox.com/home/{file.path_display}"} for file in files]
+        # List to store file details with public URLs
+        file_details = []
 
-    # Fetch files from Azure Blob Storage
+        # Loop through each file and generate a shared link
+        for file in files:
+            if isinstance(file, dropbox.files.FileMetadata):
+                try:
+                    # Create a shared link for the file
+                    shared_link_metadata = dbx.sharing_create_shared_link(file.path_display)
+                    file_url = shared_link_metadata.url.replace("dl=0", "dl=1")  # Adjust URL for direct download
+
+                    file_details.append({
+                        'file_name': file.name,
+                        'file_url': file_url
+                    })
+                except dropbox.exceptions.ApiError as e:
+                    print(f"Error generating shared link for {file.name}: {e}")
+        
+        return file_details
+        # Fetch files from Azure Blob Storage
     def fetch_files_from_azure_blob(self, details):
         blob_service_client = BlobServiceClient(account_url=details['account_url'], credential=details['account_key'])
         container_client = blob_service_client.get_container_client(details['container_name'])
