@@ -8,7 +8,7 @@ python manage.py migrate
 python manage.py loaddata db_scripts/userrole_fixture.yaml
 # python manage.py loaddata admin.yaml
 # Run Django development server
-python manage.py runserver 0.0.0.0:8000 >> /datahub/vistaar_logs.txt 2>&1 &
+python manage.py runserver 0.0.0.0:8000 >> /datahub/farmstack_logs.txt 2>&1 &
 
 # Run Celery worker
 celery -A core worker --loglevel=info >> /datahub/celery_logs.txt 2>&1 &
