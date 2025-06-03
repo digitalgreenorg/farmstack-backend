@@ -353,7 +353,7 @@ class LoginViewset(GenericViewSet):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        @action(detail=False, methods=["post"])
+    @action(detail=False, methods=["post"])
     def bot_login(self, request, *args, **kwargs):
         """POST method: to save a newly registered user"""
         email=request.data.get("email")
